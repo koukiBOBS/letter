@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>迴音信箋 | Echoes of Leaves</title>
+    <!-- Fonts: Elegant Serif & Minimalist Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Noto+Serif+TC:wght@300;400;600&family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
+    
+    <!-- Firebase Legacy Web SDKs for simple, robust single-file implementation -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    
+    <!-- GSAP for smooth page animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #f7f5f0;
+            --paper: #fcfbf9;
+            --text-main: #2c2a29;
+            --text-muted: #8c857b;
+            --accent: #9e7a7a;
+            --accent-light: #f0e6e6;
+            --border: rgba(44, 42, 41, 0.08);
+            --shadow: rgba(40, 35, 30, 0.06);
+            --font-serif: 'Cormorant Garamond', 'Noto Serif TC', serif;
+            --font-sans: 'Space Grotesk', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            background-image: radial-gradient(rgba(44, 42, 41, 0.02) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+
+        /* --- 1. 登入與儀式遮罩 (Login & Quietness Ritual) --- */
+        #auth-overlay {
+            position: fixed; inset: 0; background: var(--bg); z-index: 10000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; text-align: center;
+        }
+        .ritual-title {
+            font-family: var(--font-serif); font-size: 2.5rem; font-weight: 300;
+            letter-spacing: 4px; margin-bottom: 20px; opacity: 0;
+        }
+        .ritual-sub {
+            font-family: var(--font-serif); font-size: 1.1rem; color: var(--text-muted);
+            margin-bottom: 40px; letter-spacing: 2px; line-height: 1.8; opacity: 0;
+        }
+        .auth-btn {
+            background: var(--paper); border: 1px solid var(--border);
+            padding: 14px 28px; border-radius: 30px; font-size: 0.9rem; letter-spacing: 2px;
+            cursor: pointer; box-shadow: 0 4px 12px var(--shadow);
+            transition: all 0.4s ease; display: flex; align-items: center; gap: 10px;
+        }
+        .auth-btn:hover {
+            transform: translateY(-2px); box-shadow: 0 6px 16px rgba(44, 42, 41, 0.1);
+            border-color: var(--text-muted);
+        }
+
+        /* 靜候計時圈 */
+        #ritual-timer {
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .timer-circle {
+            width: 80px; height: 80px; border-radius: 50%; border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            font-family: var(--font-serif); font-size: 2rem; margin-bottom: 20px;
+            position: relative;
+        }
+        .timer-progress {
+            position: absolute; inset: -1px; border-radius: 50%;
+            border: 2px solid var(--accent); clip-path: polygon(50% 50%, 50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 50% 0%);
+            animation: spin 5s linear forwards;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* --- 2. 主畫面排版 --- */
+        header {
+            max-width: 1000px; margin: 40px auto 20px; padding: 0 24px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .logo {
+            font-family: var(--font-serif); font-size: 1.6rem; letter-spacing: 3px;
+            font-weight: 400; cursor: default;
+        }
+        .user-nav { display: flex; align-items: center; gap: 20px; }
+        .user-nav span { font-size: 0.85rem; color: var(--text-muted); }
+        .logout-link { font-size: 0.8rem; text-decoration: none; color: var(--accent); cursor: pointer; }
+
+        main {
+            max-width: 1000px; margin: 0 auto 100px; padding: 0 24px;
+        }
+
+        /* 導航分頁籤 */
+        .tabs {
+            display: flex; gap: 40px; border-bottom: 1px solid var(--border);
+            margin-bottom: 40px; padding-bottom: 10px;
+        }
+        .tab-btn {
+            background: none; border: none; font-family: var(--font-serif);
+            font-size: 1.1rem; letter-spacing: 2px; cursor: pointer; color: var(--text-muted);
+            position: relative; padding: 5px 0; transition: color 0.3s;
+        }
+        .tab-btn.active { color: var(--text-main); font-weight: 600; }
+        .tab-btn.active::after {
+            content: ''; position: absolute; bottom: -11px; left: 0; right: 0;
+            height: 1px; background: var(--text-main);
+        }
+
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+
+        /* --- 3. 留白與賦予（撰寫信箋） --- */
+        .paper-letter {
+            background: var(--paper); border: 1px solid var(--border);
+            padding: 60px 50px; border-radius: 4px; box-shadow: 0 10px 30px var(--shadow);
+            position: relative; max-width: 700px; margin: 0 auto;
+            background-image: linear-gradient(var(--border) 1px, transparent 1px);
+            background-size: 100% 32px; line-height: 32px;
+        }
+        /* 覆蓋掉信紙背景線的輸入區域 */
+        .letter-input-group {
+            background: var(--paper); margin-bottom: 24px; position: relative;
+        }
+        .letter-label {
+            font-family: var(--font-serif); font-size: 0.9rem; color: var(--text-muted);
+            letter-spacing: 2px; margin-bottom: 8px; display: block;
+        }
+        .letter-field {
+            width: 100%; background: transparent; border: none; border-bottom: 1px dashed var(--border);
+            font-family: var(--font-serif); font-size: 1.1rem; color: var(--text-main);
+            padding: 8px 0; outline: none; transition: border-color 0.3s;
+        }
+        .letter-field:focus { border-bottom-color: var(--accent); }
+        textarea.letter-field {
+            min-height: 240px; line-height: 1.8; resize: none; border-bottom: none;
+        }
+        .letter-footer {
+            display: flex; justify-content: flex-end; margin-top: 40px; background: var(--paper);
+        }
+        .send-btn {
+            background: var(--text-main); color: var(--paper); border: none;
+            padding: 12px 32px; font-family: var(--font-serif); font-size: 1rem;
+            letter-spacing: 3px; cursor: pointer; border-radius: 2px;
+            transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .send-btn:hover { background: var(--accent); transform: translateY(-1px); }
+
+        /* --- 4. 私人匿名信箱排版 --- */
+        .letter-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 30px;
+        }
+        .folded-letter {
+            background: var(--paper); border: 1px solid var(--border);
+            border-radius: 4px; padding: 30px; cursor: pointer;
+            box-shadow: 0 4px 12px var(--shadow); position: relative;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s;
+            overflow: hidden; display: flex; flex-direction: column; justify-content: space-between;
+            min-height: 180px;
+        }
+        .folded-letter:hover {
+            transform: translateY(-4px); box-shadow: 0 10px 24px rgba(44, 42, 41, 0.08);
+        }
+        .folded-letter::before {
+            content: ''; position: absolute; top: 0; right: 0;
+            width: 0; height: 0; border-style: solid;
+            border-width: 0 16px 16px 0; border-color: transparent transparent var(--bg) transparent;
+            box-shadow: -2px 2px 4px rgba(0,0,0,0.03);
+        }
+        .letter-meta {
+            font-family: var(--font-serif); font-size: 0.8rem; color: var(--text-muted);
+            letter-spacing: 2px; margin-bottom: 12px;
+        }
+        .letter-preview-title {
+            font-family: var(--font-serif); font-size: 1.3rem; font-weight: 400;
+            line-height: 1.4; margin-bottom: 20px;
+        }
+        .wax-seal-indicator {
+            align-self: flex-end; width: 32px; height: 32px; border-radius: 50%;
+            background: var(--accent); opacity: 0.8; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 6px rgba(158,122,122,0.4);
+        }
+
+        /* --- 5. 信件詳情與共鳴回覆彈窗 (Letter Detail & Reply Modal) --- */
+        #detail-modal {
+            position: fixed; inset: 0; background: rgba(247, 245, 240, 0.95);
+            z-index: 1000; display: none; overflow-y: auto; padding: 60px 20px;
+        }
+        .modal-container {
+            max-width: 650px; margin: 0 auto; background: var(--paper);
+            border: 1px solid var(--border); border-radius: 4px;
+            box-shadow: 0 15px 45px var(--shadow); padding: 50px; position: relative;
+        }
+        .close-modal {
+            position: absolute; top: 30px; right: 30px; background: none; border: none;
+            font-size: 1.5rem; cursor: pointer; color: var(--text-muted); transition: color 0.3s;
+        }
+        .close-modal:hover { color: var(--text-main); }
+        .modal-content-area {
+            font-family: var(--font-serif); line-height: 1.8; margin-bottom: 40px;
+        }
+        .modal-book {
+            font-size: 1.4rem; font-weight: 600; margin-bottom: 20px; border-bottom: 1px solid var(--border);
+            padding-bottom: 15px; color: var(--accent);
+        }
+        .modal-text {
+            font-size: 1.1rem; color: var(--text-main); white-space: pre-wrap;
+        }
+        .reply-box {
+            border-top: 1px dashed var(--border); padding-top: 30px; margin-top: 30px;
+        }
+        .reply-box h4 {
+            font-family: var(--font-serif); font-size: 1.1rem; font-weight: 400;
+            margin-bottom: 15px; letter-spacing: 1px;
+        }
+
+        /* 空狀態 */
+        .empty-state {
+            text-align: center; padding: 80px 20px; color: var(--text-muted);
+            font-family: var(--font-serif); font-size: 1.2rem; letter-spacing: 2px;
+        }
+
+        @media (max-width: 768px) {
+            header { margin-top: 20px; }
+            .tabs { gap: 20px; margin-bottom: 30px; }
+            .paper-letter { padding: 30px 20px; }
+            .modal-container { padding: 30px 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 登入與儀式遮罩 -->
+    <div id="auth-overlay">
+        <div id="login-container">
+            <h1 class="ritual-title" style="opacity: 1;">迴音信箋</h1>
+            <p class="ritual-sub" style="opacity: 1;">一段靜心、慢讀、共鳴的假期旅程。</p>
+            <button class="auth-btn" onclick="signIn()">
+                <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.47h4.84c-.21 1.12-.84 2.07-1.79 2.7v2.25h2.91c1.7-1.56 2.68-3.86 2.68-6.53z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.2l-2.91-2.25c-.8.54-1.84.85-3.05.85-2.35 0-4.33-1.58-5.04-3.71H.94v2.32C2.42 16.02 5.48 18 9 18z"/><path fill="#FBBC05" d="M3.96 10.69c-.18-.54-.28-1.12-.28-1.69s.1-1.15.28-1.69V5.01H.94A8.99 8.99 0 0 0 0 9c0 1.48.36 2.9 1 4.16l2.96-2.47z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15 2.1C13.46.7 11.42 0 9 0 5.48 0 2.42 1.98.94 4.98l2.96 2.47c.71-2.13 2.69-3.87 5.04-3.87z"/></svg>
+                <span>以 Google 帳號註冊 / 登入</span>
+            </button>
+        </div>
+        
+        <div id="ritual-timer">
+            <div class="timer-circle">
+                <div class="timer-progress"></div>
+                <span id="countdown-num">5</span>
+            </div>
+            <p class="ritual-sub" id="ritual-quote">放下一天的喧囂，準備進入文字世界...</p>
+        </div>
+    </div>
+
+    <!-- 主頁面 -->
+    <header>
+        <div class="logo">迴音信箋</div>
+        <div class="user-nav">
+            <span id="user-display-name">載入中...</span>
+            <a class="logout-link" onclick="signOut()">[ 暫別 ]</a>
+        </div>
+    </header>
+
+    <main>
+        <nav class="tabs">
+            <button class="tab-btn active" onclick="switchTab('echoes-tab', this)">收到的迴音</button>
+            <button class="tab-btn" onclick="switchTab('unknown-tab', this)">未知的來信</button>
+            <button class="tab-btn" onclick="switchTab('write-tab', this)">留白賦予 (撰寫)</button>
+        </nav>
+
+        <!-- Tab 1: 收到的迴音 -->
+        <section id="echoes-tab" class="view-section active">
+            <div class="letter-grid" id="echoes-grid">
+                <!-- 動態注入 -->
+            </div>
+        </section>
+
+        <!-- Tab 2: 未知的來信 -->
+        <section id="unknown-tab" class="view-section">
+            <div class="letter-grid" id="unknown-grid">
+                <!-- 動態注入 -->
+            </div>
+        </section>
+
+        <!-- Tab 3: 留白賦予 (撰寫) -->
+        <section id="write-tab" class="view-section">
+            <div class="paper-letter">
+                <div class="letter-input-group">
+                    <label class="letter-label">閱 讀 書 目</label>
+                    <input type="text" id="book-title" class="letter-field" placeholder="《 書名 》" autocomplete="off">
+                </div>
+                <div class="letter-input-group">
+                    <label class="letter-label">此 刻 領 悟</label>
+                    <textarea id="reflections" class="letter-field" placeholder="在這裡，寫下你與文字相遇時的真實悸動...（寄出後對方將完全匿名閱讀）"></textarea>
+                </div>
+                <div class="letter-footer">
+                    <button class="send-btn" onclick="submitReadingLog()">摺疊寄出</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 信件詳情與共鳴回覆彈窗 -->
+    <div id="detail-modal">
+        <div class="modal-container">
+            <button class="close-modal" onclick="closeModal()">×</button>
+            <div class="modal-content-area">
+                <div class="modal-book" id="modal-book-title">《 未知之書 》</div>
+                <div class="modal-text" id="modal-reflection-content">載入中...</div>
+            </div>
+            <div class="reply-box" id="modal-reply-section">
+                <h4>留下你的心靈共鳴</h4>
+                <div class="letter-input-group" style="background:var(--paper);">
+                    <textarea id="reply-text" class="letter-field" style="min-height:100px;" placeholder="寫下你的溫暖共鳴...（對方亦會在匿名狀態下收到）"></textarea>
+                </div>
+                <div style="display: flex; justify-content: flex-end;">
+                    <button class="send-btn" style="padding: 8px 20px; font-size: 0.9rem;" id="submit-reply-btn">寄送共鳴</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms",
+            authDomain: "letter-a74d1.firebaseapp.com",
+            databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com",
+            projectId: "letter-a74d1",
+            storageBucket: "letter-a74d1.firebasestorage.app",
+            messagingSenderId: "761675742190",
+            appId: "1:761675742190:web:3dae016039ff443623acff"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        let currentUser = null;
+        const quotes = [
+            "拋開繁雜的世界，讓思緒慢慢沉澱...",
+            "一封信的誕生，需要時間，需要守候...",
+            "文字是隔著時空的心靈對談...",
+            "在紙頁與筆尖下，尋回溫柔與平靜...",
+            "歡迎來到，迴音信箋的世界。"
+        ];
+
+        // 2. 登入狀態監聽
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('user-display-name').innerText = user.displayName || user.email;
+                registerUserInDB(user);
+                startQuietnessRitual();
+            } else {
+                currentUser = null;
+                document.getElementById('auth-overlay').style.display = 'flex';
+                document.getElementById('login-container').style.display = 'block';
+                document.getElementById('ritual-timer').style.display = 'none';
+            }
+        });
+
+        // 註冊用戶基本資訊
+        function registerUserInDB(user) {
+            db.ref(`users/${user.uid}`).update({
+                name: user.displayName || "未知旅人",
+                email: user.email
+            });
+        }
+
+        // 3. 靜候儀式 countdown
+        function startQuietnessRitual() {
+            document.getElementById('login-container').style.display = 'none';
+            document.getElementById('ritual-timer').style.display = 'flex';
+            
+            let count = 5;
+            const countNumEl = document.getElementById('countdown-num');
+            const quoteEl = document.getElementById('ritual-quote');
+
+            const interval = setInterval(() => {
+                count--;
+                countNumEl.innerText = count;
+                if (quotes[5 - count]) {
+                    quoteEl.innerText = quotes[5 - count];
+                }
+                
+                if (count <= 0) {
+                    clearInterval(interval);
+                    gsap.to("#auth-overlay", {
+                        opacity: 0, duration: 0.8, onComplete: () => {
+                            document.getElementById('auth-overlay').style.display = 'none';
+                            // 載入資料
+                            loadDashboardData();
+                        }
+                    });
+                }
+            }, 1000);
+        }
+
+        // 登入登出
+        function signIn() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(error => {
+                console.error("Login failed: ", error);
+            });
+        }
+
+        function signOut() {
+            auth.signOut();
+        }
+
+        // 4. Tab 切換機制
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+            
+            btn.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+            
+            // GSAP 登場效果
+            gsap.from(`#${tabId}`, { opacity: 0, y: 15, duration: 0.4 });
+        }
+
+        // 5. 提交進度信紙 (留白與賦予)
+        function submitReadingLog() {
+            const bookTitle = document.getElementById('book-title').value.trim();
+            const reflections = document.getElementById('reflections').value.trim();
+
+            if (!bookTitle || !reflections) {
+                alert("請將書名與感悟填寫完整，讓這封信擁有飛翔的重量。");
+                return;
+            }
+
+            const newLetterRef = db.ref('letters').push();
+            const timestamp = firebase.database.ServerValue.TIMESTAMP;
+
+            const letterData = {
+                id: newLetterRef.key,
+                senderUid: currentUser.uid,
+                bookTitle: bookTitle,
+                reflections: reflections,
+                timestamp: timestamp
+            };
+
+            newLetterRef.set(letterData)
+                .then(() => {
+                    // 更新用戶最新提交時間
+                    return db.ref(`users/${currentUser.uid}`).update({
+                        lastSubmitted: timestamp
+                    });
+                })
+                .then(() => {
+                    alert("信箋已輕柔摺妥，正匿名飄向另一位同學的書桌。");
+                    document.getElementById('book-title').value = '';
+                    document.getElementById('reflections').value = '';
+                    // 派發匹配
+                    matchmakeNewLetter(letterData);
+                    // 切回第一頁並刷新
+                    document.querySelector('.tab-btn').click();
+                })
+                .catch(err => console.error(err));
+        }
+
+        // 6. 系統派件機制 (學生端 client-side 輕量匹配)
+        function matchmakeNewLetter(newLetter) {
+            // 從全庫獲取所有用戶，排除自己，隨機找一個配發給他
+            db.ref('users').once('value', snapshot => {
+                const users = snapshot.val() || {};
+                const candidateUids = Object.keys(users).filter(uid => uid !== currentUser.uid);
+                
+                if (candidateUids.length > 0) {
+                    const randomRecipient = candidateUids[Math.floor(Math.random() * candidateUids.length)];
+                    db.ref(`assignments/${randomRecipient}/${newLetter.id}`).set({
+                        letterId: newLetter.id,
+                        bookTitle: newLetter.bookTitle,
+                        reflections: newLetter.reflections,
+                        timestamp: newLetter.timestamp,
+                        senderUid: newLetter.senderUid,
+                        replied: false
+                    });
+                }
+            });
+        }
+
+        // 7. 載入資料 (收到的迴音 / 未知的來信)
+        function loadDashboardData() {
+            // A. 未知的來信
+            db.ref(`assignments/${currentUser.uid}`).on('value', snapshot => {
+                const data = snapshot.val() || {};
+                const grid = document.getElementById('unknown-grid');
+                grid.innerHTML = '';
+
+                const activeLetters = Object.values(data).filter(item => !item.replied);
+
+                if (activeLetters.length === 0) {
+                    grid.innerHTML = '<div class="empty-state">暫無未知的來信。當有同學書寫新進度時，系統會隨機派送予你。</div>';
+                    return;
+                }
+
+                activeLetters.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = 'folded-letter';
+                    el.innerHTML = `
+                        <div>
+                            <div class="letter-meta">未知旅人的書信</div>
+                            <div class="letter-preview-title">《${escapeHtml(item.bookTitle)}》的閱讀感悟</div>
+                        </div>
+                        <div class="wax-seal-indicator">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
+                    `;
+                    el.onclick = () => openLetterDetail(item, 'reply');
+                    grid.appendChild(el);
+                });
+            });
+
+            // B. 收到的迴音
+            db.ref('echoes').orderByChild('originalSenderUid').equalTo(currentUser.uid).on('value', snapshot => {
+                const data = snapshot.val() || {};
+                const grid = document.getElementById('echoes-grid');
+                grid.innerHTML = '';
+
+                const echoesList = Object.values(data);
+
+                if (echoesList.length === 0) {
+                    grid.innerHTML = '<div class="empty-state">目前還沒有收到迴音。靜候他人開啟你的信箋並留下共鳴吧。</div>';
+                    return;
+                }
+
+                echoesList.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = 'folded-letter';
+                    el.style.borderLeft = "3px solid var(--accent)";
+                    el.innerHTML = `
+                        <div>
+                            <div class="letter-meta">收到的溫暖迴音</div>
+                            <div class="letter-preview-title" style="font-style: italic;">"${escapeHtml(item.replyText.substring(0,25))}..."</div>
+                        </div>
+                        <div class="letter-meta" style="margin: 0; text-align: right;">展開閱讀 →</div>
+                    `;
+                    el.onclick = () => openLetterDetail({
+                        bookTitle: "你撰寫的共鳴信件",
+                        reflections: item.replyText
+                    }, 'view');
+                    grid.appendChild(el);
+                });
+            });
+        }
+
+        // 8. 展開與閱讀信件
+        let activeViewingItem = null;
+        function openLetterDetail(item, mode) {
+            activeViewingItem = item;
+            document.getElementById('modal-book-title').innerText = item.bookTitle.includes('《') ? item.bookTitle : `《 ${item.bookTitle} 》`;
+            document.getElementById('modal-reflection-content').innerText = item.reflections;
+            
+            const replySection = document.getElementById('modal-reply-section');
+            if (mode === 'reply') {
+                replySection.style.display = 'block';
+                document.getElementById('reply-text').value = '';
+                document.getElementById('submit-reply-btn').onclick = submitReply;
+            } else {
+                replySection.style.display = 'none';
+            }
+
+            document.getElementById('detail-modal').style.display = 'block';
+            gsap.from(".modal-container", { scale: 0.95, opacity: 0, duration: 0.4, ease: "power2.out" });
+        }
+
+        function closeModal() {
+            gsap.to(".modal-container", { scale: 0.95, opacity: 0, duration: 0.3, onComplete: () => {
+                document.getElementById('detail-modal').style.display = 'none';
+                activeViewingItem = null;
+            }});
+        }
+
+        // 提交匿名共鳴回覆
+        function submitReply() {
+            const replyText = document.getElementById('reply-text').value.trim();
+            if (!replyText) {
+                alert("寫下一句共鳴，哪怕是一點暖心的回應。");
+                return;
+            }
+
+            const echoRef = db.ref('echoes').push();
+            echoRef.set({
+                id: echoRef.key,
+                parentLetterId: activeViewingItem.letterId,
+                originalSenderUid: activeViewingItem.senderUid, // 原始信件發送者
+                replyText: replyText,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            }).then(() => {
+                // 將該信件標記為已回覆
+                return db.ref(`assignments/${currentUser.uid}/${activeViewingItem.letterId}`).update({
+                    replied: true
+                });
+            }).then(() => {
+                alert("你的靈魂共鳴已封蠟寄出，對方會悄悄收到。");
+                closeModal();
+            }).catch(err => console.error(err));
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+    </script>
+</body>
+</html>
