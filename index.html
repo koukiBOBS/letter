@@ -7,8 +7,8 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- 引入思源宋體、Inter 以及書法字體 (Ma Shan Zheng) -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Ma+Shan+Zheng&family=Noto+Serif+TC:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- 恢復成上一個版本的思源宋體與 Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     
     <!-- Firebase Compat SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -30,7 +30,6 @@
             
             --font-serif: 'Noto Serif TC', serif;
             --font-sans: 'Inter', sans-serif;
-            --font-calligraphy: 'Ma Shan Zheng', 'BiauKai', 'Kaiti TC', cursive; /* 書法字體 */
 
             /* Tab & Action Colors */
             --color-replies: #548ca8; /* Muted Blue */
@@ -48,7 +47,7 @@
             line-height: 1.6;
         }
 
-        h3, .serif-text { font-family: var(--font-serif); }
+        h1, h2, h3, .serif-text { font-family: var(--font-serif); }
 
         /* --- 1. Notification Banner --- */
         #notification-banner {
@@ -73,10 +72,8 @@
             display: flex; flex-direction: column; justify-content: center; padding: 8%;
         }
         .auth-hero h1 {
-            font-family: var(--font-calligraphy);
-            font-size: 5.5rem; color: #2c3e50; line-height: 1.2; margin-bottom: 20px;
-            letter-spacing: 6px; font-weight: normal;
-            text-shadow: 2px 2px 15px rgba(0,0,0,0.05);
+            font-size: 3.5rem; color: #2c3e50; line-height: 1.3; margin-bottom: 24px;
+            letter-spacing: 2px; font-weight: 600;
         }
         .auth-hero p {
             font-size: 1.15rem; color: #64748b; line-height: 1.8; max-width: 450px; font-family: var(--font-sans);
@@ -90,7 +87,7 @@
         }
         .auth-panel-content { display: flex; flex-direction: column; gap: 30px; }
         .auth-sidebar h2 { font-size: 1.8rem; font-weight: 600; color: #1e293b; margin-bottom: 5px; }
-        .auth-sidebar p { color: #64748b; font-size: 0.95rem; }
+        .auth-sidebar p { color: #64748b; font-size: 0.95rem; font-family: var(--font-sans); }
         
         .input-group { display: flex; flex-direction: column; gap: 8px; }
         .input-box {
@@ -114,7 +111,7 @@
             #auth-overlay { flex-direction: column; }
             .auth-hero { padding: 40px 30px; flex: 0.8; justify-content: flex-end; }
             .auth-sidebar { width: 100%; flex: 1; padding: 40px 30px; border-left: none; border-top: 1px solid rgba(255,255,255,0.8); }
-            .auth-hero h1 { font-size: 3.5rem; }
+            .auth-hero h1 { font-size: 2.5rem; }
         }
 
         /* --- Main Layout --- */
@@ -122,10 +119,7 @@
             max-width: 950px; margin: 40px auto 20px; padding: 0 20px;
             display: flex; justify-content: space-between; align-items: center;
         }
-        header h2 { 
-            font-family: var(--font-calligraphy); 
-            font-size: 2.2rem; font-weight: normal; letter-spacing: 2px; color: #1e293b; 
-        }
+        header h2 { font-size: 1.6rem; font-weight: 600; letter-spacing: 1px; color: #1e293b; }
         .user-info { font-size: 0.9rem; color: var(--text-muted); font-weight: 500; }
         .user-info a { color: var(--color-inbox); cursor: pointer; margin-left: 15px; text-decoration: none; padding: 6px 12px; border-radius: 20px; background: rgba(217, 138, 108, 0.1); transition: 0.2s; }
         .user-info a:hover { background: rgba(217, 138, 108, 0.2); }
@@ -168,7 +162,7 @@
         .task-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.06); border-color: var(--color-tasks); }
         .task-card.completed { border-color: var(--color-tasks); background: #f4f9f5; }
         .task-card.locked { opacity: 0.6; cursor: not-allowed; background: transparent; border-style: dashed; }
-        .task-num { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; display: block; color: #1e293b; }
+        .task-num { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; display: block; color: #1e293b; font-family: var(--font-sans); }
         .task-date { font-size: 0.8rem; color: var(--text-muted); }
 
         /* Editor */
