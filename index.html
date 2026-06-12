@@ -192,6 +192,16 @@
         .item-title { flex-grow: 1; font-size: 1.05rem; color: #1e293b; font-family: var(--font-serif); }
         .item-time { font-size: 0.85rem; color: var(--text-muted); margin-left: 15px; }
 
+        /* Pagination */
+        .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; }
+        .page-btn {
+            background: var(--paper); border: 1px solid var(--border); color: var(--text-muted);
+            padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: all 0.2s;
+            font-family: var(--font-sans); font-size: 0.95rem; font-weight: 500;
+        }
+        .page-btn:hover { background: #f8fafc; color: #1e293b; border-color: #cbd5e1; }
+        .page-btn.active { background: #1e293b; color: #fff; border-color: #1e293b; }
+
         /* 刪除按鈕 */
         .delete-btn {
             background: none; border: none; cursor: pointer; padding: 8px; margin-left: 15px;
@@ -352,11 +362,13 @@
         <!-- Tab 1: Others replying to my logs -->
         <section id="tab-replies" class="section active">
             <div class="list-container" id="replies-list"></div>
+            <div class="pagination" id="replies-pagination"></div>
         </section>
 
         <!-- Tab 2: Logs from others assigned to me -->
         <section id="tab-inbox" class="section">
             <div class="list-container" id="inbox-list"></div>
+            <div class="pagination" id="inbox-pagination"></div>
         </section>
 
         <!-- Tab 3: Write new logs -->
@@ -508,6 +520,13 @@
         let currentChatRef = null;
         let isInitialLoad = true;
 
+        // Pagination Variables
+        const ITEMS_PER_PAGE = 10;
+        let repliesData = [];
+        let inboxData = [];
+        let currentPageReplies = 1;
+        let currentPageInbox = 1;
+
         auth.onAuthStateChanged(user => {
             if (user) {
                 currentUser = user;
@@ -621,66 +640,115 @@
         function loadMailbox() {
             db.ref(`user_threads/${currentUser.uid}`).on('value', snap => {
                 const threads = snap.val() || {};
-                const repliesList = document.getElementById('replies-list');
-                const inboxList = document.getElementById('inbox-list');
                 
-                repliesList.innerHTML = ''; inboxList.innerHTML = '';
+                // 將物件轉為陣列並按最後更新時間排序
+                let allThreads = Object.values(threads).sort((a, b) => b.lastUpdated - a.lastUpdated);
+                
+                repliesData = [];
+                inboxData = [];
                 let pendingReplies = false;
 
-                const emptyUI = `<div class="empty-state">
-                    <svg viewBox="0 0 24 24"><path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 0l-8 5-8-5h16zm0 12H4V8l8 5 8-5v10z"/></svg>
-                    <p>信箱空空如也，靜候佳音。</p>
-                </div>`;
-
-                let repliesCount = 0; let inboxCount = 0;
-
-                Object.values(threads).sort((a,b)=>b.lastUpdated - a.lastUpdated).forEach(t => {
-                    const timeStr = new Date(t.lastUpdated).toLocaleString([], {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
-                    const el = document.createElement('div');
-                    el.className = 'list-item';
-                    
+                allThreads.forEach(t => {
                     if (t.isSender) {
                         // 隱藏尚未收到別人回覆的自己信件
-                        if (!t.hasBeenRepliedTo) return;
-
-                        repliesCount++;
-                        const badge = t.hasUnread ? `<span class="badge unread">新回覆</span>` : `<span class="badge replied">已讀</span>`;
-                        el.onclick = (e) => { openChat(t.letterId); };
-                        
-                        el.innerHTML = `
-                            ${badge}
-                            <div class="item-title">關於《${escapeHtml(t.bookTitle)}》的回音</div>
-                            <div class="item-time">${timeStr}</div>
-                            <button class="delete-btn" onclick="deleteThread('${t.letterId}', event)" title="刪除信件">
-                                <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                            </button>
-                        `;
-                        repliesList.appendChild(el);
+                        if (t.hasBeenRepliedTo) repliesData.push(t);
                     } else {
-                        inboxCount++;
-                        let badge = '';
-                        if (!t.hasReplied) { badge = `<span class="badge wait">待回覆</span>`; pendingReplies = true; }
-                        else if (t.hasUnread) { badge = `<span class="badge unread">新回覆</span>`; }
-                        else { badge = `<span class="badge replied">已回覆</span>`; }
-                        
-                        el.onclick = (e) => { openChat(t.letterId); };
-                        
-                        el.innerHTML = `
-                            ${badge}
-                            <div class="item-title">筆友寄來《${escapeHtml(t.bookTitle)}》的心得</div>
-                            <div class="item-time">${timeStr}</div>
-                            <button class="delete-btn" onclick="deleteThread('${t.letterId}', event)" title="刪除信件">
-                                <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                            </button>
-                        `;
-                        inboxList.appendChild(el);
+                        inboxData.push(t);
+                        if (!t.hasReplied) pendingReplies = true;
                     }
                 });
 
                 hasUnrepliedLetters = pendingReplies;
-                if (repliesCount === 0) repliesList.innerHTML = emptyUI;
-                if (inboxCount === 0) inboxList.innerHTML = emptyUI;
+
+                // 防呆：如果刪除信件後導致當前頁數大於總頁數，將頁數重置為最大可能頁數
+                const maxPageReplies = Math.ceil(repliesData.length / ITEMS_PER_PAGE) || 1;
+                if (currentPageReplies > maxPageReplies) currentPageReplies = maxPageReplies;
+                
+                const maxPageInbox = Math.ceil(inboxData.length / ITEMS_PER_PAGE) || 1;
+                if (currentPageInbox > maxPageInbox) currentPageInbox = maxPageInbox;
+
+                renderMailboxLists();
             });
+        }
+
+        function renderMailboxLists() {
+            renderPaginatedList('replies', repliesData, currentPageReplies);
+            renderPaginatedList('inbox', inboxData, currentPageInbox);
+        }
+
+        function renderPaginatedList(type, data, currentPage) {
+            const listEl = document.getElementById(`${type}-list`);
+            const pageEl = document.getElementById(`${type}-pagination`);
+            
+            listEl.innerHTML = '';
+            pageEl.innerHTML = '';
+
+            const emptyUI = `<div class="empty-state">
+                <svg viewBox="0 0 24 24"><path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 0l-8 5-8-5h16zm0 12H4V8l8 5 8-5v10z"/></svg>
+                <p>信箱空空如也，靜候佳音。</p>
+            </div>`;
+
+            if (data.length === 0) {
+                listEl.innerHTML = emptyUI;
+                return;
+            }
+
+            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+            const endIndex = startIndex + ITEMS_PER_PAGE;
+            const pageData = data.slice(startIndex, endIndex);
+
+            pageData.forEach(t => {
+                const timeStr = new Date(t.lastUpdated).toLocaleString([], {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+                const el = document.createElement('div');
+                el.className = 'list-item';
+                
+                if (type === 'replies') {
+                    const badge = t.hasUnread ? `<span class="badge unread">新回覆</span>` : `<span class="badge replied">已讀</span>`;
+                    el.onclick = (e) => { openChat(t.letterId); };
+                    
+                    el.innerHTML = `
+                        ${badge}
+                        <div class="item-title">關於《${escapeHtml(t.bookTitle)}》的回音</div>
+                        <div class="item-time">${timeStr}</div>
+                        <button class="delete-btn" onclick="deleteThread('${t.letterId}', event)" title="刪除信件">
+                            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        </button>
+                    `;
+                } else {
+                    let badge = '';
+                    if (!t.hasReplied) { badge = `<span class="badge wait">待回覆</span>`; }
+                    else if (t.hasUnread) { badge = `<span class="badge unread">新回覆</span>`; }
+                    else { badge = `<span class="badge replied">已回覆</span>`; }
+                    
+                    el.onclick = (e) => { openChat(t.letterId); };
+                    
+                    el.innerHTML = `
+                        ${badge}
+                        <div class="item-title">筆友寄來《${escapeHtml(t.bookTitle)}》的心得</div>
+                        <div class="item-time">${timeStr}</div>
+                        <button class="delete-btn" onclick="deleteThread('${t.letterId}', event)" title="刪除信件">
+                            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        </button>
+                    `;
+                }
+                listEl.appendChild(el);
+            });
+
+            // 渲染分頁按鈕
+            const totalPages = Math.ceil(data.length / ITEMS_PER_PAGE);
+            if (totalPages > 1) {
+                for (let i = 1; i <= totalPages; i++) {
+                    const btn = document.createElement('button');
+                    btn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+                    btn.innerText = i;
+                    btn.onclick = () => {
+                        if (type === 'replies') currentPageReplies = i;
+                        else currentPageInbox = i;
+                        renderMailboxLists(); // 切換分頁後重新渲染列表
+                    };
+                    pageEl.appendChild(btn);
+                }
+            }
         }
 
         // 刪除信件功能
