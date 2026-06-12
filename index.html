@@ -19,22 +19,31 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <style>
+        /* 修復的 CSS 變數區塊 */
         :root {
-            var(--bg): #faf7f2; --paper: #ffffff; --text: #2c3e50; --text-muted: #8391a2; --border: #e6e1d6;
-            var(--font-serif: 'Noto Serif TC', serif; var(--font-sans: 'Inter', sans-serif;
-            --color-replies: #548ca8; --color-inbox: #d98a6c; --color-tasks: #6b8e73; --color-log: #8b7355;
+            --bg: #faf7f2; 
+            --paper: #ffffff; 
+            --text: #2c3e50; 
+            --text-muted: #8391a2; 
+            --border: #e6e1d6;
+            --font-serif: 'Noto Serif TC', serif; 
+            --font-sans: 'Inter', sans-serif;
+            --color-replies: #548ca8; 
+            --color-inbox: #d98a6c; 
+            --color-tasks: #6b8e73; 
+            --color-log: #8b7355;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background-color: #faf7f2; color: var(--text); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; line-height: 1.6; }
-        h1, h2, h3, .serif-text { font-family: var(--font-serif); }
+        body { background-color: var(--bg); color: var(--text); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; line-height: 1.6; }
+        h1, h2, h3, h4, .serif-text { font-family: var(--font-serif); }
 
         /* Notification Banner */
         #notification-banner { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: var(--paper); border: 1px solid var(--border); padding: 16px 32px; border-radius: 30px; box-shadow: 0 12px 30px rgba(0,0,0,0.08); z-index: 10001; display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 0.95rem; font-weight: 600; opacity: 0; }
         #notification-banner svg { width: 22px; height: 22px; fill: currentColor; }
 
         /* Auth Screen */
-        #auth-overlay { position: fixed; inset: 0; background: #faf7f2; z-index: 10000; display: flex; overflow: hidden; }
+        #auth-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 10000; display: flex; overflow: hidden; }
         #canvas-container { position: absolute; inset: 0; z-index: 1; }
         .auth-hero { flex: 1.2; position: relative; z-index: 2; pointer-events: none; display: flex; flex-direction: column; justify-content: center; padding: 8%; }
         .auth-hero h1 { font-size: 3.5rem; color: #2c3e50; line-height: 1.3; margin-bottom: 24px; letter-spacing: 2px; font-weight: 600; }
@@ -309,7 +318,7 @@
         // ==========================================
         // ⚠️ 請替換為你最新部署的 Apps Script 網址
         // ==========================================
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzcangpOrf05ZRhxzoMUN-C9T57CS3_G80to1lLWv4opXuHbYMMMuKXzap7kkcou3BPsQ/exec"; 
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwOgNVrA5WEpo9TMkZ5FmI_LP0-n-yf4beJwDd0haLuZ0VZkP90euNEtNTW3U3Q9Jqz2w/exec"; 
         
         const firebaseConfig = {
             apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms",
@@ -490,7 +499,7 @@
                 let result; try { result = JSON.parse(responseText); } catch (e) { throw new Error("伺服器未能回傳正確格式。"); }
                 if (!result.success) throw new Error(result.error || "上傳未成功");
 
-                // 【修訂】為了方便渲染排版，我們保留關鍵字頭
+                // 保留關鍵字頭，以便後續渲染為精美排版
                 const combinedText = `【目前進度】\n第 ${page} 頁\n\n【思考問題】\n${question}\n\n【閱讀心得】\n${text}`;
                 playAnim('log', null, null, {title: title, text: combinedText, imageUrl: result.url});
             } catch (error) {
@@ -543,13 +552,13 @@
                         const isMe = m.senderUid === currentUser.uid; const d = new Date(m.timestamp);
                         const tStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
                         
-                        // 【修訂】信件內文排版美化：將關鍵字轉換為漂亮的樣式標籤
+                        // 信件內文排版美化
                         let formattedText = escapeHtml(m.text);
                         formattedText = formattedText.replace(/【目前進度】/g, '<span class="letter-h-progress">🔖 目前進度</span>');
                         formattedText = formattedText.replace(/【思考問題】/g, '<span class="letter-h-question">🤔 思考問題</span>');
                         formattedText = formattedText.replace(/【閱讀心得】/g, '<span class="letter-h-thoughts">✍️ 閱讀心得</span>');
 
-                        // 【修訂】圖片直連顯示的終極寫法：加入 referrerpolicy="no-referrer" 防止 Google 阻擋
+                        // 圖片直連顯示，加入 referrerpolicy="no-referrer" 防止阻擋
                         let imgTag = '';
                         if (m.imageUrl) {
                             imgTag = `
@@ -604,7 +613,7 @@
             });
         }
 
-        // 【新增】展開/隱藏 閱讀紀錄表單的函數
+        // 展開/隱藏 閱讀紀錄表單的函數
         function toggleReadingLog() {
             const editor = document.getElementById('mylog-editor');
             if (editor.style.display === 'none') {
