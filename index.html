@@ -20,26 +20,16 @@
 
     <style>
         :root {
-            var(--bg): #faf7f2;
-            --paper: #ffffff;
-            --text: #2c3e50;
-            --text-muted: #8391a2;
-            --border: #e6e1d6;
-            
-            --font-serif: 'Noto Serif TC', serif;
-            --font-sans: 'Inter', sans-serif;
-
-            --color-replies: #548ca8; 
-            --color-inbox: #d98a6c;   
-            --color-tasks: #6b8e73;   
-            --color-log: #8b7355;
+            var(--bg): #faf7f2; --paper: #ffffff; --text: #2c3e50; --text-muted: #8391a2; --border: #e6e1d6;
+            --font-serif: 'Noto Serif TC', serif; --font-sans: 'Inter', sans-serif;
+            --color-replies: #548ca8; --color-inbox: #d98a6c; --color-tasks: #6b8e73; --color-log: #8b7355;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: #faf7f2; color: var(--text); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; line-height: 1.6; }
         h1, h2, h3, .serif-text { font-family: var(--font-serif); }
 
-        /* Notification & Auth (Same) */
+        /* Notification & Auth */
         #notification-banner { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: var(--paper); border: 1px solid var(--border); padding: 16px 32px; border-radius: 30px; box-shadow: 0 12px 30px rgba(0,0,0,0.08); z-index: 10001; display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 0.95rem; font-weight: 600; opacity: 0; }
         #notification-banner svg { width: 22px; height: 22px; fill: currentColor; }
 
@@ -60,10 +50,7 @@
         .btn-google { background: #ffffff; color: #334155; border: 1px solid #e2e8f0; width: 100%;}
         
         @media (max-width: 900px) {
-            #auth-overlay { flex-direction: column; }
-            .auth-hero { padding: 40px 30px; flex: 0.8; justify-content: flex-end; }
-            .auth-sidebar { width: 100%; flex: 1; padding: 40px 30px; }
-            .auth-hero h1 { font-size: 2.5rem; }
+            #auth-overlay { flex-direction: column; } .auth-hero { padding: 40px 30px; flex: 0.8; justify-content: flex-end; } .auth-sidebar { width: 100%; flex: 1; padding: 40px 30px; } .auth-hero h1 { font-size: 2.5rem; }
         }
 
         header { max-width: 950px; margin: 40px auto 20px; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
@@ -74,21 +61,17 @@
         .tabs { max-width: 950px; margin: 0 auto 30px; padding: 0 20px; display: flex; flex-wrap: wrap; gap: 10px; border-bottom: 2px solid var(--border); }
         .tab-btn { background: none; border: none; font-family: var(--font-sans); font-weight: 500; font-size: 1rem; cursor: pointer; color: var(--text-muted); padding: 14px 20px; position: relative; display: flex; align-items: center; gap: 8px; border-radius: 8px 8px 0 0; }
         .tab-btn svg { width: 18px; height: 18px; fill: currentColor; }
-        .tab-btn.tab-replies.active { color: var(--color-replies); }
-        .tab-btn.tab-replies.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; background: var(--color-replies); }
-        .tab-btn.tab-inbox.active { color: var(--color-inbox); }
-        .tab-btn.tab-inbox.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; background: var(--color-inbox); }
-        .tab-btn.tab-tasks.active { color: var(--color-tasks); }
-        .tab-btn.tab-tasks.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; background: var(--color-tasks); }
-        .tab-btn.tab-log.active { color: var(--color-log); }
-        .tab-btn.tab-log.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; background: var(--color-log); }
+        .tab-btn.tab-replies.active { color: var(--color-replies); } .tab-btn.tab-replies.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; background: var(--color-replies); }
+        .tab-btn.tab-inbox.active { color: var(--color-inbox); } .tab-btn.tab-inbox.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; background: var(--color-inbox); }
+        .tab-btn.tab-tasks.active { color: var(--color-tasks); } .tab-btn.tab-tasks.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; background: var(--color-tasks); }
+        .tab-btn.tab-log.active { color: var(--color-log); } .tab-btn.tab-log.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; background: var(--color-log); }
 
         main { max-width: 950px; margin: 0 auto 100px; padding: 0 20px; }
         .section { display: none; }
         .section.active { display: block; animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- Restored Empty State UI --- */
+        /* Empty State */
         .empty-state { text-align: center; padding: 80px 20px; color: var(--text-muted); }
         .empty-state svg { width: 64px; height: 64px; fill: #cbd5e1; margin-bottom: 16px; }
         .empty-state p { font-size: 1.05rem; }
@@ -102,7 +85,7 @@
         .task-num { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; display: block; color: #1e293b; }
         .task-date { font-size: 0.8rem; color: var(--text-muted); }
 
-        /* Editor Layout Updates */
+        /* Editor Layout */
         .editor { background: var(--paper); padding: 40px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,0.03); }
         .field-group { margin-bottom: 28px; }
         .field-label { display: block; font-family: var(--font-serif); font-size: 1.1rem; font-weight: 600; color: var(--color-tasks); margin-bottom: 12px; }
@@ -120,7 +103,7 @@
         .file-name-display { font-size: 0.95rem; color: var(--color-tasks); font-weight: 500; }
         .img-preview { display: none; max-width: 100%; height: auto; max-height: 250px; border-radius: 8px; margin-top: 10px; border: 1px solid #e2e8f0; object-fit: contain; object-position: left; }
 
-        /* Mailbox Lists & Pagination restored */
+        /* Mailbox Lists & Pagination */
         .list-container { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
         .list-item { display: flex; align-items: center; padding: 22px 28px; border-bottom: 1px solid var(--border); cursor: pointer; }
         .list-item:hover { background: #f8fafc; }
@@ -218,7 +201,6 @@
     </nav>
 
     <main>
-        <!-- 恢復原本的分頁與空狀態容器 -->
         <section id="tab-replies" class="section active">
             <div class="list-container" id="replies-list"></div>
             <div class="pagination" id="replies-pagination"></div>
@@ -256,7 +238,6 @@
                     <textarea id="log-content" class="textarea" style="min-height:220px;" placeholder="在此寫下您的閱讀心得...（最少 150 字）"></textarea>
                 </div>
 
-                <!-- 圖片上傳移至心得下方，並加入預覽 -->
                 <div class="field-group upload-container">
                     <label class="field-label" style="margin-bottom: 0;">📸 捕捉書籍畫面 (必填)</label>
                     <div class="privacy-warning">
@@ -344,7 +325,7 @@
 
     <script>
         // ==========================================
-        // ⚠️ 請填入重新部署後的 Apps Script 網址
+        // ⚠️ 請填入你重新部署後的 Apps Script 網址
         // ==========================================
         const GAS_URL = "https://script.google.com/macros/s/AKfycbwOgNVrA5WEpo9TMkZ5FmI_LP0-n-yf4beJwDd0haLuZ0VZkP90euNEtNTW3U3Q9Jqz2w/exec"; 
         
@@ -360,12 +341,7 @@
         let currentUser = null; let config = null; let selectedTaskIndex = null; let hasUnrepliedLetters = false; let currentChatRef = null; let isInitialLoad = true;
         let selectedFileBase64 = null; let selectedFileName = null;
 
-        // 恢復分頁變數
-        const ITEMS_PER_PAGE = 10;
-        let repliesData = [];
-        let inboxData = [];
-        let currentPageReplies = 1;
-        let currentPageInbox = 1;
+        const ITEMS_PER_PAGE = 10; let repliesData = []; let inboxData = []; let currentPageReplies = 1; let currentPageInbox = 1;
 
         auth.onAuthStateChanged(user => {
             if (user) {
@@ -432,7 +408,6 @@
             });
         }
 
-        // 完美恢復原版包含空狀態的 Pagination 渲染函數
         function renderPaginatedList(type, data, currentPage) {
             const listEl = document.getElementById(`${type}-list`);
             const pageEl = document.getElementById(`${type}-pagination`);
@@ -501,7 +476,6 @@
                     const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
                     selectedFileBase64 = dataUrl.split(',')[1];
                     
-                    // 顯示預覽圖
                     const preview = document.getElementById('image-preview');
                     preview.src = dataUrl;
                     preview.style.display = 'block';
@@ -529,14 +503,24 @@
                     method: 'POST',
                     body: JSON.stringify({ filename: selectedFileName, mimeType: 'image/jpeg', base64: selectedFileBase64 })
                 });
-                const result = await response.json();
+                
+                const responseText = await response.text();
+                let result;
+                
+                // 更強健的 JSON 解析防呆，防止因多重帳號跳轉接收到 HTML
+                try {
+                    result = JSON.parse(responseText);
+                } catch (parseError) {
+                    throw new Error("伺服器未能回傳正確格式。請確保 Apps Script 部署設定中的「誰可以存取」已設為「所有人」。\n\n回傳內容：" + responseText.substring(0, 50));
+                }
+
                 if (!result.success) throw new Error(result.error);
 
                 const combinedText = `【目前進度】第 ${page} 頁\n\n【思考問題】\n${question}\n\n【閱讀心得】\n${text}`;
                 playAnim('log', null, null, {title: title, text: combinedText, imageUrl: result.url});
 
             } catch (error) {
-                alert("圖片上傳失敗，請確認 Apps Script 權限。\n錯誤資訊：" + error.message);
+                alert("圖片上傳發生異常，請確認 Apps Script 設定。\n詳細錯誤：" + error.message);
                 btn.innerText = "封裝寄出心得"; btn.disabled = false;
             }
         }
@@ -557,7 +541,6 @@
                             selectedTaskIndex = i; document.getElementById('task-title').innerText = `撰寫任務：第 ${i+1} 回心得`;
                             document.getElementById('write-editor').style.display = 'block'; document.getElementById('write-editor').scrollIntoView({behavior:'smooth'});
                             
-                            // 點開新任務時重置所有欄位與圖片預覽
                             document.getElementById('btn-submit-task').innerText = "封裝寄出心得"; document.getElementById('btn-submit-task').disabled = false;
                             document.getElementById('file-name-display').innerText = "尚未選擇圖片"; document.getElementById('image-preview').style.display = 'none';
                             selectedFileBase64 = null; document.getElementById('book-image').value = '';
