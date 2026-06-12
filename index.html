@@ -129,12 +129,12 @@
         .log-card .date { font-size: 0.8rem; color: #94a3b8; margin-top: 12px; } .log-card .delete-btn { position: absolute; top: 16px; right: 16px; }
 
         /* ====================================================
-           MODAL UI (FIXED: HUGE REDUCTION OF REPLY WINDOW) 
+           MODAL UI
            ==================================================== */
         #modal { position: fixed; inset: 0; background: rgba(245,242,235,0.8); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(8px); }
         .modal-box { 
             background: var(--paper); border-radius: 16px; width: 100%; max-width: 750px; 
-            height: 88vh; /* 固定高度，讓對話框能吃到最大的版面 */
+            height: 88vh; 
             display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.1); 
         }
         .modal-header { padding: 20px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
@@ -147,12 +147,12 @@
         .msg-other { background: #fff; align-self: flex-start; border: 1px solid #e2e8f0; border-left: 4px solid var(--color-inbox); }
         .msg-info { font-size: 0.8rem; font-family: var(--font-sans); color: #94a3b8; margin-bottom: 10px; }
         
-        /* 圖片加上 hover 效果，提示可點擊 */
+        /* 圖片容器設計 */
         .msg-img-container { display: inline-block; margin-top: 16px; cursor: pointer; transition: transform 0.2s; }
         .msg-img-container:hover { transform: scale(1.02); }
+        /* 確保圖片渲染尺寸正常且不會被異常阻擋 */
         .msg-img { max-width: 100%; max-height: 280px; border-radius: 8px; display: block; border: 1px solid #e2e8f0; background: #f1f5f9; object-fit: contain; }
 
-        /* 大幅縮小回覆區的佔比 */
         .reply-area { padding: 16px 24px; border-top: 1px solid var(--border); background: var(--paper); flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; }
         #reply-text { min-height: 80px; padding: 12px 16px; font-size: 1rem; border-radius: 8px; margin: 0; }
         #btn-send-reply { padding: 10px 20px; font-size: 0.95rem; }
@@ -298,9 +298,9 @@
 
     <script>
         // ==========================================
-        // ⚠️ 請填入重新部署後的 Apps Script 網址
+        // ⚠️ 請替換為你最新部署的 Apps Script 網址
         // ==========================================
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbwOgNVrA5WEpo9TMkZ5FmI_LP0-n-yf4beJwDd0haLuZ0VZkP90euNEtNTW3U3Q9Jqz2w/exec"; 
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbx-CvbTIKjW_4kJnU3LQ31AEr5D2u4fkJmSVwGXYqu1l5jFuthWcWwK686CavlxluJ2Kw/exec"; 
         
         const firebaseConfig = {
             apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms",
@@ -332,7 +332,6 @@
 
         function initApp() { healPool(); db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); setupNotifications(); loadMailbox(); loadReadingLogs(); }
 
-        // --- 通知與閃爍紅點邏輯 (修訂版) ---
         function setupNotifications() {
             const threadRef = db.ref(`user_threads/${currentUser.uid}`);
             threadRef.once('value').then(() => { isInitialLoad = false; });
@@ -358,18 +357,15 @@
             gsap.fromTo(b, {y:0, opacity:0}, {y:120, opacity:1, duration:0.6, ease:"back.out(1.5)"});
             b.onclick = () => { openChat(id); gsap.to(b, {y:0, opacity:0, duration:0.4}); };
             
-            // 延長橫幅顯示時間至 8 秒
             setTimeout(() => gsap.to(b, {y:0, opacity:0, duration:0.4}), 8000);
         }
 
-        // --- 讀取信箱與紅點狀態更新 ---
         function loadMailbox() {
             db.ref(`user_threads/${currentUser.uid}`).on('value', snap => {
                 let all = Object.values(snap.val() || {}).sort((a, b) => b.lastUpdated - a.lastUpdated);
                 repliesData = []; inboxData = []; hasUnrepliedLetters = false;
                 
-                let unreadInReplies = false;
-                let unreadInInbox = false;
+                let unreadInReplies = false; let unreadInInbox = false;
 
                 all.forEach(t => {
                     if (t.isSender) { 
@@ -385,7 +381,6 @@
                     }
                 });
 
-                // 更新導航列的閃爍紅點 (CSS Animation)
                 document.querySelector('.tab-replies').classList.toggle('has-unread', unreadInReplies);
                 document.querySelector('.tab-inbox').classList.toggle('has-unread', unreadInInbox);
 
@@ -473,6 +468,9 @@
             reader.readAsDataURL(file);
         }
 
+        // ==========================================
+        // 🚀 修改點 1：傳送格式完美對齊你提供的 GAS
+        // ==========================================
         async function submitLog() {
             const title = document.getElementById('book-title').value.trim(); const page = document.getElementById('book-page').value.trim();
             const question = document.getElementById('log-question').value.trim(); const text = document.getElementById('log-content').value.trim();
@@ -484,13 +482,33 @@
             const btn = document.getElementById('btn-submit-task'); btn.innerText = "圖片上傳中，請稍候..."; btn.disabled = true;
 
             try {
-                const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ filename: selectedFileName, mimeType: 'image/jpeg', base64: selectedFileBase64 }) });
+                // 將 payload 的 keys 改變為：fileName, mimeType, fileData
+                const response = await fetch(GAS_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify({ 
+                        fileName: selectedFileName, 
+                        mimeType: 'image/jpeg', 
+                        fileData: selectedFileBase64 
+                    }) 
+                });
+                
                 const responseText = await response.text();
-                let result; try { result = JSON.parse(responseText); } catch (e) { throw new Error("伺服器未能回傳正確格式。"); }
-                if (!result.success) throw new Error(result.error);
+                let result; 
+                try { 
+                    result = JSON.parse(responseText); 
+                } catch (e) { 
+                    throw new Error("伺服器未能回傳正確格式。"); 
+                }
+                
+                // 檢查新的 GAS 格式: status === 'success'
+                if (result.status !== 'success') {
+                    throw new Error(result.message || result.error || "上傳未成功");
+                }
 
                 const combinedText = `【目前進度】第 ${page} 頁\n\n【思考問題】\n${question}\n\n【閱讀心得】\n${text}`;
-                playAnim('log', null, null, {title: title, text: combinedText, imageUrl: result.url});
+                
+                // 將獲取的 result.fileUrl (由於是 lh3 網址，不會被 CORS 阻擋) 寫入資料庫
+                playAnim('log', null, null, {title: title, text: combinedText, imageUrl: result.fileUrl});
             } catch (error) {
                 alert("圖片上傳發生異常。\n詳細錯誤：" + error.message);
                 btn.innerText = "封裝寄出心得"; btn.disabled = false;
@@ -521,7 +539,9 @@
             });
         }
 
-        // --- 處理對話窗圖片顯示邏輯 (加上萬用 fallback 點擊機制) ---
+        // ==========================================
+        // 🚀 修改點 2：移除異常的圖片 placeholder，直接顯示 lh3
+        // ==========================================
         function openChat(id) {
             db.ref(`user_threads/${currentUser.uid}/${id}`).update({hasUnread: false});
             db.ref(`letters/${id}`).once('value', lSnap => {
@@ -542,12 +562,12 @@
                         const isMe = m.senderUid === currentUser.uid; const d = new Date(m.timestamp);
                         const tStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
                         
-                        // 解決圖片可能仍被阻擋的問題，加上 <a> 標籤讓用戶點擊必定可以開啟
+                        // 直接將 lh3.googleusercontent.com 網址賦予 img 的 src，它會直接在網頁渲染
                         let imgTag = '';
                         if (m.imageUrl) {
                             imgTag = `
-                            <a href="${m.imageUrl}" target="_blank" class="msg-img-container" title="點擊在新分頁放大查看原圖">
-                                <img src="${m.imageUrl}" class="msg-img" alt="書本照片 (若無法顯示請點擊開啟)" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x300?text=圖片載入失敗，請點擊開啟查閱';">
+                            <a href="${m.imageUrl}" target="_blank" class="msg-img-container" title="點擊在新分頁放大">
+                                <img src="${m.imageUrl}" class="msg-img" alt="書本照片" loading="lazy">
                             </a>`;
                         }
 
