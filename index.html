@@ -514,7 +514,21 @@
             db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value', snap => {
                 const submitted = Object.values(snap.val()||{}).map(l=>l.taskIndex); const map = {}; Object.values(snap.val()||{}).forEach(l=>map[l.taskIndex]=l.id);
                 for (let i=0; i<total; i++) {
-                    const d = new Date(start.getTime() + i*config.intervalDays*86400000); const unlocked = new Date() >= d; const done = submitted.includes(i);
+                    const d = new Date(start.getTime() + i*config.intervalDays*86400000); 
+                    
+                    const d = new Date(start.getTime() + i*config.intervalDays*86400000); 
+
+// --- 新增這段：將當下時間與任務開放時間，雙雙歸零到當天 00:00:00 ---
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+const unlockDate = new Date(d);
+unlockDate.setHours(0, 0, 0, 0);
+
+// 改用歸零後的時間做對比
+const unlocked = today >= unlockDate;
+                    
+                    
+                    const unlocked = new Date() >= d; const done = submitted.includes(i);
                     const el = document.createElement('div'); el.className = `task-card ${done?'completed':''} ${!unlocked&&!done?'locked':''}`;
                     el.innerHTML = `<span class="task-num">第 ${i+1} 回任務</span><span class="task-date">${d.getMonth()+1}/${d.getDate()} 開放</span>`;
                     el.onclick = () => {
