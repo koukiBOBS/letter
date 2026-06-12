@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>迴音信箋 | Echoes of Leaves</title>
-    <!-- Fonts: Vintage & Hand-written feelings -->
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Noto+Serif+TC:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     
-    <!-- GSAP for tactile animations -->
+    <!-- GSAP for smooth animations -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
     <style>
@@ -44,7 +44,18 @@
             overflow-x: hidden;
         }
 
-        /* --- 1. 登入與自訂姓名遮罩 --- */
+        /* --- 1. 即時來信通知橫幅 --- */
+        #notification-banner {
+            position: fixed; top: -100px; left: 50%; transform: translateX(-50%);
+            background: var(--paper); border: 1px solid var(--accent-rose);
+            padding: 15px 30px; border-radius: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+            z-index: 10001; display: flex; align-items: center; gap: 12px; cursor: pointer;
+            font-size: 0.9rem; letter-spacing: 1px; transition: top 0.5s ease;
+        }
+        #notification-banner.show { top: 25px; }
+        .banner-dot { width: 8px; height: 8px; background: var(--accent-rose); border-radius: 50%; animation: pulse 1.5s infinite; }
+
+        /* --- 2. 登入與姓名設定遮罩 --- */
         #auth-overlay {
             position: fixed; inset: 0; background: var(--parchment); z-index: 10000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -58,21 +69,12 @@
         .vintage-panel::before {
             content: ''; position: absolute; inset: 6px; border: 1px dashed var(--border); pointer-events: none;
         }
-        .welcome-title {
-            font-size: 2.2rem; font-weight: 300; margin-bottom: 12px; letter-spacing: 3px;
-        }
-        .welcome-sub {
-            font-size: 0.95rem; color: var(--ink-muted); margin-bottom: 30px; line-height: 1.8;
-        }
+        .welcome-title { font-size: 2.2rem; font-weight: 300; margin-bottom: 12px; letter-spacing: 3px; }
+        .welcome-sub { font-size: 0.95rem; color: var(--ink-muted); margin-bottom: 30px; line-height: 1.8; }
         
-        /* 姓名設定輸入框 */
         #name-setup-container { display: none; }
-        .vintage-input-group {
-            margin-bottom: 24px; text-align: left;
-        }
-        .vintage-label {
-            font-size: 0.8rem; letter-spacing: 2px; color: var(--ink-muted); margin-bottom: 8px; display: block;
-        }
+        .vintage-input-group { margin-bottom: 24px; text-align: left; }
+        .vintage-label { font-size: 0.8rem; letter-spacing: 2px; color: var(--ink-muted); margin-bottom: 8px; display: block; }
         .vintage-input {
             width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--border);
             padding: 10px 0; font-family: var(--font-serif); font-size: 1.1rem; color: var(--ink);
@@ -87,34 +89,13 @@
         }
         .btn-classic:hover { background: var(--accent-rose); transform: translateY(-1px); }
 
-        /* 靜候儀式 */
-        #ritual-timer { display: none; flex-direction: column; align-items: center; }
-        .glass-clock {
-            width: 100px; height: 100px; border: 1px solid var(--border); border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; font-size: 2.2rem;
-            margin-bottom: 30px; position: relative; background: var(--paper);
-        }
-        .clock-progress {
-            position: absolute; inset: -1px; border-radius: 50%;
-            border: 2px solid var(--accent-rose); clip-path: polygon(50% 50%, 50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 50% 0%);
-            animation: ritualSpin 5s linear forwards;
-        }
-        @keyframes ritualSpin { 100% { transform: rotate(360deg); } }
-
-        /* --- 2. 主版排版與復古裝飾 --- */
+        /* --- 3. 頂部導航與基礎版面 --- */
         header {
             max-width: 1000px; margin: 40px auto 20px; padding: 0 24px;
             display: flex; justify-content: space-between; align-items: center;
         }
-        .logo-box {
-            display: flex; flex-direction: column;
-        }
-        .logo-box h2 {
-            font-size: 1.8rem; font-weight: 400; letter-spacing: 2px;
-        }
-        .logo-box span {
-            font-size: 0.75rem; color: var(--ink-muted); letter-spacing: 4px; margin-top: 4px;
-        }
+        .logo-box h2 { font-size: 1.8rem; font-weight: 400; letter-spacing: 2px; }
+        .logo-box span { font-size: 0.75rem; color: var(--ink-muted); letter-spacing: 4px; margin-top: 4px; display: block; }
 
         .tabs-container {
             max-width: 1000px; margin: 0 auto 30px; padding: 0 24px;
@@ -137,134 +118,118 @@
         .view-section { display: none; }
         .view-section.active { display: block; }
 
-        /* --- 3. 任務郵票看板 --- */
+        /* --- 4. 任務集郵手冊 --- */
         .task-hub {
             background: var(--paper); border: 1px solid var(--border);
             padding: 40px; border-radius: 4px; box-shadow: var(--shadow-warm);
             margin-bottom: 40px; position: relative;
         }
-        .task-hub::before {
-            content: ''; position: absolute; inset: 6px; border: 1px dashed var(--border); pointer-events: none;
-        }
+        .task-hub::before { content: ''; position: absolute; inset: 6px; border: 1px dashed var(--border); pointer-events: none; }
         .hub-title {
             font-size: 1.3rem; margin-bottom: 24px; border-bottom: 1px solid var(--border);
             padding-bottom: 15px; letter-spacing: 2px; display: flex; align-items: center; gap: 10px;
         }
-        .stamp-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-            gap: 20px;
-        }
+        .stamp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 20px; }
         .stamp-card {
             aspect-ratio: 1 / 1.15; border: 2px dashed var(--border); background: var(--parchment);
             border-radius: 4px; display: flex; flex-direction: column; align-items: center;
             justify-content: center; padding: 10px; cursor: pointer; transition: all 0.3s;
             position: relative; text-align: center;
         }
-        .stamp-card:hover {
-            transform: translateY(-3px); border-color: var(--accent-rose);
-            box-shadow: 0 6px 15px var(--shadow-soft);
-        }
-        .stamp-num {
-            font-size: 0.75rem; letter-spacing: 1px; color: var(--ink-muted); margin-bottom: 8px;
-        }
-        .stamp-status-icon {
-            width: 44px; height: 44px; margin-bottom: 10px;
-        }
-        .stamp-deadline {
-            font-size: 0.7rem; color: var(--ink-muted);
-        }
+        .stamp-card:hover { transform: translateY(-3px); border-color: var(--accent-rose); }
+        .stamp-num { font-size: 0.75rem; letter-spacing: 1px; color: var(--ink-muted); margin-bottom: 8px; }
+        .stamp-status-icon { width: 44px; height: 44px; margin-bottom: 10px; }
+        .stamp-deadline { font-size: 0.7rem; color: var(--ink-muted); }
+        .stamp-completed { background: var(--paper); border: 1px solid var(--accent-green); }
+        .stamp-locked { opacity: 0.5; cursor: not-allowed; }
 
-        /* 郵票狀態細節 */
-        .stamp-completed {
-            background: var(--paper); border: 1px solid var(--accent-green);
-        }
-        .stamp-locked {
-            opacity: 0.5; cursor: not-allowed;
-        }
-
-        /* --- 4. 留白與賦予（古典寫信紙張與 3D 動畫裝飾） --- */
-        .writing-desk {
-            perspective: 1200px; max-width: 700px; margin: 0 auto;
-        }
+        /* --- 5. 古典寫信桌面與 3D 摺紙結構 --- */
+        .writing-desk { max-width: 700px; margin: 0 auto; }
         .paper-letter {
             background: var(--paper); border: 1px solid var(--border);
             padding: 50px; border-radius: 4px; box-shadow: var(--shadow-warm);
             background-image: linear-gradient(rgba(46, 37, 32, 0.05) 1px, transparent 1px);
-            background-size: 100% 32px; line-height: 32px;
-            transform-style: preserve-3d; transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-            position: relative;
+            background-size: 100% 32px; line-height: 32px; position: relative;
         }
-        .desk-input-group {
-            background: var(--paper); margin-bottom: 24px; position: relative;
-        }
+        .desk-input-group { background: var(--paper); margin-bottom: 24px; position: relative; }
         .desk-textarea {
             width: 100%; background: transparent; border: none;
             font-family: var(--font-cursive); font-size: 1.15rem; color: var(--ink);
             min-height: 220px; line-height: 1.8; resize: none; outline: none;
         }
-        
-        /* 寄信 3D 摺疊容器 */
+
+        /* 3D 摺合物理動畫容器 */
         .folding-envelope-container {
             display: none; position: fixed; inset: 0; background: rgba(244,239,230,0.98);
-            z-index: 9999; align-items: center; justify-content: center; perspective: 1000px;
+            z-index: 9999; align-items: center; justify-content: center; perspective: 1500px;
         }
-        .envelope-3d {
-            width: 320px; height: 200px; background: #ebdcc5; border: 1px solid #d4c0a5;
-            position: relative; transform-style: preserve-3d; box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        .paper-3d-scene {
+            width: 320px; height: 480px; position: relative; transform-style: preserve-3d;
         }
-        .envelope-flap {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            border-left: 160px solid transparent; border-right: 160px solid transparent;
-            border-top: 100px solid #dcd1be; transform-origin: top;
-            transition: transform 0.6s; z-index: 3;
+        /* 拆分三折 */
+        .paper-panel {
+            position: absolute; left: 0; width: 100%; height: 160px;
+            background: var(--paper); border: 1px solid var(--border);
+            transform-style: preserve-3d; backface-visibility: visible;
         }
-        .envelope-body {
-            position: absolute; inset: 0; background: #e3d3bd;
-            clip-path: polygon(0 100%, 160px 80px, 320px 100%, 320px 200%, 0 200%); z-index: 2;
-        }
-        .wax-seal {
-            position: absolute; bottom: 40px; left: calc(50% - 22px);
-            width: 44px; height: 44px; background: #a63f3f; border-radius: 50%;
-            z-index: 4; box-shadow: 0 3px 10px rgba(0,0,0,0.2); transform: scale(0);
+        .panel-top { top: 0; transform-origin: bottom; }
+        .panel-middle {
+            top: 160px;
             display: flex; align-items: center; justify-content: center;
+            font-family: var(--font-cursive); color: var(--ink-muted); font-size: 1.2rem;
+        }
+        .panel-bottom { top: 320px; transform-origin: top; }
+        
+        /* 封信後的信封背蓋 */
+        .envelope-back {
+            position: absolute; inset: 0; background: #ebdcc5; border: 1px solid #d4c0a5;
+            display: none; transform: rotateY(180deg); transform-style: preserve-3d;
+        }
+        .env-flap-3d {
+            position: absolute; top: 0; left: 0; width: 100%; height: 80px;
+            background: #dcd1be; clip-path: polygon(0 0, 100% 0, 50% 100%);
+            transform-origin: top; z-index: 5;
+        }
+        .env-body-3d {
+            position: absolute; inset: 0; background: #e3d3bd;
+            clip-path: polygon(0 40%, 50% 100%, 100% 40%, 100% 100%, 0 100%); z-index: 2;
+        }
+        .env-seal-3d {
+            position: absolute; top: 60px; left: calc(50% - 20px);
+            width: 40px; height: 40px; background: #a63f3f; border-radius: 50%;
+            z-index: 6; transform: scale(0); display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
         }
 
-        /* --- 5. 復古信封網格 (信箱頁面) --- */
-        .letter-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 30px;
+        /* --- 6. 電子郵箱極簡列表 (Inbox Mail Layout) --- */
+        .mailbox-container {
+            background: var(--paper); border: 1px solid var(--border);
+            border-radius: 4px; box-shadow: var(--shadow-warm); overflow: hidden;
         }
-        .vintage-envelope {
-            background: #fdfaf5; border: 1px solid var(--border); border-radius: 4px;
-            padding: 30px; cursor: pointer; box-shadow: var(--shadow-warm);
-            position: relative; transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            min-height: 200px; display: flex; flex-direction: column; justify-content: space-between;
+        .mail-row {
+            display: flex; align-items: center; padding: 20px 24px;
+            border-bottom: 1px solid var(--border); cursor: pointer;
+            transition: background 0.2s;
         }
-        .vintage-envelope:hover {
-            transform: translateY(-5px); box-shadow: 0 15px 35px rgba(46,37,32,0.1);
+        .mail-row:hover { background: rgba(46,37,32,0.01); }
+        .mail-row:last-child { border-bottom: none; }
+        
+        /* 狀態標籤 (完全無字純幾何設計) */
+        .status-badge-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-right: 20px; }
+        .status-unread { background: var(--accent-rose); animation: pulse 2s infinite; }
+        .status-read { border: 1.5px solid var(--accent-rose); background: transparent; }
+        .status-thread {
+            background: var(--accent-green); display: flex; align-items: center; justify-content: center;
         }
-        /* 郵戳與貼郵票痕跡 */
-        .postmark {
-            position: absolute; top: 15px; right: 15px; width: 55px; height: 55px;
-            border: 1.5px dashed var(--accent-rose); border-radius: 50%; opacity: 0.15;
-            display: flex; align-items: center; justify-content: center; font-size: 0.6rem;
-            transform: rotate(-15deg); font-weight: 600;
-        }
-        .stamp-tag {
-            position: absolute; top: 12px; right: 12px; width: 40px; height: 48px;
-            border: 1px dashed var(--accent-rose); background: rgba(157,107,107,0.04);
-            display: flex; align-items: center; justify-content: center; font-size: 0.5rem;
-            color: var(--accent-rose); opacity: 0.8;
-        }
-        .envelope-title {
-            font-size: 1.25rem; font-weight: 400; line-height: 1.4; margin-bottom: 12px;
-            margin-top: 20px;
-        }
-        .envelope-foot {
-            display: flex; justify-content: space-between; align-items: center;
-            border-top: 1px solid rgba(46,37,32,0.06); padding-top: 12px;
+        .status-thread::after {
+            content: ''; width: 4px; height: 4px; background: #fff; border-radius: 50%;
         }
 
-        /* --- 6. 寫信與拆信彈窗 --- */
+        .mail-sender { width: 120px; font-weight: 500; font-size: 0.9rem; flex-shrink: 0; }
+        .mail-subject { flex-grow: 1; font-size: 0.95rem; color: var(--ink); padding-right: 20px; }
+        .mail-time { font-size: 0.75rem; color: var(--ink-muted); flex-shrink: 0; }
+
+        /* --- 7. 信件與對話往返對談視窗 --- */
         #detail-modal {
             position: fixed; inset: 0; background: rgba(244, 239, 230, 0.97);
             z-index: 2000; display: none; overflow-y: auto; padding: 60px 20px;
@@ -278,35 +243,36 @@
             position: absolute; top: 30px; right: 30px; background: none; border: none;
             font-size: 1.6rem; cursor: pointer; color: var(--ink-muted);
         }
-        .dialogue-thread {
-            margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 30px;
+        
+        /* 往返對話線索軸 */
+        .conversation-flow {
+            max-height: 380px; overflow-y: auto; margin-bottom: 30px;
+            border-bottom: 1px solid var(--border); padding-bottom: 20px;
         }
-        .thread-log {
-            background: var(--parchment); border-radius: 4px; padding: 25px; margin-bottom: 20px;
-            font-size: 1.05rem; line-height: 1.8; position: relative;
+        .msg-bubble {
+            padding: 20px; border-radius: 4px; margin-bottom: 15px;
+            line-height: 1.8; font-size: 1.05rem;
         }
-        .thread-log::before {
-            content: '我的原文記錄'; position: absolute; top: -10px; left: 20px;
-            background: var(--accent-rose); color: #fff; font-size: 0.65rem; padding: 2px 10px;
-            letter-spacing: 1px; border-radius: 20px;
-        }
-        .thread-echo {
-            border-left: 2.5px solid var(--accent-green); padding-left: 20px; margin-top: 20px;
-            font-size: 1.1rem; line-height: 1.8;
-        }
-        .thread-echo-title {
-            font-size: 0.75rem; letter-spacing: 2px; color: var(--accent-green); margin-bottom: 10px;
-        }
+        .msg-self { background: var(--parchment); border-left: 2.5px solid var(--accent-rose); }
+        .msg-partner { background: #fafaf7; border-left: 2.5px solid var(--accent-green); }
+        .msg-meta { font-size: 0.7rem; color: var(--ink-muted); margin-bottom: 8px; letter-spacing: 1px; }
 
-        .empty-state {
-            text-align: center; padding: 80px 20px; color: var(--ink-muted);
-            font-family: var(--font-serif); font-size: 1.1rem; letter-spacing: 2px;
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(157,107,107, 0.4); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(157,107,107, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(157,107,107, 0); }
         }
     </style>
 </head>
 <body>
 
-    <!-- 登入與儀式遮罩 -->
+    <!-- 即時來信通知橫幅 -->
+    <div id="notification-banner" onclick="openNotificationTarget()">
+        <div class="banner-dot"></div>
+        <span id="notification-text">墨跡未乾：有一封新的回音抵達了您的書案。</span>
+    </div>
+
+    <!-- 登入與姓名設定遮罩 -->
     <div id="auth-overlay">
         <!-- 階段一：Google 帳號驗證 -->
         <div id="login-container" class="vintage-panel">
@@ -320,36 +286,37 @@
         <!-- 階段二：自訂筆名（初次登入） -->
         <div id="name-setup-container" class="vintage-panel">
             <h1 class="welcome-title">落筆署名</h1>
-            <p class="welcome-sub">在這裡填入您的真實姓名（僅供老師核分）。在此系統中，您的書信在與同學交流時，將會以完全匿名狀態隨機送達。</p>
+            <p class="welcome-sub">請輸入您的真實姓名或學號（僅供導師核算進度），在系統交流中您將維持完全匿名。</p>
             <div class="vintage-input-group">
                 <label class="vintage-label">我的真實姓名 / 學號</label>
-                <input type="text" id="setup-user-name" class="vintage-input" placeholder="例如：張大明 / 40105" autocomplete="off">
+                <input type="text" id="setup-user-name" class="vintage-input" placeholder="例如：林宥嘉 / 50211" autocomplete="off">
             </div>
             <button class="btn-classic" onclick="saveCustomName()">確認登入</button>
         </div>
-        
-        <!-- 階段三：靜候儀式 -->
-        <div id="ritual-timer">
-            <div class="glass-clock">
-                <div class="clock-progress"></div>
-                <span id="countdown-num">5</span>
-            </div>
-            <p class="welcome-sub" id="ritual-quote">閉上雙眼，平靜心神。墨跡即將在紙張暈開...</p>
-        </div>
     </div>
 
-    <!-- 3D 寄件動畫遮罩 -->
+    <!-- 3D 摺紙送信動畫遮罩 -->
     <div class="folding-envelope-container" id="folding-mask">
-        <div class="envelope-3d" id="envelope-obj">
-            <div class="envelope-flap" id="env-flap"></div>
-            <div class="envelope-body"></div>
-            <div class="wax-seal" id="env-seal">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <div class="paper-3d-scene" id="paper-scene">
+            <!-- 信紙三折 -->
+            <div class="paper-panel panel-top" id="p-top"></div>
+            <div class="paper-panel panel-middle" id="p-middle">
+                <div>信箋摺疊中...</div>
+            </div>
+            <div class="paper-panel panel-bottom" id="p-bottom"></div>
+            
+            <!-- 封信後的信封背蓋 -->
+            <div class="envelope-back" id="env-back">
+                <div class="env-flap-3d" id="env-flap"></div>
+                <div class="env-body-3d"></div>
+                <div class="env-seal-3d" id="env-seal">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- 主頁結構 -->
+    <!-- 主頁頂部 -->
     <header>
         <div class="logo-box">
             <h2>迴音信箋</h2>
@@ -361,7 +328,7 @@
         </div>
     </header>
 
-    <!-- 底部導航 TAB（含 SVG 圖示） -->
+    <!-- 導航 TAB -->
     <nav class="tabs-container">
         <button class="tab-btn active" onclick="switchTab('echoes-tab', this)">
             <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
@@ -378,57 +345,56 @@
     </nav>
 
     <main>
-        <!-- Tab 1: 收到的回信 (能看到自己的原文以及對方的回應) -->
+        <!-- Tab 1: 收到的回信 (往返對讀討論列表) -->
         <section id="echoes-tab" class="view-section active">
-            <div class="letter-grid" id="echoes-grid">
+            <div class="mailbox-container" id="echoes-grid">
                 <!-- 動態注入 -->
             </div>
         </section>
 
-        <!-- Tab 2: 未知的來信 (查看被派發分發的同儕感悟) -->
+        <!-- Tab 2: 未知的來信 (查看配發到的同儕感悟) -->
         <section id="unknown-tab" class="view-section">
-            <div class="letter-grid" id="unknown-grid">
+            <div class="mailbox-container" id="unknown-grid">
                 <!-- 動態注入 -->
             </div>
         </section>
 
-        <!-- Tab 3: 撰寫與進度 (含任務郵票清單 & 復古信紙) -->
+        <!-- Tab 3: 撰寫與進度 -->
         <section id="write-tab" class="view-section">
-            <!-- 任務郵票看板 -->
             <div class="task-hub">
                 <div class="hub-title">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                    <span>假期任務集郵冊</span>
+                    <span>假期集郵冊</span>
                 </div>
                 <div class="stamp-grid" id="student-stamp-grid">
-                    <!-- 動態計算生成的任務郵票 -->
+                    <!-- 動態集郵郵票 -->
                 </div>
             </div>
 
-            <!-- 摺疊信紙 (只有在點擊解鎖的郵票時，才顯示該次任務書寫區) -->
+            <!-- 摺疊寫作信紙 -->
             <div class="writing-desk" id="letter-writing-desk" style="display: none;">
                 <div class="paper-letter" id="letter-sheet">
                     <h3 style="font-size: 1.4rem; font-weight: 500; margin-bottom: 24px; color: var(--accent-rose);" id="writing-task-title">本次任務：第一回</h3>
                     <div class="desk-input-group">
-                        <input type="text" id="book-title" class="vintage-input" placeholder="《 書名名稱 》" autocomplete="off">
+                        <input type="text" id="book-title" class="vintage-input" placeholder="《 閱讀書目名稱 》" autocomplete="off">
                     </div>
                     <div class="desk-input-group">
-                        <textarea id="reflections" class="desk-textarea" placeholder="在此處落筆，與你的讀者開展隔空共鳴之旅..."></textarea>
+                        <textarea id="reflections" class="desk-textarea" placeholder="在此落筆，寫下你與文字相遇時的真實悸動..."></textarea>
                     </div>
                     <div style="display: flex; justify-content: flex-end; background: var(--paper);">
-                        <button class="btn-classic" onclick="animateAndSendLetter()">摺疊寄出信件</button>
+                        <button class="btn-classic" onclick="triggerLetterAnimation('new-log')">摺疊寄出信件</button>
                     </div>
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- 信件展示彈窗 -->
+    <!-- 信件展示與對談彈窗 -->
     <div id="detail-modal">
         <div class="modal-envelope-container">
             <button class="close-modal" onclick="closeModal()">×</button>
             <div id="modal-content-wrapper">
-                <!-- 動態注入 -->
+                <!-- 往來聊天信件動態載入 -->
             </div>
         </div>
     </div>
@@ -451,6 +417,7 @@
         let currentUser = null;
         let selectedTaskIndex = null;
         let currentTaskConfig = null;
+        let currentNotificationThreadId = null;
 
         // 登入狀態監控
         auth.onAuthStateChanged(user => {
@@ -461,7 +428,6 @@
                 document.getElementById('auth-overlay').style.display = 'flex';
                 document.getElementById('login-container').style.display = 'block';
                 document.getElementById('name-setup-container').style.display = 'none';
-                document.getElementById('ritual-timer').style.display = 'none';
             }
         });
 
@@ -471,18 +437,17 @@
         }
 
         function signOut() {
-            auth.signOut().then(() => {
-                window.location.reload();
-            });
+            auth.signOut().then(() => window.location.reload());
         }
 
-        // 檢查使用者是否已設定真實姓名
+        // 檢查是否有註冊姓名，若有則直接進入書案 (已移除5秒倒數)
         function checkUserSetup(user) {
             db.ref(`users/${user.uid}`).once('value', snapshot => {
                 const data = snapshot.val();
                 if (data && data.name) {
                     document.getElementById('user-display-name').innerText = `筆友: ${data.name}`;
-                    startRitual();
+                    document.getElementById('auth-overlay').style.display = 'none';
+                    initializeSystem();
                 } else {
                     document.getElementById('login-container').style.display = 'none';
                     document.getElementById('name-setup-container').style.display = 'block';
@@ -490,11 +455,10 @@
             });
         }
 
-        // 儲存自訂姓名
         function saveCustomName() {
             const name = document.getElementById('setup-user-name').value.trim();
             if (!name) {
-                alert("請填寫您的姓名或學號，以便老師核分。");
+                alert("請填寫您的真實姓名，以便導師核分。");
                 return;
             }
             db.ref(`users/${currentUser.uid}`).set({
@@ -502,334 +466,448 @@
                 email: currentUser.email
             }).then(() => {
                 document.getElementById('user-display-name').innerText = `筆友: ${name}`;
-                startRitual();
+                document.getElementById('auth-overlay').style.display = 'none';
+                initializeSystem();
             });
-        }
-
-        // 靜候儀式
-        function startRitual() {
-            document.getElementById('name-setup-container').style.display = 'none';
-            document.getElementById('login-container').style.display = 'none';
-            document.getElementById('ritual-timer').style.display = 'flex';
-            
-            let count = 5;
-            const numEl = document.getElementById('countdown-num');
-            const quoteEl = document.getElementById('ritual-quote');
-            const ritualQuotes = [
-                "拋開繁雜的世界，讓思緒慢慢沉澱...",
-                "一封信的誕生，需要時間，需要守候...",
-                "文字是隔著時空的心靈對談...",
-                "在紙頁與筆尖下，尋回溫柔與平靜...",
-                "歡迎來到，迴音信箋的世界。"
-            ];
-
-            const timer = setInterval(() => {
-                count--;
-                numEl.innerText = count;
-                if (ritualQuotes[5 - count]) quoteEl.innerText = ritualQuotes[5 - count];
-                
-                if (count <= 0) {
-                    clearInterval(timer);
-                    gsap.to('#auth-overlay', { opacity: 0, duration: 0.6, onComplete: () => {
-                        document.getElementById('auth-overlay').style.display = 'none';
-                        initializeSystem();
-                    }});
-                }
-            }, 1000);
         }
 
         // 系統主邏輯初始化
         function initializeSystem() {
-            // A. 讀取任務設定
+            // A. 冷啟動自癒機制：掃描暫存池
+            healColdStartPool();
+
+            // B. 監聽任務配置
             db.ref('settings/taskConfig').on('value', snap => {
                 currentTaskConfig = snap.val();
                 renderStampHub();
             });
-            loadInboxData();
+
+            // C. 載入收發件箱數據
+            loadMailboxData();
+
+            // D. 監聽即時新信件通知
+            setupInstantNotification();
         }
 
-        // 渲染假期任務集郵冊 (動態計算)
+        // --- 1. 解決冷啟動：新註冊者登入時自動掃描未分配信件 ---
+        function healColdStartPool() {
+            db.ref('unassigned_letters').once('value', snap => {
+                const unassigned = snap.val() || {};
+                const letterIds = Object.keys(unassigned);
+                
+                // 過濾掉自己寫的信
+                const borrowables = letterIds.filter(id => unassigned[id].senderUid !== currentUser.uid);
+
+                if (borrowables.length > 0) {
+                    // 隨機抽取一封領取
+                    const randomId = borrowables[Math.floor(Math.random() * borrowables.length)];
+                    
+                    db.ref(`letters/${randomId}`).once('value', letterSnap => {
+                        const lData = letterSnap.val();
+                        if (lData) {
+                            // 更新該信件的主人/匹配對象
+                            db.ref(`letters/${randomId}/recipientUid`).set(currentUser.uid);
+                            // 自暫存池移除
+                            db.ref(`unassigned_letters/${randomId}`).remove();
+                            
+                            // 雙向登記對話線索結構
+                            const now = firebase.database.ServerValue.TIMESTAMP;
+                            db.ref(`user_threads/${currentUser.uid}/${randomId}`).set({
+                                letterId: randomId,
+                                bookTitle: lData.bookTitle,
+                                isSender: false,
+                                hasUnread: true,
+                                lastUpdated: now
+                            });
+                            db.ref(`user_threads/${lData.senderUid}/${randomId}`).set({
+                                letterId: randomId,
+                                bookTitle: lData.bookTitle,
+                                isSender: true,
+                                hasUnread: true,
+                                lastUpdated: now
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        // --- 2. 郵箱資料載入與狀態極簡呈現 (純圖形標籤) ---
+        function loadMailboxData() {
+            db.ref(`user_threads/${currentUser.uid}`).on('value', snap => {
+                const threads = snap.val() || {};
+                const echoesGrid = document.getElementById('echoes-grid');
+                const unknownGrid = document.getElementById('unknown-grid');
+                
+                echoesGrid.innerHTML = '';
+                unknownGrid.innerHTML = '';
+
+                let hasEchoes = false;
+                let hasUnknown = false;
+
+                Object.values(threads).forEach(thread => {
+                    const date = new Date(thread.lastUpdated);
+                    const timeStr = `${date.getMonth()+1}/${date.getDate()} ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+
+                    // 分流 A：我是這封信的作者（收到的回信與討論）
+                    if (thread.isSender) {
+                        hasEchoes = true;
+                        
+                        // 判定視覺狀態圖形
+                        let statusHtml = '<div class="status-badge-dot status-read"></div>'; // 已讀過
+                        if (thread.hasUnread) {
+                            statusHtml = '<div class="status-badge-dot status-unread"></div>'; // 新回覆
+                        } else if (thread.replyCount > 0 || thread.lastMessageSnippet) {
+                            statusHtml = '<div class="status-badge-dot status-thread"></div>'; // 已建立討論
+                        }
+
+                        const el = document.createElement('div');
+                        el.className = 'mail-row';
+                        el.innerHTML = `
+                            ${statusHtml}
+                            <div class="mail-sender">與筆友的討論</div>
+                            <div class="mail-subject">關於《${escapeHtml(thread.bookTitle)}》的往返共鳴對讀</div>
+                            <div class="mail-time">${timeStr}</div>
+                        `;
+                        el.onclick = () => openConversationThread(thread.letterId);
+                        echoesGrid.appendChild(el);
+                    }
+                    // 分流 B：我是配發到的讀者（未知的來信）
+                    else {
+                        hasUnknown = true;
+                        
+                        let statusHtml = '<div class="status-badge-dot status-read"></div>';
+                        if (thread.hasUnread) {
+                            statusHtml = '<div class="status-badge-dot status-unread"></div>';
+                        } else {
+                            statusHtml = '<div class="status-badge-dot status-thread"></div>';
+                        }
+
+                        const el = document.createElement('div');
+                        el.className = 'mail-row';
+                        el.innerHTML = `
+                            ${statusHtml}
+                            <div class="mail-sender">匿名筆友</div>
+                            <div class="mail-subject">《${escapeHtml(thread.bookTitle)}》的假期感悟來信</div>
+                            <div class="mail-time">${timeStr}</div>
+                        `;
+                        el.onclick = () => openConversationThread(thread.letterId);
+                        unknownGrid.appendChild(el);
+                    }
+                });
+
+                if (!hasEchoes) echoesGrid.innerHTML = '<div class="empty-state">目前尚未有建立任何回信對話。</div>';
+                if (!hasUnknown) unknownGrid.innerHTML = '<div class="empty-state">暫無未知的來信。</div>';
+            });
+        }
+
+        // --- 3. 任務集郵冊與點選複閱歷程 ---
         function renderStampHub() {
             const container = document.getElementById('student-stamp-grid');
             container.innerHTML = '';
-            
             if (!currentTaskConfig) {
-                container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--ink-muted);">導師目前尚未佈置任何任務。</div>';
+                container.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--ink-muted);">導師尚未排定任務。</div>';
                 return;
             }
 
             const { startDate, endDate, intervalDays } = currentTaskConfig;
             const start = new Date(startDate);
             const end = new Date(endDate);
-            const totalMs = end - start;
-            const daysCount = totalMs / (1000 * 60 * 60 * 24);
-            const totalTasks = Math.floor(daysCount / intervalDays);
+            const totalTasks = Math.floor(((end - start) / (1000 * 60 * 60 * 24)) / intervalDays);
 
-            // 查閱用戶所有已寫過的信件紀錄
             db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value', snap => {
-                const userLetters = snap.val() || {};
-                const submittedIndexes = Object.values(userLetters).map(l => l.taskIndex);
+                const letters = snap.val() || {};
+                const submittedIndexes = Object.values(letters).map(l => l.taskIndex);
+                const letterMap = {};
+                Object.values(letters).forEach(l => { letterMap[l.taskIndex] = l.id; });
 
                 for (let i = 0; i < totalTasks; i++) {
                     const taskStartTime = new Date(start.getTime() + i * intervalDays * 24 * 60 * 60 * 1000);
-                    const taskEndTime = new Date(taskStartTime.getTime() + intervalDays * 24 * 60 * 60 * 1000);
                     const isUnlocked = new Date() >= taskStartTime;
                     const isCompleted = submittedIndexes.includes(i);
 
                     const el = document.createElement('div');
                     el.className = `stamp-card ${isCompleted ? 'stamp-completed' : ''} ${!isUnlocked && !isCompleted ? 'stamp-locked' : ''}`;
                     
-                    let statusIcon = `
-                        <svg class="stamp-status-icon" viewBox="0 0 24 24" fill="none" stroke="var(--ink-muted)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
-                    `; // 預設未交 (鎖頭或空白)
-                    
+                    let statusIcon = `<svg class="stamp-status-icon" viewBox="0 0 24 24" fill="none" stroke="var(--ink-muted)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>`;
                     if (isCompleted) {
-                        statusIcon = `
-                            <svg class="stamp-status-icon" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        `; // 已交
+                        statusIcon = `<svg class="stamp-status-icon" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
                     } else if (!isUnlocked) {
-                        statusIcon = `
-                            <svg class="stamp-status-icon" viewBox="0 0 24 24" fill="none" stroke="var(--ink-muted)" stroke-width="1.5" style="opacity:0.4;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                        `; // 尚未解鎖
+                        statusIcon = `<svg class="stamp-status-icon" viewBox="0 0 24 24" fill="none" stroke="var(--ink-muted)" stroke-width="1.5" style="opacity:0.4;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
                     }
 
                     el.innerHTML = `
                         <span class="stamp-num">No. ${String(i+1).padStart(2, '0')}</span>
                         ${statusIcon}
-                        <span class="stamp-deadline">${taskStartTime.getMonth()+1}/${taskStartTime.getDate()} 解鎖</span>
+                        <span class="stamp-deadline">${taskStartTime.getMonth()+1}/${taskStartTime.getDate()} 開啟</span>
                     `;
 
-                    if (isUnlocked && !isCompleted) {
+                    if (isCompleted) {
+                        // 點選已完成的，立刻展開複閱與歷史討論
+                        el.onclick = () => openConversationThread(letterMap[i]);
+                    } else if (isUnlocked) {
                         el.onclick = () => selectTask(i);
-                    } else if (isCompleted) {
-                        el.onclick = () => alert("本輪寫作進度已呈遞。");
                     } else {
-                        el.onclick = () => alert("此段時光尚未開啟，請在解鎖日之後再來落筆。");
+                        el.onclick = () => alert("時空尚未開啟。");
                     }
-
                     container.appendChild(el);
                 }
             });
         }
 
-        // 點選並選取指定任務
         function selectTask(index) {
             selectedTaskIndex = index;
             document.getElementById('writing-task-title').innerText = `本次任務：第 ${index + 1} 回閱讀心得`;
             const desk = document.getElementById('letter-writing-desk');
             desk.style.display = 'block';
-            gsap.from(desk, { opacity: 0, y: 30, duration: 0.5 });
-            
-            // 滾動到書寫區
+            gsap.from(desk, { opacity: 0, y: 30, duration: 0.4 });
             desk.scrollIntoView({ behavior: 'smooth' });
         }
 
-        // --- 3D 摺紙與送信動畫流程 ---
-        function animateAndSendLetter() {
-            const bookTitle = document.getElementById('book-title').value.trim();
-            const reflections = document.getElementById('reflections').value.trim();
-
-            if (!bookTitle || !reflections) {
-                alert("請落筆將書名與感悟填寫完整，信件才能被收妥。");
-                return;
+        // --- 4. 物理規律的 CSS 3D 摺紙與蓋印動畫 ---
+        function triggerLetterAnimation(actionType, targetId, partnerUid, replyText) {
+            if (actionType === 'new-log') {
+                const title = document.getElementById('book-title').value.trim();
+                const content = document.getElementById('reflections').value.trim();
+                if (!title || !content) { alert("請填妥您的書目與心靈感悟。"); return; }
+            } else if (actionType === 'reply') {
+                if (!replyText) { alert("請輸入共鳴對讀內容。"); return; }
             }
 
             // 啟動 3D 摺紙
             const mask = document.getElementById('folding-mask');
             mask.style.display = 'flex';
             
-            // GSAP 仿 3D 摺疊信紙
+            // 重設面板狀態
+            gsap.set("#p-top", { rotateX: 0 });
+            gsap.set("#p-bottom", { rotateX: 0 });
+            gsap.set("#paper-scene", { rotateY: 0, scale: 1, y: 0, opacity: 1 });
+            gsap.set("#env-back", { display: 'none' });
+            gsap.set("#env-flap", { rotateX: 0 });
+            gsap.set("#env-seal", { scale: 0 });
+
             const tl = gsap.timeline();
-            tl.fromTo('#envelope-obj', { rotateX: -90, scale: 0.5, opacity: 0 }, { rotateX: 0, scale: 1, opacity: 1, duration: 0.6 })
-              .to('#env-flap', { rotateX: 180, duration: 0.5, delay: 0.2 })
-              .to('#env-seal', { scale: 1, duration: 0.4 })
-              .to('#envelope-obj', { y: -600, scale: 0.4, rotateY: 15, opacity: 0, duration: 0.8, ease: "power2.in", delay: 0.3, onComplete: () => {
+            tl.fromTo("#paper-scene", { rotateX: -60, scale: 0.7, opacity: 0 }, { rotateX: 0, scale: 1, opacity: 1, duration: 0.5 })
+              // 1. 下部 1/3 向上摺
+              .to("#p-bottom", { rotateX: -179, duration: 0.6, ease: "power2.inOut" }, "+=0.2")
+              // 2. 上部 1/3 向下摺
+              .to("#p-top", { rotateX: 179, duration: 0.6, ease: "power2.inOut" }, "+=0.1")
+              // 3. 翻轉展示信封背面
+              .to("#paper-scene", { rotateY: 180, duration: 0.6, ease: "power2.inOut", onStart: () => {
+                  document.getElementById('env-back').style.display = 'block';
+                  document.getElementById('p-top').style.opacity = 0;
+                  document.getElementById('p-middle').style.opacity = 0;
+                  document.getElementById('p-bottom').style.opacity = 0;
+              }})
+              // 4. 信封上蓋闔下
+              .to("#env-flap", { rotateX: 180, duration: 0.4, ease: "power1.inOut" })
+              // 5. 蓋上紅色火漆印
+              .to("#env-seal", { scale: 1, duration: 0.3, ease: "back.out(1.7)" })
+              // 6. 飛走
+              .to("#paper-scene", { y: -600, scale: 0.3, rotateY: 195, opacity: 0, duration: 0.8, ease: "power2.in", delay: 0.3, onComplete: () => {
                   mask.style.display = 'none';
-                  // 送出資料
-                  submitLetterToFirebase(bookTitle, reflections);
+                  // 恢復透明度與狀態
+                  document.getElementById('p-top').style.opacity = 1;
+                  document.getElementById('p-middle').style.opacity = 1;
+                  document.getElementById('p-bottom').style.opacity = 1;
+
+                  if (actionType === 'new-log') {
+                      submitReadingLog();
+                  } else {
+                      submitReplyText(targetId, partnerUid, replyText);
+                  }
               }});
         }
 
-        // 將信件遞交至資料庫
-        function submitLetterToFirebase(bookTitle, reflections) {
+        // A. 投遞全新閱讀進度
+        function submitReadingLog() {
+            const title = document.getElementById('book-title').value.trim();
+            const content = document.getElementById('reflections').value.trim();
             const newLetterRef = db.ref('letters').push();
             const timestamp = firebase.database.ServerValue.TIMESTAMP;
 
-            const letterData = {
-                id: newLetterRef.key,
-                senderUid: currentUser.uid,
-                bookTitle: bookTitle,
-                reflections: reflections,
-                timestamp: timestamp,
-                taskIndex: selectedTaskIndex
-            };
+            db.ref('users').once('value', snap => {
+                const users = snap.val() || {};
+                const candidates = Object.keys(users).filter(uid => uid !== currentUser.uid);
 
-            newLetterRef.set(letterData)
-                .then(() => {
-                    return db.ref(`users/${currentUser.uid}`).update({ lastSubmitted: timestamp });
-                })
-                .then(() => {
-                    // 自動進行系統分發 matching (學生端輕量分配)
-                    matchmakeNewLetter(letterData);
-                    alert("封蠟已蓋上，信件正匿名寄向隨機筆友的信箱中。");
+                let assignedRecipient = "";
+                if (candidates.length > 0) {
+                    // 隨機分發
+                    assignedRecipient = candidates[Math.floor(Math.random() * candidates.length)];
+                }
+
+                const letterData = {
+                    id: newLetterRef.key,
+                    senderUid: currentUser.uid,
+                    bookTitle: title,
+                    reflections: content,
+                    timestamp: timestamp,
+                    taskIndex: selectedTaskIndex,
+                    recipientUid: assignedRecipient
+                };
+
+                newLetterRef.set(letterData).then(() => {
+                    db.ref(`users/${currentUser.uid}`).update({ lastSubmitted: timestamp });
                     
+                    if (assignedRecipient) {
+                        // 雙向在 user_threads 建立討論節點
+                        db.ref(`user_threads/${currentUser.uid}/${letterData.id}`).set({
+                            letterId: letterData.id,
+                            bookTitle: title,
+                            isSender: true,
+                            hasUnread: false,
+                            lastUpdated: timestamp
+                        });
+                        db.ref(`user_threads/${assignedRecipient}/${letterData.id}`).set({
+                            letterId: letterData.id,
+                            bookTitle: title,
+                            isSender: false,
+                            hasUnread: true,
+                            lastUpdated: timestamp
+                        });
+                    } else {
+                        // 沒有人註冊，進入暫存冷啟動池
+                        db.ref(`unassigned_letters/${letterData.id}`).set({
+                            senderUid: currentUser.uid
+                        });
+                        // 依然建立自己的對話視窗
+                        db.ref(`user_threads/${currentUser.uid}/${letterData.id}`).set({
+                            letterId: letterData.id,
+                            bookTitle: title,
+                            isSender: true,
+                            hasUnread: false,
+                            lastUpdated: timestamp
+                        });
+                    }
+
+                    // 寫入對話第一則訊息
+                    db.ref(`conversations/${letterData.id}`).push({
+                        senderUid: currentUser.uid,
+                        text: content,
+                        timestamp: timestamp
+                    });
+
+                    alert("讀信進度摺疊投遞完成。");
                     document.getElementById('book-title').value = '';
                     document.getElementById('reflections').value = '';
                     document.getElementById('letter-writing-desk').style.display = 'none';
+                    renderStampHub();
+                    switchTab('echoes-tab', document.querySelector('.tabs-container button'));
+                });
+            });
+        }
+
+        // --- 5. 往返對讀無限共鳴對話框與回覆機制 ---
+        function openConversationThread(letterId) {
+            // 清除新信通知
+            db.ref(`user_threads/${currentUser.uid}/${letterId}`).update({ hasUnread: false });
+            
+            db.ref(`letters/${letterId}`).once('value', letterSnap => {
+                const letter = letterSnap.val();
+                if (!letter) return;
+
+                // 抓取聊天線索
+                db.ref(`conversations/${letterId}`).on('value', chatSnap => {
+                    const chats = chatSnap.val() || {};
+                    const modalWrapper = document.getElementById('modal-content-wrapper');
                     
-                    renderStampHub(); // 刷新集郵冊
-                    switchTab('echoes-tab', document.querySelector('.tabs-container button')); // 跳回第一頁
-                });
-        }
-
-        // 系統分配信件
-        function matchmakeNewLetter(letter) {
-            db.ref('users').once('value', snap => {
-                const users = snap.val() || {};
-                const list = Object.keys(users).filter(uid => uid !== currentUser.uid);
-                if (list.length > 0) {
-                    const chosen = list[Math.floor(Math.random() * list.length)];
-                    db.ref(`assignments/${chosen}/${letter.id}`).set({
-                        letterId: letter.id,
-                        bookTitle: letter.bookTitle,
-                        reflections: letter.reflections,
-                        timestamp: letter.timestamp,
-                        senderUid: letter.senderUid,
-                        replied: false
-                    });
-                }
-            });
-        }
-
-        // --- 4. 讀取信箱數據與歷史迴音對話線索 ---
-        function loadInboxData() {
-            // A. 未知的來信 (未讀、待回信)
-            db.ref(`assignments/${currentUser.uid}`).on('value', snap => {
-                const data = snap.val() || {};
-                const grid = document.getElementById('unknown-grid');
-                grid.innerHTML = '';
-
-                const active = Object.values(data).filter(item => !item.replied);
-                if (active.length === 0) {
-                    grid.innerHTML = '<div class="empty-state">目前收件箱靜止無信，請靜候未知旅人的投遞。</div>';
-                    return;
-                }
-
-                active.forEach(item => {
-                    const el = document.createElement('div');
-                    el.className = 'vintage-envelope';
-                    el.innerHTML = `
-                        <div class="stamp-tag">POST</div>
-                        <div class="envelope-title">《${escapeHtml(item.bookTitle)}》的文字共鳴</div>
-                        <div class="envelope-foot">
-                            <span style="font-size:0.75rem; color:var(--ink-muted);">匿名來信</span>
-                            <span style="font-size:0.8rem; color:var(--accent-rose); font-weight:600;">開啟蓋蠟 →</span>
-                        </div>
-                    `;
-                    el.onclick = () => openModalWithLetter(item, 'reply');
-                    grid.appendChild(el);
-                });
-            });
-
-            // B. 收到的回信 (已寄出的信及他人的回應，整合在一個時光軸)
-            db.ref('echoes').orderByChild('originalSenderUid').equalTo(currentUser.uid).on('value', snap => {
-                const echoes = snap.val() || {};
-                const grid = document.getElementById('echoes-grid');
-                grid.innerHTML = '';
-
-                const echoList = Object.values(echoes);
-                if (echoList.length === 0) {
-                    grid.innerHTML = '<div class="empty-state">尚未收到任何回信迴音。</div>';
-                    return;
-                }
-
-                // 一邊拉取自己的原文一邊整合顯示
-                echoList.forEach(echo => {
-                    db.ref(`letters/${echo.parentLetterId}`).once('value', letterSnap => {
-                        const letter = letterSnap.val() || { bookTitle: "不知名之作", reflections: "(原文已遺失)" };
+                    let chatFlowHtml = "";
+                    Object.values(chats).forEach(msg => {
+                        const isSelf = msg.senderUid === currentUser.uid;
+                        const date = new Date(msg.timestamp);
+                        const timeStr = `${date.getMonth()+1}/${date.getDate()} ${date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
                         
-                        const el = document.createElement('div');
-                        el.className = 'vintage-envelope';
-                        el.style.borderLeft = "3px solid var(--accent-green)";
-                        el.innerHTML = `
-                            <div class="postmark">ECHO</div>
-                            <div class="envelope-title">關於《${escapeHtml(letter.bookTitle)}》的回響</div>
-                            <div class="envelope-foot">
-                                <span style="font-size:0.75rem; color:var(--accent-green);">已收到讀者回信</span>
-                                <span style="font-size:0.8rem; color:var(--accent-green); font-weight:600;">閱讀來往信件 →</span>
+                        chatFlowHtml += `
+                            <div class="msg-bubble ${isSelf ? 'msg-self' : 'msg-partner'}">
+                                <div class="msg-meta">${isSelf ? '我的文字紀錄' : '筆友的文字回音'} · ${timeStr}</div>
+                                <div style="white-space:pre-wrap;">${escapeHtml(msg.text)}</div>
                             </div>
                         `;
-                        el.onclick = () => openThreadView(letter, echo);
-                        grid.appendChild(el);
                     });
+
+                    // 判斷我的交談對象是誰
+                    const partnerUid = (currentUser.uid === letter.senderUid) ? letter.recipientUid : letter.senderUid;
+
+                    modalWrapper.innerHTML = `
+                        <h3 style="font-size:1.5rem; color:var(--accent-rose); border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:25px;">
+                            《${escapeHtml(letter.bookTitle)}》共鳴對讀信卷
+                        </h3>
+                        <div class="conversation-flow" id="modal-chat-flow">
+                            ${chatFlowHtml}
+                        </div>
+                        <div class="reply-box" style="margin-top:20px;">
+                            <textarea id="dialogue-reply-text" class="desk-textarea" style="min-height:100px; background:var(--bg); border:1px solid var(--border); padding:15px; border-radius:4px;" placeholder="寫下新的迴音共鳴信札..."></textarea>
+                            <div style="display:flex; justify-content:flex-end; margin-top:15px;">
+                                <button class="btn-classic" onclick="triggerReplyAnimation('${letterId}', '${partnerUid}')">落筆寄出</button>
+                            </div>
+                        </div>
+                    `;
+
+                    document.getElementById('detail-modal').style.display = 'block';
+                    gsap.from(".modal-envelope-container", { scale: 0.95, opacity: 0, duration: 0.3 });
+                    
+                    // 自動滾動到底部
+                    const flowDiv = document.getElementById('modal-chat-flow');
+                    if (flowDiv) flowDiv.scrollTop = flowDiv.scrollHeight;
                 });
             });
         }
 
-        // 打開未讀來信並準備回信
-        function openModalWithLetter(item, mode) {
-            const wrapper = document.getElementById('modal-content-wrapper');
-            wrapper.innerHTML = `
-                <div class="modal-content-area" style="font-family: var(--font-cursive); line-height:1.8;">
-                    <div class="modal-book" style="font-size: 1.5rem; color: var(--accent-rose); border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:20px;">
-                        《${escapeHtml(item.bookTitle)}》
-                    </div>
-                    <div style="font-size:1.15rem; white-space:pre-wrap; color:var(--ink);">${escapeHtml(item.reflections)}</div>
-                </div>
-                <div class="reply-box" style="margin-top:40px; border-top:1px dashed var(--border); padding-top:30px;">
-                    <h4 style="font-family: var(--font-serif); margin-bottom:15px; color:var(--ink-muted);">寫下你的筆友迴音</h4>
-                    <textarea id="reply-text" class="desk-textarea" style="min-height:120px; background:var(--bg); border:1px solid var(--border); padding:15px; border-radius:4px;" placeholder="寫下對這封信的共鳴..."></textarea>
-                    <div style="display:flex; justify-content:flex-end; margin-top:15px;">
-                        <button class="btn-classic" onclick="sendReply('${item.letterId}', '${item.senderUid}')">寄出共鳴</button>
-                    </div>
-                </div>
-            `;
-            document.getElementById('detail-modal').style.display = 'block';
-            gsap.from(".modal-envelope-container", { scale: 0.95, opacity: 0, duration: 0.4 });
+        // B. 觸發回覆摺疊動畫
+        function triggerReplyAnimation(letterId, partnerUid) {
+            const replyText = document.getElementById('dialogue-reply-text').value.trim();
+            triggerLetterAnimation('reply', letterId, partnerUid, replyText);
         }
 
-        // 打開歷史對話軸線 (雙向對話)
-        function openThreadView(letter, echo) {
-            const wrapper = document.getElementById('modal-content-wrapper');
-            wrapper.innerHTML = `
-                <div class="dialogue-thread">
-                    <h3 style="font-size: 1.5rem; margin-bottom:20px; color:var(--accent-rose);">《${escapeHtml(letter.bookTitle)}》的對讀對話軌跡</h3>
-                    <div class="thread-log">
-                        ${escapeHtml(letter.reflections)}
-                    </div>
-                    <div class="thread-echo">
-                        <div class="thread-echo-title">來自遠方筆友的共鳴迴音</div>
-                        <div style="font-family:var(--font-cursive); font-size:1.15rem; line-height:1.8;">
-                            ${escapeHtml(echo.replyText)}
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.getElementById('detail-modal').style.display = 'block';
-            gsap.from(".modal-envelope-container", { scale: 0.95, opacity: 0, duration: 0.4 });
-        }
-
-        // 送出回信
-        function sendReply(letterId, originalSenderUid) {
-            const replyText = document.getElementById('reply-text').value.trim();
-            if (!replyText) {
-                alert("請填寫您的心靈共鳴。");
-                return;
-            }
-
-            const echoRef = db.ref('echoes').push();
-            echoRef.set({
-                id: echoRef.key,
-                parentLetterId: letterId,
-                originalSenderUid: originalSenderUid,
-                replyText: replyText,
-                timestamp: firebase.database.ServerValue.TIMESTAMP
+        // C. 送出對話內容
+        function submitReplyText(letterId, partnerUid, replyText) {
+            const timestamp = firebase.database.ServerValue.TIMESTAMP;
+            
+            // 寫入對讀會話
+            db.ref(`conversations/${letterId}`).push({
+                senderUid: currentUser.uid,
+                text: replyText,
+                timestamp: timestamp
             }).then(() => {
-                return db.ref(`assignments/${currentUser.uid}/${letterId}`).update({ replied: true });
-            }).then(() => {
-                alert("迴音信箋已投寄，對方將會立刻感受到你的迴聲。");
+                // 標記對方未讀
+                if (partnerUid) {
+                    db.ref(`user_threads/${partnerUid}/${letterId}`).update({
+                        hasUnread: true,
+                        lastUpdated: timestamp
+                    });
+                }
+                // 更新自己的對話資訊
+                db.ref(`user_threads/${currentUser.uid}/${letterId}`).update({
+                    hasUnread: false,
+                    lastUpdated: timestamp
+                });
                 closeModal();
+                alert("共鳴新札已投寄。");
             });
+        }
+
+        // --- 6. 即時來信通知與點選直達 ---
+        function setupInstantNotification() {
+            db.ref(`user_threads/${currentUser.uid}`).on('child_changed', snapshot => {
+                const thread = snapshot.val();
+                if (thread && thread.hasUnread) {
+                    currentNotificationThreadId = thread.letterId;
+                    
+                    // 滑入橫幅
+                    const banner = document.getElementById('notification-banner');
+                    banner.classList.add('show');
+                    
+                    // 5秒後自動淡出
+                    setTimeout(() => { banner.classList.remove('show'); }, 6000);
+                }
+            });
+        }
+
+        function openNotificationTarget() {
+            if (currentNotificationThreadId) {
+                openConversationThread(currentNotificationThreadId);
+                document.getElementById('notification-banner').classList.remove('show');
+            }
         }
 
         function closeModal() {
@@ -838,11 +916,9 @@
             }});
         }
 
-        // 切換分頁籤
         function switchTab(tabId, btn) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
-            
             btn.classList.add('active');
             document.getElementById(tabId).classList.add('active');
             gsap.from(`#${tabId}`, { opacity: 0, y: 15, duration: 0.4 });
