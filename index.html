@@ -29,10 +29,11 @@
         body { background-color: #faf7f2; color: var(--text); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; line-height: 1.6; }
         h1, h2, h3, .serif-text { font-family: var(--font-serif); }
 
-        /* Notification & Auth */
+        /* Notification Banner */
         #notification-banner { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: var(--paper); border: 1px solid var(--border); padding: 16px 32px; border-radius: 30px; box-shadow: 0 12px 30px rgba(0,0,0,0.08); z-index: 10001; display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 0.95rem; font-weight: 600; opacity: 0; }
         #notification-banner svg { width: 22px; height: 22px; fill: currentColor; }
 
+        /* Auth Screen */
         #auth-overlay { position: fixed; inset: 0; background: #faf7f2; z-index: 10000; display: flex; overflow: hidden; }
         #canvas-container { position: absolute; inset: 0; z-index: 1; }
         .auth-hero { flex: 1.2; position: relative; z-index: 2; pointer-events: none; display: flex; flex-direction: column; justify-content: center; padding: 8%; }
@@ -49,22 +50,29 @@
         .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .btn-google { background: #ffffff; color: #334155; border: 1px solid #e2e8f0; width: 100%;}
         
-        @media (max-width: 900px) {
-            #auth-overlay { flex-direction: column; } .auth-hero { padding: 40px 30px; flex: 0.8; justify-content: flex-end; } .auth-sidebar { width: 100%; flex: 1; padding: 40px 30px; } .auth-hero h1 { font-size: 2.5rem; }
-        }
-
         header { max-width: 950px; margin: 40px auto 20px; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
         header h2 { font-size: 1.6rem; font-weight: 600; }
         .user-info { font-size: 0.9rem; color: var(--text-muted); font-weight: 500; }
         .user-info a { color: var(--color-inbox); cursor: pointer; margin-left: 15px; padding: 6px 12px; border-radius: 20px; background: rgba(217, 138, 108, 0.1); }
 
+        /* TABS & CSS ANIMATION NOTIFICATION */
         .tabs { max-width: 950px; margin: 0 auto 30px; padding: 0 20px; display: flex; flex-wrap: wrap; gap: 10px; border-bottom: 2px solid var(--border); }
         .tab-btn { background: none; border: none; font-family: var(--font-sans); font-weight: 500; font-size: 1rem; cursor: pointer; color: var(--text-muted); padding: 14px 20px; position: relative; display: flex; align-items: center; gap: 8px; border-radius: 8px 8px 0 0; }
         .tab-btn svg { width: 18px; height: 18px; fill: currentColor; }
-        .tab-btn.tab-replies.active { color: var(--color-replies); } .tab-btn.tab-replies.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; background: var(--color-replies); }
-        .tab-btn.tab-inbox.active { color: var(--color-inbox); } .tab-btn.tab-inbox.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; background: var(--color-inbox); }
-        .tab-btn.tab-tasks.active { color: var(--color-tasks); } .tab-btn.tab-tasks.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; background: var(--color-tasks); }
-        .tab-btn.tab-log.active { color: var(--color-log); } .tab-btn.tab-log.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; background: var(--color-log); }
+        .tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; }
+        
+        .tab-btn.tab-replies.active { color: var(--color-replies); } .tab-btn.tab-replies.active::after { background: var(--color-replies); }
+        .tab-btn.tab-inbox.active { color: var(--color-inbox); } .tab-btn.tab-inbox.active::after { background: var(--color-inbox); }
+        .tab-btn.tab-tasks.active { color: var(--color-tasks); } .tab-btn.tab-tasks.active::after { background: var(--color-tasks); }
+        .tab-btn.tab-log.active { color: var(--color-log); } .tab-btn.tab-log.active::after { background: var(--color-log); }
+
+        /* CSS Pulse Animation for Unread Messages */
+        .has-unread::before {
+            content: ''; position: absolute; top: 8px; right: 8px;
+            width: 10px; height: 10px; background: #ef4444; border-radius: 50%;
+            animation: pulse 1.5s infinite; z-index: 10;
+        }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
 
         main { max-width: 950px; margin: 0 auto 100px; padding: 0 20px; }
         .section { display: none; }
@@ -76,7 +84,7 @@
         .empty-state svg { width: 64px; height: 64px; fill: #cbd5e1; margin-bottom: 16px; }
         .empty-state p { font-size: 1.05rem; }
 
-        /* Task Grid */
+        /* Tasks & Grid */
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; margin-bottom: 40px; }
         .task-card { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 24px 16px; text-align: center; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
         .task-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.06); }
@@ -85,17 +93,15 @@
         .task-num { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; display: block; color: #1e293b; }
         .task-date { font-size: 0.8rem; color: var(--text-muted); }
 
-        /* Editor Layout */
+        /* Editor */
         .editor { background: var(--paper); padding: 40px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,0.03); }
         .field-group { margin-bottom: 28px; }
         .field-label { display: block; font-family: var(--font-serif); font-size: 1.1rem; font-weight: 600; color: var(--color-tasks); margin-bottom: 12px; }
-        
         .textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; font-family: var(--font-serif); font-size: 1.1rem; line-height: 1.8; resize: vertical; outline: none; }
         .textarea:focus { border-color: var(--color-tasks); box-shadow: 0 0 0 3px rgba(107, 142, 115, 0.1); }
-        .flex-row { display: flex; gap: 20px; }
-        .flex-row > div { flex: 1; }
+        .flex-row { display: flex; gap: 20px; } .flex-row > div { flex: 1; }
 
-        /* Upload UI below content */
+        /* Upload */
         .upload-container { background: #fafaf9; padding: 24px; border-radius: 12px; border: 1px dashed #cbd5e1; display: flex; flex-direction: column; gap: 12px; }
         .upload-btn { background: white; border: 1px solid #cbd5e1; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 1rem; color: #475569; display: inline-flex; align-items: center; gap: 8px; width: max-content; transition: 0.2s; }
         .upload-btn:hover { background: #f1f5f9; border-color: var(--color-tasks); }
@@ -103,46 +109,55 @@
         .file-name-display { font-size: 0.95rem; color: var(--color-tasks); font-weight: 500; }
         .img-preview { display: none; max-width: 100%; height: auto; max-height: 250px; border-radius: 8px; margin-top: 10px; border: 1px solid #e2e8f0; object-fit: contain; object-position: left; }
 
-        /* Mailbox Lists & Pagination */
+        /* Lists */
         .list-container { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
         .list-item { display: flex; align-items: center; padding: 22px 28px; border-bottom: 1px solid var(--border); cursor: pointer; }
         .list-item:hover { background: #f8fafc; }
         .badge { font-size: 0.75rem; padding: 6px 12px; border-radius: 20px; margin-right: 18px; font-weight: 600; white-space: nowrap; }
-        .badge.unread { background: #fee2e2; color: #ef4444; }
-        .badge.replied { background: #f1f5f9; color: #64748b; } 
-        .badge.wait { background: #fef3c7; color: #f59e0b; }
+        .badge.unread { background: #fee2e2; color: #ef4444; } .badge.replied { background: #f1f5f9; color: #64748b; } .badge.wait { background: #fef3c7; color: #f59e0b; }
         .item-title { flex-grow: 1; font-size: 1.05rem; font-family: var(--font-serif); }
         
         .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; }
         .page-btn { background: var(--paper); border: 1px solid var(--border); color: var(--text-muted); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-family: var(--font-sans); font-size: 0.95rem; font-weight: 500; transition: all 0.2s; }
-        .page-btn:hover { background: #f8fafc; color: #1e293b; border-color: #cbd5e1; }
-        .page-btn.active { background: #1e293b; color: #fff; border-color: #1e293b; }
-
+        .page-btn:hover { background: #f8fafc; color: #1e293b; border-color: #cbd5e1; } .page-btn.active { background: #1e293b; color: #fff; border-color: #1e293b; }
         .delete-btn { background: none; border: none; cursor: pointer; padding: 8px; color: #cbd5e1; border-radius: 50%; transition: all 0.2s; margin-left: 15px;}
-        .delete-btn:hover { color: #ef4444; background: #fee2e2; transform: scale(1.1); }
-        .delete-btn.locked-btn { opacity: 0.5; cursor: not-allowed; }
+        .delete-btn:hover { color: #ef4444; background: #fee2e2; transform: scale(1.1); } .delete-btn.locked-btn { opacity: 0.5; cursor: not-allowed; }
 
-        /* Reading Log UI */
         .log-card { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; position: relative; }
         .log-card h4 { font-family: var(--font-serif); font-size: 1.2rem; color: #1e293b; margin-bottom: 8px; padding-right: 40px;}
         .log-card p { color: #475569; font-size: 1rem; line-height: 1.6; white-space: pre-wrap; }
-        .log-card .date { font-size: 0.8rem; color: #94a3b8; margin-top: 12px; }
-        .log-card .delete-btn { position: absolute; top: 16px; right: 16px; }
+        .log-card .date { font-size: 0.8rem; color: #94a3b8; margin-top: 12px; } .log-card .delete-btn { position: absolute; top: 16px; right: 16px; }
 
-        /* Chat Modal */
+        /* ====================================================
+           MODAL UI (FIXED: HUGE REDUCTION OF REPLY WINDOW) 
+           ==================================================== */
         #modal { position: fixed; inset: 0; background: rgba(245,242,235,0.8); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(8px); }
-        .modal-box { background: var(--paper); border-radius: 16px; width: 100%; max-width: 700px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.1); }
-        .modal-header { padding: 24px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-        .close-btn { background: none; border: none; font-size: 2rem; cursor: pointer; color: #94a3b8; }
-        .chat-flow { padding: 30px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 24px; background: #fafaf9; }
-        .msg { padding: 20px 24px; border-radius: 12px; font-size: 1.05rem; font-family: var(--font-serif); line-height: 1.8; max-width: 85%; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+        .modal-box { 
+            background: var(--paper); border-radius: 16px; width: 100%; max-width: 750px; 
+            height: 88vh; /* 固定高度，讓對話框能吃到最大的版面 */
+            display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.1); 
+        }
+        .modal-header { padding: 20px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .close-btn { background: none; border: none; font-size: 2rem; cursor: pointer; color: #94a3b8; transition: 0.2s; }
+        .close-btn:hover { color: #1e293b; }
+        
+        .chat-flow { padding: 24px 30px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 24px; background: #fafaf9; }
+        .msg { padding: 20px 24px; border-radius: 12px; font-size: 1.05rem; font-family: var(--font-serif); line-height: 1.8; max-width: 88%; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
         .msg-self { background: var(--paper); align-self: flex-end; border: 1px solid #e2e8f0; border-left: 4px solid var(--color-replies); }
         .msg-other { background: #fff; align-self: flex-start; border: 1px solid #e2e8f0; border-left: 4px solid var(--color-inbox); }
         .msg-info { font-size: 0.8rem; font-family: var(--font-sans); color: #94a3b8; margin-bottom: 10px; }
-        .msg-img { max-width: 100%; border-radius: 8px; margin-top: 12px; display: block; border: 1px solid #e2e8f0;}
-        .reply-area { padding: 24px 30px; border-top: 1px solid var(--border); background: var(--paper); }
+        
+        /* 圖片加上 hover 效果，提示可點擊 */
+        .msg-img-container { display: inline-block; margin-top: 16px; cursor: pointer; transition: transform 0.2s; }
+        .msg-img-container:hover { transform: scale(1.02); }
+        .msg-img { max-width: 100%; max-height: 280px; border-radius: 8px; display: block; border: 1px solid #e2e8f0; background: #f1f5f9; object-fit: contain; }
 
-        /* Envelope */
+        /* 大幅縮小回覆區的佔比 */
+        .reply-area { padding: 16px 24px; border-top: 1px solid var(--border); background: var(--paper); flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; }
+        #reply-text { min-height: 80px; padding: 12px 16px; font-size: 1rem; border-radius: 8px; margin: 0; }
+        #btn-send-reply { padding: 10px 20px; font-size: 0.95rem; }
+
+        /* Envelope Anim */
         #anim-overlay { display: none; position: fixed; inset: 0; background: rgba(250, 247, 242, 0.95); z-index: 9999; align-items: center; justify-content: center; perspective: 1200px; }
         .env-wrapper { position: relative; width: 340px; height: 230px; }
         .env-back { position: absolute; inset: 0; background: #e3d3bd; border-radius: 4px; z-index: 1; }
@@ -158,8 +173,10 @@
 </head>
 <body>
 
+    <!-- Notification Banner -->
     <div id="notification-banner"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg><span id="notification-text">您有新訊息。</span></div>
 
+    <!-- Auth -->
     <div id="auth-overlay">
         <div id="canvas-container"></div>
         <div class="auth-hero">
@@ -179,6 +196,7 @@
         </div>
     </div>
 
+    <!-- Mail Anim -->
     <div id="anim-overlay">
         <div class="env-wrapper">
             <div class="env-back"></div>
@@ -201,15 +219,8 @@
     </nav>
 
     <main>
-        <section id="tab-replies" class="section active">
-            <div class="list-container" id="replies-list"></div>
-            <div class="pagination" id="replies-pagination"></div>
-        </section>
-        
-        <section id="tab-inbox" class="section">
-            <div class="list-container" id="inbox-list"></div>
-            <div class="pagination" id="inbox-pagination"></div>
-        </section>
+        <section id="tab-replies" class="section active"><div class="list-container" id="replies-list"></div><div class="pagination" id="replies-pagination"></div></section>
+        <section id="tab-inbox" class="section"><div class="list-container" id="inbox-list"></div><div class="pagination" id="inbox-pagination"></div></section>
         
         <section id="tab-tasks" class="section">
             <div class="grid" id="task-grid"></div>
@@ -218,67 +229,37 @@
                 <h3 id="task-title" class="serif-text" style="margin-bottom: 30px; font-size: 1.5rem;">撰寫任務</h3>
                 
                 <div class="field-group flex-row">
-                    <div>
-                        <label class="field-label">📖 書籍名稱</label>
-                        <input type="text" id="book-title" class="input-box" style="font-family:var(--font-serif);" placeholder="請輸入書名">
-                    </div>
-                    <div>
-                        <label class="field-label">🔖 目前閱讀頁數</label>
-                        <input type="number" id="book-page" class="input-box" placeholder="例如：120" min="1">
-                    </div>
+                    <div><label class="field-label">📖 書籍名稱</label><input type="text" id="book-title" class="input-box" style="font-family:var(--font-serif);" placeholder="請輸入書名"></div>
+                    <div><label class="field-label">🔖 目前閱讀頁數</label><input type="number" id="book-page" class="input-box" placeholder="例如：120" min="1"></div>
                 </div>
 
-                <div class="field-group">
-                    <label class="field-label">🤔 思考問題</label>
-                    <textarea id="log-question" class="textarea" style="min-height:100px;" placeholder="思考問題（無字數限制）..."></textarea>
-                </div>
-                
-                <div class="field-group">
-                    <label class="field-label">✍️ 閱讀心得</label>
-                    <textarea id="log-content" class="textarea" style="min-height:220px;" placeholder="在此寫下您的閱讀心得...（最少 150 字）"></textarea>
-                </div>
+                <div class="field-group"><label class="field-label">🤔 思考問題</label><textarea id="log-question" class="textarea" style="min-height:100px;" placeholder="思考問題（無字數限制）..."></textarea></div>
+                <div class="field-group"><label class="field-label">✍️ 閱讀心得</label><textarea id="log-content" class="textarea" style="min-height:220px;" placeholder="在此寫下您的閱讀心得...（最少 150 字）"></textarea></div>
 
                 <div class="field-group upload-container">
                     <label class="field-label" style="margin-bottom: 0;">📸 捕捉書籍畫面 (必填)</label>
-                    <div class="privacy-warning">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-                        請注意：此照片將傳送給配對到的筆友，請勿拍攝含有個人隱私資訊的畫面。
-                    </div>
-                    
-                    <label class="upload-btn" style="margin-top: 10px;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-                        點擊選擇圖片
-                        <input type="file" id="book-image" accept="image/*" style="display:none;" onchange="handleFileSelect(event)">
-                    </label>
+                    <div class="privacy-warning"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg> 請注意：此照片將傳送給配對到的筆友，請勿拍攝含有個人隱私資訊的畫面。</div>
+                    <label class="upload-btn" style="margin-top: 10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg> 點擊選擇圖片 <input type="file" id="book-image" accept="image/*" style="display:none;" onchange="handleFileSelect(event)"></label>
                     <span id="file-name-display" class="file-name-display">尚未選擇圖片</span>
-                    
-                    <!-- 圖片預覽區 -->
                     <img id="image-preview" class="img-preview" src="" alt="圖片預覽">
                 </div>
                 
-                <div style="text-align: right; margin-top: 30px;">
-                    <button id="btn-submit-task" class="btn" style="width: auto; background: var(--color-tasks); margin-left: auto;" onclick="submitLog()">封裝寄出心得</button>
-                </div>
+                <div style="text-align: right; margin-top: 30px;"><button id="btn-submit-task" class="btn" style="width: auto; background: var(--color-tasks); margin-left: auto;" onclick="submitLog()">封裝寄出心得</button></div>
             </div>
         </section>
 
         <section id="tab-log" class="section">
             <div class="editor" style="margin-bottom: 30px;">
                 <h3 class="serif-text" style="margin-bottom: 24px;">添加閱讀紀錄</h3>
-                <div class="field-group">
-                    <label class="field-label">書籍名稱</label>
-                    <input type="text" id="mylog-title" class="input-box" style="font-family:var(--font-serif);" placeholder="請輸入書名">
-                </div>
-                <div class="field-group">
-                    <label class="field-label">私密筆記</label>
-                    <textarea id="mylog-notes" class="textarea" style="min-height:100px;" placeholder="寫下專屬於你的私密閱讀筆記 (自由發揮)..."></textarea>
-                </div>
+                <div class="field-group"><label class="field-label">書籍名稱</label><input type="text" id="mylog-title" class="input-box" style="font-family:var(--font-serif);" placeholder="請輸入書名"></div>
+                <div class="field-group"><label class="field-label">私密筆記</label><textarea id="mylog-notes" class="textarea" style="min-height:100px;" placeholder="寫下專屬於你的私密閱讀筆記 (自由發揮)..."></textarea></div>
                 <button class="btn" style="background: var(--color-log); width: auto;" onclick="submitReadingLog()">收錄至書房</button>
             </div>
             <div id="mylog-list"></div>
         </section>
     </main>
 
+    <!-- Modal -->
     <div id="modal">
         <div class="modal-box" id="modal-content">
             <div class="modal-header">
@@ -287,7 +268,7 @@
             </div>
             <div class="chat-flow" id="chat-flow"></div>
             <div class="reply-area">
-                <textarea id="reply-text" class="textarea" style="min-height:140px; margin-bottom:16px;" placeholder="寫下您的回音與共鳴...（最少 100 字）"></textarea>
+                <textarea id="reply-text" class="textarea" placeholder="寫下您的回音與共鳴...（最少 100 字）"></textarea>
                 <div style="text-align: right;"><button class="btn" style="width: auto; background: var(--color-replies); margin-left: auto;" id="btn-send-reply">發送回覆</button></div>
             </div>
         </div>
@@ -300,32 +281,24 @@
             const container = document.getElementById('canvas-container');
             scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0xfaf7f2, 0.0025);
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.z = 40;
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(window.innerWidth, window.innerHeight); renderer.setClearColor(0xfaf7f2, 1);
-            container.appendChild(renderer.domElement);
-            scene.add(new THREE.AmbientLight(0xffffff, 0.7)); const dl = new THREE.DirectionalLight(0xfffaeb, 0.6); dl.position.set(20, 40, 20); scene.add(dl);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setSize(window.innerWidth, window.innerHeight); renderer.setClearColor(0xfaf7f2, 1);
+            container.appendChild(renderer.domElement); scene.add(new THREE.AmbientLight(0xffffff, 0.7)); const dl = new THREE.DirectionalLight(0xfffaeb, 0.6); dl.position.set(20, 40, 20); scene.add(dl);
             const geo = new THREE.PlaneGeometry(1.5, 2.2); const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide, roughness: 0.9, transparent: true, opacity: 0.85 });
             particles = new THREE.Group(); scene.add(particles);
             for(let i=0; i<120; i++) {
                 const m = new THREE.Mesh(geo, mat); m.position.set((Math.random()-0.5)*120, (Math.random()-0.5)*100, (Math.random()-0.5)*60);
                 m.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
-                m.userData = { rotSpeedX:(Math.random()-0.5)*0.015, rotSpeedY:(Math.random()-0.5)*0.015, floatSpeed:Math.random()*0.03+0.01 };
-                particles.add(m);
+                m.userData = { rotSpeedX:(Math.random()-0.5)*0.015, rotSpeedY:(Math.random()-0.5)*0.015, floatSpeed:Math.random()*0.03+0.01 }; particles.add(m);
             }
-            window.addEventListener('resize', () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
-            animateThreeJS();
+            window.addEventListener('resize', () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }); animateThreeJS();
         }
-        function animateThreeJS() {
-            if(!run3D) return; requestAnimationFrame(animateThreeJS);
-            particles.children.forEach(m => { m.rotation.x+=m.userData.rotSpeedX; m.rotation.y+=m.userData.rotSpeedY; m.position.y+=m.userData.floatSpeed; m.position.x+=Math.sin(m.position.y*0.05)*0.02; if(m.position.y>60) m.position.y=-60; });
-            renderer.render(scene, camera);
-        }
+        function animateThreeJS() { if(!run3D) return; requestAnimationFrame(animateThreeJS); particles.children.forEach(m => { m.rotation.x+=m.userData.rotSpeedX; m.rotation.y+=m.userData.rotSpeedY; m.position.y+=m.userData.floatSpeed; m.position.x+=Math.sin(m.position.y*0.05)*0.02; if(m.position.y>60) m.position.y=-60; }); renderer.render(scene, camera); }
         initThreeJS();
     </script>
 
     <script>
         // ==========================================
-        // ⚠️ 請填入你重新部署後的 Apps Script 網址
+        // ⚠️ 請填入重新部署後的 Apps Script 網址
         // ==========================================
         const GAS_URL = "https://script.google.com/macros/s/AKfycbwOgNVrA5WEpo9TMkZ5FmI_LP0-n-yf4beJwDd0haLuZ0VZkP90euNEtNTW3U3Q9Jqz2w/exec"; 
         
@@ -340,7 +313,6 @@
 
         let currentUser = null; let config = null; let selectedTaskIndex = null; let hasUnrepliedLetters = false; let currentChatRef = null; let isInitialLoad = true;
         let selectedFileBase64 = null; let selectedFileName = null;
-
         const ITEMS_PER_PAGE = 10; let repliesData = []; let inboxData = []; let currentPageReplies = 1; let currentPageInbox = 1;
 
         auth.onAuthStateChanged(user => {
@@ -360,17 +332,69 @@
 
         function initApp() { healPool(); db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); setupNotifications(); loadMailbox(); loadReadingLogs(); }
 
+        // --- 通知與閃爍紅點邏輯 (修訂版) ---
         function setupNotifications() {
             const threadRef = db.ref(`user_threads/${currentUser.uid}`);
             threadRef.once('value').then(() => { isInitialLoad = false; });
-            threadRef.on('child_changed', snap => { if (!isInitialLoad && snap.val().hasUnread) triggerNotification("您收到了一則新的回覆！", snap.val().letterId, "var(--color-replies)"); });
-            threadRef.on('child_added', snap => { if (!isInitialLoad && !snap.val().isSender) triggerNotification("一封未知的來信抵達了您的信箱！", snap.val().letterId, "var(--color-inbox)"); });
+            
+            threadRef.on('child_changed', snap => { 
+                if (!isInitialLoad && snap.val().hasUnread) {
+                    triggerNotification("您收到了一則新的回覆！", snap.val().letterId, "var(--color-replies)"); 
+                }
+            });
+            threadRef.on('child_added', snap => { 
+                if (!isInitialLoad && !snap.val().isSender) {
+                    triggerNotification("一封未知的來信抵達了您的信箱！", snap.val().letterId, "var(--color-inbox)"); 
+                }
+            });
         }
+
         function triggerNotification(msg, id, color) {
-            const b = document.getElementById('notification-banner'); document.getElementById('notification-text').innerText = msg; b.style.color = color;
-            gsap.killTweensOf(b); gsap.fromTo(b, {y:0, opacity:0}, {y:120, opacity:1, duration:0.6, ease:"back.out(1.5)"});
+            const b = document.getElementById('notification-banner'); 
+            document.getElementById('notification-text').innerText = msg; 
+            b.style.color = color;
+            
+            gsap.killTweensOf(b); 
+            gsap.fromTo(b, {y:0, opacity:0}, {y:120, opacity:1, duration:0.6, ease:"back.out(1.5)"});
             b.onclick = () => { openChat(id); gsap.to(b, {y:0, opacity:0, duration:0.4}); };
-            setTimeout(() => gsap.to(b, {y:0, opacity:0, duration:0.4}), 6000);
+            
+            // 延長橫幅顯示時間至 8 秒
+            setTimeout(() => gsap.to(b, {y:0, opacity:0, duration:0.4}), 8000);
+        }
+
+        // --- 讀取信箱與紅點狀態更新 ---
+        function loadMailbox() {
+            db.ref(`user_threads/${currentUser.uid}`).on('value', snap => {
+                let all = Object.values(snap.val() || {}).sort((a, b) => b.lastUpdated - a.lastUpdated);
+                repliesData = []; inboxData = []; hasUnrepliedLetters = false;
+                
+                let unreadInReplies = false;
+                let unreadInInbox = false;
+
+                all.forEach(t => {
+                    if (t.isSender) { 
+                        if (t.hasBeenRepliedTo) { 
+                            repliesData.push(t); 
+                            if(!t.hasReplied) hasUnrepliedLetters = true; 
+                            if(t.hasUnread) unreadInReplies = true;
+                        } 
+                    } else { 
+                        inboxData.push(t); 
+                        if(!t.hasReplied) hasUnrepliedLetters = true; 
+                        if(t.hasUnread) unreadInInbox = true;
+                    }
+                });
+
+                // 更新導航列的閃爍紅點 (CSS Animation)
+                document.querySelector('.tab-replies').classList.toggle('has-unread', unreadInReplies);
+                document.querySelector('.tab-inbox').classList.toggle('has-unread', unreadInInbox);
+
+                if (currentPageReplies > Math.ceil(repliesData.length / ITEMS_PER_PAGE) || 1) currentPageReplies = Math.ceil(repliesData.length / ITEMS_PER_PAGE) || 1;
+                if (currentPageInbox > Math.ceil(inboxData.length / ITEMS_PER_PAGE) || 1) currentPageInbox = Math.ceil(inboxData.length / ITEMS_PER_PAGE) || 1;
+
+                renderPaginatedList('replies', repliesData, currentPageReplies);
+                renderPaginatedList('inbox', inboxData, currentPageInbox);
+            });
         }
 
         function healPool() {
@@ -390,28 +414,9 @@
             });
         }
 
-        function loadMailbox() {
-            db.ref(`user_threads/${currentUser.uid}`).on('value', snap => {
-                let all = Object.values(snap.val() || {}).sort((a, b) => b.lastUpdated - a.lastUpdated);
-                repliesData = []; inboxData = []; hasUnrepliedLetters = false;
-                
-                all.forEach(t => {
-                    if (t.isSender) { if (t.hasBeenRepliedTo) { repliesData.push(t); if(!t.hasReplied) hasUnrepliedLetters = true; } } 
-                    else { inboxData.push(t); if(!t.hasReplied) hasUnrepliedLetters = true; }
-                });
-
-                if (currentPageReplies > Math.ceil(repliesData.length / ITEMS_PER_PAGE) || 1) currentPageReplies = Math.ceil(repliesData.length / ITEMS_PER_PAGE) || 1;
-                if (currentPageInbox > Math.ceil(inboxData.length / ITEMS_PER_PAGE) || 1) currentPageInbox = Math.ceil(inboxData.length / ITEMS_PER_PAGE) || 1;
-
-                renderPaginatedList('replies', repliesData, currentPageReplies);
-                renderPaginatedList('inbox', inboxData, currentPageInbox);
-            });
-        }
-
         function renderPaginatedList(type, data, currentPage) {
             const listEl = document.getElementById(`${type}-list`);
             const pageEl = document.getElementById(`${type}-pagination`);
-            
             listEl.innerHTML = ''; pageEl.innerHTML = '';
 
             const emptyUI = `<div class="empty-state">
@@ -419,23 +424,15 @@
                 <p>信箱空空如也，靜候佳音。</p>
             </div>`;
 
-            if (data.length === 0) {
-                listEl.innerHTML = emptyUI;
-                return;
-            }
+            if (data.length === 0) { listEl.innerHTML = emptyUI; return; }
 
             const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-            const endIndex = startIndex + ITEMS_PER_PAGE;
-            const pageData = data.slice(startIndex, endIndex);
+            const pageData = data.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
             pageData.forEach(t => {
                 const timeStr = new Date(t.lastUpdated).toLocaleString([], {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
                 const el = document.createElement('div'); el.className = 'list-item';
-                
-                const deleteHTML = t.hasReplied
-                    ? `<button class="delete-btn" onclick="deleteThread('${t.letterId}', event)"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`
-                    : `<button class="delete-btn locked-btn" onclick="event.stopPropagation(); alert('請先回覆後才能刪除。');"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`;
-                
+                const deleteHTML = t.hasReplied ? `<button class="delete-btn" onclick="deleteThread('${t.letterId}', event)"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>` : `<button class="delete-btn locked-btn" onclick="event.stopPropagation(); alert('請先回覆後才能刪除。');"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`;
                 let badge = !t.hasReplied ? `<span class="badge wait">待回覆</span>` : (t.hasUnread ? `<span class="badge unread">新回覆</span>` : (type==='replies' ? `<span class="badge replied">已讀</span>` : `<span class="badge replied">已回覆</span>`));
                 el.onclick = () => openChat(t.letterId);
                 el.innerHTML = `${badge}<div class="item-title">${type==='replies'?'關於':'筆友寄來'}《${escapeHtml(t.bookTitle)}》的${type==='replies'?'回音':'心得'}</div><div class="item-time">${timeStr}</div>${deleteHTML}`;
@@ -447,10 +444,7 @@
                 for (let i = 1; i <= totalPages; i++) {
                     const btn = document.createElement('button');
                     btn.className = `page-btn ${i === currentPage ? 'active' : ''}`; btn.innerText = i;
-                    btn.onclick = () => {
-                        if (type === 'replies') currentPageReplies = i; else currentPageInbox = i;
-                        renderPaginatedList(type, type === 'replies' ? repliesData : inboxData, i);
-                    };
+                    btn.onclick = () => { if (type === 'replies') currentPageReplies = i; else currentPageInbox = i; renderPaginatedList(type, type === 'replies' ? repliesData : inboxData, i); };
                     pageEl.appendChild(btn);
                 }
             }
@@ -460,25 +454,19 @@
 
         function handleFileSelect(event) {
             const file = event.target.files[0]; if (!file) return;
-            selectedFileName = file.name;
-            document.getElementById('file-name-display').innerText = selectedFileName;
+            selectedFileName = file.name; document.getElementById('file-name-display').innerText = selectedFileName;
             
             const reader = new FileReader();
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1200; 
-                    const scaleSize = MAX_WIDTH / img.width;
+                    const MAX_WIDTH = 1200; const scaleSize = MAX_WIDTH / img.width;
                     canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize;
                     const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    
                     const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
                     selectedFileBase64 = dataUrl.split(',')[1];
-                    
-                    const preview = document.getElementById('image-preview');
-                    preview.src = dataUrl;
-                    preview.style.display = 'block';
+                    const preview = document.getElementById('image-preview'); preview.src = dataUrl; preview.style.display = 'block';
                 }
                 img.src = e.target.result;
             };
@@ -486,41 +474,25 @@
         }
 
         async function submitLog() {
-            const title = document.getElementById('book-title').value.trim();
-            const page = document.getElementById('book-page').value.trim();
-            const question = document.getElementById('log-question').value.trim();
-            const text = document.getElementById('log-content').value.trim();
+            const title = document.getElementById('book-title').value.trim(); const page = document.getElementById('book-page').value.trim();
+            const question = document.getElementById('log-question').value.trim(); const text = document.getElementById('log-content').value.trim();
             
             if (!title || !page || !question || !text) return alert("請填寫完整資訊 (書名、頁數、思考問題與心得)。");
             if (!selectedFileBase64) return alert("請務必上傳書籍畫面圖片。");
             if (text.length < 150) return alert("心得最少需要 150 字。");
             
-            const btn = document.getElementById('btn-submit-task');
-            btn.innerText = "圖片上傳中，請稍候..."; btn.disabled = true;
+            const btn = document.getElementById('btn-submit-task'); btn.innerText = "圖片上傳中，請稍候..."; btn.disabled = true;
 
             try {
-                const response = await fetch(GAS_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ filename: selectedFileName, mimeType: 'image/jpeg', base64: selectedFileBase64 })
-                });
-                
+                const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ filename: selectedFileName, mimeType: 'image/jpeg', base64: selectedFileBase64 }) });
                 const responseText = await response.text();
-                let result;
-                
-                // 更強健的 JSON 解析防呆，防止因多重帳號跳轉接收到 HTML
-                try {
-                    result = JSON.parse(responseText);
-                } catch (parseError) {
-                    throw new Error("伺服器未能回傳正確格式。請確保 Apps Script 部署設定中的「誰可以存取」已設為「所有人」。\n\n回傳內容：" + responseText.substring(0, 50));
-                }
-
+                let result; try { result = JSON.parse(responseText); } catch (e) { throw new Error("伺服器未能回傳正確格式。"); }
                 if (!result.success) throw new Error(result.error);
 
                 const combinedText = `【目前進度】第 ${page} 頁\n\n【思考問題】\n${question}\n\n【閱讀心得】\n${text}`;
                 playAnim('log', null, null, {title: title, text: combinedText, imageUrl: result.url});
-
             } catch (error) {
-                alert("圖片上傳發生異常，請確認 Apps Script 設定。\n詳細錯誤：" + error.message);
+                alert("圖片上傳發生異常。\n詳細錯誤：" + error.message);
                 btn.innerText = "封裝寄出心得"; btn.disabled = false;
             }
         }
@@ -540,7 +512,6 @@
                             if (hasUnrepliedLetters) return alert("您有尚未回覆的信件，必須先完成回應後方可開啟新任務。");
                             selectedTaskIndex = i; document.getElementById('task-title').innerText = `撰寫任務：第 ${i+1} 回心得`;
                             document.getElementById('write-editor').style.display = 'block'; document.getElementById('write-editor').scrollIntoView({behavior:'smooth'});
-                            
                             document.getElementById('btn-submit-task').innerText = "封裝寄出心得"; document.getElementById('btn-submit-task').disabled = false;
                             document.getElementById('file-name-display').innerText = "尚未選擇圖片"; document.getElementById('image-preview').style.display = 'none';
                             selectedFileBase64 = null; document.getElementById('book-image').value = '';
@@ -550,24 +521,36 @@
             });
         }
 
+        // --- 處理對話窗圖片顯示邏輯 (加上萬用 fallback 點擊機制) ---
         function openChat(id) {
             db.ref(`user_threads/${currentUser.uid}/${id}`).update({hasUnread: false});
             db.ref(`letters/${id}`).once('value', lSnap => {
                 const l = lSnap.val(); if (!l) return;
                 document.getElementById('modal-title').innerText = `《${l.bookTitle}》閱讀對談`;
                 const flow = document.getElementById('chat-flow'); const partnerUid = currentUser.uid === l.senderUid ? l.recipientUid : l.senderUid;
+                
                 document.getElementById('btn-send-reply').onclick = () => {
                     const txt = document.getElementById('reply-text').value.trim();
                     if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
                     playAnim('reply', id, partnerUid, txt);
                 };
+                
                 if (currentChatRef) currentChatRef.off(); currentChatRef = db.ref(`conversations/${id}`);
                 currentChatRef.on('value', cSnap => {
                     flow.innerHTML = '';
                     Object.values(cSnap.val()||{}).forEach(m => {
                         const isMe = m.senderUid === currentUser.uid; const d = new Date(m.timestamp);
                         const tStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-                        const imgTag = m.imageUrl ? `<img src="${m.imageUrl}" class="msg-img" alt="書本照片" loading="lazy">` : '';
+                        
+                        // 解決圖片可能仍被阻擋的問題，加上 <a> 標籤讓用戶點擊必定可以開啟
+                        let imgTag = '';
+                        if (m.imageUrl) {
+                            imgTag = `
+                            <a href="${m.imageUrl}" target="_blank" class="msg-img-container" title="點擊在新分頁放大查看原圖">
+                                <img src="${m.imageUrl}" class="msg-img" alt="書本照片 (若無法顯示請點擊開啟)" loading="lazy" onerror="this.onerror=null; this.src='https://placehold.co/600x300?text=圖片載入失敗，請點擊開啟查閱';">
+                            </a>`;
+                        }
+
                         flow.innerHTML += `<div class="msg ${isMe ? 'msg-self' : 'msg-other'}"><div class="msg-info">${isMe ? '我的文字' : '筆友的回音'} · ${tStr}</div><div style="white-space:pre-wrap;">${escapeHtml(m.text)}</div>${imgTag}</div>`;
                     });
                     setTimeout(() => flow.scrollTop = flow.scrollHeight, 50);
@@ -575,6 +558,7 @@
                 document.getElementById('modal').style.display = 'flex'; gsap.fromTo("#modal-content", {y: 40, opacity: 0}, {y: 0, opacity: 1, duration: 0.4});
             });
         }
+        
         function closeModal() { if (currentChatRef) currentChatRef.off(); gsap.to("#modal-content", {y: 30, opacity: 0, duration: 0.2, onComplete: () => document.getElementById('modal').style.display = 'none'}); }
 
         function playAnim(type, letterId, partnerUid, ObjectData) {
@@ -594,7 +578,6 @@
                     db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: ts });
                     if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
                     else db.ref(`unassigned_letters/${ref.key}`).set({ senderUid: currentUser.uid });
-                    
                     db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, timestamp: ts });
                     
                     document.getElementById('book-title').value = ''; document.getElementById('book-page').value = ''; document.getElementById('log-question').value = ''; document.getElementById('log-content').value = ''; 
