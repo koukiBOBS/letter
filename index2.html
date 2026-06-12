@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>迴音信箋 | 導師中心</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Noto+Serif+TC:wght@300;400;600&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Firebase Compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #f5f3ef;
+            --paper: #ffffff;
+            --text-main: #2a221e;
+            --text-muted: #736b66;
+            --border: rgba(42, 34, 30, 0.08);
+            --shadow: rgba(42, 34, 30, 0.04);
+            --accent: #8c6a6a;
+            --green: #48664f;
+            --red: #9e4a4a;
+            --font-serif: 'Cormorant Garamond', 'Noto Serif TC', serif;
+            --font-sans: 'Space Grotesk', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: var(--bg); color: var(--text-main);
+            font-family: var(--font-sans); -webkit-font-smoothing: antialiased;
+        }
+
+        header {
+            max-width: 1100px; margin: 40px auto; padding: 0 24px;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--border); padding-bottom: 20px;
+        }
+        .header-title h1 {
+            font-family: var(--font-serif); font-size: 1.8rem; font-weight: 400; letter-spacing: 2px;
+        }
+        .header-title p {
+            font-size: 0.8rem; color: var(--text-muted); margin-top: 5px; letter-spacing: 1.5px;
+        }
+
+        main { max-width: 1100px; margin: 0 auto 100px; padding: 0 24px; }
+
+        /* --- 板塊面板 --- */
+        .section-panel {
+            background: var(--paper); border: 1px solid var(--border);
+            border-radius: 4px; padding: 35px; margin-bottom: 40px;
+            box-shadow: 0 10px 30px var(--shadow); position: relative;
+        }
+        .panel-title {
+            font-family: var(--font-serif); font-size: 1.3rem; font-weight: 500;
+            margin-bottom: 24px; border-bottom: 1px solid var(--border);
+            padding-bottom: 15px; letter-spacing: 1px; display: flex; align-items: center; gap: 10px;
+        }
+
+        /* 課業佈置控制項 */
+        .config-form {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px;
+        }
+        .form-group { display: flex; flex-direction: column; }
+        .form-label {
+            font-size: 0.8rem; color: var(--text-muted); letter-spacing: 1px; margin-bottom: 8px;
+        }
+        .form-input {
+            border: 1px solid var(--border); background: var(--bg);
+            padding: 12px 15px; font-family: var(--font-sans); font-size: 0.9rem;
+            outline: none; border-radius: 2px; color: var(--text-main);
+        }
+        .btn-action {
+            background: var(--text-main); color: var(--paper); border: none;
+            padding: 12px 24px; font-family: var(--font-serif); font-size: 0.95rem;
+            letter-spacing: 2px; cursor: pointer; border-radius: 2px; align-self: flex-end;
+            transition: background 0.3s;
+        }
+        .btn-action:hover { background: var(--accent); }
+
+        /* 學生提交名冊 (摺疊手風琴樣式) */
+        .student-item {
+            border: 1px solid var(--border); border-radius: 4px; margin-bottom: 15px;
+            background: var(--paper); overflow: hidden; transition: box-shadow 0.3s;
+        }
+        .student-header {
+            padding: 20px 25px; cursor: pointer; display: flex; justify-content: space-between;
+            align-items: center; background: rgba(0,0,0,0.01);
+        }
+        .student-header:hover { background: rgba(0,0,0,0.02); }
+        .student-title-info h3 { font-size: 1.05rem; font-weight: 500; }
+        .student-title-info span { font-size: 0.8rem; color: var(--text-muted); }
+
+        .student-detail-panel {
+            display: none; padding: 25px; border-top: 1px solid var(--border);
+            background: #fafaf9;
+        }
+
+        /* 樹狀任務進度網格 */
+        .task-progress-flow {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px;
+        }
+        .task-node {
+            background: var(--paper); border: 1px solid var(--border);
+            border-radius: 4px; padding: 15px; text-align: center; cursor: pointer;
+            transition: all 0.3s;
+        }
+        .task-node:hover { transform: translateY(-2px); box-shadow: 0 4px 10px var(--shadow); }
+        .task-node-num { font-size: 0.75rem; color: var(--text-muted); }
+        .task-node-status {
+            display: inline-block; padding: 4px 10px; border-radius: 20px;
+            font-size: 0.7rem; font-weight: 600; margin-top: 8px;
+        }
+        .node-ok { background: #eaf5ec; color: var(--green); }
+        .node-late { background: #faf4e8; color: var(--accent); }
+        .node-missing { background: #fdf0f0; color: var(--red); }
+
+        /* 登入阻擋 */
+        .auth-blocker {
+            position: fixed; inset: 0; background: var(--bg); z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        /* 信件展示浮窗 */
+        .preview-dialog {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+            z-index: 10000; display: none; align-items: center; justify-content: center; padding: 20px;
+        }
+        .preview-dialog-card {
+            background: var(--paper); border: 1px solid var(--border); padding: 40px;
+            max-width: 600px; width: 100%; border-radius: 4px; box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 權限登入保護 (安全規則指定電郵) -->
+    <div class="auth-blocker" id="teacher-auth-mask">
+        <h2 style="font-family: var(--font-serif); margin-bottom: 20px; font-weight: 400; letter-spacing: 2px;">迴音信箋 · 導師控制台</h2>
+        <button class="btn-action" onclick="signInTeacher()">以導師 Google 帳號安全登入</button>
+    </div>
+
+    <header>
+        <div class="header-title">
+            <h1>迴音信箋系統控制台</h1>
+            <p>管理全班假期讀信、回信任務與學生寫作軌跡</p>
+        </div>
+        <div>
+            <span id="teacher-profile-email" style="font-size:0.85rem; color:var(--text-muted); margin-right:15px;">載入中...</span>
+            <a onclick="signOutTeacher()" style="cursor:pointer; font-size:0.8rem; color:var(--accent);">[ 暫離 ]</a>
+        </div>
+    </header>
+
+    <main>
+        <!-- 1. 課業佈置板塊 -->
+        <section class="section-panel">
+            <div class="panel-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                <span>佈置假期任務設定</span>
+            </div>
+            <div class="config-form">
+                <div class="form-group">
+                    <label class="form-label">假期起點日 (Start Date)</label>
+                    <input type="date" id="start-date" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">假期結束日 (End Date)</label>
+                    <input type="date" id="end-date" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">每隔多少日需要遞交一次？(天/回)</label>
+                    <input type="number" id="interval-days" class="form-input" min="1" placeholder="例如：2">
+                </div>
+                <button class="btn-action" onclick="saveTaskConfig()">發佈假期佈局</button>
+            </div>
+        </section>
+
+        <!-- 2. 查看繳交情況板塊 -->
+        <section class="section-panel">
+            <div class="panel-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                <span>學生任務軌跡與繳交名冊</span>
+            </div>
+            <div id="students-roster-accordion">
+                <!-- 展開風琴結構 -->
+            </div>
+        </section>
+    </main>
+
+    <!-- 心得內容預覽浮窗 -->
+    <div class="preview-dialog" id="letter-preview-dialog" onclick="closePreviewDialog()">
+        <div class="preview-dialog-card" onclick="event.stopPropagation()">
+            <h3 id="preview-book" style="font-family: var(--font-serif); margin-bottom:20px; color:var(--accent);">《讀物》</h3>
+            <p id="preview-content" style="white-space: pre-wrap; line-height:1.8; font-size:0.95rem;">感悟加載中...</p>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms",
+            authDomain: "letter-a74d1.firebaseapp.com",
+            databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com",
+            projectId: "letter-a74d1",
+            storageBucket: "letter-a74d1.firebasestorage.app",
+            messagingSenderId: "761675742190",
+            appId: "1:761675742190:web:3dae016039ff443623acff"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        let currentConfig = null;
+
+        // 登入狀態驗證
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('teacher-auth-mask').style.display = 'none';
+                document.getElementById('teacher-profile-email').innerText = `管理員: ${user.email}`;
+                initDashboard();
+            } else {
+                document.getElementById('teacher-auth-mask').style.display = 'flex';
+            }
+        });
+
+        function signInTeacher() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(err => {
+                alert("授權失敗，請確認是否為 Security Rules 指定之特定郵箱。");
+            });
+        }
+
+        function signOutTeacher() {
+            auth.signOut().then(() => window.location.reload());
+        }
+
+        // 初始化
+        function initDashboard() {
+            db.ref('settings/taskConfig').on('value', snap => {
+                currentConfig = snap.val();
+                if (currentConfig) {
+                    document.getElementById('start-date').value = currentConfig.startDate;
+                    document.getElementById('end-date').value = currentConfig.endDate;
+                    document.getElementById('interval-days').value = currentConfig.intervalDays;
+                }
+                loadClassroomRoster();
+            });
+        }
+
+        // 儲存任務配置
+        function saveTaskConfig() {
+            const start = document.getElementById('start-date').value;
+            const end = document.getElementById('end-date').value;
+            const interval = parseInt(document.getElementById('interval-days').value);
+
+            if (!start || !end || !interval) {
+                alert("請填寫完整的假期任務分段計畫。");
+                return;
+            }
+
+            db.ref('settings/taskConfig').set({
+                startDate: start,
+                endDate: end,
+                intervalDays: interval
+            }).then(() => alert("假期任務排程已發佈成功，學生端將同步更新集郵手冊。"));
+        }
+
+        // 載入學生與展開列表
+        function loadClassroomRoster() {
+            db.ref('users').on('value', snapUsers => {
+                const users = snapUsers.val() || {};
+                const container = document.getElementById('students-roster-accordion');
+                container.innerHTML = '';
+
+                Object.keys(users).forEach(uid => {
+                    const student = users[uid];
+                    
+                    const el = document.createElement('div');
+                    el.className = 'student-item';
+                    el.innerHTML = `
+                        <div class="student-header" onclick="toggleAccordion('${uid}')">
+                            <div class="student-title-info">
+                                <h3>${escapeHtml(student.name)}</h3>
+                                <span>${escapeHtml(student.email)}</span>
+                            </div>
+                            <span style="font-size:0.8rem; color:var(--text-muted);" id="toggle-lbl-${uid}">展開進度軌跡 ↓</span>
+                        </div>
+                        <div class="student-detail-panel" id="panel-${uid}">
+                            <div class="task-progress-flow" id="flow-${uid}">
+                                <!-- 該生的細部進度樹 -->
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(el);
+                    renderStudentProgressTree(uid);
+                });
+            });
+        }
+
+        // 展開 / 收合
+        function toggleAccordion(uid) {
+            const panel = document.getElementById(`panel-${uid}`);
+            const lbl = document.getElementById(`toggle-lbl-${uid}`);
+            const isVisible = panel.style.display === 'block';
+
+            if (isVisible) {
+                gsap.to(panel, { opacity: 0, height: 0, duration: 0.3, onComplete: () => {
+                    panel.style.display = 'none';
+                    lbl.innerText = '展開進度軌跡 ↓';
+                }});
+            } else {
+                panel.style.display = 'block';
+                panel.style.height = 'auto';
+                gsap.from(panel, { opacity: 0, height: 0, duration: 0.4 });
+                lbl.innerText = '收合進度軌跡 ↑';
+            }
+        }
+
+        // 計算並渲染個別學生的進度樹 (含截止日期比對與原文查閱)
+        function renderStudentProgressTree(uid) {
+            const flow = document.getElementById(`flow-${uid}`);
+            if (!currentConfig) {
+                flow.innerHTML = '<div style="color:var(--text-muted)">請先發佈假期任務設定。</div>';
+                return;
+            }
+
+            const { startDate, endDate, intervalDays } = currentConfig;
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const totalMs = end - start;
+            const totalTasks = Math.floor((totalMs / (1000 * 60 * 60 * 24)) / intervalDays);
+
+            // 查閱該學生名下提交的 letter
+            db.ref('letters').orderByChild('senderUid').equalTo(uid).once('value', snap => {
+                const letters = snap.val() || {};
+                const lettersByTask = {};
+                Object.values(letters).forEach(l => {
+                    lettersByTask[l.taskIndex] = l;
+                });
+
+                flow.innerHTML = '';
+                for (let i = 0; i < totalTasks; i++) {
+                    const taskStartTime = new Date(start.getTime() + i * intervalDays * 24 * 60 * 60 * 1000);
+                    const taskEndTime = new Date(taskStartTime.getTime() + intervalDays * 24 * 60 * 60 * 1000);
+                    const submission = lettersByTask[i];
+
+                    let statusClass = "node-missing";
+                    let statusText = "未繳交";
+                    
+                    if (submission) {
+                        const subTime = new Date(submission.timestamp);
+                        if (subTime <= taskEndTime) {
+                            statusClass = "node-ok";
+                            statusText = "🟢 準時繳交";
+                        } else {
+                            statusClass = "node-late";
+                            statusText = "🟡 遲交";
+                        }
+                    }
+
+                    const node = document.createElement('div');
+                    node.className = 'task-node';
+                    node.innerHTML = `
+                        <div class="task-node-num">第 ${i+1} 回</div>
+                        <span class="task-node-status ${statusClass}">${statusText}</span>
+                        <div style="font-size:0.65rem; color:var(--text-muted); margin-top:8px;">
+                            截止於: ${taskEndTime.getMonth()+1}/${taskEndTime.getDate()}
+                        </div>
+                    `;
+                    
+                    if (submission) {
+                        node.onclick = () => openPreviewDialog(submission.bookTitle, submission.reflections);
+                    } else {
+                        node.onclick = () => alert("本回目尚未提交任何感悟。");
+                    }
+                    flow.appendChild(node);
+                }
+            });
+        }
+
+        // 開啟與關閉預覽彈窗
+        function openPreviewDialog(book, content) {
+            document.getElementById('preview-book').innerText = `《 ${book} 》`;
+            document.getElementById('preview-content').innerText = content;
+            document.getElementById('letter-preview-dialog').style.display = 'flex';
+        }
+
+        function closePreviewDialog() {
+            document.getElementById('letter-preview-dialog').style.display = 'none';
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+    </script>
+</body>
+</html>
