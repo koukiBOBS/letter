@@ -4,33 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>閱讀交流與書房</title>
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     
+    <!-- Firebase Compat SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     
+    <!-- GSAP & Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <style>
         :root {
-            --bg: #faf7f2; --paper: #ffffff; --text: #2c3e50; --text-muted: #8391a2; --border: #e6e1d6;
-            --font-serif: 'Noto Serif TC', serif; --font-sans: 'Inter', sans-serif;
-            --color-replies: #548ca8; --color-inbox: #d98a6c; --color-tasks: #6b8e73; --color-log: #8b7355;
+            var(--bg): #faf7f2;
+            --paper: #ffffff;
+            --text: #2c3e50;
+            --text-muted: #8391a2;
+            --border: #e6e1d6;
+            
+            --font-serif: 'Noto Serif TC', serif;
+            --font-sans: 'Inter', sans-serif;
+
+            --color-replies: #548ca8; 
+            --color-inbox: #d98a6c;   
+            --color-tasks: #6b8e73;   
+            --color-log: #8b7355;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background-color: var(--bg); color: var(--text); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; line-height: 1.6; }
+        body { background-color: #faf7f2; color: var(--text); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; line-height: 1.6; }
         h1, h2, h3, .serif-text { font-family: var(--font-serif); }
 
-        /* Notification Banner & Auth Overlay (Same as before) */
+        /* Notification & Auth (Same) */
         #notification-banner { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: var(--paper); border: 1px solid var(--border); padding: 16px 32px; border-radius: 30px; box-shadow: 0 12px 30px rgba(0,0,0,0.08); z-index: 10001; display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 0.95rem; font-weight: 600; opacity: 0; }
         #notification-banner svg { width: 22px; height: 22px; fill: currentColor; }
 
-        #auth-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 10000; display: flex; overflow: hidden; }
+        #auth-overlay { position: fixed; inset: 0; background: #faf7f2; z-index: 10000; display: flex; overflow: hidden; }
         #canvas-container { position: absolute; inset: 0; z-index: 1; }
         .auth-hero { flex: 1.2; position: relative; z-index: 2; pointer-events: none; display: flex; flex-direction: column; justify-content: center; padding: 8%; }
         .auth-hero h1 { font-size: 3.5rem; color: #2c3e50; line-height: 1.3; margin-bottom: 24px; letter-spacing: 2px; font-weight: 600; }
@@ -75,7 +88,12 @@
         .section.active { display: block; animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Task Grid & List (Same as before) */
+        /* --- Restored Empty State UI --- */
+        .empty-state { text-align: center; padding: 80px 20px; color: var(--text-muted); }
+        .empty-state svg { width: 64px; height: 64px; fill: #cbd5e1; margin-bottom: 16px; }
+        .empty-state p { font-size: 1.05rem; }
+
+        /* Task Grid */
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; margin-bottom: 40px; }
         .task-card { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 24px 16px; text-align: center; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
         .task-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.06); }
@@ -84,20 +102,25 @@
         .task-num { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; display: block; color: #1e293b; }
         .task-date { font-size: 0.8rem; color: var(--text-muted); }
 
-        .editor { background: var(--paper); padding: 40px; border-radius: 16px; border: 1px solid var(--border); }
+        /* Editor Layout Updates */
+        .editor { background: var(--paper); padding: 40px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,0.03); }
+        .field-group { margin-bottom: 28px; }
+        .field-label { display: block; font-family: var(--font-serif); font-size: 1.1rem; font-weight: 600; color: var(--color-tasks); margin-bottom: 12px; }
+        
         .textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; font-family: var(--font-serif); font-size: 1.1rem; line-height: 1.8; resize: vertical; outline: none; }
         .textarea:focus { border-color: var(--color-tasks); box-shadow: 0 0 0 3px rgba(107, 142, 115, 0.1); }
-        
-        /* Upload UI */
-        .upload-container { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; background: #fafaf9; padding: 20px; border-radius: 8px; border: 1px dashed #cbd5e1; }
-        .upload-btn { background: white; border: 1px solid #cbd5e1; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 0.95rem; color: #475569; display: inline-flex; align-items: center; gap: 8px; width: max-content; }
-        .upload-btn:hover { background: #f1f5f9; }
-        .privacy-warning { font-size: 0.85rem; color: #ef4444; display: flex; align-items: center; gap: 6px; }
-        .file-name-display { font-size: 0.9rem; color: var(--color-tasks); font-weight: 500; }
+        .flex-row { display: flex; gap: 20px; }
+        .flex-row > div { flex: 1; }
 
-        .flex-row { display: flex; gap: 16px; margin-bottom: 20px; }
-        .flex-row > * { flex: 1; }
+        /* Upload UI below content */
+        .upload-container { background: #fafaf9; padding: 24px; border-radius: 12px; border: 1px dashed #cbd5e1; display: flex; flex-direction: column; gap: 12px; }
+        .upload-btn { background: white; border: 1px solid #cbd5e1; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 1rem; color: #475569; display: inline-flex; align-items: center; gap: 8px; width: max-content; transition: 0.2s; }
+        .upload-btn:hover { background: #f1f5f9; border-color: var(--color-tasks); }
+        .privacy-warning { font-size: 0.85rem; color: #ef4444; display: flex; align-items: flex-start; gap: 6px; line-height: 1.4; margin-top: 5px; }
+        .file-name-display { font-size: 0.95rem; color: var(--color-tasks); font-weight: 500; }
+        .img-preview { display: none; max-width: 100%; height: auto; max-height: 250px; border-radius: 8px; margin-top: 10px; border: 1px solid #e2e8f0; object-fit: contain; object-position: left; }
 
+        /* Mailbox Lists & Pagination restored */
         .list-container { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
         .list-item { display: flex; align-items: center; padding: 22px 28px; border-bottom: 1px solid var(--border); cursor: pointer; }
         .list-item:hover { background: #f8fafc; }
@@ -106,10 +129,15 @@
         .badge.replied { background: #f1f5f9; color: #64748b; } 
         .badge.wait { background: #fef3c7; color: #f59e0b; }
         .item-title { flex-grow: 1; font-size: 1.05rem; font-family: var(--font-serif); }
-        .delete-btn { background: none; border: none; cursor: pointer; padding: 8px; color: #cbd5e1; border-radius: 50%; transition: all 0.2s; }
+        
+        .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; }
+        .page-btn { background: var(--paper); border: 1px solid var(--border); color: var(--text-muted); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-family: var(--font-sans); font-size: 0.95rem; font-weight: 500; transition: all 0.2s; }
+        .page-btn:hover { background: #f8fafc; color: #1e293b; border-color: #cbd5e1; }
+        .page-btn.active { background: #1e293b; color: #fff; border-color: #1e293b; }
+
+        .delete-btn { background: none; border: none; cursor: pointer; padding: 8px; color: #cbd5e1; border-radius: 50%; transition: all 0.2s; margin-left: 15px;}
         .delete-btn:hover { color: #ef4444; background: #fee2e2; transform: scale(1.1); }
         .delete-btn.locked-btn { opacity: 0.5; cursor: not-allowed; }
-        .empty-state { text-align: center; padding: 80px 20px; color: var(--text-muted); }
 
         /* Reading Log UI */
         .log-card { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; position: relative; }
@@ -131,7 +159,7 @@
         .msg-img { max-width: 100%; border-radius: 8px; margin-top: 12px; display: block; border: 1px solid #e2e8f0;}
         .reply-area { padding: 24px 30px; border-top: 1px solid var(--border); background: var(--paper); }
 
-        /* Anim Envelope (Same as before) */
+        /* Envelope */
         #anim-overlay { display: none; position: fixed; inset: 0; background: rgba(250, 247, 242, 0.95); z-index: 9999; align-items: center; justify-content: center; perspective: 1200px; }
         .env-wrapper { position: relative; width: 340px; height: 230px; }
         .env-back { position: absolute; inset: 0; background: #e3d3bd; border-radius: 4px; z-index: 1; }
@@ -183,62 +211,87 @@
     </header>
 
     <nav class="tabs">
-        <button class="tab-btn tab-replies active" onclick="switchTab('tab-replies', this)">
-            <svg viewBox="0 0 24 24"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/></svg> 對我的回覆
-        </button>
-        <button class="tab-btn tab-inbox" onclick="switchTab('tab-inbox', this)">
-            <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8l8 5 8-5v10zm-8-7L4 6h16l-8 5z"/></svg> 寄來的心得
-        </button>
-        <button class="tab-btn tab-tasks" onclick="switchTab('tab-tasks', this)">
-            <svg viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg> 我的任務
-        </button>
-        <button class="tab-btn tab-log" onclick="switchTab('tab-log', this)">
-            <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 我的書房
-        </button>
+        <button class="tab-btn tab-replies active" onclick="switchTab('tab-replies', this)"><svg viewBox="0 0 24 24"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/></svg> 對我的回覆</button>
+        <button class="tab-btn tab-inbox" onclick="switchTab('tab-inbox', this)"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8l8 5 8-5v10zm-8-7L4 6h16l-8 5z"/></svg> 寄來的心得</button>
+        <button class="tab-btn tab-tasks" onclick="switchTab('tab-tasks', this)"><svg viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg> 我的任務</button>
+        <button class="tab-btn tab-log" onclick="switchTab('tab-log', this)"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg> 我的書房</button>
     </nav>
 
     <main>
-        <section id="tab-replies" class="section active"><div class="list-container" id="replies-list"></div></section>
-        <section id="tab-inbox" class="section"><div class="list-container" id="inbox-list"></div></section>
+        <!-- 恢復原本的分頁與空狀態容器 -->
+        <section id="tab-replies" class="section active">
+            <div class="list-container" id="replies-list"></div>
+            <div class="pagination" id="replies-pagination"></div>
+        </section>
+        
+        <section id="tab-inbox" class="section">
+            <div class="list-container" id="inbox-list"></div>
+            <div class="pagination" id="inbox-pagination"></div>
+        </section>
         
         <section id="tab-tasks" class="section">
             <div class="grid" id="task-grid"></div>
+
             <div class="editor" id="write-editor" style="display: none;">
-                <h3 id="task-title" class="serif-text">撰寫任務</h3>
+                <h3 id="task-title" class="serif-text" style="margin-bottom: 30px; font-size: 1.5rem;">撰寫任務</h3>
                 
-                <div class="flex-row">
-                    <input type="text" id="book-title" class="input-box" style="font-family:var(--font-serif);" placeholder="請輸入書名">
-                    <input type="number" id="book-page" class="input-box" placeholder="目前閱讀頁數 (必填)" min="1">
+                <div class="field-group flex-row">
+                    <div>
+                        <label class="field-label">📖 書籍名稱</label>
+                        <input type="text" id="book-title" class="input-box" style="font-family:var(--font-serif);" placeholder="請輸入書名">
+                    </div>
+                    <div>
+                        <label class="field-label">🔖 目前閱讀頁數</label>
+                        <input type="number" id="book-page" class="input-box" placeholder="例如：120" min="1">
+                    </div>
                 </div>
 
-                <div class="upload-container">
-                    <label class="upload-btn">
+                <div class="field-group">
+                    <label class="field-label">🤔 思考問題</label>
+                    <textarea id="log-question" class="textarea" style="min-height:100px;" placeholder="思考問題（無字數限制）..."></textarea>
+                </div>
+                
+                <div class="field-group">
+                    <label class="field-label">✍️ 閱讀心得</label>
+                    <textarea id="log-content" class="textarea" style="min-height:220px;" placeholder="在此寫下您的閱讀心得...（最少 150 字）"></textarea>
+                </div>
+
+                <!-- 圖片上傳移至心得下方，並加入預覽 -->
+                <div class="field-group upload-container">
+                    <label class="field-label" style="margin-bottom: 0;">📸 捕捉書籍畫面 (必填)</label>
+                    <div class="privacy-warning">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                        請注意：此照片將傳送給配對到的筆友，請勿拍攝含有個人隱私資訊的畫面。
+                    </div>
+                    
+                    <label class="upload-btn" style="margin-top: 10px;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-                        上傳書籍圖片 (必填)
+                        點擊選擇圖片
                         <input type="file" id="book-image" accept="image/*" style="display:none;" onchange="handleFileSelect(event)">
                     </label>
                     <span id="file-name-display" class="file-name-display">尚未選擇圖片</span>
-                    <div class="privacy-warning">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-                        請注意：此圖片將傳送給配對到的筆友，請勿拍攝或上傳含有個人隱私資訊的畫面。
-                    </div>
+                    
+                    <!-- 圖片預覽區 -->
+                    <img id="image-preview" class="img-preview" src="" alt="圖片預覽">
                 </div>
                 
-                <textarea id="log-question" class="textarea" style="min-height:100px; margin-bottom:20px;" placeholder="思考問題（無字數限制）..."></textarea>
-                <textarea id="log-content" class="textarea" style="min-height:220px; margin-bottom:24px;" placeholder="在此寫下您的閱讀心得...（最少 150 字）"></textarea>
-                
-                <div style="text-align: right;">
+                <div style="text-align: right; margin-top: 30px;">
                     <button id="btn-submit-task" class="btn" style="width: auto; background: var(--color-tasks); margin-left: auto;" onclick="submitLog()">封裝寄出心得</button>
                 </div>
             </div>
         </section>
 
-        <!-- New Section: Reading Log -->
         <section id="tab-log" class="section">
             <div class="editor" style="margin-bottom: 30px;">
-                <h3 class="serif-text">添加閱讀紀錄</h3>
-                <input type="text" id="mylog-title" class="input-box" style="margin-bottom:15px; font-family:var(--font-serif);" placeholder="書籍名稱">
-                <textarea id="mylog-notes" class="textarea" style="min-height:100px; margin-bottom:15px;" placeholder="寫下專屬於你的私密閱讀筆記 (自由發揮)..."></textarea>
+                <h3 class="serif-text" style="margin-bottom: 24px;">添加閱讀紀錄</h3>
+                <div class="field-group">
+                    <label class="field-label">書籍名稱</label>
+                    <input type="text" id="mylog-title" class="input-box" style="font-family:var(--font-serif);" placeholder="請輸入書名">
+                </div>
+                <div class="field-group">
+                    <label class="field-label">私密筆記</label>
+                    <textarea id="mylog-notes" class="textarea" style="min-height:100px;" placeholder="寫下專屬於你的私密閱讀筆記 (自由發揮)..."></textarea>
+                </div>
                 <button class="btn" style="background: var(--color-log); width: auto;" onclick="submitReadingLog()">收錄至書房</button>
             </div>
             <div id="mylog-list"></div>
@@ -259,7 +312,7 @@
         </div>
     </div>
 
-    <!-- Three.js BG Script -->
+    <!-- Three.js Background -->
     <script>
         let scene, camera, renderer, particles; let run3D = true;
         function initThreeJS() {
@@ -273,8 +326,7 @@
             const geo = new THREE.PlaneGeometry(1.5, 2.2); const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide, roughness: 0.9, transparent: true, opacity: 0.85 });
             particles = new THREE.Group(); scene.add(particles);
             for(let i=0; i<120; i++) {
-                const m = new THREE.Mesh(geo, mat);
-                m.position.set((Math.random()-0.5)*120, (Math.random()-0.5)*100, (Math.random()-0.5)*60);
+                const m = new THREE.Mesh(geo, mat); m.position.set((Math.random()-0.5)*120, (Math.random()-0.5)*100, (Math.random()-0.5)*60);
                 m.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
                 m.userData = { rotSpeedX:(Math.random()-0.5)*0.015, rotSpeedY:(Math.random()-0.5)*0.015, floatSpeed:Math.random()*0.03+0.01 };
                 particles.add(m);
@@ -290,12 +342,11 @@
         initThreeJS();
     </script>
 
-    <!-- Main Logic Script -->
     <script>
         // ==========================================
-        // 請將下方網址替換為你剛剛部署的 Google Apps Script 網址
+        // ⚠️ 請填入重新部署後的 Apps Script 網址
         // ==========================================
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyYRw6sgxL9HfW7UoD-D9jq-S9DA79sIwXtVcm-BLW0B7uOTeEuOSz3jVSNPBmhf07zmA/exec"; 
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwOgNVrA5WEpo9TMkZ5FmI_LP0-n-yf4beJwDd0haLuZ0VZkP90euNEtNTW3U3Q9Jqz2w/exec"; 
         
         const firebaseConfig = {
             apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms",
@@ -307,7 +358,14 @@
         const auth = firebase.auth(); const db = firebase.database();
 
         let currentUser = null; let config = null; let selectedTaskIndex = null; let hasUnrepliedLetters = false; let currentChatRef = null; let isInitialLoad = true;
-        let selectedFileBase64 = null; let selectedFileName = null; let selectedFileType = null;
+        let selectedFileBase64 = null; let selectedFileName = null;
+
+        // 恢復分頁變數
+        const ITEMS_PER_PAGE = 10;
+        let repliesData = [];
+        let inboxData = [];
+        let currentPageReplies = 1;
+        let currentPageInbox = 1;
 
         auth.onAuthStateChanged(user => {
             if (user) {
@@ -316,23 +374,16 @@
                     if (snap.val() && snap.val().name) { document.getElementById('user-name').innerText = snap.val().name; hideAuthOverlay(); initApp(); } 
                     else { document.getElementById('login-container').style.display = 'none'; document.getElementById('name-setup-container').style.display = 'flex'; }
                 });
-            } else {
-                document.getElementById('auth-overlay').style.display = 'flex'; document.getElementById('login-container').style.display = 'flex'; document.getElementById('name-setup-container').style.display = 'none'; run3D = true; animateThreeJS();
-            }
+            } else { document.getElementById('auth-overlay').style.display = 'flex'; document.getElementById('login-container').style.display = 'flex'; document.getElementById('name-setup-container').style.display = 'none'; run3D = true; animateThreeJS(); }
         });
 
         function hideAuthOverlay() { gsap.to("#auth-overlay", { opacity: 0, duration: 0.6, onComplete: () => { document.getElementById('auth-overlay').style.display = 'none'; run3D = false; }}); }
         function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
         function signOut() { auth.signOut().then(() => window.location.reload()); }
-        function saveName() {
-            const name = document.getElementById('setup-name').value.trim();
-            if (!name) return alert("請輸入姓名");
-            db.ref(`users/${currentUser.uid}`).set({ name, email: currentUser.email }).then(() => { document.getElementById('user-name').innerText = name; hideAuthOverlay(); initApp(); });
-        }
+        function saveName() { const name = document.getElementById('setup-name').value.trim(); if (!name) return alert("請輸入姓名"); db.ref(`users/${currentUser.uid}`).set({ name, email: currentUser.email }).then(() => { document.getElementById('user-name').innerText = name; hideAuthOverlay(); initApp(); }); }
 
         function initApp() { healPool(); db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); setupNotifications(); loadMailbox(); loadReadingLogs(); }
 
-        // Notifications & Mailbox logic
         function setupNotifications() {
             const threadRef = db.ref(`user_threads/${currentUser.uid}`);
             threadRef.once('value').then(() => { isInitialLoad = false; });
@@ -366,60 +417,100 @@
         function loadMailbox() {
             db.ref(`user_threads/${currentUser.uid}`).on('value', snap => {
                 let all = Object.values(snap.val() || {}).sort((a, b) => b.lastUpdated - a.lastUpdated);
-                let reps = [], inb = []; hasUnrepliedLetters = false;
+                repliesData = []; inboxData = []; hasUnrepliedLetters = false;
+                
                 all.forEach(t => {
-                    if (t.isSender) { if (t.hasBeenRepliedTo) { reps.push(t); if(!t.hasReplied) hasUnrepliedLetters = true; } } 
-                    else { inb.push(t); if(!t.hasReplied) hasUnrepliedLetters = true; }
+                    if (t.isSender) { if (t.hasBeenRepliedTo) { repliesData.push(t); if(!t.hasReplied) hasUnrepliedLetters = true; } } 
+                    else { inboxData.push(t); if(!t.hasReplied) hasUnrepliedLetters = true; }
                 });
-                renderList('replies', reps); renderList('inbox', inb);
+
+                if (currentPageReplies > Math.ceil(repliesData.length / ITEMS_PER_PAGE) || 1) currentPageReplies = Math.ceil(repliesData.length / ITEMS_PER_PAGE) || 1;
+                if (currentPageInbox > Math.ceil(inboxData.length / ITEMS_PER_PAGE) || 1) currentPageInbox = Math.ceil(inboxData.length / ITEMS_PER_PAGE) || 1;
+
+                renderPaginatedList('replies', repliesData, currentPageReplies);
+                renderPaginatedList('inbox', inboxData, currentPageInbox);
             });
         }
 
-        function renderList(type, data) {
-            const listEl = document.getElementById(`${type}-list`); listEl.innerHTML = '';
-            if (!data.length) return listEl.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24"><path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 0l-8 5-8-5h16zm0 12H4V8l8 5 8-5v10z"/></svg><p>信箱空空如也，靜候佳音。</p></div>`;
-            data.forEach(t => {
+        // 完美恢復原版包含空狀態的 Pagination 渲染函數
+        function renderPaginatedList(type, data, currentPage) {
+            const listEl = document.getElementById(`${type}-list`);
+            const pageEl = document.getElementById(`${type}-pagination`);
+            
+            listEl.innerHTML = ''; pageEl.innerHTML = '';
+
+            const emptyUI = `<div class="empty-state">
+                <svg viewBox="0 0 24 24"><path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 0l-8 5-8-5h16zm0 12H4V8l8 5 8-5v10z"/></svg>
+                <p>信箱空空如也，靜候佳音。</p>
+            </div>`;
+
+            if (data.length === 0) {
+                listEl.innerHTML = emptyUI;
+                return;
+            }
+
+            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+            const endIndex = startIndex + ITEMS_PER_PAGE;
+            const pageData = data.slice(startIndex, endIndex);
+
+            pageData.forEach(t => {
                 const timeStr = new Date(t.lastUpdated).toLocaleString([], {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
                 const el = document.createElement('div'); el.className = 'list-item';
-                const del = t.hasReplied ? `<button class="delete-btn" onclick="deleteThread('${t.letterId}', event)"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>` : `<button class="delete-btn locked-btn" onclick="event.stopPropagation(); alert('請先回覆後再刪除');"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`;
-                let badge = !t.hasReplied ? `<span class="badge wait">待回覆</span>` : (t.hasUnread ? `<span class="badge unread">新回覆</span>` : `<span class="badge replied">已讀</span>`);
+                
+                const deleteHTML = t.hasReplied
+                    ? `<button class="delete-btn" onclick="deleteThread('${t.letterId}', event)"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`
+                    : `<button class="delete-btn locked-btn" onclick="event.stopPropagation(); alert('請先回覆後才能刪除。');"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`;
+                
+                let badge = !t.hasReplied ? `<span class="badge wait">待回覆</span>` : (t.hasUnread ? `<span class="badge unread">新回覆</span>` : (type==='replies' ? `<span class="badge replied">已讀</span>` : `<span class="badge replied">已回覆</span>`));
                 el.onclick = () => openChat(t.letterId);
-                el.innerHTML = `${badge}<div class="item-title">${type==='replies'?'關於':'筆友寄來'}《${escapeHtml(t.bookTitle)}》的${type==='replies'?'回音':'心得'}</div><div class="item-time">${timeStr}</div>${del}`;
+                el.innerHTML = `${badge}<div class="item-title">${type==='replies'?'關於':'筆友寄來'}《${escapeHtml(t.bookTitle)}》的${type==='replies'?'回音':'心得'}</div><div class="item-time">${timeStr}</div>${deleteHTML}`;
                 listEl.appendChild(el);
             });
+
+            const totalPages = Math.ceil(data.length / ITEMS_PER_PAGE);
+            if (totalPages > 1) {
+                for (let i = 1; i <= totalPages; i++) {
+                    const btn = document.createElement('button');
+                    btn.className = `page-btn ${i === currentPage ? 'active' : ''}`; btn.innerText = i;
+                    btn.onclick = () => {
+                        if (type === 'replies') currentPageReplies = i; else currentPageInbox = i;
+                        renderPaginatedList(type, type === 'replies' ? repliesData : inboxData, i);
+                    };
+                    pageEl.appendChild(btn);
+                }
+            }
         }
+
         window.deleteThread = function(id, e) { e.stopPropagation(); if(confirm("確認刪除此信件？")) db.ref(`user_threads/${currentUser.uid}/${id}`).remove(); };
 
-        // --- New Logic: Handle Image File Selection & Compression ---
         function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+            const file = event.target.files[0]; if (!file) return;
             selectedFileName = file.name;
-            selectedFileType = file.type;
             document.getElementById('file-name-display').innerText = selectedFileName;
             
-            // 壓縮圖片 (使用 Canvas)
             const reader = new FileReader();
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1200; // 限制最大寬度
+                    const MAX_WIDTH = 1200; 
                     const scaleSize = MAX_WIDTH / img.width;
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scaleSize;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    // 轉為 Base64 (0.6 壓縮率)
+                    canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize;
+                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    
                     const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-                    selectedFileBase64 = dataUrl.split(',')[1]; // 只取 base64 部分
+                    selectedFileBase64 = dataUrl.split(',')[1];
+                    
+                    // 顯示預覽圖
+                    const preview = document.getElementById('image-preview');
+                    preview.src = dataUrl;
+                    preview.style.display = 'block';
                 }
                 img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
 
-        // --- Task Submission updated to handle API call ---
         async function submitLog() {
             const title = document.getElementById('book-title').value.trim();
             const page = document.getElementById('book-page').value.trim();
@@ -427,38 +518,26 @@
             const text = document.getElementById('log-content').value.trim();
             
             if (!title || !page || !question || !text) return alert("請填寫完整資訊 (書名、頁數、思考問題與心得)。");
-            if (!selectedFileBase64) return alert("請務必上傳書籍圖片。");
+            if (!selectedFileBase64) return alert("請務必上傳書籍畫面圖片。");
             if (text.length < 150) return alert("心得最少需要 150 字。");
             
             const btn = document.getElementById('btn-submit-task');
-            btn.innerText = "圖片上傳中，請稍候...";
-            btn.disabled = true;
+            btn.innerText = "圖片上傳中，請稍候..."; btn.disabled = true;
 
             try {
-                // 1. 呼叫 GAS 上傳圖片
                 const response = await fetch(GAS_URL, {
                     method: 'POST',
-                    body: JSON.stringify({
-                        filename: selectedFileName,
-                        mimeType: 'image/jpeg',
-                        base64: selectedFileBase64
-                    })
+                    body: JSON.stringify({ filename: selectedFileName, mimeType: 'image/jpeg', base64: selectedFileBase64 })
                 });
-                
                 const result = await response.json();
-                
                 if (!result.success) throw new Error(result.error);
 
-                const imageUrl = result.url;
                 const combinedText = `【目前進度】第 ${page} 頁\n\n【思考問題】\n${question}\n\n【閱讀心得】\n${text}`;
-                
-                // 2. 執行動畫並寫入 Firebase
-                playAnim('log', null, null, {title: title, text: combinedText, imageUrl: imageUrl, page: page});
+                playAnim('log', null, null, {title: title, text: combinedText, imageUrl: result.url});
 
             } catch (error) {
-                alert("圖片上傳失敗，請稍後再試。錯誤資訊：" + error);
-                btn.innerText = "封裝寄出心得";
-                btn.disabled = false;
+                alert("圖片上傳失敗，請確認 Apps Script 權限。\n錯誤資訊：" + error.message);
+                btn.innerText = "封裝寄出心得"; btn.disabled = false;
             }
         }
 
@@ -478,12 +557,10 @@
                             selectedTaskIndex = i; document.getElementById('task-title').innerText = `撰寫任務：第 ${i+1} 回心得`;
                             document.getElementById('write-editor').style.display = 'block'; document.getElementById('write-editor').scrollIntoView({behavior:'smooth'});
                             
-                            // 重置表單
-                            document.getElementById('btn-submit-task').innerText = "封裝寄出心得";
-                            document.getElementById('btn-submit-task').disabled = false;
-                            document.getElementById('file-name-display').innerText = "尚未選擇圖片";
-                            selectedFileBase64 = null;
-                            document.getElementById('book-image').value = '';
+                            // 點開新任務時重置所有欄位與圖片預覽
+                            document.getElementById('btn-submit-task').innerText = "封裝寄出心得"; document.getElementById('btn-submit-task').disabled = false;
+                            document.getElementById('file-name-display').innerText = "尚未選擇圖片"; document.getElementById('image-preview').style.display = 'none';
+                            selectedFileBase64 = null; document.getElementById('book-image').value = '';
                         } else alert("時空未到，尚未開放。");
                     }; grid.appendChild(el);
                 }
@@ -507,9 +584,8 @@
                     Object.values(cSnap.val()||{}).forEach(m => {
                         const isMe = m.senderUid === currentUser.uid; const d = new Date(m.timestamp);
                         const tStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-                        // 檢查是否有附圖
                         const imgTag = m.imageUrl ? `<img src="${m.imageUrl}" class="msg-img" alt="書本照片" loading="lazy">` : '';
-                        flow.innerHTML += `<div class="msg ${isMe ? 'msg-self' : 'msg-other'}"><div class="msg-info">${isMe ? '我' : '筆友'} · ${tStr}</div><div style="white-space:pre-wrap;">${escapeHtml(m.text)}</div>${imgTag}</div>`;
+                        flow.innerHTML += `<div class="msg ${isMe ? 'msg-self' : 'msg-other'}"><div class="msg-info">${isMe ? '我的文字' : '筆友的回音'} · ${tStr}</div><div style="white-space:pre-wrap;">${escapeHtml(m.text)}</div>${imgTag}</div>`;
                     });
                     setTimeout(() => flow.scrollTop = flow.scrollHeight, 50);
                 });
@@ -518,7 +594,6 @@
         }
         function closeModal() { if (currentChatRef) currentChatRef.off(); gsap.to("#modal-content", {y: 30, opacity: 0, duration: 0.2, onComplete: () => document.getElementById('modal').style.display = 'none'}); }
 
-        // --- Updated playAnim to pass imageUrl ---
         function playAnim(type, letterId, partnerUid, ObjectData) {
             const overlay = document.getElementById('anim-overlay'); overlay.style.display = 'flex';
             gsap.set(".env-wrapper", {y: 0, scale: 1, opacity: 1}); gsap.set("#anim-paper", {y: -120, zIndex: 5}); gsap.set("#anim-ptop", {rotateX: 0}); gsap.set("#anim-pbot", {rotateX: 0}); gsap.set("#anim-flap", {rotateX: 180, zIndex: 4}); gsap.set("#anim-seal", {scale: 0});
@@ -528,7 +603,6 @@
             }});
         }
 
-        // --- Updated processLog to save imageUrl ---
         function processLog(data) {
             const ts = firebase.database.ServerValue.TIMESTAMP; const ref = db.ref('letters').push();
             db.ref('users').once('value', snap => {
@@ -538,10 +612,10 @@
                     if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
                     else db.ref(`unassigned_letters/${ref.key}`).set({ senderUid: currentUser.uid });
                     
-                    // 將圖片 URL 存入對話節點
                     db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, timestamp: ts });
                     
-                    document.getElementById('book-title').value = ''; document.getElementById('book-page').value = ''; document.getElementById('log-question').value = ''; document.getElementById('log-content').value = ''; document.getElementById('book-image').value=''; selectedFileBase64=null; document.getElementById('file-name-display').innerText="尚未選擇圖片";
+                    document.getElementById('book-title').value = ''; document.getElementById('book-page').value = ''; document.getElementById('log-question').value = ''; document.getElementById('log-content').value = ''; 
+                    document.getElementById('book-image').value=''; selectedFileBase64=null; document.getElementById('file-name-display').innerText="尚未選擇圖片"; document.getElementById('image-preview').style.display = 'none';
                     document.getElementById('write-editor').style.display = 'none'; document.getElementById('btn-submit-task').disabled=false; document.getElementById('btn-submit-task').innerText="封裝寄出心得";
                     renderTasks(); alert('心得已寄出！'); switchTab('tab-tasks', document.querySelector('.tab-tasks'));
                 });
@@ -556,63 +630,29 @@
             });
         }
 
-        // --- New Feature: Reading Logs (My Study) ---
         function submitReadingLog() {
-            const title = document.getElementById('mylog-title').value.trim();
-            const notes = document.getElementById('mylog-notes').value.trim();
+            const title = document.getElementById('mylog-title').value.trim(); const notes = document.getElementById('mylog-notes').value.trim();
             if(!title) return alert("請輸入書籍名稱。");
-            
-            db.ref(`reading_logs/${currentUser.uid}`).push({
-                bookTitle: title,
-                notes: notes,
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            }).then(() => {
-                document.getElementById('mylog-title').value = '';
-                document.getElementById('mylog-notes').value = '';
-                alert("已成功收錄至您的書房！");
+            db.ref(`reading_logs/${currentUser.uid}`).push({ bookTitle: title, notes: notes, timestamp: firebase.database.ServerValue.TIMESTAMP }).then(() => {
+                document.getElementById('mylog-title').value = ''; document.getElementById('mylog-notes').value = ''; alert("已成功收錄至您的書房！");
             });
         }
 
         function loadReadingLogs() {
             db.ref(`reading_logs/${currentUser.uid}`).on('value', snap => {
-                const list = document.getElementById('mylog-list');
-                list.innerHTML = '';
-                const logs = snap.val() || {};
-                const logsArray = Object.keys(logs).map(key => ({id: key, ...logs[key]})).sort((a,b) => b.timestamp - a.timestamp);
-                
-                if(logsArray.length === 0) {
-                    list.innerHTML = `<div class="empty-state"><p>書房目前空空如也，快去添加第一本書吧！</p></div>`;
-                    return;
-                }
-
+                const list = document.getElementById('mylog-list'); list.innerHTML = '';
+                const logsArray = Object.keys(snap.val() || {}).map(k => ({id: k, ...snap.val()[k]})).sort((a,b) => b.timestamp - a.timestamp);
+                if(logsArray.length === 0) { list.innerHTML = `<div class="empty-state"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg><p>書房目前空空如也，快去添加第一本書吧！</p></div>`; return; }
                 logsArray.forEach(log => {
-                    const d = new Date(log.timestamp);
-                    const el = document.createElement('div');
-                    el.className = 'log-card';
-                    el.innerHTML = `
-                        <h4>《${escapeHtml(log.bookTitle)}》</h4>
-                        ${log.notes ? `<p>${escapeHtml(log.notes)}</p>` : ''}
-                        <div class="date">收錄於 ${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}</div>
-                        <button class="delete-btn" onclick="deleteReadingLog('${log.id}')" title="刪除此紀錄">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                        </button>
-                    `;
+                    const d = new Date(log.timestamp); const el = document.createElement('div'); el.className = 'log-card';
+                    el.innerHTML = `<h4>《${escapeHtml(log.bookTitle)}》</h4>${log.notes ? `<p>${escapeHtml(log.notes)}</p>` : ''}<div class="date">收錄於 ${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}</div><button class="delete-btn" onclick="deleteReadingLog('${log.id}')" title="刪除此紀錄"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>`;
                     list.appendChild(el);
                 });
             });
         }
 
-        window.deleteReadingLog = function(id) {
-            if(confirm("確定要將這本書從書房中移除嗎？")) {
-                db.ref(`reading_logs/${currentUser.uid}/${id}`).remove();
-            }
-        };
-
-        function switchTab(id, btn) {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            btn.classList.add('active'); document.getElementById(id).classList.add('active');
-        }
+        window.deleteReadingLog = function(id) { if(confirm("確定要將這本書從書房中移除嗎？")) db.ref(`reading_logs/${currentUser.uid}/${id}`).remove(); };
+        function switchTab(id, btn) { document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); btn.classList.add('active'); document.getElementById(id).classList.add('active'); }
         function escapeHtml(s) { return s?s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):s; }
     </script>
 </body>
