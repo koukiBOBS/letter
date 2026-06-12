@@ -630,7 +630,7 @@
                             db.ref(`unassigned_letters/${rId}`).remove();
                             const now = firebase.database.ServerValue.TIMESTAMP;
                             db.ref(`user_threads/${currentUser.uid}/${rId}`).set({ letterId: rId, bookTitle: lData.bookTitle, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: now });
-                            db.ref(`user_threads/${lData.senderUid}/${rId}`).set({ letterId: rId, bookTitle: lData.bookTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, lastUpdated: now });
+                            db.ref(`user_threads/${lData.senderUid}/${rId}`).set({ letterId: rId, bookTitle: lData.bookTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: now });
                         }
                     });
                 }
@@ -651,9 +651,14 @@
                 allThreads.forEach(t => {
                     if (t.isSender) {
                         // 隱藏尚未收到別人回覆的自己信件
-                        if (t.hasBeenRepliedTo) repliesData.push(t);
+                        if (t.hasBeenRepliedTo) {
+                            repliesData.push(t);
+                            // 若是別人回覆了我的信件，我也必須至少回應過一次（!t.hasReplied），否則阻擋發新任務
+                            if (!t.hasReplied) pendingReplies = true;
+                        }
                     } else {
                         inboxData.push(t);
+                        // 若是別人寄來的信件，我必須至少回應過一次（!t.hasReplied），否則阻擋發新任務
                         if (!t.hasReplied) pendingReplies = true;
                     }
                 });
@@ -703,7 +708,11 @@
                 el.className = 'list-item';
                 
                 if (type === 'replies') {
-                    const badge = t.hasUnread ? `<span class="badge unread">新回覆</span>` : `<span class="badge replied">已讀</span>`;
+                    let badge = '';
+                    if (!t.hasReplied) { badge = `<span class="badge wait">待回覆</span>`; }
+                    else if (t.hasUnread) { badge = `<span class="badge unread">新回覆</span>`; }
+                    else { badge = `<span class="badge replied">已讀</span>`; }
+
                     el.onclick = (e) => { openChat(t.letterId); };
                     
                     el.innerHTML = `
@@ -786,7 +795,7 @@
                     el.onclick = () => {
                         if (done) openChat(map[i]);
                         else if (unlocked) {
-                            if (hasUnrepliedLetters) return alert("您有尚未回覆的來信，必須先至「別人寄來的心得」回覆後，方可開啟新任務。");
+                            if (hasUnrepliedLetters) return alert("您有尚未回覆的信件（請檢查「別人對我的回覆」或「別人寄來的心得」中標示為「待回覆」的信件），必須先完成首次回應後，方可開啟新任務。");
                             selectedTaskIndex = i;
                             document.getElementById('task-title').innerText = `撰寫任務：第 ${i+1} 回心得`;
                             document.getElementById('write-editor').style.display = 'block';
@@ -892,7 +901,7 @@
                 const rec = uids.length ? uids[Math.floor(Math.random() * uids.length)] : "";
                 
                 ref.set({ id: ref.key, senderUid: currentUser.uid, bookTitle: data.title, reflections: data.text, timestamp: ts, taskIndex: selectedTaskIndex, recipientUid: rec }).then(() => {
-                    db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: true, hasUnread: false, hasBeenRepliedTo: false, lastUpdated: ts });
+                    db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: ts });
                     if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
                     else db.ref(`unassigned_letters/${ref.key}`).set({ senderUid: currentUser.uid });
                     
