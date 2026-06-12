@@ -209,6 +209,10 @@
         }
         .delete-btn:hover { color: #ef4444; background: #fee2e2; transform: scale(1.1); }
         .delete-btn svg { width: 20px; height: 20px; fill: currentColor; }
+        
+        /* 鎖定的刪除按鈕（未回覆前避免誤刪） */
+        .delete-btn.locked-btn { opacity: 0.5; cursor: not-allowed; }
+        .delete-btn.locked-btn:hover { color: #cbd5e1; background: transparent; transform: scale(1); }
 
         .empty-state { text-align: center; padding: 80px 20px; color: var(--text-muted); }
         .empty-state svg { width: 64px; height: 64px; fill: #cbd5e1; margin-bottom: 16px; }
@@ -706,6 +710,15 @@
                 const timeStr = new Date(t.lastUpdated).toLocaleString([], {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
                 const el = document.createElement('div');
                 el.className = 'list-item';
+
+                // 防止誤刪的鎖定按鈕邏輯
+                const deleteHTML = t.hasReplied
+                    ? `<button class="delete-btn" onclick="deleteThread('${t.letterId}', event)" title="刪除信件">
+                           <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                       </button>`
+                    : `<button class="delete-btn locked-btn" onclick="event.stopPropagation(); alert('為了避免無法解鎖任務，您必須先對此信件完成首次回覆後，才能將其刪除。');" title="未回覆前無法刪除">
+                           <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                       </button>`;
                 
                 if (type === 'replies') {
                     let badge = '';
@@ -719,9 +732,7 @@
                         ${badge}
                         <div class="item-title">關於《${escapeHtml(t.bookTitle)}》的回音</div>
                         <div class="item-time">${timeStr}</div>
-                        <button class="delete-btn" onclick="deleteThread('${t.letterId}', event)" title="刪除信件">
-                            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                        </button>
+                        ${deleteHTML}
                     `;
                 } else {
                     let badge = '';
@@ -735,9 +746,7 @@
                         ${badge}
                         <div class="item-title">筆友寄來《${escapeHtml(t.bookTitle)}》的心得</div>
                         <div class="item-time">${timeStr}</div>
-                        <button class="delete-btn" onclick="deleteThread('${t.letterId}', event)" title="刪除信件">
-                            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                        </button>
+                        ${deleteHTML}
                     `;
                 }
                 listEl.appendChild(el);
