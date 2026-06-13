@@ -633,21 +633,64 @@ function renderTasks() {
 
 // 修改原有的圖片選擇功能，支援兩種上傳目標
 function handleFileSelect(event, type = 'reading') {
-    const file = event.target.files[0]; if (!file) return; 
+    const file = event.target.files[0]; 
+    if (!file) return; 
+    
+    // 判斷是閱讀還是隨機任務，抓取對應的 UI 元素
+    const isRandom = (type === 'random');
+    const nameDisplay = document.getElementById(isRandom ? 'random-file-name-display' : 'file-name-display');
+    const preview = document.getElementById(isRandom ? 'random-image-preview' : 'image-preview');
+    
     selectedFileName = file.name; 
-    const nameDisplay = type === 'reading' ? document.getElementById('file-name-display') : document.getElementById('random-file-name-display');
-    const preview = type === 'reading' ? document.getElementById('image-preview') : document.getElementById('random-image-preview');
-    nameDisplay.innerText = selectedFileName;
+    if (nameDisplay) nameDisplay.innerText = "圖片處理中，請稍候..."; // 給予載入提示，避免以為卡死
     
     const reader = new FileReader();
     reader.onload = function(e) {
         const img = new Image();
         img.onload = function() {
-            const canvas = document.createElement('canvas'); const MAX_WIDTH = 1200; const scaleSize = MAX_WIDTH / img.width;
-            canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            selectedFileBase64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1]; preview.src = canvas.toDataURL('image/jpeg', 0.6); preview.style.display = 'block';
-        }; img.src = e.target.result;
-    }; reader.readAsDataURL(file);
+            try {
+                const canvas = document.createElement('canvas'); 
+                const MAX_WIDTH = 1200; 
+                let width = img.width;
+                let height = img.height;
+
+                // 防呆：只有當圖片真的大於 1200 時才等比例縮小，避免小圖被強制放大導致記憶體崩潰
+                if (width > MAX_WIDTH) {
+                    height = Math.floor(height * (MAX_WIDTH / width));
+                    width = MAX_WIDTH;
+                }
+
+                canvas.width = width; 
+                canvas.height = height; 
+                const ctx = canvas.getContext('2d'); 
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // 轉換為 Base64 (壓縮品質 60%)
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                selectedFileBase64 = dataUrl.split(',')[1]; 
+                
+                // 顯示預覽圖與檔名
+                if (preview) {
+                    preview.src = dataUrl; 
+                    preview.style.display = 'block';
+                }
+                if (nameDisplay) nameDisplay.innerText = selectedFileName;
+                
+            } catch (error) {
+                console.error("圖片處理失敗:", error);
+                alert("圖片處理失敗，可能是檔案過大或記憶體不足。");
+                if (nameDisplay) nameDisplay.innerText = "處理失敗";
+            }
+        };
+        img.onerror = function() {
+            alert("無法讀取此圖片，請更換一張。");
+            if (nameDisplay) nameDisplay.innerText = "讀取失敗";
+        };
+        img.src = e.target.result;
+    }; 
+    
+    reader.onerror = function() { alert("檔案讀取發生錯誤。"); };
+    reader.readAsDataURL(file);
 }
 
         function escapeHtml(s) { return s?s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):s; }
@@ -1233,7 +1276,7 @@ function closeDrawAnim() {
             const topF = new THREE.Mesh(new THREE.BoxGeometry(18, frameThickness, frameDepth), frameMat); topF.position.set(0, 6 - frameThickness/2, 0); topF.castShadow = true; windowFrameGroup.add(topF);
             const botF = new THREE.Mesh(new THREE.BoxGeometry(18, frameThickness, frameDepth), frameMat); botF.position.set(0, -6 + frameThickness/2, 0); botF.castShadow = true; windowFrameGroup.add(botF);
             const midV = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 12, frameDepth - 0.2), frameMat); midV.castShadow = true; windowFrameGroup.add(midV);
-            const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, roughness: 0.1, transmission: 0.8, thickness: 0.5 }); const glassPane = new THREE.Mesh(new THREE.BoxGeometry(17.5, 11.5, 0.05), glassMat); windowFrameGroup.add(glassPane);
+            const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, roughness: 0.1, transmission: 0.8 }); const glassPane = new THREE.Mesh(new THREE.BoxGeometry(17.5, 11.5, 0.05), glassMat); windowFrameGroup.add(glassPane);
 
             const doorGroup = new THREE.Group(); doorGroup.position.set(-59.5, 14, 0); doorGroup.rotation.y = Math.PI/2; scene.add(doorGroup);
             const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(16, 28, 1), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.8})); doorGroup.add(doorFrame);
