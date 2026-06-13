@@ -744,36 +744,38 @@
 
         // 重新設計懸浮信件外觀
         // 重新設計懸浮信件外觀（加上 V 型封口與深色蠟印）
+// 重新設計懸浮信件外觀（莫蘭迪藍色封蠟版）
 function createFloatingLetter() {
     const group = new THREE.Group();
     
-    // 1. 信封本體（稍微調暖一點的米黃色）
+    // 1. 信封本體（米白色）
     const envGeo = new THREE.BoxGeometry(1.6, 1.0, 0.04);
     const envMat = new THREE.MeshStandardMaterial({color: 0xede0c8, roughness: 0.7, emissive: 0x111111});
     const envMesh = new THREE.Mesh(envGeo, envMat); 
     group.add(envMesh);
     
-    // 2. 加上信封背面的 V 型封口摺片（用稍微深一點的顏色做出紙張交疊的層次感）
+    // 2. 信封背面的 V 型封口摺片
     const flapShape = new THREE.Shape();
-    flapShape.moveTo(-0.8, 0.5);  // 左上角
-    flapShape.lineTo(0.8, 0.5);   // 右上角
-    flapShape.lineTo(0, -0.1);    // 中間 V 字往下尖端
+    flapShape.moveTo(-0.8, 0.5);
+    flapShape.lineTo(0.8, 0.5);
+    flapShape.lineTo(0, -0.1);
     const flapGeo = new THREE.ShapeGeometry(flapShape);
     const flapMat = new THREE.MeshStandardMaterial({color: 0xe0d2b8, roughness: 0.8});
     const flapMesh = new THREE.Mesh(flapGeo, flapMat);
-    flapMesh.position.z = 0.021;  // 稍微浮在信封表面上一點點，避免 z-fighting (閃爍)
+    flapMesh.position.z = 0.021;
     group.add(flapMesh);
 
-    // 3. 復古封蠟（改為深酒紅色、壓扁一點，並往下移到 V 型封口處）
+    // 3. 莫蘭迪藍色封蠟（灰藍調，徹底消除國旗感）
     const sealGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.02, 16);
-    const sealMat = new THREE.MeshStandardMaterial({color: 0x6b1c1c, roughness: 0.6, emissive: 0x220000});
+    // 使用低飽和度的莫蘭迪藍 (0x687b8c)，並配上極深的灰藍色自發光 (0x1a252e)
+    const sealMat = new THREE.MeshStandardMaterial({color: 0x687b8c, roughness: 0.6, emissive: 0x1a252e});
     const sealMesh = new THREE.Mesh(sealGeo, sealMat); 
     sealMesh.rotation.x = Math.PI / 2; 
-    sealMesh.position.set(0, -0.05, 0.03); // 不放在正中央，而是放在 V 型尖端的扣合處
+    sealMesh.position.set(0, -0.05, 0.03); 
     group.add(sealMesh);
     
-    // 4. 懸浮微光
-    const pointLight = new THREE.PointLight(0xffeeba, 0.4, 4); 
+    // 4. 懸浮微光（配合莫蘭迪藍，將光暈調整為柔和的淡冰藍色）
+    const pointLight = new THREE.PointLight(0xddeeff, 0.4, 4); 
     group.add(pointLight);
     
     return group;
