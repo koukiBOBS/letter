@@ -637,71 +637,79 @@
             }).catch(err => console.error("讀取任務狀態異常:", err));
         }
 
-        function openChat(id) {
-            db.ref(`user_threads/${currentUser.uid}/${id}`).update({hasUnread: false});
-            db.ref(`letters/${id}`).once('value').then(lSnap => {
-                const l = lSnap.val(); if (!l) return;
+      function openChat(id) {
+    db.ref(`user_threads/${currentUser.uid}/${id}`).update({hasUnread: false});
+    db.ref(`letters/${id}`).once('value').then(lSnap => {
+        const l = lSnap.val(); if (!l) return;
+        
+        const flow = document.getElementById('chat-flow'); 
+        const partnerUid = currentUser.uid === l.senderUid ? l.recipientUid : l.senderUid;
+        
+        if (currentChatRef) currentChatRef.off(); 
+        currentChatRef = db.ref(`conversations/${id}`);
+        
+        // 🌟 修正 1：改用 .once('value')，避免回信動畫播放時背景重新渲染導致閃爍
+        currentChatRef.once('value').then(cSnap => {
+            const messages = cSnap.val() || {};
+            const msgKeys = Object.keys(messages);
+            
+            // 🌟 修正 2：用 contentHTML 集中組裝字串，最後一次性寫入，大幅提升效能
+            let contentHTML = '';
+            
+            msgKeys.forEach((key, index) => {
+                const m = messages[key];
+                const isMe = m.senderUid === currentUser.uid; 
+                const d = new Date(m.timestamp);
+                const tStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
                 
-                const flow = document.getElementById('chat-flow'); 
-                const partnerUid = currentUser.uid === l.senderUid ? l.recipientUid : l.senderUid;
-                
-                if (currentChatRef) currentChatRef.off(); 
-                currentChatRef = db.ref(`conversations/${id}`);
-                
-                currentChatRef.on('value', cSnap => {
-                    flow.innerHTML = '';
-                    const messages = cSnap.val() || {};
-                    const msgKeys = Object.keys(messages);
-                    
-                    msgKeys.forEach((key, index) => {
-                        const m = messages[key];
-                        const isMe = m.senderUid === currentUser.uid; 
-                        const d = new Date(m.timestamp);
-                        const tStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-                        
-                        let formattedText = escapeHtml(m.text);
-                        formattedText = formattedText.replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀段落</span>');
-                        formattedText = formattedText.replace(/【思考問題】/g, '<span class="letter-section-divider">文字衍生的提問</span>');
-                        formattedText = formattedText.replace(/【閱讀心得】/g, '<span class="letter-section-divider">閱讀感悟</span>');
+                let formattedText = escapeHtml(m.text);
+                formattedText = formattedText.replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀段落</span>');
+                formattedText = formattedText.replace(/【思考問題】/g, '<span class="letter-section-divider">文字衍生的提問</span>');
+                formattedText = formattedText.replace(/【閱讀心得】/g, '<span class="letter-section-divider">閱讀感悟</span>');
 
-                        let imgTag = m.imageUrl ? `<a href="${m.imageUrl}" target="_blank" class="letter-img-wrap" title="點擊檢視相片"><img src="${m.imageUrl}" class="letter-img" alt="隨信相片" referrerpolicy="no-referrer" loading="lazy"></a>` : '';
-                        const letterClass = isMe ? 'my-letter' : 'partner-letter';
-                        const letterHeaderLabel = isMe ? '✍️ 我的手札' : '📬 筆友的來信';
+                let imgTag = m.imageUrl ? `<a href="${m.imageUrl}" target="_blank" class="letter-img-wrap" title="點擊檢視相片"><img src="${m.imageUrl}" class="letter-img" alt="隨信相片" referrerpolicy="no-referrer" loading="lazy"></a>` : '';
+                const letterClass = isMe ? 'my-letter' : 'partner-letter';
+                const letterHeaderLabel = isMe ? '✍️ 我的手札' : '📬 筆友的來信';
 
-                        flow.innerHTML += `
-                        <div class="letter-sheet ${letterClass}" style="animation-delay: ${index * 0.15}s;">
-                            <div class="letter-header-meta"><span>${letterHeaderLabel}</span><span>${tStr}</span></div>
-                            <div class="letter-text">${formattedText}</div>
-                            ${imgTag}
-                        </div>`;
-                    });
-
-                    flow.innerHTML += `
-                    <div class="letter-sheet reply-sheet my-letter" style="animation-delay: ${msgKeys.length * 0.15}s;">
-                        <div class="letter-header-meta"><span>✍️ 提筆回信</span><span>紙短情長</span></div>
-                        <textarea id="reply-text" class="textarea" placeholder="在此處提筆，寫下你的回音...（最少 100 字）"></textarea>
-                        <div style="text-align: center;"><button class="btn" style="margin: 0 auto; padding: 12px 40px; background: var(--color-replies);" id="btn-send-reply">寄出回信</button></div>
-                    </div>`;
-
-                    document.getElementById('btn-send-reply').onclick = () => {
-                        const txt = document.getElementById('reply-text').value.trim();
-                        if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
-                        if (isSubmittingReply) return;
-                        isSubmittingReply = true;
-                        
-                        const sendBtn = document.getElementById('btn-send-reply');
-                        sendBtn.disabled = true; sendBtn.innerText = "寄送中...";
-                        playAnim('reply', id, partnerUid, txt);
-                    };
-                });
-                
-                document.getElementById('modal').style.display = 'flex'; 
-                lockScroll();
-            }).catch(err => {
-                alert("無法讀取信件資料，請稍後再試。(" + err.message + ")");
-                unlockScroll();
+                contentHTML += `
+                <div class="letter-sheet ${letterClass}" style="animation-delay: ${index * 0.15}s;">
+                    <div class="letter-header-meta"><span>${letterHeaderLabel}</span><span>${tStr}</span></div>
+                    <div class="letter-text">${formattedText}</div>
+                    ${imgTag}
+                </div>`;
             });
-        }
+
+            contentHTML += `
+            <div class="letter-sheet reply-sheet my-letter" style="animation-delay: ${msgKeys.length * 0.15}s;">
+                <div class="letter-header-meta"><span>✍️ 提筆回信</span><span>紙短情長</span></div>
+                <textarea id="reply-text" class="textarea" placeholder="在此處提筆，寫下你的回音...（最少 100 字）"></textarea>
+                <div style="text-align: center;"><button class="btn" style="margin: 0 auto; padding: 12px 40px; background: var(--color-replies);" id="btn-send-reply">寄出回信</button></div>
+            </div>`;
+
+            // 一次性將組裝好的信件寫入畫面
+            flow.innerHTML = contentHTML;
+
+            document.getElementById('btn-send-reply').onclick = () => {
+                const txt = document.getElementById('reply-text').value.trim();
+                if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
+                if (isSubmittingReply) return;
+                isSubmittingReply = true;
+                
+                const sendBtn = document.getElementById('btn-send-reply');
+                sendBtn.disabled = true; sendBtn.innerText = "寄送中...";
+                playAnim('reply', id, partnerUid, txt);
+            };
+
+            // 🌟 修正 3：將顯示視窗的語法移到資料讀取與排版都「完成後」，才顯示彈跳視窗
+            document.getElementById('modal').style.display = 'flex'; 
+            lockScroll();
+        });
+        
+    }).catch(err => {
+        alert("無法讀取信件資料，請稍後再試。(" + err.message + ")");
+        unlockScroll();
+    });
+}
         
         // 🌟 滾動鎖定機制修復：直接隱藏 body overflow，保證不會卡死
         function lockScroll() { document.body.style.overflow = 'hidden'; }
