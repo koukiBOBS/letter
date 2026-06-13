@@ -19,6 +19,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <style>
+        /* 修復的 CSS 變數區塊 */
         :root {
             --bg: #faf7f2; 
             --paper: #ffffff; 
@@ -143,7 +144,7 @@
         .log-card .date { font-size: 0.8rem; color: #94a3b8; margin-top: 12px; } .log-card .delete-btn { position: absolute; top: 16px; right: 16px; }
 
         /* ====================================================
-           MODAL UI & 高級信箋排版 (THE LETTER AESTHETIC - MERGED)
+           MODAL UI & 高級信箋排版 (THE LETTER AESTHETIC)
            ==================================================== */
         #modal { 
             position: fixed; 
@@ -317,17 +318,18 @@
             background: transparent; 
         }
 
-        /* Envelope Anim (From 9:08 version for compatibility with paper animation) */
-        #anim-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 15, 17, 0.95); z-index: 9999; align-items: center; justify-content: center; perspective: 1500px; }
-        .env-wrapper { position: relative; width: 340px; height: 220px; animation: float 4s infinite ease-in-out; }
-        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        .env-back { position: absolute; inset: 0; background: #8e6c51; z-index: 1; box-shadow: inset 0 0 50px rgba(0,0,0,0.5); }
-        .paper-anim { position: absolute; bottom: 15px; left: 20px; right: 20px; height: 380px; background: #fbf9f4; z-index: 5; background-image: repeating-linear-gradient(to bottom, transparent, transparent 15px, rgba(160, 140, 120, 0.15) 15px, rgba(160, 140, 120, 0.15) 16px); }
-        .env-front-left { position: absolute; top: 0; left: 0; border-top: 110px solid transparent; border-bottom: 110px solid transparent; border-left: 170px solid #b68e68; z-index: 11; }
-        .env-front-right { position: absolute; top: 0; right: 0; border-top: 110px solid transparent; border-bottom: 110px solid transparent; border-right: 170px solid #a9835d; z-index: 12; }
-        .env-front-bottom { position: absolute; bottom: 0; left: 0; border-left: 170px solid transparent; border-right: 170px solid transparent; border-bottom: 125px solid #c59c75; z-index: 13; }
-        .env-flap { position: absolute; top: 0; left: 0; border-left: 170px solid transparent; border-right: 170px solid transparent; border-top: 130px solid #ceaa83; transform-origin: top center; z-index: 15; }
-        .env-seal { position: absolute; top: 110px; left: 50%; transform: translate(-50%, -50%) scale(0); width: 45px; height: 45px; background: #8e2b26; border-radius: 50%; z-index: 20; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
+        /* Envelope Anim (完全恢復 9:07 AM 原版寄信動畫設計) */
+        #anim-overlay { position: fixed; inset: 0; background: rgba(250, 247, 242, 0.95); z-index: 9999; align-items: center; justify-content: center; perspective: 1200px; display: none;}
+        .env-wrapper { position: relative; width: 340px; height: 230px; }
+        .env-back { position: absolute; inset: 0; background: #e3d3bd; border-radius: 4px; z-index: 1; }
+        .paper-anim { position: absolute; bottom: 0; left: 15px; right: 15px; height: 380px; z-index: 5; transform-style: preserve-3d; }
+        .panel-anim { position: absolute; left: 0; right: 0; height: 126px; background: #fffdfa; border: 1px solid #eee; backface-visibility: hidden; }
+        .p-top { top: 0; transform-origin: bottom; } .p-mid { top: 126px; } .p-bot { top: 252px; transform-origin: top; }
+        .env-front-left { position: absolute; inset: 0; background: #ebdcc5; clip-path: polygon(0 0, 50% 50%, 0 100%); z-index: 11; }
+        .env-front-right { position: absolute; inset: 0; background: #e6d7c0; clip-path: polygon(100% 0, 100% 100%, 50% 50%); z-index: 12; }
+        .env-front-bottom { position: absolute; inset: 0; background: #dfd0b9; clip-path: polygon(0 100%, 50% 50%, 100% 100%); z-index: 13; }
+        .env-flap { position: absolute; top: 0; left: 0; right: 0; height: 140px; background: #d8c8b0; clip-path: polygon(0 0, 100% 0, 50% 100%); transform-origin: top; z-index: 15; }
+        .env-seal { position: absolute; top: 110px; left: 50%; transform: translate(-50%, -50%) scale(0); width: 45px; height: 45px; background: #c25953; border-radius: 50%; z-index: 20; }
     </style>
 </head>
 <body>
@@ -354,11 +356,15 @@
         </div>
     </div>
 
-    <!-- Mail Anim -->
+    <!-- Mail Anim (完全恢復 9:07 AM 包含三個面板結構之實體 HTML) -->
     <div id="anim-overlay">
         <div class="env-wrapper">
             <div class="env-back"></div>
-            <div class="paper-anim" id="anim-paper"></div>
+            <div class="paper-anim" id="anim-paper">
+                <div class="panel-anim p-top" id="anim-ptop"></div>
+                <div class="panel-anim p-mid"></div>
+                <div class="panel-anim p-bot" id="anim-pbot"></div>
+            </div>
             <div class="env-front-left"></div><div class="env-front-right"></div><div class="env-front-bottom"></div>
             <div class="env-flap" id="anim-flap"></div><div class="env-seal" id="anim-seal"></div>
         </div>
@@ -811,40 +817,14 @@
             unlockScroll();
         }
 
+        // playAnim (完全恢復 9:07 AM 版本與 timeline 的實體紙張摺疊寄出動畫與 timeline 配置)
         function playAnim(type, letterId, partnerUid, ObjectData) {
             const overlay = document.getElementById('anim-overlay'); overlay.style.display = 'flex';
-            
-            // Failsafe backup timeout: in case document is hidden or requestAnimationFrame is paused
-            let animCompleted = false;
-            const forceComplete = () => {
-                if (animCompleted) return;
-                animCompleted = true;
-                overlay.style.display = 'none';
-                if (type === 'log') processLog(ObjectData); else processReply(letterId, partnerUid, ObjectData);
-            };
-            const failsafeTimeout = setTimeout(forceComplete, 4000);
-
-            gsap.set(".env-wrapper", {y: 0, scale: 1, opacity: 1}); 
-            gsap.set("#anim-paper", {y: 0, zIndex: 5}); 
-            gsap.set("#anim-flap", {rotateX: 180, zIndex: 4}); 
-            gsap.set("#anim-seal", {scale: 0});
-            
-            // Envelope close and fold timelines
-            gsap.timeline({
-                onComplete: () => {
-                    clearTimeout(failsafeTimeout);
-                    if (!animCompleted) {
-                        animCompleted = true;
-                        overlay.style.display = 'none';
-                        if (type === 'log') processLog(ObjectData); else processReply(letterId, partnerUid, ObjectData);
-                    }
-                }
-            })
-            .to("#anim-paper", {y: 200, duration: 0.8, ease: "power2.in"})
-            .set("#anim-flap", {zIndex: 15})
-            .to("#anim-flap", {rotateX: 0, duration: 0.6})
-            .to("#anim-seal", {scale: 1, duration: 0.4, ease: "back.out(1.5)"})
-            .to(".env-wrapper", {y: -500, scale: 0.8, opacity: 0, duration: 0.8, delay: 0.5, ease: "power2.in"});
+            gsap.set(".env-wrapper", {y: 0, scale: 1, opacity: 1}); gsap.set("#anim-paper", {y: -120, zIndex: 5}); gsap.set("#anim-ptop", {rotateX: 0}); gsap.set("#anim-pbot", {rotateX: 0}); gsap.set("#anim-flap", {rotateX: 180, zIndex: 4}); gsap.set("#anim-seal", {scale: 0});
+            gsap.timeline().to("#anim-pbot", {rotateX: 179, duration: 0.4}).to("#anim-ptop", {rotateX: -179, duration: 0.4}, "-=0.2").to("#anim-paper", {y: 70, duration: 0.5}).set("#anim-flap", {zIndex: 15}).to("#anim-flap", {rotateX: 0, duration: 0.4}).to("#anim-seal", {scale: 1, duration: 0.3, ease: "back.out(1.5)"}).to(".env-wrapper", {y: -400, scale: 0.6, opacity: 0, duration: 0.6, delay: 0.4, onComplete: () => {
+                  overlay.style.display = 'none';
+                  if (type === 'log') processLog(ObjectData); else processReply(letterId, partnerUid, ObjectData);
+            }});
         }
 
         function processLog(data) {
