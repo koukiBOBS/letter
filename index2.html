@@ -3,334 +3,386 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>導師中心 - 任務與交流管理</title>
+    <title>導師中心</title>
+    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600&display=swap" rel="stylesheet">
     
+    <!-- Firebase Compat -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     
     <style>
-        :root { --bg: #f4f6f8; --paper: #ffffff; --text-main: #2c3e50; --text-muted: #7f8c8d; --border: #e0e6ed; --accent: #34495e; --blue: #3498db; --green: #27ae60; --red: #e74c3c; --font-main: 'Noto Sans TC', sans-serif; }
+        :root {
+            --bg: #f9f9f9;
+            --paper: #ffffff;
+            --text-main: #333333;
+            --text-muted: #888888;
+            --border: #e0e0e0;
+            --accent: #555555;
+            --green: #2e7d32;
+            --red: #c62828;
+            --yellow: #f57f17;
+            --font-main: 'Noto Sans TC', sans-serif;
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background-color: var(--bg); color: var(--text-main); font-family: var(--font-main); display: flex; height: 100vh; overflow: hidden;}
-        
-        /* Sidebar */
-        nav { width: 250px; background: var(--accent); color: white; display: flex; flex-direction: column; padding: 20px 0; }
-        nav h1 { font-size: 1.4rem; padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px;}
-        .nav-item { padding: 15px 20px; cursor: pointer; transition: 0.2s; font-size: 1.05rem; }
-        .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); border-left: 4px solid var(--blue); }
-        .user-info { margin-top: auto; padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem; color: #bdc3c7;}
+        body { background-color: var(--bg); color: var(--text-main); font-family: var(--font-main); }
 
-        /* Main Content */
-        main { flex: 1; overflow-y: auto; padding: 40px; }
-        .section { display: none; }
-        .section.active { display: block; animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
-        
-        h2 { font-size: 1.5rem; margin-bottom: 25px; color: var(--text-main); border-bottom: 2px solid var(--border); padding-bottom: 10px; }
-        .panel { background: var(--paper); border: 1px solid var(--border); border-radius: 8px; padding: 25px; margin-bottom: 25px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);}
-        
-        button { background: var(--blue); color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 0.95rem; transition: 0.2s; }
-        button:hover { background: #2980b9; }
-        button.danger { background: var(--red); } button.danger:hover { background: #c0392b; }
-        input, select { border: 1px solid var(--border); padding: 10px; border-radius: 6px; outline: none; font-size: 0.95rem; }
-        
-        /* Grid & Lists */
-        .flex-row { display: flex; gap: 15px; align-items: flex-end; margin-bottom: 15px; }
-        .list-group { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
-        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--border); background: #fff;}
-        .list-item:last-child { border-bottom: none; }
-        
-        /* Communications Tree */
-        .thread-box { border: 1px solid var(--border); border-left: 4px solid var(--blue); border-radius: 6px; margin-bottom: 15px; background: #fff; }
-        .thread-main { padding: 15px; cursor: pointer; display: flex; justify-content: space-between; background: #f8fafc; }
-        .thread-replies { padding: 15px; border-top: 1px dashed var(--border); display: none; background: #fff; padding-left: 40px;}
-        .reply-item { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #f0f0f0; }
-        .reply-item:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
-        
-        /* Tags */
-        .tag { font-size: 0.8rem; padding: 3px 8px; border-radius: 12px; background: #eee; color: #555; }
-        .tag.blue { background: #e3f2fd; color: #1565c0; } .tag.green { background: #e8f5e9; color: #2e7d32; }
+        header {
+            max-width: 1000px; margin: 30px auto; padding: 0 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--border); padding-bottom: 15px;
+        }
+        h1 { font-size: 1.5rem; font-weight: 500; }
 
-        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .modal { background: #fff; padding: 30px; border-radius: 8px; width: 90%; max-width: 500px; text-align: center; }
+        main { max-width: 1000px; margin: 0 auto 100px; padding: 0 20px; }
+
+        /* 面板設計 */
+        .panel { background: var(--paper); border: 1px solid var(--border); border-radius: 6px; padding: 25px; margin-bottom: 30px; }
+        .panel-title { font-size: 1.1rem; font-weight: 500; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+
+        /* 表單 */
+        .form-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; flex: 1; min-width: 150px; }
+        label { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px; }
+        input { border: 1px solid var(--border); padding: 10px; font-size: 0.95rem; border-radius: 4px; outline: none; }
+        button { background: var(--text-main); color: #fff; border: none; padding: 10px 20px; font-size: 0.95rem; border-radius: 4px; cursor: pointer; }
+        button:hover { background: var(--accent); }
+
+        /* 頁籤切換 */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { background: var(--bg); color: var(--text-main); border: 1px solid var(--border); }
+        .tab-btn.active { background: var(--text-main); color: #fff; }
+
+        /* 列表樣式 (手風琴) */
+        .list-item { border: 1px solid var(--border); border-radius: 4px; margin-bottom: 10px; background: var(--paper); }
+        .list-header { padding: 15px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #fafafa; }
+        .list-header:hover { background: #f0f0f0; }
+        .list-title { font-weight: 500; font-size: 1rem; }
+        .list-subtitle { font-size: 0.8rem; color: var(--text-muted); margin-left: 10px; }
+        .list-body { display: none; padding: 20px; border-top: 1px solid var(--border); }
+
+        /* 網格 (任務節點/學生節點) */
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        .grid-card { border: 1px solid var(--border); border-radius: 4px; padding: 15px; background: #fff; text-align: center; }
+        .status-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; margin: 10px 0; font-weight: 500; }
+        .s-ok { background: #e8f5e9; color: var(--green); }
+        .s-late { background: #fff3e0; color: var(--yellow); }
+        .s-miss { background: #ffebee; color: var(--red); }
+        .read-btn { background: none; border: 1px solid var(--border); color: var(--text-main); font-size: 0.8rem; padding: 5px 15px; margin-top: 5px; }
+        .read-btn:hover { background: #f0f0f0; }
+
+        /* 登入與彈窗 */
+        .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-content { background: var(--paper); padding: 30px; width: 100%; max-width: 600px; border-radius: 6px; position: relative; max-height: 80vh; overflow-y: auto;}
     </style>
 </head>
 <body>
 
-    <!-- 登入 -->
+    <!-- 登入畫面 -->
     <div class="overlay" id="auth-screen">
-        <div class="modal">
-            <h2 style="border:none;">導師中心登入</h2>
-            <button onclick="signIn()" style="width: 100%;">Google 帳號登入</button>
-        </div>
+        <h2 style="margin-bottom: 20px; font-weight: 500;">導師中心登入</h2>
+        <button onclick="signIn()">Google 登入</button>
     </div>
 
-    <!-- 側邊導覽 -->
-    <nav>
+    <header>
         <h1>導師中心</h1>
-        <div class="nav-item active" onclick="switchSection('sec-classes', this)">班級與學生管理</div>
-        <div class="nav-item" onclick="switchSection('sec-tasks', this)">閱讀任務排程</div>
-        <div class="nav-item" onclick="switchSection('sec-random', this)">隨機任務派發</div>
-        <div class="nav-item" onclick="switchSection('sec-comms', this)">大廳交流監控</div>
-        <div class="user-info">目前登入：<br><span id="user-email">載入中...</span><br><br><a onclick="signOut()" style="color:#3498db; cursor:pointer;">登出</a></div>
-    </nav>
+        <div>
+            <span id="user-email" style="font-size:0.85rem; color:var(--text-muted); margin-right:15px;">載入中...</span>
+            <a onclick="signOut()" style="cursor:pointer; font-size:0.85rem; text-decoration:underline;">登出</a>
+        </div>
+    </header>
 
-    <!-- 主內容 -->
     <main>
-        <!-- 班級管理 -->
-        <div id="sec-classes" class="section active">
-            <h2>班級與學生管理</h2>
-            <div class="panel">
-                <div class="flex-row">
-                    <div><label>新增班級名稱</label><br><input type="text" id="new-class-name" placeholder="例如：1A班"></div>
-                    <button onclick="createClass()">建立班級</button>
+        <!-- 任務設定 -->
+        <div class="panel">
+            <div class="panel-title">任務設定</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>開始日期</label>
+                    <input type="date" id="start-date">
+                </div>
+                <div class="form-group">
+                    <label>結束日期</label>
+                    <input type="date" id="end-date">
+                </div>
+                <div class="form-group">
+                    <label>週期 (天/回)</label>
+                    <input type="number" id="interval" min="1" placeholder="例：7">
                 </div>
             </div>
-            <div id="classes-container"></div>
+            <button onclick="saveConfig()">儲存設定</button>
         </div>
 
-        <!-- 閱讀任務排程 (具備防呆重疊檢查) -->
-        <div id="sec-tasks" class="section">
-            <h2>常規閱讀任務排程</h2>
-            <div class="panel" style="background: #fdfefe; border-left: 4px solid var(--blue);">
-                <h3 style="margin-bottom:15px; font-size:1.1rem;">新增排程</h3>
-                <div class="flex-row">
-                    <div><label>開始日期</label><br><input type="date" id="task-start"></div>
-                    <div><label>結束日期</label><br><input type="date" id="task-end"></div>
-                    <div><label>發布週期(天/回)</label><br><input type="number" id="task-int" value="7" style="width:100px;"></div>
-                    <button onclick="addReadingConfig()">設定儲存</button>
-                </div>
-                <p style="font-size: 0.85rem; color: var(--red);" id="overlap-warning"></p>
+        <!-- 繳交紀錄 -->
+        <div class="panel">
+            <div class="panel-title" style="display:flex; justify-content:space-between; border:none; margin-bottom:10px;">
+                <span>繳交紀錄</span>
             </div>
             
-            <div class="list-group" id="reading-tasks-list"></div>
-        </div>
-
-        <!-- 隨機任務派發 -->
-        <div id="sec-random" class="section">
-            <h2>生活隨機任務派發</h2>
-            <div class="panel">
-                <p style="margin-bottom: 15px; color: var(--text-muted);">選擇一個截止日期，系統會向所有學生派發一次隨機抽籤任務。</p>
-                <div class="flex-row">
-                    <div><label>任務截止日期</label><br><input type="date" id="random-deadline"></div>
-                    <button onclick="addRandomTask()" style="background: var(--green);">派發任務</button>
-                </div>
+            <div class="tabs">
+                <button class="tab-btn active" id="tab-student" onclick="switchTab('student')">依學生</button>
+                <button class="tab-btn" id="tab-task" onclick="switchTab('task')">依任務</button>
             </div>
-            <div class="list-group" id="random-tasks-list"></div>
-        </div>
 
-        <!-- 交流監控 -->
-        <div id="sec-comms" class="section">
-            <h2>大廳交流監控 (上帝視角)</h2>
-            <div class="panel" style="padding: 15px; margin-bottom: 15px; display:flex; gap:15px; align-items:center;">
-                篩選班級：<select id="filter-class" onchange="renderComms()"><option value="ALL">全部學生</option></select>
-            </div>
-            <div id="comms-container"></div>
+            <!-- 視角內容容器 -->
+            <div id="data-container"></div>
         </div>
     </main>
 
+    <!-- 預覽彈窗 -->
+    <div class="modal" id="preview-modal" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 id="modal-title" style="margin-bottom:15px;">標題</h3>
+            <p id="modal-text" style="white-space: pre-wrap; line-height:1.6; font-size:0.95rem;"></p>
+        </div>
+    </div>
+
     <script>
-        // 授權登入清單
-        const ALLOWED_EMAILS = ["kenchan20151@gmail.com"];
+        // ==========================================
+        // 1. 設定允許登入的 Email 列表 (請填寫真實的導師Email)
+        // ==========================================
+        const ALLOWED_EMAILS = [
+            "kenchan20151@gmail.com"
+        ];
 
-        const firebaseConfig = { apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms", authDomain: "letter-a74d1.firebaseapp.com", databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com", projectId: "letter-a74d1" };
-        firebase.initializeApp(firebaseConfig); const auth = firebase.auth(); const db = firebase.database();
+        // 2. Firebase 設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms",
+            authDomain: "letter-a74d1.firebaseapp.com",
+            databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com",
+            projectId: "letter-a74d1"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
 
-        let usersDB = {}; let classesDB = {}; let readingConfig = null; let randomConfig = {}; 
-        let lettersDB = {}; let convosDB = {};
+        // 3. 全域資料變數
+        let configData = null;
+        let usersData = {};
+        let lettersData = [];
+        let currentView = 'student'; // 'student' 或 'task'
 
+        // ==========================================
+        // 登入驗證邏輯
+        // ==========================================
         auth.onAuthStateChanged(user => {
             if (user) {
                 if (ALLOWED_EMAILS.includes(user.email)) {
+                    // 允許登入
                     document.getElementById('auth-screen').style.display = 'none';
                     document.getElementById('user-email').innerText = user.email;
                     fetchData();
-                } else { auth.signOut(); alert("無權限：您的 Email 不在導師名單中。"); }
-            } else { document.getElementById('auth-screen').style.display = 'flex'; }
+                } else {
+                    // 不在名單內，強制登出
+                    auth.signOut();
+                    alert("無權限：您的 Email 不在導師名單中。");
+                }
+            } else {
+                document.getElementById('auth-screen').style.display = 'flex';
+            }
         });
 
-        function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
-        function signOut() { auth.signOut().then(() => window.location.reload()); }
-
-        function switchSection(secId, btn) {
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-            document.getElementById(secId).classList.add('active');
-            btn.classList.add('active');
+        function signIn() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(err => console.error(err));
         }
 
-        // =====================================
-        // 資料讀取與渲染整合
-        // =====================================
+        function signOut() {
+            auth.signOut().then(() => window.location.reload());
+        }
+
+        // ==========================================
+        // 資料讀取與寫入
+        // ==========================================
         function fetchData() {
-            db.ref('users').on('value', s => { usersDB = s.val() || {}; renderClasses(); renderComms(); populateClassFilter(); });
-            db.ref('classes').on('value', s => { classesDB = s.val() || {}; renderClasses(); populateClassFilter(); });
-            db.ref('settings/taskConfig').on('value', s => { readingConfig = s.val() || null; renderReadingTasks(); });
-            db.ref('settings/randomTasks').on('value', s => { randomConfig = s.val() || {}; renderRandomTasks(); });
-            db.ref('letters').on('value', s => { lettersDB = s.val() || {}; renderComms(); });
-            db.ref('conversations').on('value', s => { convosDB = s.val() || {}; renderComms(); });
-        }
-
-        // =====================================
-        // 1. 班級管理
-        // =====================================
-        function createClass() {
-            const name = document.getElementById('new-class-name').value.trim();
-            if(!name) return;
-            const ref = db.ref('classes').push();
-            ref.set({ id: ref.key, name: name, students: {} }).then(() => document.getElementById('new-class-name').value = '');
-        }
-
-        function renderClasses() {
-            const container = document.getElementById('classes-container'); container.innerHTML = '';
-            
-            // Unassigned Students
-            let unassigned = Object.keys(usersDB).filter(uid => !usersDB[uid].classId);
-            let unassignedHtml = unassigned.map(uid => `<div style="display:inline-block; background:#fff; padding:5px 10px; border:1px solid #ccc; border-radius:15px; margin:5px; font-size:0.9rem;">${usersDB[uid].name} <select style="border:none; background:transparent; outline:none;" onchange="assignStudent('${uid}', this.value)"><option value="">分配至...</option>${Object.values(classesDB).map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></div>`).join('');
-            
-            if(unassigned.length > 0) {
-                container.innerHTML += `<div class="panel" style="background:#fff3e0; border-color:#ffe0b2;"><h3>未分班學生</h3><div style="margin-top:10px;">${unassignedHtml}</div></div>`;
-            }
-
-            // Classes
-            Object.values(classesDB).forEach(cls => {
-                let studentsHtml = (cls.students ? Object.keys(cls.students) : []).map(uid => `<span class="tag blue" style="margin:3px; display:inline-block;">${usersDB[uid]?.name || '未知'} <span style="cursor:pointer; color:red; margin-left:5px;" onclick="removeStudent('${uid}', '${cls.id}')">×</span></span>`).join('');
-                container.innerHTML += `<div class="list-group" style="margin-bottom:15px;"><div class="list-item"><div><strong>${cls.name}</strong><div style="margin-top:8px;">${studentsHtml || '<span style="color:#aaa; font-size:0.8rem;">尚無學生</span>'}</div></div><button class="danger" onclick="deleteClass('${cls.id}')">刪除班級</button></div></div>`;
-            });
-        }
-
-        function assignStudent(uid, classId) {
-            if(!classId) return;
-            db.ref(`users/${uid}/classId`).set(classId);
-            db.ref(`classes/${classId}/students/${uid}`).set(true);
-        }
-        function removeStudent(uid, classId) {
-            db.ref(`users/${uid}/classId`).remove();
-            db.ref(`classes/${classId}/students/${uid}`).remove();
-        }
-        function deleteClass(classId) {
-            if(confirm("確定刪除此班級？學生將退回未分班狀態。")) {
-                let cls = classesDB[classId];
-                if(cls.students) Object.keys(cls.students).forEach(uid => db.ref(`users/${uid}/classId`).remove());
-                db.ref(`classes/${classId}`).remove();
-            }
-        }
-        function populateClassFilter() {
-            const select = document.getElementById('filter-class');
-            select.innerHTML = '<option value="ALL">全部學生</option>' + Object.values(classesDB).map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-        }
-
-        // =====================================
-        // 2. 閱讀任務防呆排程
-        // =====================================
-        function addReadingConfig() {
-            const start = document.getElementById('task-start').value;
-            const end = document.getElementById('task-end').value;
-            const interval = document.getElementById('task-int').value;
-            const warn = document.getElementById('overlap-warning');
-
-            if(!start || !end || !interval) { warn.innerText = "請填寫完整日期與週期"; return; }
-            const sTime = new Date(start).getTime(); const eTime = new Date(end).getTime();
-            if(sTime >= eTime) { warn.innerText = "結束日期必須晚於開始日期"; return; }
-
-            // Check Overlap
-            let overlap = false;
-            if(readingConfig) {
-                const curS = new Date(readingConfig.startDate).getTime();
-                const curE = new Date(readingConfig.endDate).getTime();
-                if(sTime <= curE && eTime >= curS) overlap = true;
-            }
-
-            if(overlap) { warn.innerText = "新增失敗：與現有排程日期重疊！請先刪除舊排程。"; return; }
-            warn.innerText = "";
-            db.ref('settings/taskConfig').set({ startDate: start, endDate: end, intervalDays: parseInt(interval) });
-        }
-
-        function renderReadingTasks() {
-            const list = document.getElementById('reading-tasks-list');
-            if(!readingConfig) { list.innerHTML = '<div class="list-item" style="color:#888;">目前無閱讀任務排程</div>'; return; }
-            list.innerHTML = `<div class="list-item"><div><strong>現行排程期間</strong><br><span style="font-size:0.9rem; color:#666;">${readingConfig.startDate} 至 ${readingConfig.endDate} (每 ${readingConfig.intervalDays} 天一回)</span></div><button class="danger" onclick="deleteReadingConfig()">刪除排程</button></div>`;
-        }
-        function deleteReadingConfig() { if(confirm('確定刪除此排程？')) db.ref('settings/taskConfig').remove(); }
-
-        // =====================================
-        // 3. 隨機任務派發
-        // =====================================
-        function addRandomTask() {
-            const deadline = document.getElementById('random-deadline').value;
-            if(!deadline) return alert("請選擇截止日期");
-            const ref = db.ref('settings/randomTasks').push();
-            ref.set({ id: ref.key, deadline: deadline }).then(() => document.getElementById('random-deadline').value='');
-        }
-        function renderRandomTasks() {
-            const list = document.getElementById('random-tasks-list'); list.innerHTML = '';
-            if(Object.keys(randomConfig).length === 0) { list.innerHTML = '<div class="list-item" style="color:#888;">目前無派發隨機任務</div>'; return; }
-            Object.values(randomConfig).sort((a,b)=>new Date(b.deadline)-new Date(a.deadline)).forEach((task, idx) => {
-                list.innerHTML += `<div class="list-item"><div><strong>隨機生活任務 #${Object.keys(randomConfig).length - idx}</strong><br><span style="font-size:0.9rem; color:#666;">截止日期：${task.deadline}</span></div><button class="danger" onclick="deleteRandomTask('${task.id}')">刪除</button></div>`;
-            });
-        }
-        function deleteRandomTask(id) { if(confirm('確定刪除？')) db.ref(`settings/randomTasks/${id}`).remove(); }
-
-        // =====================================
-        // 4. 交流監控 (上帝視角)
-        // =====================================
-        function renderComms() {
-            const container = document.getElementById('comms-container'); container.innerHTML = '';
-            const filterClass = document.getElementById('filter-class').value;
-            
-            let sortedLetters = Object.values(lettersDB).sort((a,b) => b.timestamp - a.timestamp);
-            
-            sortedLetters.forEach(letter => {
-                let sender = usersDB[letter.senderUid];
-                let recipient = usersDB[letter.recipientUid];
-                
-                // Filter logic
-                if(filterClass !== "ALL") {
-                    if((!sender || sender.classId !== filterClass) && (!recipient || recipient.classId !== filterClass)) return;
+            // 讀取設定
+            db.ref('settings/taskConfig').on('value', snap => {
+                configData = snap.val();
+                if (configData) {
+                    document.getElementById('start-date').value = configData.startDate;
+                    document.getElementById('end-date').value = configData.endDate;
+                    document.getElementById('interval').value = configData.intervalDays;
                 }
+                renderView();
+            });
 
-                let sName = sender ? sender.name : '未知學生';
-                let rName = recipient ? recipient.name : '等待配對中...';
-                let typeBadge = letter.taskType === 'random' ? `<span class="tag" style="background:#9b59b6; color:#fff;">隨機任務</span>` : `<span class="tag green">閱讀任務</span>`;
-                
-                let html = `<div class="thread-box">
-                    <div class="thread-main" onclick="toggleReplies('${letter.id}')">
-                        <div style="flex:1;">
-                            <div style="margin-bottom:8px;">${typeBadge} <strong style="font-size:1.1rem; color:#2c3e50;">${sName}</strong> 寄給 <strong>${rName}</strong></div>
-                            <div style="font-size:0.9rem; color:#555; background:#f1f2f6; padding:10px; border-radius:6px;">
-                                <strong>任務內容/書名：</strong>${letter.taskType === 'random' ? letter.randomTaskDesc : letter.bookTitle}<br>
-                                <strong>首次感悟：</strong>${letter.reflections}
-                                ${letter.imageUrl ? `<br><a href="${letter.imageUrl}" target="_blank" style="color:#3498db; text-decoration:none; font-size:0.85rem;">📸 查看附圖</a>` : ''}
-                            </div>
-                        </div>
-                        <div style="color:#3498db; font-size:0.9rem; margin-left:15px;">展開對話 ▾</div>
-                    </div>
-                    <div class="thread-replies" id="replies-${letter.id}">`;
-                
-                let threadMsgs = convosDB[letter.id] ? Object.values(convosDB[letter.id]).sort((a,b)=>a.timestamp-b.timestamp) : [];
-                if(threadMsgs.length === 0) {
-                    html += `<div style="color:#999; font-size:0.9rem;">尚無後續回覆。</div>`;
-                } else {
-                    threadMsgs.forEach(msg => {
-                        let mName = usersDB[msg.senderUid] ? usersDB[msg.senderUid].name : '未知';
-                        let dateStr = new Date(msg.timestamp).toLocaleString();
-                        html += `<div class="reply-item">
-                            <div style="font-size:0.85rem; color:#7f8c8d; margin-bottom:5px;"><strong>${mName}</strong> 於 ${dateStr} 回覆：</div>
-                            <div style="font-size:0.95rem; color:#2c3e50;">${msg.text}</div>
-                        </div>`;
-                    });
-                }
-                html += `</div></div>`;
-                container.innerHTML += html;
+            // 讀取學生
+            db.ref('users').on('value', snap => {
+                usersData = snap.val() || {};
+                renderView();
+            });
+
+            // 讀取信件(作業)
+            db.ref('letters').on('value', snap => {
+                const data = snap.val() || {};
+                lettersData = Object.values(data);
+                renderView();
             });
         }
-        function toggleReplies(id) {
-            let el = document.getElementById(`replies-${id}`);
+
+        function saveConfig() {
+            const start = document.getElementById('start-date').value;
+            const end = document.getElementById('end-date').value;
+            const interval = parseInt(document.getElementById('interval').value);
+
+            if (!start || !end || !interval) return alert("請填寫完整設定。");
+
+            db.ref('settings/taskConfig').set({
+                startDate: start, endDate: end, intervalDays: interval
+            }).then(() => alert("設定已儲存！"));
+        }
+
+        // ==========================================
+        // 介面渲染 (切換視角)
+        // ==========================================
+        function switchTab(tab) {
+            currentView = tab;
+            document.getElementById('tab-student').className = tab === 'student' ? 'tab-btn active' : 'tab-btn';
+            document.getElementById('tab-task').className = tab === 'task' ? 'tab-btn active' : 'tab-btn';
+            renderView();
+        }
+
+        function renderView() {
+            const container = document.getElementById('data-container');
+            if (!configData) {
+                container.innerHTML = '<p style="color:var(--text-muted)">請先完成並儲存上方的任務設定。</p>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            if (currentView === 'student') {
+                renderByStudent(container);
+            } else {
+                renderByTask(container);
+            }
+        }
+
+        // 展開/收合控制
+        function toggleList(id) {
+            const el = document.getElementById(`list-body-${id}`);
             el.style.display = el.style.display === 'block' ? 'none' : 'block';
         }
 
+        // --- 視角 1：依學生 ---
+        function renderByStudent(container) {
+            const totalTasks = calculateTotalTasks();
+            
+            Object.keys(usersData).forEach(uid => {
+                const student = usersData[uid];
+                let html = `
+                    <div class="list-item">
+                        <div class="list-header" onclick="toggleList('${uid}')">
+                            <div><span class="list-title">${escapeHtml(student.name)}</span> <span class="list-subtitle">${escapeHtml(student.email)}</span></div>
+                            <span style="font-size:0.8rem;">展開 ▾</span>
+                        </div>
+                        <div class="list-body" id="list-body-${uid}">
+                            <div class="grid-container">
+                `;
+
+                for (let i = 0; i < totalTasks; i++) {
+                    const deadline = getTaskDeadline(i);
+                    // 尋找該學生的該回作業
+                    const letter = lettersData.find(l => l.senderUid === uid && l.taskIndex === i);
+                    html += buildCard(i + 1, deadline, letter);
+                }
+
+                html += `</div></div></div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        // --- 視角 2：依任務 ---
+        function renderByTask(container) {
+            const totalTasks = calculateTotalTasks();
+
+            for (let i = 0; i < totalTasks; i++) {
+                const deadline = getTaskDeadline(i);
+                const taskId = `task-${i}`;
+                
+                let html = `
+                    <div class="list-item">
+                        <div class="list-header" onclick="toggleList('${taskId}')">
+                            <div><span class="list-title">第 ${i + 1} 回</span> <span class="list-subtitle">截止: ${formatDate(deadline)}</span></div>
+                            <span style="font-size:0.8rem;">展開 ▾</span>
+                        </div>
+                        <div class="list-body" id="list-body-${taskId}">
+                            <div class="grid-container">
+                `;
+
+                Object.keys(usersData).forEach(uid => {
+                    const student = usersData[uid];
+                    const letter = lettersData.find(l => l.senderUid === uid && l.taskIndex === i);
+                    html += buildCard(student.name, deadline, letter);
+                });
+
+                html += `</div></div></div>`;
+                container.innerHTML += html;
+            }
+        }
+
+        // ==========================================
+        // 輔助與共用元件
+        // ==========================================
+        function calculateTotalTasks() {
+            const start = new Date(configData.startDate);
+            const end = new Date(configData.endDate);
+            const msDays = 1000 * 60 * 60 * 24;
+            return Math.floor(((end - start) / msDays) / configData.intervalDays);
+        }
+
+        function getTaskDeadline(taskIndex) {
+            const start = new Date(configData.startDate);
+            return new Date(start.getTime() + (taskIndex + 1) * configData.intervalDays * 24 * 60 * 60 * 1000);
+        }
+
+        function buildCard(titleText, deadline, letter) {
+            let statusClass = "s-miss";
+            let statusText = "未交";
+            let actionBtn = "";
+
+            if (letter) {
+                const subTime = new Date(letter.timestamp);
+                if (subTime <= deadline) {
+                    statusClass = "s-ok"; statusText = "準時";
+                } else {
+                    statusClass = "s-late"; statusText = "遲交";
+                }
+                const safeBook = escapeHtml(letter.bookTitle);
+                const safeContent = escapeHtml(letter.reflections).replace(/\n/g, '\\n');
+                actionBtn = `<button class="read-btn" onclick="openModal('${safeBook}', '${safeContent}')">閱讀</button>`;
+            }
+
+            return `
+                <div class="grid-card">
+                    <div style="font-size:0.9rem; font-weight:500;">${titleText}</div>
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">截止: ${formatDate(deadline)}</div>
+                    ${actionBtn}
+                </div>
+            `;
+        }
+
+        function formatDate(dateObj) {
+            return `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+        }
+
+        function escapeHtml(str) {
+            if(!str) return "";
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // 閱讀彈窗
+        function openModal(book, content) {
+            document.getElementById('modal-title').innerText = `《${book}》`;
+            document.getElementById('modal-text').innerText = content.replace(/\\n/g, '\n');
+            document.getElementById('preview-modal').style.display = 'flex';
+        }
+        function closeModal() {
+            document.getElementById('preview-modal').style.display = 'none';
+        }
     </script>
 </body>
 </html>
