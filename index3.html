@@ -54,9 +54,53 @@
         .auth-letter-content .input-box:focus { border-bottom-color: var(--color-replies); }
         
 /* 將按鈕樣式改為全域通用 */
-.btn { background: transparent; border: 1px solid var(--color-replies); color: var(--color-replies); font-family: var(--font-serif); font-size: 1.1rem; padding: 12px 30px; border-radius: 30px; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
-.btn:hover { background: var(--color-replies); color: white; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(84, 140, 168, 0.2); }
-.btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none;}
+/* --- 基礎按鈕樣式 --- */
+.btn { 
+    background: transparent; 
+    border: 1px solid var(--color-replies); 
+    color: var(--color-replies); 
+    font-family: var(--font-serif); 
+    font-size: 1.1rem; 
+    padding: 12px 30px; 
+    border-radius: 30px; 
+    cursor: pointer; 
+    transition: all 0.3s; 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 10px; 
+}
+
+/* --- 自動判斷：只要按鈕有設定背景顏色(非透明)，文字自動變為白色且取消邊框 --- */
+.btn[style*="background:"] {
+    color: #ffffff !important;
+    border-color: transparent !important;
+}
+
+/* --- 例外：如果是透明背景的按鈕(例如重抽按鈕)，維持原本的顏色 --- */
+.btn[style*="background: transparent"], 
+.btn[style*="background:transparent"] {
+    background: transparent !important;
+    color: inherit !important;
+}
+
+/* --- 懸浮與不可用狀態 --- */
+.btn:hover { 
+    transform: translateY(-2px); 
+    filter: brightness(1.1);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15); 
+}
+.btn:disabled { 
+    opacity: 0.6; 
+    cursor: not-allowed; 
+    transform: none; 
+    box-shadow: none;
+}
+
+/* 針對登入頁面的按鈕微調間距 */
+.auth-letter-content .btn { margin: 20px auto 0; width: 100%; }
+.auth-letter-content .btn-google { border-color: #475569 !important; color: #475569 !important; }
+.auth-letter-content .btn-google:hover { background: #475569 !important; color: white !important; }
 
 /* 針對登入頁面的按鈕微調間距 */
 .auth-letter-content .btn { margin: 20px auto 0; width: 100%; }
@@ -641,13 +685,16 @@ function handleFileSelect(event, type = 'reading') {
     const file = event.target.files[0]; 
     if (!file) return; 
     
-    // 判斷是閱讀還是隨機任務，抓取對應的 UI 元素
+    // 精確判斷是「隨機任務」還是「閱讀任務」，抓取對應的預覽框 ID
     const isRandom = (type === 'random');
-    const nameDisplay = document.getElementById(isRandom ? 'random-file-name-display' : 'file-name-display');
-    const preview = document.getElementById(isRandom ? 'random-image-preview' : 'image-preview');
+    const nameDisplayId = isRandom ? 'random-file-name-display' : 'file-name-display';
+    const previewId = isRandom ? 'random-image-preview' : 'image-preview';
+    
+    const nameDisplay = document.getElementById(nameDisplayId);
+    const preview = document.getElementById(previewId);
     
     selectedFileName = file.name; 
-    if (nameDisplay) nameDisplay.innerText = "圖片處理中，請稍候..."; // 給予載入提示，避免以為卡死
+    if (nameDisplay) nameDisplay.innerText = "圖片處理中，請稍候..."; 
     
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -659,22 +706,19 @@ function handleFileSelect(event, type = 'reading') {
                 let width = img.width;
                 let height = img.height;
 
-                // 防呆：只有當圖片真的大於 1200 時才等比例縮小，避免小圖被強制放大導致記憶體崩潰
                 if (width > MAX_WIDTH) {
                     height = Math.floor(height * (MAX_WIDTH / width));
                     width = MAX_WIDTH;
                 }
 
-                canvas.width = width; 
-                canvas.height = height; 
+                canvas.width = width; canvas.height = height; 
                 const ctx = canvas.getContext('2d'); 
                 ctx.drawImage(img, 0, 0, width, height);
                 
-                // 轉換為 Base64 (壓縮品質 60%)
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
                 selectedFileBase64 = dataUrl.split(',')[1]; 
                 
-                // 顯示預覽圖與檔名
+                // 將圖片顯示在正確的預覽框內
                 if (preview) {
                     preview.src = dataUrl; 
                     preview.style.display = 'block';
@@ -682,19 +726,12 @@ function handleFileSelect(event, type = 'reading') {
                 if (nameDisplay) nameDisplay.innerText = selectedFileName;
                 
             } catch (error) {
-                console.error("圖片處理失敗:", error);
-                alert("圖片處理失敗，可能是檔案過大或記憶體不足。");
+                alert("圖片處理失敗。");
                 if (nameDisplay) nameDisplay.innerText = "處理失敗";
             }
         };
-        img.onerror = function() {
-            alert("無法讀取此圖片，請更換一張。");
-            if (nameDisplay) nameDisplay.innerText = "讀取失敗";
-        };
         img.src = e.target.result;
     }; 
-    
-    reader.onerror = function() { alert("檔案讀取發生錯誤。"); };
     reader.readAsDataURL(file);
 }
 
