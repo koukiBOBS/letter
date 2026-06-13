@@ -483,32 +483,57 @@
             });
         }
 
-       function renderTasks() {
-            const grid = document.getElementById('task-grid'); if(!grid) return; grid.innerHTML = '';
-            if(!config) { grid.innerHTML = '<div class="empty-state"><p>目前尚未設定任務。</p></div>'; return; }
-            
-            const start = new Date(config.startDate); const total = Math.floor(((new Date(config.endDate) - start) / 86400000) / config.intervalDays);
-            
-            db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value').then(snap => {
-                const submitted = Object.values(snap.val()||{}).map(l=>l.taskIndex); const map = {}; Object.values(snap.val()||{}).forEach(l=>map[l.taskIndex]=l.id);
-                
-                for (let i = 0; i < total; i++) {
-                    const d = new Date(start.getTime() + i * config.intervalDays * 86400000); const today = new Date(); today.setHours(0, 0, 0, 0); const unlockDate = new Date(d); unlockDate.setHours(0, 0, 0, 0);
-                    const unlocked = today >= unlockDate; const done = submitted.includes(i);
-                    const el = document.createElement('div'); el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
-                    el.innerHTML = `<span class="task-num">第 ${i+1} 回任務</span><span class="task-date">${d.getMonth()+1}/${d.getDate()} 開放</span>`;
-                    
-                    el.onclick = () => {
-                        if (done) { openChatModal(map[i]); 
-                        } else if (unlocked) {
-                            if (hasUnrepliedLetters) return alert("您有尚未回覆的信件，必須先完成回應後方可開啟新任務。");
-                            selectedTaskIndex = i; document.getElementById('task-grid').style.display = 'none'; document.getElementById('write-editor').style.display = 'block'; document.getElementById('task-title').innerText = `撰寫任務：第 ${i+1} 回心得`; document.getElementById('log-question').value = ''; document.getElementById('btn-submit-task').innerText = "封裝寄出心得"; document.getElementById('btn-submit-task').disabled = false; document.getElementById('file-name-display').innerText = "尚未選擇圖片"; document.getElementById('image-preview').style.display = 'none'; selectedFileBase64 = null; document.getElementById('book-image').value = '';
-                        } else { alert("時空未到，尚未開放。"); }
-                    };
-                    grid.appendChild(el);
-                }
-            });
+      // 在學生端 HTML 搜尋 "function renderTasks()" 並將整段替換為以下程式碼：
+function renderTasks() {
+    const grid = document.getElementById('task-grid'); if(!grid) return; grid.innerHTML = '';
+    
+    // 讀取當前使用者的班級 (若無則為 default)
+    const classId = currentUser.classId || 'default';
+    
+    db.ref(`classes/${classId}`).once('value').then(classSnap => {
+        const classData = classSnap.val();
+        if(!classData || !classData.tasks || classData.tasks.length === 0) { 
+            grid.innerHTML = '<div class="empty-state"><p>目前尚未設定任務。</p></div>'; return; 
         }
+        
+        db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value').then(snap => {
+            const submitted = Object.values(snap.val()||{}).map(l=>l.taskIndex); 
+            const map = {}; Object.values(snap.val()||{}).forEach(l=>map[l.taskIndex]=l.id);
+            
+            // 根據導師設定的日期陣列生成任務卡片
+            classData.tasks.forEach((dateStr, i) => {
+                const today = new Date(); today.setHours(0, 0, 0, 0); 
+                const unlockDate = new Date(dateStr); unlockDate.setHours(0, 0, 0, 0);
+                const unlocked = today >= unlockDate; 
+                const done = submitted.includes(i);
+                
+                const el = document.createElement('div'); 
+                el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
+                // 這裡的日期會完美匹配導師中心設定的 dateStr
+                el.innerHTML = `<span class="task-num">第 ${i+1} 回任務</span><span class="task-date">${dateStr} 開放</span>`;
+                
+                el.onclick = () => {
+                    if (done) { openChatModal(map[i]); 
+                    } else if (unlocked) {
+                        if (hasUnrepliedLetters) return alert("您有尚未回覆的信件，必須先完成回應後方可開啟新任務。");
+                        selectedTaskIndex = i; 
+                        document.getElementById('task-grid').style.display = 'none'; 
+                        document.getElementById('write-editor').style.display = 'block'; 
+                        document.getElementById('task-title').innerText = `撰寫任務：第 ${i+1} 回心得`; 
+                        document.getElementById('log-question').value = ''; 
+                        document.getElementById('btn-submit-task').innerText = "封裝寄出心得"; 
+                        document.getElementById('btn-submit-task').disabled = false; 
+                        document.getElementById('file-name-display').innerText = "尚未選擇圖片"; 
+                        document.getElementById('image-preview').style.display = 'none'; 
+                        selectedFileBase64 = null; 
+                        document.getElementById('book-image').value = '';
+                    } else { alert("時空未到，尚未開放。"); }
+                };
+                grid.appendChild(el);
+            });
+        });
+    });
+}
 
         function escapeHtml(s) { return s?s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):s; }
 
