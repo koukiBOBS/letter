@@ -399,7 +399,7 @@
         const firebaseConfig = { apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms", authDomain: "letter-a74d1.firebaseapp.com", databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com", projectId: "letter-a74d1" };
         firebase.initializeApp(firebaseConfig); const auth = firebase.auth(); const db = firebase.database();
 
-        let currentUser = null; let config = null; let selectedTaskIndex = null; let hasUnrepliedLetters = false; let currentChatRef = null; let isInitialLoad = true;
+      let currentUser = null; let config = null; let selectedTaskIndex = null; let selectedTaskDate = null;
         let selectedFileBase64 = null; let selectedFileName = null;
         let isSubmittingLog = false; let isSubmittingReply = false;
         let userPlantData = null; 
@@ -486,8 +486,6 @@
       // 在學生端 HTML 搜尋 "function renderTasks()" 並將整段替換為以下程式碼：
 function renderTasks() {
     const grid = document.getElementById('task-grid'); if(!grid) return; grid.innerHTML = '';
-    
-    // 讀取當前使用者的班級 (若無則為 default)
     const classId = currentUser.classId || 'default';
     
     db.ref(`classes/${classId}`).once('value').then(classSnap => {
@@ -497,26 +495,43 @@ function renderTasks() {
         }
         
         db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value').then(snap => {
-            const submitted = Object.values(snap.val()||{}).map(l=>l.taskIndex); 
-            const map = {}; Object.values(snap.val()||{}).forEach(l=>map[l.taskIndex]=l.id);
+            const letters = Object.values(snap.val()||{});
             
-            // 根據導師設定的日期陣列生成任務卡片
+            // 找出已繳交的日期 (智慧防錯：新資料直接讀取 taskDate，舊資料確認繳交時間是否合理)
+            const submittedDates = letters.map(l => {
+                if (l.taskDate) return l.taskDate;
+                const dStr = classData.tasks[l.taskIndex];
+                if (dStr && new Date(l.timestamp).setHours(0,0,0,0) >= new Date(dStr).setHours(0,0,0,0)) return dStr;
+                return null;
+            }).filter(v => v);
+
+            const map = {}; 
+            letters.forEach(l => {
+                let d = l.taskDate;
+                if (!d) {
+                    const dStr = classData.tasks[l.taskIndex];
+                    if (dStr && new Date(l.timestamp).setHours(0,0,0,0) >= new Date(dStr).setHours(0,0,0,0)) d = dStr;
+                }
+                if(d) map[d] = l.id;
+            });
+            
             classData.tasks.forEach((dateStr, i) => {
                 const today = new Date(); today.setHours(0, 0, 0, 0); 
                 const unlockDate = new Date(dateStr); unlockDate.setHours(0, 0, 0, 0);
                 const unlocked = today >= unlockDate; 
-                const done = submitted.includes(i);
+                const done = submittedDates.includes(dateStr);
                 
                 const el = document.createElement('div'); 
                 el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
-                // 這裡的日期會完美匹配導師中心設定的 dateStr
                 el.innerHTML = `<span class="task-num">第 ${i+1} 回任務</span><span class="task-date">${dateStr} 開放</span>`;
                 
                 el.onclick = () => {
-                    if (done) { openChatModal(map[i]); 
+                    if (done) { 
+                        openChatModal(map[dateStr]); 
                     } else if (unlocked) {
                         if (hasUnrepliedLetters) return alert("您有尚未回覆的信件，必須先完成回應後方可開啟新任務。");
                         selectedTaskIndex = i; 
+                        selectedTaskDate = dateStr; // 儲存該任務的實體日期
                         document.getElementById('task-grid').style.display = 'none'; 
                         document.getElementById('write-editor').style.display = 'block'; 
                         document.getElementById('task-title').innerText = `撰寫任務：第 ${i+1} 回心得`; 
@@ -596,7 +611,15 @@ function renderTasks() {
                     let candidates = eligibleUids.filter(uid => (users[uid].receivedCount || 0) === minCount); rec = candidates[Math.floor(Math.random() * candidates.length)];
                     db.ref(`users/${rec}/receivedCount`).set(minCount + 1);
                 }
-                ref.set({ id: ref.key, senderUid: currentUser.uid, bookTitle: data.title, timestamp: ts, taskIndex: selectedTaskIndex, recipientUid: rec }).then(() => {
+                ref.set({ 
+    id: ref.key, 
+    senderUid: currentUser.uid, 
+    bookTitle: data.title, 
+    timestamp: ts, 
+    taskIndex: selectedTaskIndex, 
+    taskDate: selectedTaskDate, // <--- 加上這行，永遠鎖定日期！
+    recipientUid: rec 
+}).then(() => {
                     db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: ts });
                     if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
                     else db.ref(`unassigned_letters/${ref.key}`).set({ senderUid: currentUser.uid });
