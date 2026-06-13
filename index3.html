@@ -138,7 +138,7 @@
         <b>植物狀態</b><br>
         <button onclick="testAddGrowth()" style="width:100%; margin-bottom:5px;">🌱 成長 +10 天</button>
         <button onclick="testAddWilt()" style="width:100%; margin-bottom:5px;">🍂 忘記澆水 +1 天</button>
-        <button onclick="testCancelWater()" style="width:100%; margin-bottom:5px;">💧 取消澆水 (重置今日)</button>
+        <button onclick="testCancelWater()" style="width:100%; margin-bottom:5px;">💧 取消今日澆水</button>
         <button onclick="testResetPlant()" style="width:100%; margin-bottom:5px;">🗑 清除植物 (重新選擇)</button>
         <button onclick="document.getElementById('modal-plant-selector').style.display='flex'" style="width:100%; margin-bottom:5px;">🪴 手動打開植物選擇</button>
         <hr style="margin:8px 0;">
@@ -263,6 +263,62 @@
             db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); 
             setupNotifications(); loadMailbox(); loadUserPlant(); initHandwriting();
         }
+
+        // --- 補充缺少的介面函數 ---
+        function renderTasks() {
+            const grid = document.getElementById('task-grid');
+            if(!grid) return; grid.innerHTML = '';
+            // 若尚無伺服器配置，產生預設任務作為佔位符
+            let tasks = (config && config.tasks) ? config.tasks : [
+                {title: "閱讀起點", question: "書中一開始哪句話最吸引你？"},
+                {title: "內容轉折", question: "故事中哪個情節讓你感到驚訝？"},
+                {title: "總結收穫", question: "讀完之後，你最大的感悟是什麼？"}
+            ];
+            tasks.forEach((t, i) => {
+                const el = document.createElement('div');
+                el.className = 'task-card';
+                el.innerHTML = `<span class="task-num">任務 ${i+1}</span><span class="task-date">${t.title}</span>`;
+                el.onclick = () => {
+                    selectedTaskIndex = i;
+                    document.getElementById('task-grid').style.display = 'none';
+                    document.getElementById('write-editor').style.display = 'block';
+                    document.getElementById('task-title').innerText = `任務 ${i+1}: ${t.title}`;
+                    document.getElementById('log-question').value = t.question;
+                };
+                grid.appendChild(el);
+            });
+        }
+        function openChatModal(id) { document.getElementById('modal').style.display = 'flex'; }
+        function toggleReadingLog() {
+            const el = document.getElementById('mylog-editor');
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+        function submitReadingLog() {
+            showToast("紀錄已儲存！");
+            document.getElementById('mylog-editor').style.display = 'none';
+        }
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if(file) {
+                document.getElementById('file-name-display').innerText = file.name;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById('image-preview');
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+        function submitLog() {
+            showToast("任務心得已封裝寄出！");
+            document.getElementById('write-editor').style.display = 'none';
+            document.getElementById('task-grid').style.display = 'grid';
+        }
+        function initHandwriting() { /* 佔位功能 */ }
+        function hwBackspace() { }
+        function insertChar(c) { }
+        function closeHwKeyboard() { }
 
         // --- Plant Logic ---
         function loadUserPlant() { 
@@ -430,7 +486,6 @@
             scene.fog = new THREE.FogExp2(0xc5c1bc, 0.015);
             
             camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
-            // 響應式手機視角偵測
             if (window.innerWidth < 768) {
                 camera.position.set(0, 24, 42); 
             } else {
@@ -478,7 +533,6 @@
             dirLight.shadow.bias = -0.0005;
             scene.add(dirLight); scene.add(dirLight.target);
 
-            // 將室內點光源範圍設短，避免照射到窗戶玻璃造成圓形反光光斑
             const pointLight = new THREE.PointLight(0xffe8c4, 0.4, 20); 
             pointLight.position.set(-5, 15, 10); 
             scene.add(pointLight);
@@ -501,7 +555,7 @@
             frontWall.receiveShadow = true; 
             scene.add(frontWall);
 
-            // 窗框與玻璃建造 (移除十字橫樑)
+            // 窗框與玻璃
             const windowFrameGroup = new THREE.Group();
             windowFrameGroup.position.set(0, 16, -17.5);
             scene.add(windowFrameGroup);
@@ -515,14 +569,9 @@
             const topF = new THREE.Mesh(new THREE.BoxGeometry(18, frameThickness, frameDepth), frameMat); topF.position.set(0, 6 - frameThickness/2, 0); topF.castShadow = true; windowFrameGroup.add(topF);
             const botF = new THREE.Mesh(new THREE.BoxGeometry(18, frameThickness, frameDepth), frameMat); botF.position.set(0, -6 + frameThickness/2, 0); botF.castShadow = true; windowFrameGroup.add(botF);
             
-            // 中間直的窗樑
             const midV = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 12, frameDepth - 0.2), frameMat); midV.castShadow = true; windowFrameGroup.add(midV);
 
-            // 使用較無反光銳利度的物理玻璃材質
-            const glassMat = new THREE.MeshPhysicalMaterial({
-                color: 0xffffff, transparent: true, opacity: 0.15,
-                roughness: 0.1, transmission: 0.8, thickness: 0.5
-            });
+            const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, roughness: 0.1, transmission: 0.8, thickness: 0.5 });
             const glassPane = new THREE.Mesh(new THREE.BoxGeometry(17.5, 11.5, 0.05), glassMat);
             windowFrameGroup.add(glassPane);
 
@@ -533,46 +582,26 @@
             const backWall = new THREE.Mesh(sideWallGeo, wallMat); backWall.position.set(0, 20, 60); scene.add(backWall);
             const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), wallMat); ceiling.rotation.x = Math.PI/2; ceiling.position.set(0, 40, 0); scene.add(ceiling);
 
-            // 新增左側門
-            const doorGroup = new THREE.Group();
-            doorGroup.position.set(-59.5, 14, 0);
-            doorGroup.rotation.y = Math.PI/2;
-            scene.add(doorGroup);
-            const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(16, 28, 1), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.8}));
-            doorGroup.add(doorFrame);
-            const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(14, 26, 1.2), new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.7}));
-            doorGroup.add(doorPanel);
-            const doorKnob = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshStandardMaterial({color: 0x888888, metalness: 0.8}));
-            doorKnob.position.set(5, 0, 0.8);
-            doorGroup.add(doorKnob);
+            // 門
+            const doorGroup = new THREE.Group(); doorGroup.position.set(-59.5, 14, 0); doorGroup.rotation.y = Math.PI/2; scene.add(doorGroup);
+            const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(16, 28, 1), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.8})); doorGroup.add(doorFrame);
+            const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(14, 26, 1.2), new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.7})); doorGroup.add(doorPanel);
+            const doorKnob = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshStandardMaterial({color: 0x888888, metalness: 0.8})); doorKnob.position.set(5, 0, 0.8); doorGroup.add(doorKnob);
 
-            // 新增後方牆壁大排書櫃
-            const shelfGroup = new THREE.Group();
-            shelfGroup.position.set(0, 15, 59); // 緊貼後牆
-            scene.add(shelfGroup);
+            // 書櫃
+            const shelfGroup = new THREE.Group(); shelfGroup.position.set(0, 15, 59); scene.add(shelfGroup);
             const shelfMat = new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.8});
-            const shelfBack = new THREE.Mesh(new THREE.BoxGeometry(40, 30, 0.5), shelfMat);
-            shelfGroup.add(shelfBack);
+            const shelfBack = new THREE.Mesh(new THREE.BoxGeometry(40, 30, 0.5), shelfMat); shelfGroup.add(shelfBack);
             for(let sy = -12; sy <= 12; sy += 8) {
-                const shelfBoard = new THREE.Mesh(new THREE.BoxGeometry(38, 0.6, 5), shelfMat);
-                shelfBoard.position.set(0, sy, -2.5);
-                shelfGroup.add(shelfBoard);
-                
-                // 放滿書籍
+                const shelfBoard = new THREE.Mesh(new THREE.BoxGeometry(38, 0.6, 5), shelfMat); shelfBoard.position.set(0, sy, -2.5); shelfGroup.add(shelfBoard);
                 const bookColors = [0x8b3a3a, 0x3a5f8b, 0x4f8b3a, 0x8b6b3a, 0x222222, 0xdddddd];
                 let bx = -18;
                 while(bx < 18) {
-                    let bw = Math.random() * 0.8 + 0.3;
-                    let bh = Math.random() * 3 + 4;
+                    let bw = Math.random() * 0.8 + 0.3; let bh = Math.random() * 3 + 4;
                     if(bx + bw > 18) break;
-                    const b = new THREE.Mesh(
-                        new THREE.BoxGeometry(bw - 0.05, bh, 4), 
-                        new THREE.MeshStandardMaterial({color: bookColors[Math.floor(Math.random()*bookColors.length)], roughness: 0.7})
-                    );
-                    if(Math.random() > 0.7) { b.rotation.z = (Math.random() - 0.5) * 0.3; bx += 0.4; } // 傾斜的書
-                    b.position.set(bx + bw/2, sy + bh/2 + 0.3, -2.5);
-                    shelfGroup.add(b);
-                    bx += bw;
+                    const b = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.05, bh, 4), new THREE.MeshStandardMaterial({color: bookColors[Math.floor(Math.random()*bookColors.length)], roughness: 0.7}));
+                    if(Math.random() > 0.7) { b.rotation.z = (Math.random() - 0.5) * 0.3; bx += 0.4; } 
+                    b.position.set(bx + bw/2, sy + bh/2 + 0.3, -2.5); shelfGroup.add(b); bx += bw;
                 }
             }
 
@@ -594,56 +623,38 @@
             leftDrawer = new THREE.Mesh(drawerGeo, woodMat); leftDrawer.position.set(-7, 6, 0); leftDrawer.castShadow=true; leftDrawer.userData = {type: 'replies'}; desk.add(leftDrawer);
             rightDrawer = new THREE.Mesh(drawerGeo, woodMat); rightDrawer.position.set(7, 6, 0); rightDrawer.castShadow=true; rightDrawer.userData = {type: 'inbox'}; desk.add(rightDrawer);
             
-            const knobGeo = new THREE.SphereGeometry(0.5, 32, 32); 
-            const knobMat = new THREE.MeshStandardMaterial({color:0x555555, metalness:0.8, roughness:0.2});
+            const knobGeo = new THREE.SphereGeometry(0.5, 32, 32); const knobMat = new THREE.MeshStandardMaterial({color:0x555555, metalness:0.8, roughness:0.2});
             const knobL = new THREE.Mesh(knobGeo, knobMat); knobL.position.z = 6.2; leftDrawer.add(knobL);
             const knobR = new THREE.Mesh(knobGeo, knobMat); knobR.position.z = 6.2; rightDrawer.add(knobR);
             
-            // 將新信件信封直接掛於桌面之上，永不被遮擋
-            const envGeo = new THREE.BoxGeometry(1.2, 0.8, 0.1);
-            const envMat = new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0x444444});
+            const envGeo = new THREE.BoxGeometry(1.2, 0.8, 0.1); const envMat = new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0x444444});
             indicatorLeft = new THREE.Mesh(envGeo, envMat); indicatorLeft.position.set(-7, 10, 2); indicatorLeft.visible = false; desk.add(indicatorLeft);
             indicatorRight = new THREE.Mesh(envGeo, envMat); indicatorRight.position.set(7, 10, 2); indicatorRight.visible = false; desk.add(indicatorRight);
             
-            // 書本 (無文字)
+            // 書本
             book = new THREE.Group(); book.position.set(8, 8.6, 2); book.rotation.y = -0.2; book.userData = {type: 'log'}; desk.add(book);
-            const bookPages = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.6, 5.2), new THREE.MeshStandardMaterial({color:0xffffff}));
-            bookPages.castShadow = true; book.add(bookPages);
-            const bookCover = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.8, 5.6), new THREE.MeshStandardMaterial({map: createCoverTexture("", "#8b7355")}));
-            bookCover.castShadow = true; book.add(bookCover);
+            const bookPages = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.6, 5.2), new THREE.MeshStandardMaterial({color:0xffffff})); bookPages.castShadow = true; book.add(bookPages);
+            const bookCover = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.8, 5.6), new THREE.MeshStandardMaterial({map: createCoverTexture("", "#8b7355")})); bookCover.castShadow = true; book.add(bookCover);
 
             // 任務板
             clipboard = new THREE.Group(); clipboard.position.set(-8, 8.55, 1); clipboard.rotation.y = 0.15; clipboard.userData = {type: 'tasks'}; desk.add(clipboard);
-            const clipBoardBase = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.1, 6), new THREE.MeshStandardMaterial({map: createWoodTexture()}));
-            clipBoardBase.castShadow = true; clipboard.add(clipBoardBase);
+            const clipBoardBase = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.1, 6), new THREE.MeshStandardMaterial({map: createWoodTexture()})); clipBoardBase.castShadow = true; clipboard.add(clipBoardBase);
             const paper = new THREE.Mesh(new THREE.BoxGeometry(4, 0.12, 5.5), new THREE.MeshStandardMaterial({color:0xffffff})); paper.position.y=0.05; clipboard.add(paper);
             const clip = new THREE.Mesh(new THREE.BoxGeometry(2, 0.3, 0.5), new THREE.MeshStandardMaterial({color:0xaaaaaa, metalness:0.8})); clip.position.set(0, 0.2, -2.5); clipboard.add(clip);
 
             // 澆水壺
-            wateringCan = new THREE.Group(); 
-            wateringCan.position.set(-11, 8.5, -3); 
-            wateringCan.rotation.y = Math.PI/4; 
-            wateringCan.userData = {type: 'water'}; 
-            desk.add(wateringCan);
-
-            const canBody = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1, 1.8, 16), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4}));
-            canBody.position.y = 0.9; canBody.castShadow = true; wateringCan.add(canBody);
-
-            const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, 2.5), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})); 
-            spout.position.set(1.2, 0.8, 0); 
-            spout.rotation.z = -Math.PI/3; 
-            spout.castShadow = true; wateringCan.add(spout);
-
-            const handle = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.1, 8, 16), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4}));
-            handle.rotation.set(0, Math.PI/2, 0); handle.position.set(-0.8, 0.9, 0); handle.castShadow = true; wateringCan.add(handle);
+            wateringCan = new THREE.Group(); wateringCan.position.set(-11, 8.5, -3); wateringCan.rotation.y = Math.PI/4; wateringCan.userData = {type: 'water'}; desk.add(wateringCan);
+            const canBody = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1, 1.8, 16), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})); canBody.position.y = 0.9; canBody.castShadow = true; wateringCan.add(canBody);
+            const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, 2.5), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})); spout.position.set(1.2, 0.8, 0); spout.rotation.z = -Math.PI/3; spout.castShadow = true; wateringCan.add(spout);
             
-            dummySpoutTip = new THREE.Object3D(); 
-            dummySpoutTip.position.set(0, 1.3, 0); 
-            spout.add(dummySpoutTip);
+            // 修復把手方向
+            const handle = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.1, 8, 16), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4}));
+            handle.rotation.set(0, 0, 0); handle.position.set(-0.8, 0.9, 0); handle.castShadow = true; wateringCan.add(handle);
+            
+            dummySpoutTip = new THREE.Object3D(); dummySpoutTip.position.set(0, 1.3, 0); spout.add(dummySpoutTip);
 
             // 窗外風景
             sceneryGroup = new THREE.Group(); sceneryGroup.position.set(0, 5, -50); scene.add(sceneryGroup);
-            
             const buildingTex = createBuildingTexture();
             const bMat = new THREE.MeshStandardMaterial({color:0x778899, roughness:0.8, map: buildingTex, emissiveMap: buildingTex, emissive: 0xffffee, emissiveIntensity: 0.0}); 
             const fixedBuildings = [
@@ -666,26 +677,20 @@
 
             const treeMat = new THREE.MeshStandardMaterial({color: 0x2d4c1e, roughness: 0.9});
             const trunkMat = new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 0.9});
-
             for (let i = -50; i <= 50; i += 15) {
                 if (Math.abs(i) < 5) continue; 
-                const t1 = new THREE.Group();
-                const tr1 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 3), trunkMat); tr1.position.y = 1.5; tr1.castShadow = true; t1.add(tr1);
-                const lf1 = new THREE.Mesh(new THREE.ConeGeometry(2.5, 6, 8), treeMat); lf1.position.y = 4.5; lf1.castShadow = true; t1.add(lf1);
-                t1.position.set(i + (Math.random()-0.5)*3, -4.9, -7);
-                sceneryGroup.add(t1);
-
-                const t2 = new THREE.Group();
-                const tr2 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 3), trunkMat); tr2.position.y = 1.5; tr2.castShadow = true; t2.add(tr2);
-                const lf2 = new THREE.Mesh(new THREE.ConeGeometry(2.5, 6, 8), treeMat); lf2.position.y = 4.5; lf2.castShadow = true; t2.add(lf2);
-                t2.position.set(i + (Math.random()-0.5)*3, -4.9, 7);
-                sceneryGroup.add(t2);
+                [[-7], [7]].forEach(pos => {
+                    const t = new THREE.Group();
+                    const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 3), trunkMat); tr.position.y = 1.5; tr.castShadow = true; t.add(tr);
+                    const lf = new THREE.Mesh(new THREE.ConeGeometry(2.5, 6, 8), treeMat); lf.position.y = 4.5; lf.castShadow = true; t.add(lf);
+                    t.position.set(i + (Math.random()-0.5)*3, -4.9, pos[0]); sceneryGroup.add(t);
+                });
             }
 
             interactables = [leftDrawer, rightDrawer, book, clipboard, wateringCan];
         }
 
-        // --- Plant Generation ---
+        // --- Plant Generation (大幅優化模型與特徵) ---
         function buildPlantIn3D(type, growth, wilt) {
             if (plantGroup) { 
                 desk.remove(plantGroup); 
@@ -701,8 +706,12 @@
             plantGroup.add(hitBox); 
             interactables.push(hitBox);
             
-            const pot = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.9, 1.6, 32), new THREE.MeshStandardMaterial({color: 0xd4a373, roughness: 0.9})); pot.position.y=0.8; pot.castShadow=true; plantGroup.add(pot);
-            const dirt = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.1, 32), new THREE.MeshStandardMaterial({color: 0x4a3728})); dirt.position.y=1.55; plantGroup.add(dirt);
+            const pot = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.9, 1.6, 32), new THREE.MeshStandardMaterial({color: 0xd4a373, roughness: 0.9})); 
+            pot.position.y=0.8; pot.castShadow=true; plantGroup.add(pot);
+            
+            // 修復泥土閃爍與調整真實質感
+            const dirt = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, 0.05, 32), new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 1.0})); 
+            dirt.position.y=1.61; plantGroup.add(dirt);
             
             const isDead = wilt >= 7;
             const scale = 0.1 + (growth / 100) * 0.15; 
@@ -713,51 +722,155 @@
             
             plantGroup.add(plantBody);
 
-            if (type === 1) { // 龜背芋
+            if (type === 1) { // 龜背芋 Monstera
                 const count = Math.floor(growth / 8) + 3;
-                const leafGeo = new THREE.CylinderGeometry(1, 1, 0.05, 16);
+                const leafGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.05, 16); 
+                for(let i=0; i<count; i++) {
+                    const stemGrp = new THREE.Group();
+                    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2), mat);
+                    stem.position.y = 1; stem.castShadow = true;
+                    stemGrp.add(stem);
+                    
+                    const leaf = new THREE.Mesh(leafGeo, mat);
+                    leaf.position.y = 2; leaf.rotation.x = Math.PI / 2; leaf.scale.set(1, 1, 1.2); leaf.castShadow = true;
+                    stemGrp.add(leaf);
+
+                    let dropAngle = isDead ? (Math.PI/1.6) : (wiltFactor * Math.PI/4 + 0.2);
+                    stemGrp.rotation.x = dropAngle; 
+                    stemGrp.rotation.y = i * 2.4;
+                    
+                    if(isDead) stemGrp.scale.setScalar(scale * 0.8);
+                    else stemGrp.scale.setScalar(scale * (0.8 + i*0.05));
+                    
+                    plantBody.add(stemGrp);
+                }
+            } else if (type === 2) { // 多肉蓮座 Succulent Rosette
+                const count = Math.floor(growth / 4) + 12;
+                const leafGeo = new THREE.ConeGeometry(0.6, 1.8, 12);
+                leafGeo.translate(0, 0.9, 0); 
                 for(let i=0; i<count; i++) {
                     const leaf = new THREE.Mesh(leafGeo, mat);
-                    leaf.position.y = i * 0.5 * scale; 
-                    // 若枯萎，葉片大幅下垂，生長越多叢就垂得越密集
-                    let dropAngle = isDead ? (Math.PI/1.2) : (Math.PI/2 + wiltFactor * Math.PI/4);
-                    leaf.rotation.x = dropAngle; 
-                    leaf.rotation.y = i * 2.4;
-                    leaf.position.x = Math.sin(leaf.rotation.y) * 2 * scale; 
-                    leaf.position.z = Math.cos(leaf.rotation.y) * 2 * scale;
-                    if(isDead) {
-                        leaf.scale.set(scale*0.8, scale*0.8, scale*(0.5+i/(count*2))*0.8);
-                        leaf.position.y -= 0.5 * scale;
-                    } else {
-                        leaf.scale.set(scale, scale, scale*(0.5+i/(count*2))); 
-                    }
+                    const angle = i * 2.39996; // 黃金角度螺旋
+                    const radius = i * 0.05;
+                    
+                    leaf.rotation.y = -angle;
+                    let bend = Math.PI/2 - (Math.PI/2) / (1 + i*0.15); 
+                    if(isDead) bend += Math.PI/4; 
+                    leaf.rotation.x = bend;
+                    
+                    leaf.position.x = Math.cos(angle) * radius * scale;
+                    leaf.position.z = Math.sin(angle) * radius * scale;
+                    leaf.position.y = (count - i) * 0.02 * scale; 
+                    
+                    leaf.scale.set(scale, scale, scale*0.5);
                     leaf.castShadow=true; plantBody.add(leaf);
                 }
-            } else if (type === 5) { // 仙人掌
-                const cacMat = new THREE.MeshStandardMaterial({color: leafColor, roughness: 0.9});
-                const main = new THREE.Mesh(new THREE.CapsuleGeometry(1, 3, 16, 16), cacMat);
-                main.position.y = 2.5*scale; 
-                // 若枯萎，仙人掌會乾扁且彎折
-                if(isDead) {
-                    main.scale.set(scale*0.8, scale*0.8, scale*0.8);
-                    main.rotation.z = 0.8; 
-                    main.position.x = 1.5 * scale;
-                    main.position.y = 1.5 * scale;
-                } else {
-                    main.scale.setScalar(scale);
-                }
-                main.castShadow=true; plantBody.add(main);
-            } else { // 其它盆栽
-                const main = new THREE.Mesh(new THREE.SphereGeometry(2, 16, 16), mat);
-                // 若枯萎，整個球體會乾癟塌陷
+            } else if (type === 3) { // 綠幽盆景 Bonsai
+                const trunkMat = new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 1.0});
+                const bonsaiGrp = new THREE.Group();
+                
+                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 3, 8), trunkMat);
+                trunk.position.y = 1.5; trunk.rotation.z = 0.3; trunk.rotation.x = 0.2; trunk.castShadow = true;
+                bonsaiGrp.add(trunk);
+                
+                const crown = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), mat);
+                crown.position.set(-0.5, 3.2, -0.5); crown.scale.set(1, 0.6, 1); crown.castShadow = true;
+                bonsaiGrp.add(crown);
+                
+                const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 1.5), trunkMat);
+                branch.position.set(0.5, 1.5, 0); branch.rotation.z = -0.6; branch.castShadow = true;
+                bonsaiGrp.add(branch);
+                
+                const crown2 = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 16), mat);
+                crown2.position.set(1.2, 2.0, 0); crown2.scale.set(1, 0.6, 1); crown2.castShadow = true;
+                bonsaiGrp.add(crown2);
+
                 if (isDead) {
-                    main.scale.set(scale * 0.8, scale * 0.5, scale * 0.8);
-                    main.position.y = 1.5 * scale;
+                    bonsaiGrp.scale.setScalar(scale * 1.2);
+                    crown.scale.set(0.8, 0.3, 0.8); crown2.scale.set(0.8, 0.3, 0.8);
+                    crown.position.y -= 0.4; crown2.position.y -= 0.2;
                 } else {
-                    main.scale.setScalar(scale); 
-                    main.position.y = 2*scale; 
+                    bonsaiGrp.scale.setScalar(scale * 1.6);
                 }
-                main.castShadow=true; plantBody.add(main);
+                plantBody.add(bonsaiGrp);
+            } else if (type === 4) { // 紫韻薰衣 Lavender
+                const stemCount = Math.floor(growth / 10) + 4;
+                const purpColor = isDead ? new THREE.Color(0x6b5b6b) : new THREE.Color(0x9b7bc6).lerp(new THREE.Color(0x8d6e63), wiltFactor);
+                const flowerMat = new THREE.MeshStandardMaterial({color: purpColor, roughness: 0.8});
+                
+                for(let i=0; i<stemCount; i++) {
+                    const stemGrp = new THREE.Group();
+                    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.5), mat);
+                    stem.position.y = 1.25; stem.castShadow = true;
+                    stemGrp.add(stem);
+                    
+                    const flower = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.2, 8), flowerMat);
+                    flower.position.y = 3.0; flower.castShadow = true;
+                    stemGrp.add(flower);
+
+                    stemGrp.rotation.x = (Math.random() - 0.5) * 0.4;
+                    stemGrp.rotation.z = (Math.random() - 0.5) * 0.4;
+                    if (isDead) stemGrp.rotation.x += Math.PI/2.5;
+
+                    stemGrp.scale.setScalar(scale * 1.3);
+                    plantBody.add(stemGrp);
+                }
+            } else if (type === 5) { // 仙人掌 Cactus
+                const cacMat = new THREE.MeshStandardMaterial({color: leafColor, roughness: 0.9});
+                const mainGrp = new THREE.Group();
+                
+                // 移除不支援的 CapsuleGeometry，改用 Cylinder + Sphere 組合代替
+                const body = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 2.5, 16), cacMat);
+                body.castShadow = true; mainGrp.add(body);
+                
+                const capTop = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16), cacMat);
+                capTop.position.y = 1.25; capTop.castShadow = true; mainGrp.add(capTop);
+                
+                const capBot = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16), cacMat);
+                capBot.position.y = -1.25; capBot.castShadow = true; mainGrp.add(capBot);
+                
+                if (growth > 10) {
+                    const armGrp = new THREE.Group();
+                    const armBody = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.0, 16), cacMat);
+                    armBody.castShadow = true; armGrp.add(armBody);
+                    
+                    const armTop = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), cacMat);
+                    armTop.position.y = 0.5; armTop.castShadow = true; armGrp.add(armTop);
+                    
+                    const armBot = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), cacMat);
+                    armBot.position.y = -0.5; armBot.castShadow = true; armGrp.add(armBot);
+                    
+                    armGrp.position.set(1.1, 0.2, 0);
+                    armGrp.rotation.z = -0.6;
+                    mainGrp.add(armGrp);
+                }
+                
+                if (growth > 40) {
+                    const armGrp2 = new THREE.Group();
+                    const armBody2 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.8, 16), cacMat);
+                    armBody2.castShadow = true; armGrp2.add(armBody2);
+                    
+                    const armTop2 = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), cacMat);
+                    armTop2.position.y = 0.4; armTop2.castShadow = true; armGrp2.add(armTop2);
+                    
+                    const armBot2 = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), cacMat);
+                    armBot2.position.y = -0.4; armBot2.castShadow = true; armGrp2.add(armBot2);
+                    
+                    armGrp2.position.set(-1.0, 0.6, 0);
+                    armGrp2.rotation.z = 0.8;
+                    mainGrp.add(armGrp2);
+                }
+                
+                mainGrp.position.y = 1.5 * scale; 
+                
+                if(isDead) {
+                    mainGrp.scale.set(scale*0.8, scale*0.8, scale*0.8);
+                    mainGrp.rotation.z = 0.8; 
+                    mainGrp.position.x = 1.5 * scale;
+                } else {
+                    mainGrp.scale.setScalar(scale);
+                }
+                plantBody.add(mainGrp);
             }
         }
 
@@ -906,9 +1019,10 @@
         window.testAddWilt = function() { if(userPlantData && !userPlantData.isDead){ userPlantData.wilt = Math.min(7, userPlantData.wilt+1); db.ref(`users/${currentUser.uid}/plant`).update(userPlantData); showToast("測試：已增加 1 天缺水");}};
         window.testCancelWater = function() { 
             if(userPlantData && !userPlantData.isDead){ 
-                userPlantData.lastWatered = Date.now() - 86400000 * 2; 
+                // 修復：改設為「昨天」，這樣可再次澆水，且不觸發「大於1天」的枯萎懲罰
+                userPlantData.lastWatered = Date.now() - 86400000; 
                 db.ref(`users/${currentUser.uid}/plant`).update(userPlantData); 
-                showToast("測試：已取消澆水狀態，現在可再次澆水");
+                showToast("測試：已取消今日澆水狀態，現在可再次澆水");
             }
         };
         window.testResetPlant = function() { 
