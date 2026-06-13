@@ -209,9 +209,7 @@
                     <button class="tab-btn" id="tab-task" onclick="switchRecordTab('task')">依任務查看</button>
                 </div>
 
-                <div id="records-accordion-container">
-                    <!-- 動態載入折疊列表 -->
-                </div>
+                <div id="records-accordion-container"></div>
             </div>
         </section>
 
@@ -316,7 +314,7 @@
 
         function deleteTask(cid, index) { if(confirm(`確定要刪除第 ${index+1} 回任務嗎？`)) { let tasks = dbClasses[cid].tasks || []; tasks.splice(index, 1); db.ref(`classes/${cid}/tasks`).set(tasks); } }
 
-        /* --- 作業批閱：折疊列表保留邏輯 --- */
+        /* --- 作業批閱：智慧防錯比對邏輯 --- */
         function switchRecordTab(tab) {
             currentRecordTab = tab;
             document.getElementById('tab-student').className = tab === 'student' ? 'tab-btn active' : 'tab-btn';
@@ -327,6 +325,21 @@
         function toggleAccordion(id) {
             const el = document.getElementById(`acc-body-${id}`);
             el.style.display = el.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function findLetterSafe(uid, dateStr, idx, lettersArray) {
+            return lettersArray.find(l => {
+                if (l.senderUid !== uid) return false;
+                
+                // 如果是升級後的新功課（有存日期），精準比對日期
+                if (l.taskDate) return l.taskDate === dateStr;
+                
+                // 防呆機制：如果是舊功課 (只存 Index)，為了避免「錯認到新加派的任務上」，
+                // 必須檢查「繳交時間」是否合理 (繳交時間 不可能 早於 該任務的開放日期)
+                const submitDate = new Date(l.timestamp).setHours(0,0,0,0);
+                const taskOpenDate = new Date(dateStr).setHours(0,0,0,0);
+                return l.taskIndex === idx && submitDate >= taskOpenDate;
+            });
         }
 
         function renderRecords() {
@@ -344,7 +357,7 @@
                     const u = dbUsers[uid];
                     let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('stu-${uid}')"><div class="list-title">🧑‍🎓 ${escapeHtml(u.name)} <span class="list-subtitle">${escapeHtml(u.email)}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看任務 ▾</span></div><div class="list-body" id="acc-body-stu-${uid}"><div class="grid-container">`;
                     tasks.forEach((dateStr, idx) => {
-                        const letter = lettersArray.find(l => l.senderUid === uid && l.taskIndex === idx);
+                        const letter = findLetterSafe(uid, dateStr, idx, lettersArray);
                         html += buildGridCard(`第 ${idx+1} 回`, dateStr, letter);
                     });
                     if(tasks.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級尚未派發任務。</p>`;
@@ -356,7 +369,7 @@
                     let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('task-${idx}')"><div class="list-title">📋 第 ${idx + 1} 回 <span class="list-subtitle">期限: ${dateStr}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看學生 ▾</span></div><div class="list-body" id="acc-body-task-${idx}"><div class="grid-container">`;
                     studentsInClass.forEach(uid => {
                         const u = dbUsers[uid];
-                        const letter = lettersArray.find(l => l.senderUid === uid && l.taskIndex === idx);
+                        const letter = findLetterSafe(uid, dateStr, idx, lettersArray);
                         html += buildGridCard(escapeHtml(u.name), dateStr, letter);
                     });
                     if(studentsInClass.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級目前沒有學生。</p>`;
