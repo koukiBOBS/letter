@@ -188,10 +188,21 @@
             overflow-wrap: break-word; /* 加上這行確保超出容器時換行 */
         }
 
-        .letter-section-divider {
-            display: block; text-align: center; font-size: 0.95rem; color: #9c8a75; letter-spacing: 0.6em; 
-            margin: 2.5em 0 1.5em 0; position: relative; font-weight: 400; font-family: var(--font-serif);
-        }
+      .letter-section-divider {
+    display: block; 
+    text-align: center; 
+    font-size: 0.95rem; 
+    color: #9c8a75; 
+    letter-spacing: 0.6em; 
+    
+    /* 🌟 關鍵修正：移除 em margin，鎖定行高為 40px，確保網格不跑位 */
+    margin: 0; 
+    line-height: 40px; 
+    
+    position: relative; 
+    font-weight: 400; 
+    font-family: var(--font-serif);
+}
         .letter-section-divider::before, .letter-section-divider::after {
             content: ''; position: absolute; top: 50%; width: 20%; height: 1px; background: rgba(160, 140, 120, 0.25);
         }
