@@ -53,9 +53,13 @@
         .auth-letter-content .input-box { background: transparent; border: none; border-bottom: 1px dashed #b4a08c; border-radius: 0; padding: 5px 0; text-align: center; font-family: var(--font-serif); font-size: 1.2rem; color: var(--letter-ink); outline: none; margin-top: 20px; width: 100%; transition: border-color 0.3s;}
         .auth-letter-content .input-box:focus { border-bottom-color: var(--color-replies); }
         
-        .auth-letter-content .btn { background: transparent; border: 1px solid var(--color-replies); color: var(--color-replies); font-family: var(--font-serif); font-size: 1.1rem; padding: 12px 30px; margin: 20px auto 0; border-radius: 30px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .auth-letter-content .btn:hover { background: var(--color-replies); color: white; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(84, 140, 168, 0.2); }
-        .auth-letter-content .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+/* 將按鈕樣式改為全域通用 */
+.btn { background: transparent; border: 1px solid var(--color-replies); color: var(--color-replies); font-family: var(--font-serif); font-size: 1.1rem; padding: 12px 30px; border-radius: 30px; cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+.btn:hover { background: var(--color-replies); color: white; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(84, 140, 168, 0.2); }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none;}
+
+/* 針對登入頁面的按鈕微調間距 */
+.auth-letter-content .btn { margin: 20px auto 0; width: 100%; }
         .btn-google { border-color: #475569 !important; color: #475569 !important; width: 100%; }
         .btn-google:hover { background: #475569 !important; color: white !important; box-shadow: 0 5px 15px rgba(71, 85, 105, 0.2) !important; }
         
@@ -740,19 +744,19 @@ function handleFileSelect(event, type = 'reading') {
             });
         }
 
-        function handleFileSelect(event) {
-            const file = event.target.files[0]; if (!file) return; selectedFileName = file.name; document.getElementById('file-name-display').innerText = selectedFileName;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.createElement('canvas'); const MAX_WIDTH = 1200; const scaleSize = MAX_WIDTH / img.width;
-                    canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    selectedFileBase64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1]; const preview = document.getElementById('image-preview'); preview.src = canvas.toDataURL('image/jpeg', 0.6); preview.style.display = 'block';
-                }
-                img.src = e.target.result;
-            }; reader.readAsDataURL(file);
+       function handleFileSelect(event) {
+    const file = event.target.files[0]; if (!file) return; selectedFileName = file.name; document.getElementById('file-name-display').innerText = selectedFileName;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            const canvas = document.createElement('canvas'); const MAX_WIDTH = 1200; const scaleSize = MAX_WIDTH / img.width;
+            canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            selectedFileBase64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1]; const preview = document.getElementById('image-preview'); preview.src = canvas.toDataURL('image/jpeg', 0.6); preview.style.display = 'block';
         }
+        img.src = e.target.result;
+    }; reader.readAsDataURL(file);
+}
 
         async function submitLog() {
             const title = document.getElementById('book-title').value.trim(); const page = document.getElementById('book-page').value.trim();
