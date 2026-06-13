@@ -279,7 +279,7 @@
         }
 
         function updatePlantStateLogic(p) { 
-            if(p.isDead) return buildPlantIn3D(p.type, p.growth, p.wilt); // 枯死了就只顯示枯萎模型
+            if(p.isDead) return buildPlantIn3D(p.type, p.growth, p.wilt); 
             
             let today = new Date(); today.setHours(0,0,0,0); 
             let lastW = new Date(p.lastWatered); lastW.setHours(0,0,0,0); 
@@ -358,7 +358,7 @@
 
 
         // ==========================================
-        // 🌟 THREE.JS 沉浸式 3D 書房 (精準物理互動版)
+        // 🌟 THREE.JS 沉浸式 3D 書房 (精準物理互動穩定版)
         // ==========================================
         let scene, camera, renderer, controls, raycaster, mouse;
         let desk, leftDrawer, rightDrawer, book, clipboard, wateringCan, plantGroup, windowGroup, sceneryGroup;
@@ -501,7 +501,16 @@
             
             const knobGeo = new THREE.SphereGeometry(0.5, 32, 32); 
             const knobMat = new THREE.MeshStandardMaterial({color:0x555555, metalness:0.8, roughness:0.2});
-            leftDrawer.add(new THREE.Mesh(knobGeo, knobMat).translateZ(6.2)); rightDrawer.add(new THREE.Mesh(knobGeo, knobMat).translateZ(6.2));
+
+            // 左抽屜把手
+            const knobL = new THREE.Mesh(knobGeo, knobMat);
+            knobL.position.z = 6.2;
+            leftDrawer.add(knobL);
+
+            // 右抽屜把手
+            const knobR = new THREE.Mesh(knobGeo, knobMat);
+            knobR.position.z = 6.2;
+            rightDrawer.add(knobR);
             
             // 優雅的小信封提示
             const envGeo = new THREE.BoxGeometry(1.2, 0.8, 0.1);
@@ -509,22 +518,40 @@
             indicatorLeft = new THREE.Mesh(envGeo, envMat); indicatorLeft.position.set(0, 1.5, 6.2); indicatorLeft.visible = false; leftDrawer.add(indicatorLeft);
             indicatorRight = new THREE.Mesh(envGeo, envMat); indicatorRight.position.set(0, 1.5, 6.2); indicatorRight.visible = false; rightDrawer.add(indicatorRight);
             
-            // 書本與任務板
+            // 書本
             book = new THREE.Group(); book.position.set(8, 8.6, 2); book.rotation.y = -0.2; book.userData = {type: 'log'}; desk.add(book);
-            book.add(new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.6, 5.2), new THREE.MeshStandardMaterial({color:0xffffff})));
-            book.add(new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.8, 5.6), new THREE.MeshStandardMaterial({map: createCoverTexture("紀錄", "#8b7355")})));
+            const bookPages = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.6, 5.2), new THREE.MeshStandardMaterial({color:0xffffff}));
+            book.add(bookPages);
+            const bookCover = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.8, 5.6), new THREE.MeshStandardMaterial({map: createCoverTexture("紀錄", "#8b7355")}));
+            book.add(bookCover);
 
+            // 任務板
             clipboard = new THREE.Group(); clipboard.position.set(-8, 8.55, 1); clipboard.rotation.y = 0.15; clipboard.userData = {type: 'tasks'}; desk.add(clipboard);
-            clipboard.add(new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.1, 6), new THREE.MeshStandardMaterial({map: createWoodTexture()})));
+            const clipBoardBase = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.1, 6), new THREE.MeshStandardMaterial({map: createWoodTexture()}));
+            clipboard.add(clipBoardBase);
             const paper = new THREE.Mesh(new THREE.BoxGeometry(4, 0.12, 5.5), new THREE.MeshStandardMaterial({color:0xffffff})); paper.position.y=0.05; clipboard.add(paper);
             const clip = new THREE.Mesh(new THREE.BoxGeometry(2, 0.3, 0.5), new THREE.MeshStandardMaterial({color:0xaaaaaa, metalness:0.8})); clip.position.set(0, 0.2, -2.5); clipboard.add(clip);
 
             // 澆水壺與真實出水口錨點
-            wateringCan = new THREE.Group(); wateringCan.position.set(-11, 8.5, -3); wateringCan.rotation.y = Math.PI/4; wateringCan.userData = {type: 'water'}; desk.add(wateringCan);
-            wateringCan.add(new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1, 1.8, 16), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})).translateY(0.9));
+            wateringCan = new THREE.Group(); 
+            wateringCan.position.set(-11, 8.5, -3); 
+            wateringCan.rotation.y = Math.PI/4; 
+            wateringCan.userData = {type: 'water'}; 
+            desk.add(wateringCan);
+
+            const canBody = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1, 1.8, 16), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4}));
+            canBody.position.y = 0.9;
+            wateringCan.add(canBody);
+
             const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, 2.5), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})); 
-            spout.position.set(1.2, 0.8, 0); spout.rotation.z = -Math.PI/3; wateringCan.add(spout);
-            wateringCan.add(new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.1, 8, 16), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})).setRotationFromEuler(new THREE.Euler(0,Math.PI/2,0)).translateZ(-0.8).translateY(0.9));
+            spout.position.set(1.2, 0.8, 0); 
+            spout.rotation.z = -Math.PI/3; 
+            wateringCan.add(spout);
+
+            const handle = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.1, 8, 16), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4}));
+            handle.rotation.set(0, Math.PI/2, 0);
+            handle.position.set(-0.8, 0.9, 0);
+            wateringCan.add(handle);
             
             // 設立虛擬出水口
             dummySpoutTip = new THREE.Object3D(); 
