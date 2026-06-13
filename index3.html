@@ -54,9 +54,17 @@
 
         .room-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 4000; display: none; align-items: center; justify-content: center; pointer-events: auto; }
         .room-modal-content { background: var(--bg); width: 90%; max-width: 950px; max-height: 90vh; border-radius: 16px; overflow-y: auto; padding: 40px; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.2); -webkit-overflow-scrolling: touch; }
-        .room-modal-close { position: absolute; top: 20px; right: 20px; font-size: 2rem; color: var(--text-muted); cursor: pointer; background: transparent; border: none; z-index: 4010; transition: 0.2s; padding: 5px 15px;}
+        
+        /* 全螢幕視窗樣式覆蓋 */
+        .fullscreen-modal .room-modal-content {
+            width: 100vw !important; height: 100vh !important;
+            max-width: none !important; max-height: none !important;
+            border-radius: 0 !important; padding: 60px 12% !important;
+        }
+
+        .room-modal-close { position: absolute; top: 20px; right: 30px; font-size: 2.5rem; color: var(--text-muted); cursor: pointer; background: transparent; border: none; z-index: 4010; transition: 0.2s; padding: 5px 15px;}
         .room-modal-close:hover { color: #ef4444; transform: scale(1.1); }
-        .modal-title { font-family: var(--font-serif); font-size: 2rem; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid var(--border); }
+        .modal-title { font-family: var(--font-serif); font-size: 2.2rem; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid var(--border); }
         
         .plant-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; margin-top: 30px; }
         .plant-card { background: #fff; border: 2px solid var(--border); padding: 20px; border-radius: 12px; cursor: pointer; transition: 0.3s; }
@@ -67,34 +75,38 @@
         .stat-row { display: flex; justify-content: space-between; padding: 15px 0; border-bottom: 1px dashed var(--border); font-size: 1.1rem; }
         .stat-row:last-child { border: none; }
         
-        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; margin-bottom: 40px; }
-        .task-card { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 24px 16px; text-align: center; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        .empty-state { text-align: center; padding: 80px 20px; color: var(--text-muted); font-size: 1.1rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; margin-bottom: 40px; }
+        .task-card { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 30px 20px; text-align: center; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
         .task-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.06); }
         .task-card.completed { border-color: var(--color-tasks); background: #f4f9f5; }
         .task-card.locked { opacity: 0.6; cursor: not-allowed; border-style: dashed; }
-        .task-num { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; display: block; color: #1e293b; }
-        .task-date { font-size: 0.8rem; color: var(--text-muted); }
+        .task-num { font-size: 1.2rem; font-weight: 600; margin-bottom: 8px; display: block; color: #1e293b; }
+        .task-date { font-size: 0.85rem; color: var(--text-muted); }
         .list-container { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-        .list-item { display: flex; align-items: center; padding: 22px 28px; border-bottom: 1px solid var(--border); cursor: pointer; position: relative; }
+        .list-item { display: flex; align-items: center; padding: 22px 28px; border-bottom: 1px solid var(--border); cursor: pointer; position: relative; transition: 0.2s;}
         .list-item:hover { background: #f8fafc; }
         .badge { font-size: 0.75rem; padding: 6px 12px; border-radius: 20px; margin-right: 18px; font-weight: 600; white-space: nowrap; }
         .badge.unread { background: #fee2e2; color: #ef4444; } .badge.replied { background: #f1f5f9; color: #64748b; } .badge.wait { background: #fef3c7; color: #f59e0b; }
-        .item-title { flex-grow: 1; font-size: 1.05rem; font-family: var(--font-serif); }
-        .item-time { color: var(--text-muted); font-size: 0.9rem; margin-right: 15px;}
+        .item-title { flex-grow: 1; font-size: 1.1rem; font-family: var(--font-serif); }
+        .item-time { color: var(--text-muted); font-size: 0.95rem; margin-right: 15px;}
         .editor { background: var(--paper); padding: 30px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.03); margin-top: 20px;}
         .field-group { margin-bottom: 20px; }
         .field-label { display: block; font-family: var(--font-serif); font-size: 1.1rem; font-weight: 600; color: var(--color-tasks); margin-bottom: 10px; }
         .textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; font-family: var(--font-serif); font-size: 1.1rem; line-height: 1.8; resize: vertical; outline: none; }
         .flex-row { display: flex; gap: 20px; } .flex-row > div { flex: 1; }
         
+        .icon-btn { background: transparent; border: 1px solid var(--color-log); color: var(--color-log); border-radius: 50%; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; }
+        .icon-btn:hover { background: var(--color-log); color: #fff; transform: rotate(90deg); box-shadow: 0 4px 10px rgba(139, 115, 85, 0.3); }
+
         /* 手寫相關樣式 */
         .handwrite-only { cursor: pointer; background-color: #fcfbf9; transition: background 0.3s;}
         .handwrite-only:hover { background-color: #f5f3ec; border-color: #b4a08c;}
         .handwrite-placeholder { font-size: 0.9rem; color: #9c8a75; display: block; margin-top: 8px; }
 
         .upload-container { background: #fafaf9; padding: 20px; border-radius: 12px; border: 1px dashed #cbd5e1; display: flex; flex-direction: column; gap: 10px;}
-        .upload-btn { background: white; border: 1px solid #cbd5e1; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; color: #475569; display: inline-flex; align-items: center; gap: 8px; width: max-content; }
+        .upload-btn { background: white; border: 1px solid #cbd5e1; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; color: #475569; display: inline-flex; align-items: center; gap: 8px; width: max-content; transition: 0.2s;}
+        .upload-btn:hover { background: #f8fafc; border-color: #94a3b8; }
         .privacy-warning { font-size: 0.85rem; color: #ef4444; line-height: 1.4; }
         .img-preview { display: none; max-width: 100%; height: auto; max-height: 250px; border-radius: 8px; margin-top: 10px; border: 1px solid #e2e8f0; object-fit: contain; object-position: left; }
 
@@ -128,31 +140,36 @@
         .hw-loader.active { opacity: 1; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .hw-footer { background: #faf9f7; display: flex; flex-direction: column; z-index: 20; border-top: 1px solid #dcd5c9; box-shadow: 0 -4px 15px rgba(0,0,0,0.03);}
-        .hw-punctuations { display: flex; gap: 8px; padding: 12px 15px; overflow-x: auto; white-space: nowrap; align-items: center; border-bottom: 1px solid #ebe6df; background: #fdfcfb;}
+        .hw-punctuations { display: flex; gap: 12px; padding: 15px 20px; overflow-x: auto; white-space: nowrap; align-items: center; border-bottom: 1px solid #ebe6df; background: #fdfcfb;}
         .hw-punctuations::-webkit-scrollbar { height: 0px; background: transparent; }
-        .hw-punct-btn { background: #fff; border: 1px solid #d1c8ba; font-family: var(--font-serif); font-size: 1.2rem; padding: 8px 18px; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 0 #d1c8ba; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; transition: 0.1s;}
-        .hw-punct-btn:active { transform: translateY(2px); box-shadow: 0 0 0 #d1c8ba; }
-        .hw-actions { display: flex; justify-content: center; align-items: center; padding: 10px 15px; background: #ebe6df; gap: 20px; }
-        .svg-btn { background: #fff; border: 1px solid #dcd5c9; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.05); color: #5a5042;}
-        .svg-btn:active { transform: scale(0.92); }
-        .svg-btn.done { background: var(--color-tasks); color: white; width: 65px; border-color: #53735a;}
+        .hw-punct-btn { background: #fff; border: 1px solid #e0e0e0; color: #444; font-family: var(--font-serif); font-size: 1.25rem; width: 45px; height: 45px; border-radius: 12px; cursor: pointer; box-shadow: 0 3px 8px rgba(0,0,0,0.03); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);}
+        .hw-punct-btn:hover { background: #fdfbf7; border-color: #c4b8aa; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.06); }
+        .hw-punct-btn:active { transform: translateY(1px); box-shadow: none; }
+        .hw-actions { display: flex; justify-content: center; align-items: center; padding: 12px 20px; background: #ebe6df; gap: 20px; }
+        .svg-btn { background: #fff; border: 1px solid #dcd5c9; border-radius: 14px; width: 55px; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.05); color: #5a5042; transition: 0.2s;}
+        .svg-btn:hover { background: #f8f6f2; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+        .svg-btn:active { transform: scale(0.95); }
+        .svg-btn.done { background: var(--color-tasks); color: white; width: 70px; border-color: transparent;}
+        .svg-btn.done:hover { background: #57785e; }
 
         @media (max-width: 768px) {
             #auth-overlay { flex-direction: column; align-items: center; } .auth-hero { display: none; }
             .auth-sidebar { width: 90%; max-width: 400px; padding: 40px 25px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.4); }
-            .room-modal-content { padding: 30px 20px; width: 95%; max-height: 85vh; } .modal-title { font-size: 1.5rem; }
+            .fullscreen-modal .room-modal-content { padding: 30px 5% !important; } .modal-title { font-size: 1.8rem; }
             .flex-row { flex-direction: column; gap: 15px; } .letter-sheet { padding: 40px 6% 50px 6%; }
-            .modal-close-btn { top: 15px; right: 15px; font-size: 2rem; background: rgba(0,0,0,0.6); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding-bottom: 4px;}
+            .modal-close-btn { top: 10px; right: 15px; font-size: 2.2rem; background: rgba(0,0,0,0.6); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding-bottom: 4px;}
             #hw-preview { font-size: 1.15rem; line-height: 40px; padding: 20px 6%; background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--letter-line) 39px, var(--letter-line) 40px); background-position: top 20px left 0; }
-            .svg-btn { width: 44px; height: 44px; border-radius: 10px; }
-            .svg-btn.done { width: 55px; }
+            .hw-punct-btn { width: 40px; height: 40px; font-size: 1.1rem; }
+            .svg-btn { width: 48px; height: 44px; border-radius: 10px; }
+            .svg-btn.done { width: 60px; }
         }
 
         /* DEV TEST PANEL START */
-        #dev-test-panel { position: fixed; bottom: 15px; right: 15px; background: rgba(20, 20, 20, 0.85); color: #fff; padding: 15px 20px; border-radius: 12px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; font-family: sans-serif; box-shadow: 0 5px 20px rgba(0,0,0,0.3); backdrop-filter: blur(5px); }
-        #dev-test-panel h3 { margin-bottom: 5px; color: #ffeb3b; font-size: 15px; text-align: center; border-bottom: 1px solid #444; padding-bottom: 8px;}
-        .dev-btn { background: #4a4a4a; color: #fff; border: 1px solid #666; padding: 8px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.9rem; }
+        #dev-test-panel { position: fixed; bottom: 15px; right: 15px; background: rgba(20, 20, 20, 0.85); color: #fff; padding: 15px 20px; border-radius: 12px; z-index: 999999; display: flex; flex-direction: column; gap: 8px; font-family: sans-serif; box-shadow: 0 5px 20px rgba(0,0,0,0.3); backdrop-filter: blur(5px); width: 220px; }
+        #dev-test-panel h3 { margin-bottom: 5px; color: #ffeb3b; font-size: 14px; text-align: center; border-bottom: 1px solid #444; padding-bottom: 8px;}
+        .dev-btn { background: #4a4a4a; color: #fff; border: 1px solid #666; padding: 8px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.85rem; width: 100%; }
         .dev-btn:hover { background: #666; transform: translateY(-1px); }
+        .dev-flex { display: flex; gap: 5px; } .dev-flex .dev-btn { flex: 1; padding: 8px 0; }
         /* DEV TEST PANEL END */
     </style>
 </head>
@@ -165,6 +182,12 @@
     <!-- DEV TEST PANEL START -->
     <div id="dev-test-panel">
         <h3>開發測試面板</h3>
+        <div class="dev-flex">
+            <button class="dev-btn" onclick="devSetTime('dawn')">晨</button>
+            <button class="dev-btn" onclick="devSetTime('noon')">午</button>
+            <button class="dev-btn" onclick="devSetTime('dusk')">暮</button>
+            <button class="dev-btn" onclick="devSetTime('night')">夜</button>
+        </div>
         <button class="dev-btn" onclick="devCancelWatering()">取消澆水狀態 (可再澆水)</button>
         <button class="dev-btn" onclick="devReselectPlant()">重新選擇植物</button>
         <button class="dev-btn" onclick="devAddGrowth()">加快生長 (10天份量)</button>
@@ -227,17 +250,17 @@
         </div>
     </div>
 
-    <!-- UI 面板群 -->
-    <div id="modal-replies" class="room-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal(event, 'modal-replies')">×</button><h2 class="modal-title" style="color: var(--color-replies);">對我的回覆</h2><div class="list-container" id="replies-list"></div></div></div>
-    <div id="modal-inbox" class="room-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal(event, 'modal-inbox')">×</button><h2 class="modal-title" style="color: var(--color-inbox);">寄來的心得</h2><div class="list-container" id="inbox-list"></div></div></div>
+    <!-- 全螢幕 UI 面板群 -->
+    <div id="modal-replies" class="room-modal fullscreen-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal(event, 'modal-replies')">×</button><h2 class="modal-title" style="color: var(--color-replies);">對我的回覆</h2><div class="list-container" id="replies-list"></div></div></div>
+    <div id="modal-inbox" class="room-modal fullscreen-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal(event, 'modal-inbox')">×</button><h2 class="modal-title" style="color: var(--color-inbox);">寄來的心得</h2><div class="list-container" id="inbox-list"></div></div></div>
     
-    <div id="modal-tasks" class="room-modal">
+    <div id="modal-tasks" class="room-modal fullscreen-modal">
         <div class="room-modal-content">
             <button class="room-modal-close" onclick="closeRoomModal(event, 'modal-tasks')">×</button>
             <h2 class="modal-title" style="color: var(--color-tasks);">我的任務</h2>
             <div class="grid" id="task-grid"></div>
             
-            <div class="editor" id="write-editor" style="display: none;">
+            <div class="editor" id="write-editor" style="display: none; max-width: 900px; margin: 0 auto;">
                 <h3 id="task-title" class="serif-text" style="margin-bottom: 30px; font-size: 1.5rem;">撰寫任務</h3>
                 
                 <div class="field-group flex-row">
@@ -271,7 +294,26 @@
         </div>
     </div>
     
-    <div id="modal-log" class="room-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal(event, 'modal-log')">×</button><h2 class="modal-title" style="color: var(--color-log); display:flex; justify-content:space-between; align-items:center;">我的閱讀紀錄 <button class="btn" style="font-size:1rem; padding:8px 16px; background:var(--color-log);" onclick="toggleReadingLog()">✚ 新增紀錄</button></h2><div class="editor" id="mylog-editor" style="display: none; margin-bottom: 30px;"><div class="field-group"><label class="field-label">書籍名稱</label><input type="text" id="mylog-title" class="input-box" placeholder="請輸入書名"></div><div class="field-group"><label class="field-label">私密筆記</label><textarea id="mylog-notes" class="textarea" style="min-height:100px;" placeholder="允許自由打字..."></textarea></div><button class="btn" id="btn-save-log" style="background: var(--color-log); width: auto;" onclick="submitReadingLog()">保存紀錄</button></div><div id="mylog-list" style="display:grid; gap:15px;"></div></div></div>
+    <div id="modal-log" class="room-modal fullscreen-modal">
+        <div class="room-modal-content">
+            <button class="room-modal-close" onclick="closeRoomModal(event, 'modal-log')">×</button>
+            <h2 class="modal-title" style="color: var(--color-log); display:flex; justify-content:space-between; align-items:center;">
+                我的閱讀紀錄 
+                <button class="icon-btn" onclick="toggleReadingLog()" title="新增紀錄">
+                    <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+            </h2>
+            <div class="editor" id="mylog-editor" style="display: none; margin-bottom: 30px; max-width: 900px; margin: 0 auto 30px auto;">
+                <div class="field-group"><label class="field-label">書籍名稱</label><input type="text" id="mylog-title" class="input-box" placeholder="請輸入書名"></div>
+                <div class="field-group"><label class="field-label">私密筆記</label><textarea id="mylog-notes" class="textarea" style="min-height:100px;" placeholder="允許自由打字..."></textarea></div>
+                <button class="btn" id="btn-save-log" style="background: var(--color-log); width: auto;" onclick="submitReadingLog()">保存紀錄</button>
+            </div>
+            <div id="mylog-list" style="display:grid; gap:15px; max-width: 900px; margin: 0 auto;"></div>
+        </div>
+    </div>
 
     <!-- 手札對話 Modal -->
     <div id="modal">
@@ -292,10 +334,15 @@
             </div>
             <div class="hw-actions">
                 <button class="svg-btn" onclick="hwBackspace()" title="刪除最後一個字">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg>
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path>
+                        <line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line>
+                    </svg>
                 </button>
                 <button class="svg-btn done" onclick="closeHwKeyboard()" title="完成書寫並收起">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
                 </button>
             </div>
         </div>
@@ -312,6 +359,7 @@
         let selectedFileBase64 = null; let selectedFileName = null;
         let isSubmittingLog = false; let isSubmittingReply = false;
         let userPlantData = null; 
+        let timeForced = false;
 
         // 手寫板變數
         let activeHwInput = null; let hwCanvas, hwCtx; let isDrawing = false; let strokes = []; let currentStroke = [[], [], []]; let hwTimeout = null; let originalBodyOverflow = '';
@@ -320,12 +368,19 @@
         const plantNames = { 1: "龜背芋", 2: "多肉蓮座", 3: "綠幽盆景", 4: "紫韻薰衣", 5: "仙人掌" };
 
         // DEV TEST PANEL START
+        window.devSetTime = function(phase) {
+            timeForced = true;
+            setEnvironmentPhase(phase);
+            showToast("測試：已強制切換時間至 " + phase);
+        };
         window.devCancelWatering = function() {
             if (!userPlantData) return alert("尚未選擇植物");
             let pData = Object.assign({}, userPlantData);
-            pData.lastWatered = Date.now() - 86400000 * 2; // 回退兩天
+            pData.lastWatered = Date.now() - 86400000; // 精準回退 1 天，允許當日再澆水且不觸發枯萎
+            pData.wilt = 0; // 同步重置缺水，確保健康
+            pData.isDead = false;
             db.ref(`users/${currentUser.uid}/plant`).update(pData);
-            showToast("測試：澆水狀態已取消");
+            showToast("測試：已取消今日澆水狀態 (可再次澆水)");
         };
         window.devReselectPlant = function() {
             document.getElementById('modal-plant-selector').style.display = 'flex';
@@ -334,7 +389,7 @@
             if (!userPlantData) return alert("尚未選擇植物");
             let pData = Object.assign({}, userPlantData);
             pData.growth = Math.min(100, pData.growth + 10);
-            pData.plantedAt = pData.plantedAt - 86400000 * 10; // 加快 10 天陪伴
+            pData.plantedAt = pData.plantedAt - 86400000 * 10; 
             pData.daysAccompanied = Math.floor((Date.now() - pData.plantedAt) / 86400000);
             db.ref(`users/${currentUser.uid}/plant`).update(pData);
             showToast("測試：植物加快生長 10 天");
@@ -429,13 +484,11 @@
             if(!grid) return; 
             grid.innerHTML = '';
             
-            // 改為判斷 config 是否存在，不再限制必須要有 config.tasks
             if(!config) {
                 grid.innerHTML = '<div class="empty-state"><p>目前尚未設定任務。</p></div>';
                 return;
             }
             
-            // 依照起訖日期與間隔天數，推算總任務數
             const start = new Date(config.startDate); 
             const total = Math.floor(((new Date(config.endDate) - start) / 86400000) / config.intervalDays);
             
@@ -456,17 +509,16 @@
                     
                     el.onclick = () => {
                         if (done) {
-                            openChatModal(map[i]); // 3D 版專用的對話窗開啟函數
+                            openChatModal(map[i]); 
                         } else if (unlocked) {
                             if (hasUnrepliedLetters) return alert("您有尚未回覆的信件，必須先完成回應後方可開啟新任務。");
                             selectedTaskIndex = i; 
                             
-                            // 隱藏任務網格，顯示撰寫編輯器
                             document.getElementById('task-grid').style.display = 'none';
                             document.getElementById('write-editor').style.display = 'block';
                             
                             document.getElementById('task-title').innerText = `撰寫任務：第 ${i+1} 回心得`;
-                            document.getElementById('log-question').value = ''; // 留白交由使用者手寫問題
+                            document.getElementById('log-question').value = ''; 
                             
                             document.getElementById('btn-submit-task').innerText = "封裝寄出心得"; 
                             document.getElementById('btn-submit-task').disabled = false;
@@ -730,20 +782,18 @@
         }
         function createFloorTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 1024; const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#e8e6e1'; ctx.fillRect(0, 0, 1024, 1024);
-            ctx.fillStyle = '#4a5054';
-            for (let i = 0; i < 4; i++) {
-                for (let j = 0; j < 4; j++) {
-                    if ((i + j) % 2 === 0) ctx.fillRect(i * 256, j * 256, 256, 256);
-                }
-            }
+            // 純白/極淺米白底色，無黑色階磚
+            ctx.fillStyle = '#f7f6f2'; ctx.fillRect(0, 0, 1024, 1024);
+            // 細緻的大理石雜色微粒
             for(let i=0; i<3000; i++) {
-                ctx.fillStyle = `rgba(255, 255, 255, ${Math.random()*0.1})`;
+                ctx.fillStyle = `rgba(200, 195, 190, ${Math.random()*0.15})`;
                 ctx.beginPath(); ctx.arc(Math.random()*1024, Math.random()*1024, Math.random()*3+1, 0, Math.PI*2); ctx.fill();
             }
-            ctx.strokeStyle = 'rgba(218, 165, 32, 0.15)'; ctx.lineWidth = 2;
-            for(let k=0; k<10; k++) {
-                ctx.beginPath(); ctx.moveTo(Math.random()*1024, 0); ctx.lineTo(Math.random()*1024, 1024); ctx.stroke();
+            // 雅緻的大型方形拼花線條
+            ctx.strokeStyle = 'rgba(218, 210, 200, 0.4)'; ctx.lineWidth = 2;
+            for(let i=0; i<=1024; i+=256) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 1024); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1024, i); ctx.stroke();
             }
             const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(10, 10);
             return tex;
@@ -753,18 +803,40 @@
             const container = document.getElementById('room-canvas-container');
             scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0xc5c1bc, 0.015);
             camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
-            if (window.innerWidth < 768) { camera.position.set(0, 24, 42); } else { camera.position.set(0, 15, 28); }
             
             renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.outputEncoding = THREE.sRGBEncoding;
             container.innerHTML = ''; container.appendChild(renderer.domElement);
             
-            controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.maxPolarAngle = Math.PI/2 - 0.05; controls.minDistance = 10; controls.maxDistance = 45; controls.target.set(0, 7, 0);
+            controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.maxPolarAngle = Math.PI/2 - 0.05; controls.minDistance = 10; controls.maxDistance = 60; 
+            
+            // 讀取視角 Local Storage 或套用預設值（稍微拉遠）
+            const savedState = localStorage.getItem('roomCameraState');
+            if (savedState) {
+                try {
+                    const s = JSON.parse(savedState);
+                    camera.position.set(s.cp.x, s.cp.y, s.cp.z);
+                    controls.target.set(s.ct.x, s.ct.y, s.ct.z);
+                } catch(e) { setDefaultCamera(); }
+            } else { setDefaultCamera(); }
+            
+            controls.update();
+            controls.addEventListener('change', () => {
+                if(!camera || !controls) return;
+                const state = { cp: {x: camera.position.x, y: camera.position.y, z: camera.position.z}, ct: {x: controls.target.x, y: controls.target.y, z: controls.target.z} };
+                localStorage.setItem('roomCameraState', JSON.stringify(state));
+            });
+
             raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2();
             
             window.addEventListener('pointerdown', onPointerDown); window.addEventListener('pointerup', onPointerUp); window.addEventListener('pointermove', onPointerMove); window.addEventListener('resize', onWinResize);
 
             buildRoomEnvironment(); syncEnvironmentTime(); animateRoom();
+        }
+
+        function setDefaultCamera() {
+            if (window.innerWidth < 768) { camera.position.set(0, 26, 48); } else { camera.position.set(0, 22, 45); }
+            controls.target.set(0, 7, 0);
         }
 
         let dirLight, hemiLight;
@@ -779,31 +851,40 @@
             const pointLight = new THREE.PointLight(0xffe8c4, 0.4, 20); pointLight.position.set(-5, 15, 10); scene.add(pointLight);
 
             // 天花板吸頂燈與向下光源
-            const lampGroup = new THREE.Group(); lampGroup.position.set(0, 39, 0); scene.add(lampGroup);
+            const lampGroup = new THREE.Group(); lampGroup.position.set(0, 39, 21); scene.add(lampGroup);
             const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 1, 32), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.5})); lampGroup.add(lampBase);
             lampBulb = new THREE.Mesh(new THREE.SphereGeometry(2.5, 32, 16), new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0x000000})); lampBulb.position.y = -1; lampGroup.add(lampBulb);
-            ceilingLight = new THREE.PointLight(0xfff0dd, 0, 150); ceilingLight.position.set(0, 36, 0); ceilingLight.castShadow = false; ceilingLight.shadow.mapSize.width = 1024; ceilingLight.shadow.mapSize.height = 1024; ceilingLight.shadow.bias = -0.001; scene.add(ceilingLight);
+            ceilingLight = new THREE.PointLight(0xfff0dd, 0, 150); ceilingLight.position.set(0, 36, 21); ceilingLight.castShadow = false; ceilingLight.shadow.mapSize.width = 1024; ceilingLight.shadow.mapSize.height = 1024; ceilingLight.shadow.bias = -0.001; scene.add(ceilingLight);
 
             const wallMat = new THREE.MeshStandardMaterial({ color: 0xdbd4cc, roughness: 1.0, side: THREE.DoubleSide });
-            const floorMat = new THREE.MeshStandardMaterial({ map: createFloorTexture(), roughness: 0.2, metalness: 0.1 });
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), floorMat); floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+            const floorMat = new THREE.MeshStandardMaterial({ map: createFloorTexture(), roughness: 0.3, metalness: 0.05 });
+            
+            // 地板與天花板 (限制在室內 z = -18 到 z = 60 的範圍，長度 78，中心點 21)
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 78), floorMat); floor.rotation.x = -Math.PI/2; floor.position.set(0, 0, 21); floor.receiveShadow = true; scene.add(floor);
+            const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(120, 78), wallMat); ceiling.rotation.x = Math.PI/2; ceiling.position.set(0, 40, 21); scene.add(ceiling);
 
             // 正面牆壁 (窗戶)
             const wallShape = new THREE.Shape(); wallShape.moveTo(-60, 0); wallShape.lineTo(60, 0); wallShape.lineTo(60, 40); wallShape.lineTo(-60, 40);
             const windowHole = new THREE.Path(); windowHole.moveTo(-9, 10); windowHole.lineTo(9, 10); windowHole.lineTo(9, 22); windowHole.lineTo(-9, 22); wallShape.holes.push(windowHole);
             const frontWall = new THREE.Mesh(new THREE.ExtrudeGeometry(wallShape, { depth: 1, bevelEnabled: false }), wallMat); frontWall.position.set(0, 0, -18); frontWall.castShadow = true; frontWall.receiveShadow = true; scene.add(frontWall);
 
-            // 畫作共 4 幅 (左二、右二)
+            // 左、右、後牆壁
+            const sideWallGeo = new THREE.PlaneGeometry(78, 40);
+            const leftWall = new THREE.Mesh(sideWallGeo, wallMat); leftWall.rotation.y = Math.PI/2; leftWall.position.set(-60, 20, 21); scene.add(leftWall);
+            const rightWall = new THREE.Mesh(sideWallGeo, wallMat); rightWall.rotation.y = -Math.PI/2; rightWall.position.set(60, 20, 21); scene.add(rightWall);
+            const backWall = new THREE.Mesh(new THREE.PlaneGeometry(120, 40), wallMat); backWall.position.set(0, 20, 60); scene.add(backWall);
+
+            // 畫作共 4 幅 (左二、右二，裝飾牆面)
             function createPainting(x, y, z, type) {
                 const frameGroup = new THREE.Group(); frameGroup.position.set(x, y, z);
                 const frame = new THREE.Mesh(new THREE.BoxGeometry(10, 12, 0.6), new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.8})); frameGroup.add(frame);
                 const canvas = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 10.5), new THREE.MeshStandardMaterial({map: createPaintingTexture(type), roughness: 0.9})); canvas.position.z = 0.31; frameGroup.add(canvas);
                 scene.add(frameGroup);
             }
-            createPainting(-38, 22, -17.5, 1); 
-            createPainting(-24, 17, -17.5, 3); 
-            createPainting(24, 17, -17.5, 4); 
-            createPainting(38, 22, -17.5, 2);
+            createPainting(-40, 22, -17.5, 1); 
+            createPainting(-22, 17, -17.5, 3); 
+            createPainting(22, 17, -17.5, 4); 
+            createPainting(40, 22, -17.5, 2);
 
             const windowFrameGroup = new THREE.Group(); windowFrameGroup.position.set(0, 16, -17.5); scene.add(windowFrameGroup);
             const frameMat = new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.5, metalness: 0.1}); const frameThickness = 0.6; const frameDepth = 1.0;
@@ -814,13 +895,6 @@
             const midV = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 12, frameDepth - 0.2), frameMat); midV.castShadow = true; windowFrameGroup.add(midV);
             const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, roughness: 0.1, transmission: 0.8, thickness: 0.5 });
             const glassPane = new THREE.Mesh(new THREE.BoxGeometry(17.5, 11.5, 0.05), glassMat); windowFrameGroup.add(glassPane);
-
-            // 左、右、後、上牆壁
-            const sideWallGeo = new THREE.PlaneGeometry(120, 40);
-            const leftWall = new THREE.Mesh(sideWallGeo, wallMat); leftWall.rotation.y = Math.PI/2; leftWall.position.set(-60, 20, 0); scene.add(leftWall);
-            const rightWall = new THREE.Mesh(sideWallGeo, wallMat); rightWall.rotation.y = -Math.PI/2; rightWall.position.set(60, 20, 0); scene.add(rightWall);
-            const backWall = new THREE.Mesh(sideWallGeo, wallMat); backWall.position.set(0, 20, 60); scene.add(backWall);
-            const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), wallMat); ceiling.rotation.x = Math.PI/2; ceiling.position.set(0, 40, 0); scene.add(ceiling);
 
             // 門與空調
             const doorGroup = new THREE.Group(); doorGroup.position.set(-59.5, 14, 0); doorGroup.rotation.y = Math.PI/2; scene.add(doorGroup);
@@ -864,12 +938,12 @@
             const legGeo = new THREE.CylinderGeometry(0.4, 0.3, 8, 16);
             [[-12,-5],[12,-5],[-12,5],[12,5]].forEach(pos => { const leg = new THREE.Mesh(legGeo, woodMat); leg.position.set(pos[0], 4, pos[1]); leg.castShadow = true; leg.receiveShadow = true; desk.add(leg); });
 
-            // 圓凳軟墊無椅背座椅
-            const chairGroup = new THREE.Group(); chairGroup.position.set(0, 0, 12); scene.add(chairGroup);
-            const seatGeo = new THREE.CylinderGeometry(4.5, 4.5, 1.5, 32); const cushionMat = new THREE.MeshStandardMaterial({color: 0x2b4c3f, roughness: 0.9, metalness: 0.1});
-            const seat = new THREE.Mesh(seatGeo, cushionMat); seat.position.y = 4.5; seat.castShadow = true; seat.receiveShadow = true; chairGroup.add(seat);
-            const cLegGeo = new THREE.CylinderGeometry(0.3, 0.1, 4.0); const legMat = new THREE.MeshStandardMaterial({color: 0xdaa520, metalness: 0.8, roughness: 0.3});
-            const positions = [[-2.5, 2.0, -2.5], [2.5, 2.0, -2.5], [-2.5, 2.0, 2.5], [2.5, 2.0, 2.5]];
+            // 圓凳軟墊無椅背座椅 (符合桌面比例)
+            const chairGroup = new THREE.Group(); chairGroup.position.set(0, 0, 11); scene.add(chairGroup);
+            const seatGeo = new THREE.CylinderGeometry(2.5, 2.5, 1.0, 32); const cushionMat = new THREE.MeshStandardMaterial({color: 0x2b4c3f, roughness: 0.9, metalness: 0.1});
+            const seat = new THREE.Mesh(seatGeo, cushionMat); seat.position.y = 4.0; seat.castShadow = true; seat.receiveShadow = true; chairGroup.add(seat);
+            const cLegGeo = new THREE.CylinderGeometry(0.2, 0.1, 4.0); const legMat = new THREE.MeshStandardMaterial({color: 0xdaa520, metalness: 0.8, roughness: 0.3});
+            const positions = [[-1.5, 2.0, -1.5], [1.5, 2.0, -1.5], [-1.5, 2.0, 1.5], [1.5, 2.0, 1.5]];
             positions.forEach(pos => { const leg = new THREE.Mesh(cLegGeo, legMat); leg.position.set(...pos); leg.castShadow = true; chairGroup.add(leg); });
 
             const drawerGeo = new THREE.BoxGeometry(11, 2.5, 12);
@@ -961,12 +1035,14 @@
         }
 
         function syncEnvironmentTime() {
+            if (timeForced) return;
             const h = (new Date().getUTCHours() + 8) % 24; 
             if (h >= 5 && h < 9) setEnvironmentPhase('dawn');
             else if (h >= 9 && h < 16) setEnvironmentPhase('noon');
             else if (h >= 16 && h < 19) setEnvironmentPhase('dusk');
             else setEnvironmentPhase('night');
         }
+        
         function setEnvironmentPhase(phaseStr) {
             const envPhases = {
                 dawn: { sky: 0xffb7b2, fog:0xffb7b2, dir: 0xffe4cc, int: 0.8, windowLight: false, shadow: true, ceilingOn: false },
@@ -983,13 +1059,12 @@
                 ceilingLight.intensity = p.ceilingOn ? 0.8 : 0.0;
                 lampBulb.material.emissiveIntensity = p.ceilingOn ? 1.0 : 0.0;
                 lampBulb.material.emissive.setHex(p.ceilingOn ? 0xfff0dd : 0x000000);
-                ceilingLight.castShadow = p.ceilingOn; // 夜晚時開啟吸頂燈陰影投射
+                ceilingLight.castShadow = p.ceilingOn; 
             }
         }
 
         function onWinResize() { 
             if(!camera) return; camera.aspect = window.innerWidth/window.innerHeight; 
-            if (window.innerWidth < 768) { camera.position.set(0, 24, 42); } else { camera.position.set(0, 15, 28); }
             camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); 
         }
         
