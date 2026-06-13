@@ -7,7 +7,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
     
     <!-- Firebase Compat SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -27,204 +27,223 @@
             --border: #e6e1d6;
             --font-serif: 'Noto Serif TC', serif; 
             --font-sans: 'Inter', sans-serif;
-            --color-replies: #548ca8; 
-            --color-inbox: #d98a6c; 
+            --color-replies: #6c7a89; 
+            --color-inbox: #b48e72; 
             --color-tasks: #6b8e73; 
             --color-log: #8b7355;
-            
-            /* 信紙美學變數 */
             --letter-ink: #4a4238;
-            --letter-line: rgba(160, 140, 120, 0.2);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: var(--bg); color: var(--text); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; line-height: 1.6; }
-        h1, h2, h3, h4, .serif-text { font-family: var(--font-serif); }
+        
+        /* 解決凍結 BUG 的關鍵類別 */
+        body.modal-open { overflow: hidden; height: 100vh; }
+
+        h1, h2, h3, h4, .serif-text { font-family: var(--font-serif); font-weight: 500; }
 
         /* Notification Banner */
-        #notification-banner { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: var(--paper); border: 1px solid var(--border); padding: 16px 32px; border-radius: 30px; box-shadow: 0 12px 30px rgba(0,0,0,0.08); z-index: 10001; display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 0.95rem; font-weight: 600; opacity: 0; }
+        #notification-banner { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: var(--paper); border: 1px solid var(--border); padding: 16px 32px; border-radius: 30px; box-shadow: 0 12px 30px rgba(0,0,0,0.05); z-index: 10001; display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 0.95rem; font-weight: 500; opacity: 0; letter-spacing: 1px;}
         #notification-banner svg { width: 22px; height: 22px; fill: currentColor; }
 
         /* Auth Screen */
         #auth-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 10000; display: flex; overflow: hidden; }
         #canvas-container { position: absolute; inset: 0; z-index: 1; }
         .auth-hero { flex: 1.2; position: relative; z-index: 2; pointer-events: none; display: flex; flex-direction: column; justify-content: center; padding: 8%; }
-        .auth-hero h1 { font-size: 3.5rem; color: #2c3e50; line-height: 1.3; margin-bottom: 24px; letter-spacing: 2px; font-weight: 600; }
-        .auth-hero p { font-size: 1.15rem; color: #64748b; line-height: 1.8; max-width: 450px; }
-        .auth-sidebar { width: 480px; position: relative; z-index: 2; display: flex; flex-direction: column; justify-content: center; padding: 60px; background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(25px); border-left: 1px solid rgba(255,255,255,0.8); }
+        .auth-hero h1 { font-size: 3.5rem; color: #2c3e50; line-height: 1.3; margin-bottom: 24px; letter-spacing: 4px; font-weight: 500; font-family: var(--font-serif); }
+        .auth-hero p { font-size: 1.15rem; color: #64748b; line-height: 1.8; max-width: 450px; font-family: var(--font-serif); letter-spacing: 1px;}
+        .auth-sidebar { width: 480px; position: relative; z-index: 2; display: flex; flex-direction: column; justify-content: center; padding: 60px; background: rgba(250, 247, 242, 0.7); backdrop-filter: blur(20px); border-left: 1px solid rgba(255,255,255,0.6); }
         .auth-panel-content { display: flex; flex-direction: column; gap: 30px; }
-        .auth-sidebar h2 { font-size: 1.8rem; font-weight: 600; color: #1e293b; margin-bottom: 5px; }
+        .auth-sidebar h2 { font-size: 1.8rem; font-weight: 500; color: #1e293b; margin-bottom: 5px; }
         .input-group { display: flex; flex-direction: column; gap: 8px; }
-        .input-box { width: 100%; background: #ffffff; border: 1px solid #cbd5e1; padding: 16px; font-family: var(--font-sans); font-size: 1rem; color: var(--text); border-radius: 8px; outline: none; transition: 0.3s; }
-        .input-box:focus { border-color: var(--color-tasks); box-shadow: 0 0 0 3px rgba(107, 142, 115, 0.1); }
-        .btn { background: #1e293b; color: #fff; border: none; padding: 16px 24px; font-size: 1.05rem; font-weight: 500; border-radius: 8px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .btn:hover { background: #334155; transform: translateY(-2px); }
-        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .btn-google { background: #ffffff; color: #334155; border: 1px solid #e2e8f0; width: 100%;}
+        .input-box { width: 100%; background: #ffffff; border: 1px solid #cbd5e1; padding: 16px; font-family: var(--font-serif); font-size: 1rem; color: var(--text); border-radius: 4px; outline: none; transition: 0.3s; letter-spacing: 1px;}
+        .input-box:focus { border-color: var(--color-tasks); }
+        .btn { background: #3b3631; color: #fff; border: none; padding: 16px 24px; font-size: 1.05rem; font-family: var(--font-serif); font-weight: 400; border-radius: 4px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; letter-spacing: 2px;}
+        .btn:hover { background: #1a1816; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-google { background: #ffffff; color: #3b3631; border: 1px solid #e2e8f0; width: 100%;}
         
-        header { max-width: 950px; margin: 40px auto 20px; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
-        header h2 { font-size: 1.6rem; font-weight: 600; }
-        .user-info { font-size: 0.9rem; color: var(--text-muted); font-weight: 500; }
-        .user-info a { color: var(--color-inbox); cursor: pointer; margin-left: 15px; padding: 6px 12px; border-radius: 20px; background: rgba(217, 138, 108, 0.1); }
+        header { max-width: 950px; margin: 40px auto 20px; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 20px;}
+        header h2 { font-size: 1.8rem; font-weight: 500; letter-spacing: 2px;}
+        .user-info { font-size: 0.95rem; color: var(--text-muted); font-family: var(--font-serif); letter-spacing: 1px;}
+        .user-info a { color: var(--color-inbox); cursor: pointer; margin-left: 15px; padding: 4px 10px; border-bottom: 1px solid transparent; transition: 0.3s;}
+        .user-info a:hover { border-bottom-color: var(--color-inbox); }
 
         /* TABS */
-        .tabs { max-width: 950px; margin: 0 auto 30px; padding: 0 20px; display: flex; flex-wrap: wrap; gap: 10px; border-bottom: 2px solid var(--border); }
-        .tab-btn { background: none; border: none; font-family: var(--font-sans); font-weight: 500; font-size: 1rem; cursor: pointer; color: var(--text-muted); padding: 14px 20px; position: relative; display: flex; align-items: center; gap: 8px; border-radius: 8px 8px 0 0; }
-        .tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; }
+        .tabs { max-width: 950px; margin: 0 auto 30px; padding: 0 20px; display: flex; flex-wrap: wrap; gap: 20px; }
+        .tab-btn { background: none; border: none; font-family: var(--font-serif); font-weight: 400; font-size: 1.05rem; cursor: pointer; color: var(--text-muted); padding: 10px 0; position: relative; letter-spacing: 1px; transition: 0.3s;}
+        .tab-btn.active { color: var(--text); }
+        .tab-btn.active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: var(--text); }
         
-        .tab-btn.tab-replies.active { color: var(--color-replies); } .tab-btn.tab-replies.active::after { background: var(--color-replies); }
-        .tab-btn.tab-inbox.active { color: var(--color-inbox); } .tab-btn.tab-inbox.active::after { background: var(--color-inbox); }
-        .tab-btn.tab-tasks.active { color: var(--color-tasks); } .tab-btn.tab-tasks.active::after { background: var(--color-tasks); }
-        .tab-btn.tab-log.active { color: var(--color-log); } .tab-btn.tab-log.active::after { background: var(--color-log); }
-
         .has-unread::before {
-            content: ''; position: absolute; top: 8px; right: 8px; width: 10px; height: 10px; background: #ef4444; border-radius: 50%;
-            animation: pulse 1.5s infinite; z-index: 10;
+            content: ''; position: absolute; top: 10px; right: -12px; width: 6px; height: 6px; background: #c25953; border-radius: 50%;
         }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
 
         main { max-width: 950px; margin: 0 auto 100px; padding: 0 20px; }
         .section { display: none; }
-        .section.active { display: block; animation: fadeIn 0.4s ease-out; }
+        .section.active { display: block; animation: fadeIn 0.6s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Empty State */
-        .empty-state { text-align: center; padding: 80px 20px; color: var(--text-muted); }
-        .empty-state p { font-size: 1.05rem; margin-top: 16px; }
+        .empty-state { text-align: center; padding: 100px 20px; color: var(--text-muted); font-family: var(--font-serif); letter-spacing: 2px;}
+        .empty-state p { font-size: 1.1rem; }
 
         /* Tasks & Grid */
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; margin-bottom: 40px; }
-        .task-card { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 24px 16px; text-align: center; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
-        .task-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.06); }
-        .task-card.completed { border-color: var(--color-tasks); background: #f4f9f5; }
-        .task-card.locked { opacity: 0.6; cursor: not-allowed; border-style: dashed; }
-        .task-num { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; display: block; color: #1e293b; }
-        .task-date { font-size: 0.8rem; color: var(--text-muted); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; margin-bottom: 40px; }
+        .task-card { background: var(--paper); border: 1px solid var(--border); padding: 30px 20px; text-align: center; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.01); border-radius: 2px;}
+        .task-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.04); }
+        .task-card.completed { border-color: var(--color-tasks); background: #fdfdfc; }
+        .task-card.locked { opacity: 0.5; cursor: not-allowed; border-style: dashed; }
+        .task-num { font-size: 1.15rem; font-family: var(--font-serif); margin-bottom: 8px; display: block; color: #333; letter-spacing: 1px;}
+        .task-date { font-size: 0.85rem; color: #999; letter-spacing: 1px;}
 
         /* Editor */
-        .editor { background: var(--paper); padding: 40px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,0.03); }
-        .field-group { margin-bottom: 28px; }
-        .field-label { display: block; font-family: var(--font-serif); font-size: 1.1rem; font-weight: 600; color: var(--color-tasks); margin-bottom: 12px; }
-        .textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; font-family: var(--font-serif); font-size: 1.1rem; line-height: 1.8; resize: vertical; outline: none; }
-        .textarea:focus { border-color: var(--color-tasks); box-shadow: 0 0 0 3px rgba(107, 142, 115, 0.1); }
-        .flex-row { display: flex; gap: 20px; } .flex-row > div { flex: 1; }
+        .editor { background: #fbf9f4; padding: 50px; border: 1px solid #e8e3d7; box-shadow: 0 20px 50px rgba(0,0,0,0.03); position: relative; margin-top: 20px;}
+        .editor::before { content: ''; position: absolute; top: 10px; bottom: 10px; left: 10px; right: 10px; border: 1px solid rgba(160, 140, 120, 0.1); pointer-events: none;}
+        .field-group { margin-bottom: 35px; position: relative; z-index: 2;}
+        .field-label { display: block; font-family: var(--font-serif); font-size: 1rem; color: #8b7355; margin-bottom: 12px; letter-spacing: 2px;}
+        .textarea { width: 100%; background: transparent; border: 1px solid #e6e1d6; border-radius: 2px; padding: 20px; font-family: var(--font-serif); font-size: 1.1rem; line-height: 2; resize: vertical; outline: none; letter-spacing: 1px; color: var(--letter-ink);}
+        .textarea:focus { border-color: #c5b4a0; background: rgba(255,255,255,0.3); }
+        .flex-row { display: flex; gap: 30px; } .flex-row > div { flex: 1; }
 
         /* Upload */
-        .upload-container { background: #fafaf9; padding: 24px; border-radius: 12px; border: 1px dashed #cbd5e1; display: flex; flex-direction: column; gap: 12px; }
-        .upload-btn { background: white; border: 1px solid #cbd5e1; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 1rem; color: #475569; display: inline-flex; align-items: center; gap: 8px; width: max-content; transition: 0.2s; }
-        .upload-btn:hover { background: #f1f5f9; border-color: var(--color-tasks); }
-        .privacy-warning { font-size: 0.85rem; color: #ef4444; display: flex; align-items: flex-start; gap: 6px; line-height: 1.4; margin-top: 5px; }
-        .file-name-display { font-size: 0.95rem; color: var(--color-tasks); font-weight: 500; }
-        .img-preview { display: none; max-width: 100%; height: auto; max-height: 250px; border-radius: 8px; margin-top: 10px; border: 1px solid #e2e8f0; object-fit: contain; object-position: left; }
+        .upload-container { background: rgba(255,255,255,0.4); padding: 30px; border: 1px dashed #dcd6c8; display: flex; flex-direction: column; gap: 15px; align-items: flex-start;}
+        .upload-btn { background: transparent; border: 1px solid #c5b4a0; padding: 12px 24px; cursor: pointer; font-size: 0.95rem; font-family: var(--font-serif); color: #5a5045; letter-spacing: 1px; transition: 0.3s; }
+        .upload-btn:hover { background: #c5b4a0; color: white; }
+        .privacy-warning { font-size: 0.85rem; color: #a48c76; line-height: 1.6; letter-spacing: 1px;}
+        .file-name-display { font-size: 0.9rem; color: #8b7355; font-style: italic; }
+        .img-preview { display: none; max-width: 100%; height: auto; max-height: 300px; margin-top: 15px; border: 5px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.05); object-fit: contain; }
 
         /* Lists */
-        .list-container { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-        .list-item { display: flex; align-items: center; padding: 22px 28px; border-bottom: 1px solid var(--border); cursor: pointer; }
-        .list-item:hover { background: #f8fafc; }
-        .badge { font-size: 0.75rem; padding: 6px 12px; border-radius: 20px; margin-right: 18px; font-weight: 600; white-space: nowrap; }
-        .badge.unread { background: #fee2e2; color: #ef4444; } .badge.replied { background: #f1f5f9; color: #64748b; } .badge.wait { background: #fef3c7; color: #f59e0b; }
-        .item-title { flex-grow: 1; font-size: 1.05rem; font-family: var(--font-serif); }
+        .list-container { display: flex; flex-direction: column; gap: 15px; }
+        .list-item { display: flex; align-items: center; padding: 25px 30px; background: #fff; border: 1px solid var(--border); cursor: pointer; transition: 0.3s; border-radius: 2px; }
+        .list-item:hover { transform: translateX(5px); border-color: #dcd6c8; box-shadow: 0 5px 15px rgba(0,0,0,0.02);}
+        .badge { font-size: 0.8rem; font-family: var(--font-serif); padding: 4px 10px; border: 1px solid currentColor; margin-right: 25px; letter-spacing: 1px; white-space: nowrap; }
+        .badge.unread { color: #c25953; } .badge.replied { color: #9ca3af; border-color: #e5e7eb;} .badge.wait { color: #b48e72; }
+        .item-title { flex-grow: 1; font-size: 1.1rem; font-family: var(--font-serif); letter-spacing: 1px; color: #333;}
+        .item-time { font-size: 0.85rem; color: #999; font-family: var(--font-sans); letter-spacing: 1px;}
         
-        .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; }
-        .page-btn { background: var(--paper); border: 1px solid var(--border); color: var(--text-muted); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-family: var(--font-sans); font-size: 0.95rem; font-weight: 500; transition: all 0.2s; }
-        .page-btn:hover { background: #f8fafc; color: #1e293b; border-color: #cbd5e1; } .page-btn.active { background: #1e293b; color: #fff; border-color: #1e293b; }
-        .delete-btn { background: none; border: none; cursor: pointer; padding: 8px; color: #cbd5e1; border-radius: 50%; transition: all 0.2s; margin-left: 15px;}
-        .delete-btn:hover { color: #ef4444; background: #fee2e2; transform: scale(1.1); } .delete-btn.locked-btn { opacity: 0.5; cursor: not-allowed; }
+        .pagination { display: flex; justify-content: center; gap: 15px; margin-top: 40px; }
+        .page-btn { background: transparent; border: none; color: #999; cursor: pointer; font-family: var(--font-serif); font-size: 1rem; transition: 0.3s; }
+        .page-btn:hover, .page-btn.active { color: #333; text-decoration: underline; text-underline-offset: 4px;}
+        .delete-btn { background: none; border: none; cursor: pointer; padding: 8px; color: #ccc; margin-left: 20px; transition: 0.3s;}
+        .delete-btn:hover { color: #c25953; } .delete-btn.locked-btn { opacity: 0.3; cursor: not-allowed; }
 
-        /* Reading Log Section Updates */
-        .log-header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-        .toggle-add-btn { background: var(--paper); border: 1px solid var(--border); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-log); transition: all 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .toggle-add-btn:hover { background: var(--color-log); color: white; transform: rotate(90deg); }
-        
-        .log-card { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; position: relative; }
-        .log-card h4 { font-family: var(--font-serif); font-size: 1.2rem; color: #1e293b; margin-bottom: 8px; padding-right: 40px;}
-        .log-card p { color: #475569; font-size: 1rem; line-height: 1.6; white-space: pre-wrap; }
-        .log-card .date { font-size: 0.8rem; color: #94a3b8; margin-top: 12px; } .log-card .delete-btn { position: absolute; top: 16px; right: 16px; }
+        /* Reading Log */
+        .log-header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 15px;}
+        .toggle-add-btn { background: transparent; border: 1px solid var(--color-log); color: var(--color-log); padding: 8px 20px; font-family: var(--font-serif); letter-spacing: 2px; cursor: pointer; transition: 0.3s; }
+        .toggle-add-btn:hover { background: var(--color-log); color: white; }
+        .log-card { background: #fff; border: 1px solid var(--border); padding: 35px; margin-bottom: 20px; position: relative; }
+        .log-card h4 { font-family: var(--font-serif); font-size: 1.3rem; color: #333; margin-bottom: 15px; letter-spacing: 2px;}
+        .log-card p { color: #555; font-size: 1.05rem; line-height: 2; white-space: pre-wrap; font-family: var(--font-serif); letter-spacing: 1px;}
+        .log-card .date { font-size: 0.85rem; color: #aaa; margin-top: 20px; letter-spacing: 1px; } 
+        .log-card .delete-btn { position: absolute; top: 25px; right: 25px; }
 
         /* ====================================================
-           MODAL UI (對話視窗) & 高級信紙排版 (整張信紙 + 雙方區分)
+           MODAL UI & 高級信箋排版 (THE LETTER AESTHETIC)
            ==================================================== */
-        #modal { position: fixed; inset: 0; background: rgba(245,242,235,0.85); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(8px); }
-        .modal-box { background: var(--paper); border-radius: 16px; width: 100%; max-width: 800px; height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.1); }
-        .modal-header { padding: 20px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; background: #ffffff; z-index: 10;}
-        .close-btn { background: none; border: none; font-size: 2rem; cursor: pointer; color: #94a3b8; transition: 0.2s; }
-        .close-btn:hover { color: #1e293b; }
         
-        /* 對話滾動區塊 */
-        .chat-flow { padding: 40px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 40px; background: #fafaf9; }
+        /* 修改 Modal 結構，徹底解決凍結 BUG */
+        #modal { position: fixed; inset: 0; background: rgba(20, 18, 16, 0.85); z-index: 2000; display: none; backdrop-filter: blur(5px); }
+        .modal-scroll-wrap { position: absolute; inset: 0; overflow-y: auto; padding: 40px 20px; }
         
-        /* 高級信箋本體 (保留 100% 寬度的大紙張) */
+        .letter-desk { width: 100%; max-width: 700px; margin: auto; display: flex; flex-direction: column; gap: 40px; position: relative; padding-bottom: 60px;}
+        
+        .modal-close-btn { position: fixed; top: 30px; right: 40px; background: transparent; border: none; font-size: 2.5rem; font-weight: 200; color: #e6dfd1; cursor: pointer; transition: 0.3s; z-index: 2100;}
+        .modal-close-btn:hover { transform: scale(1.1); color: #fff; }
+
+        /* 優雅的高級信箋本體 (分為 is-me 與 is-other) */
         .letter-sheet {
-            width: 100%;
-            border-radius: 2px;
-            padding: 70px 8%;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.4), inset 0 0 50px rgba(180, 160, 130, 0.05);
+            padding: 80px 10%;
             position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05), inset 0 0 20px rgba(180, 160, 130, 0.03);
-            background-image: linear-gradient(to right, transparent 49.5%, rgba(0,0,0,0.015) 50%, transparent 50.5%);
+            transform-origin: top center;
+            animation: unfold 0.8s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+            opacity: 0;
+            transform: translateY(30px);
+            width: 100%;
         }
 
         /* 我的信件：象牙白紙張 */
         .letter-sheet.is-me {
-            background-color: #fbf9f4; 
+            background-color: #fbf9f4;
+            background-image: linear-gradient(to right, transparent 49.8%, rgba(0,0,0,0.02) 50%, transparent 50.2%);
+            --dynamic-line: rgba(160, 140, 120, 0.25);
+        }
+        .letter-sheet.is-me .letter-header-meta {
+            text-align: right; 
+            color: #a48c76;
+            border-bottom-color: rgba(160, 140, 120, 0.2);
         }
 
-        /* 筆友的信件：微涼的淡灰藍色紙張，方便視覺區分 */
+        /* 筆友的來信：微涼淡灰藍色紙張，視覺優雅區分 */
         .letter-sheet.is-other {
-            background-color: #f4f6f8; 
+            background-color: #f2f5f6;
+            background-image: linear-gradient(to right, transparent 49.8%, rgba(0,0,0,0.02) 50%, transparent 50.2%);
+            --dynamic-line: rgba(108, 122, 137, 0.2);
+        }
+        .letter-sheet.is-other .letter-header-meta {
+            text-align: left; 
+            color: #6c7a89;
+            border-bottom-color: rgba(108, 122, 137, 0.2);
         }
 
-        /* 淺色、一致且不干擾文字的橫紋 */
+        @keyframes unfold { to { opacity: 1; transform: translateY(0); } }
+
+        /* 優雅的橫紋線條 (顏色隨信紙動態改變) */
         .letter-sheet::after {
             content: '';
             position: absolute;
-            top: 75px; bottom: 40px; left: 6%; right: 6%;
-            border-top: 1px solid var(--letter-line);
-            background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--letter-line) 39px, var(--letter-line) 40px);
+            top: 12%; bottom: 8%; left: 8%; right: 8%;
+            border-top: 1px solid var(--dynamic-line);
+            background-image: repeating-linear-gradient(to bottom, transparent, transparent 44px, var(--dynamic-line) 44px, var(--dynamic-line) 45px);
             pointer-events: none;
             z-index: 1;
         }
 
-        /* 頂部標籤區分左右 */
-        .letter-meta { font-size: 0.85rem; font-family: var(--font-sans); margin-bottom: 30px; position: relative; z-index: 2; border-bottom: 1px dashed #e2e8f0; padding-bottom: 15px; }
-        .letter-sheet.is-me .letter-meta { text-align: right; color: #a48c76; }
-        .letter-sheet.is-other .letter-meta { text-align: left; color: #548ca8; }
-        
-        /* 文字高度完美吻合橫紋 (40px) */
-        .letter-text { position: relative; z-index: 2; font-family: var(--font-serif); font-size: 1.1rem; color: var(--letter-ink); line-height: 40px; white-space: pre-wrap; text-align: justify; }
+        .letter-header-meta {
+            font-family: var(--font-serif); font-size: 0.9rem; letter-spacing: 2px; margin-bottom: 50px; position: relative; z-index: 2; border-bottom: 1px solid; padding-bottom: 15px;
+        }
 
-        /* 文學感的置中隔斷線 */
-        .letter-section-divider { display: block; text-align: center; font-size: 0.95rem; color: #9c8a75; letter-spacing: 0.6em; margin: 1.5em 0 0.5em 0; position: relative; font-weight: 400; }
-        .letter-section-divider::before, .letter-section-divider::after { content: ''; position: absolute; top: 50%; width: 25%; height: 1px; background: rgba(160, 140, 120, 0.3); }
+        .letter-text {
+            position: relative; z-index: 2; font-family: var(--font-serif); font-size: 1.15rem; color: var(--letter-ink); line-height: 45px; letter-spacing: 2px; white-space: pre-wrap; text-align: justify;
+        }
+
+        /* 充滿文學感的置中隔斷線 */
+        .letter-section-divider {
+            display: block; text-align: center; font-size: 0.95rem; color: #9c8a75; letter-spacing: 0.8em; margin: 2em 0 1em 0; position: relative; font-weight: 300;
+        }
+        .letter-section-divider::before, .letter-section-divider::after {
+            content: ''; position: absolute; top: 50%; width: 25%; height: 1px; background: rgba(160, 140, 120, 0.3);
+        }
         .letter-section-divider::before { left: 5%; }
         .letter-section-divider::after { right: 5%; }
 
-        .msg-img-container { display: block; margin: 30px auto 10px; cursor: pointer; transition: transform 0.2s; text-align: center; position: relative; z-index: 2; }
-        .msg-img-container:hover { transform: scale(1.02); }
-        .msg-img { max-width: 90%; max-height: 350px; display: inline-block; box-shadow: 0 4px 15px rgba(0,0,0,0.06); object-fit: contain; border: 6px solid #fff; background: #f1f5f9; }
+        .letter-img-wrap { display: block; margin: 40px auto; text-align: center; position: relative; z-index: 2; }
+        .letter-img { max-width: 90%; max-height: 400px; border: 8px solid #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.08); object-fit: contain; filter: sepia(10%) contrast(95%); transition: 0.4s;}
+        .letter-img:hover { transform: scale(1.02); filter: none; }
 
-        /* 固定在底部的回覆區塊 */
-        .reply-area { padding: 16px 24px; border-top: 1px solid var(--border); background: var(--paper); flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; z-index: 10;}
-        #reply-text { min-height: 80px; padding: 12px 16px; font-size: 1rem; border-radius: 8px; margin: 0; outline: none; border: 1px solid #cbd5e1; resize: vertical; font-family: var(--font-sans); }
-        #reply-text:focus { border-color: var(--color-replies); box-shadow: 0 0 0 3px rgba(84, 140, 168, 0.1); }
-        #btn-send-reply { padding: 10px 20px; font-size: 0.95rem; }
+        /* 回信區塊也是一張紙 */
+        .reply-sheet { padding: 50px 10%; margin-top: 20px; background-color: #fbf9f4; --dynamic-line: rgba(160, 140, 120, 0.25); }
+        #reply-text { min-height: 200px; width: 100%; border: none; background: transparent; padding: 0; line-height: 45px; margin-bottom: 30px; font-size: 1.15rem; font-family: var(--font-serif); outline: none; resize: vertical; color: var(--letter-ink); }
+        #reply-text:focus { box-shadow: none; background: transparent; }
 
         /* Envelope Anim */
-        #anim-overlay { display: none; position: fixed; inset: 0; background: rgba(250, 247, 242, 0.95); z-index: 9999; align-items: center; justify-content: center; perspective: 1200px; }
-        .env-wrapper { position: relative; width: 340px; height: 230px; }
-        .env-back { position: absolute; inset: 0; background: #e3d3bd; border-radius: 4px; z-index: 1; }
-        .paper-anim { position: absolute; bottom: 0; left: 15px; right: 15px; height: 380px; z-index: 5; transform-style: preserve-3d; }
-        .panel-anim { position: absolute; left: 0; right: 0; height: 126px; background: #fffdfa; border: 1px solid #eee; backface-visibility: hidden; }
-        .p-top { top: 0; transform-origin: bottom; } .p-mid { top: 126px; } .p-bot { top: 252px; transform-origin: top; }
-        .env-front-left { position: absolute; inset: 0; background: #ebdcc5; clip-path: polygon(0 0, 50% 50%, 0 100%); z-index: 11; }
-        .env-front-right { position: absolute; inset: 0; background: #e6d7c0; clip-path: polygon(100% 0, 100% 100%, 50% 50%); z-index: 12; }
-        .env-front-bottom { position: absolute; inset: 0; background: #dfd0b9; clip-path: polygon(0 100%, 50% 50%, 100% 100%); z-index: 13; }
-        .env-flap { position: absolute; top: 0; left: 0; right: 0; height: 140px; background: #d8c8b0; clip-path: polygon(0 0, 100% 0, 50% 100%); transform-origin: top; z-index: 15; }
-        .env-seal { position: absolute; top: 110px; left: 50%; transform: translate(-50%, -50%) scale(0); width: 45px; height: 45px; background: #c25953; border-radius: 50%; z-index: 20; }
+        #anim-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 15, 17, 0.95); z-index: 9999; align-items: center; justify-content: center; perspective: 1500px; }
+        .env-wrapper { position: relative; width: 340px; height: 220px; animation: float 4s infinite ease-in-out; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .env-back { position: absolute; inset: 0; background: #8e6c51; z-index: 1; box-shadow: inset 0 0 50px rgba(0,0,0,0.5); }
+        .paper-anim { position: absolute; bottom: 15px; left: 20px; right: 20px; height: 380px; background: #fbf9f4; z-index: 5; background-image: repeating-linear-gradient(to bottom, transparent, transparent 15px, rgba(160, 140, 120, 0.15) 15px, rgba(160, 140, 120, 0.15) 16px); }
+        .env-front-left { position: absolute; top: 0; left: 0; border-top: 110px solid transparent; border-bottom: 110px solid transparent; border-left: 170px solid #b68e68; z-index: 11; }
+        .env-front-right { position: absolute; top: 0; right: 0; border-top: 110px solid transparent; border-bottom: 110px solid transparent; border-right: 170px solid #a9835d; z-index: 12; }
+        .env-front-bottom { position: absolute; bottom: 0; left: 0; border-left: 170px solid transparent; border-right: 170px solid transparent; border-bottom: 125px solid #c59c75; z-index: 13; }
+        .env-flap { position: absolute; top: 0; left: 0; border-left: 170px solid transparent; border-right: 170px solid transparent; border-top: 130px solid #ceaa83; transform-origin: top center; z-index: 15; }
+        .env-seal { position: absolute; top: 110px; left: 50%; transform: translate(-50%, -50%) scale(0); width: 45px; height: 45px; background: #8e2b26; border-radius: 50%; z-index: 20; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body>
 
-    <div id="notification-banner"><span id="notification-text">您有新訊息。</span></div>
+    <div id="notification-banner"><span id="notification-text">信差送來了新的回音。</span></div>
 
     <!-- Auth -->
     <div id="auth-overlay">
@@ -235,13 +254,13 @@
         </div>
         <div class="auth-sidebar">
             <div id="login-container" class="auth-panel-content">
-                <div><h2>登入交流</h2><p>開啟您的文字旅程</p></div>
+                <div><h2>登入書房</h2><p>開啟您的文字旅程</p></div>
                 <button class="btn btn-google" onclick="signIn()">使用 Google 帳號登入</button>
             </div>
             <div id="name-setup-container" class="auth-panel-content" style="display:none;">
-                <div><h2>設定筆名</h2><p>請輸入真實姓名或學號（系統中對筆友將保持完全匿名）。</p></div>
+                <div><h2>落款筆名</h2><p>請輸入姓名或學號（對筆友將保持匿名）。</p></div>
                 <div class="input-group"><input type="text" id="setup-name" class="input-box" placeholder="例如：林小明 / 50211"></div>
-                <button class="btn" onclick="saveName()">確認進入</button>
+                <button class="btn" onclick="saveName()">提筆進入</button>
             </div>
         </div>
     </div>
@@ -250,22 +269,22 @@
     <div id="anim-overlay">
         <div class="env-wrapper">
             <div class="env-back"></div>
-            <div class="paper-anim" id="anim-paper"><div class="panel-anim p-top" id="anim-ptop"></div><div class="panel-anim p-mid"></div><div class="panel-anim p-bot" id="anim-pbot"></div></div>
+            <div class="paper-anim" id="anim-paper"></div>
             <div class="env-front-left"></div><div class="env-front-right"></div><div class="env-front-bottom"></div>
             <div class="env-flap" id="anim-flap"></div><div class="env-seal" id="anim-seal"></div>
         </div>
     </div>
 
     <header>
-        <h2>閱讀交流</h2>
-        <div class="user-info"><span id="user-name">載入中...</span><a onclick="signOut()">暫別</a></div>
+        <h2>閱讀書房</h2>
+        <div class="user-info"><span id="user-name">載入中...</span><a onclick="signOut()">擱筆暫歇</a></div>
     </header>
 
     <nav class="tabs">
-        <button class="tab-btn tab-replies active" onclick="switchTab('tab-replies', this)"> 對我的回覆</button>
-        <button class="tab-btn tab-inbox" onclick="switchTab('tab-inbox', this)"> 寄來的心得</button>
-        <button class="tab-btn tab-tasks" onclick="switchTab('tab-tasks', this)"> 我的任務</button>
-        <button class="tab-btn tab-log" onclick="switchTab('tab-log', this)"> 我的閱讀紀錄</button>
+        <button class="tab-btn tab-replies active" onclick="switchTab('tab-replies', this)">回音與共鳴</button>
+        <button class="tab-btn tab-inbox" onclick="switchTab('tab-inbox', this)">遠方的來信</button>
+        <button class="tab-btn tab-tasks" onclick="switchTab('tab-tasks', this)">閱讀與撰寫</button>
+        <button class="tab-btn tab-log" onclick="switchTab('tab-log', this)">私密書單</button>
     </nav>
 
     <main>
@@ -276,61 +295,49 @@
             <div class="grid" id="task-grid"></div>
 
             <div class="editor" id="write-editor" style="display: none;">
-                <h3 id="task-title" class="serif-text" style="margin-bottom: 30px; font-size: 1.5rem;">撰寫任務</h3>
+                <h3 id="task-title" class="serif-text" style="margin-bottom: 40px; font-size: 1.6rem; color: #3b3631; letter-spacing: 2px; text-align: center;">撰寫信件</h3>
                 
                 <div class="field-group flex-row">
-                    <div><label class="field-label">書籍名稱</label><input type="text" id="book-title" class="input-box" style="font-family:var(--font-serif);" placeholder="請輸入書名"></div>
+                    <div><label class="field-label">書籍名稱</label><input type="text" id="book-title" class="input-box" placeholder="請輸入書名"></div>
                     <div><label class="field-label">目前閱讀頁數</label><input type="number" id="book-page" class="input-box" placeholder="例如：120" min="1"></div>
                 </div>
 
-                <div class="field-group"><label class="field-label">思考問題</label><textarea id="log-question" class="textarea" style="min-height:100px;" placeholder="思考問題（無字數限制）..."></textarea></div>
-                <div class="field-group"><label class="field-label">閱讀心得</label><textarea id="log-content" class="textarea" style="min-height:220px;" placeholder="在此寫下您的閱讀心得...（最少 150 字）"></textarea></div>
+                <div class="field-group"><label class="field-label">思考問題</label><textarea id="log-question" class="textarea" style="min-height:120px;" placeholder="寫下因閱讀而生的疑惑或哲思..."></textarea></div>
+                <div class="field-group"><label class="field-label">閱讀心得</label><textarea id="log-content" class="textarea" style="min-height:280px;" placeholder="細訴文字帶給你的觸動...（最少 150 字）"></textarea></div>
 
                 <div class="field-group upload-container">
                     <label class="field-label" style="margin-bottom: 0;">捕捉書籍畫面 (必填)</label>
-                    <div class="privacy-warning">請注意：此照片將傳送給配對到的筆友，請勿拍攝含有個人隱私資訊的畫面。</div>
-                    <label class="upload-btn" style="margin-top: 10px;">點擊選擇圖片 <input type="file" id="book-image" accept="image/*" style="display:none;" onchange="handleFileSelect(event)"></label>
-                    <span id="file-name-display" class="file-name-display">尚未選擇圖片</span>
-                    <img id="image-preview" class="img-preview" src="" alt="圖片預覽">
+                    <div class="privacy-warning">請注意：此照片將隨信附上，請勿拍攝含有個人隱私資訊的畫面。</div>
+                    <label class="upload-btn">挑選照片 <input type="file" id="book-image" accept="image/*" style="display:none;" onchange="handleFileSelect(event)"></label>
+                    <span id="file-name-display" class="file-name-display">紙張邊緣尚未夾帶相片</span>
+                    <img id="image-preview" class="img-preview" src="" alt="相片預覽">
                 </div>
                 
-                <div style="text-align: right; margin-top: 30px;"><button id="btn-submit-task" class="btn" style="width: auto; background: var(--color-tasks); margin-left: auto;" onclick="submitLog()">封裝寄出心得</button></div>
+                <div style="text-align: center; margin-top: 50px;"><button id="btn-submit-task" class="btn" style="width: auto; padding: 16px 40px; margin: 0 auto;" onclick="submitLog()">封上火漆印，寄出</button></div>
             </div>
         </section>
 
         <section id="tab-log" class="section">
             <div class="log-header-container">
-                <h3 class="serif-text" style="font-size: 1.5rem;">我的閱讀紀錄</h3>
-                <button class="toggle-add-btn" onclick="toggleReadingLog()" title="新增閱讀紀錄">✚</button>
+                <h3 class="serif-text" style="font-size: 1.5rem; letter-spacing: 2px;">案頭上的書單</h3>
+                <button class="toggle-add-btn" onclick="toggleReadingLog()" title="新增閱讀紀錄">添置新書</button>
             </div>
             
-            <div class="editor" id="mylog-editor" style="display: none; margin-bottom: 30px;">
-                <h4 class="serif-text" style="margin-bottom: 20px; color: var(--color-log);">新增紀錄</h4>
-                <div class="field-group"><label class="field-label">書籍名稱</label><input type="text" id="mylog-title" class="input-box" style="font-family:var(--font-serif);" placeholder="請輸入書名"></div>
-                <div class="field-group"><label class="field-label">私密筆記</label><textarea id="mylog-notes" class="textarea" style="min-height:100px;" placeholder="寫下專屬於你的私密閱讀筆記 (自由發揮)..."></textarea></div>
-                <button class="btn" style="background: var(--color-log); width: auto;" onclick="submitReadingLog()">保存紀錄</button>
+            <div class="editor" id="mylog-editor" style="display: none; margin-bottom: 40px; padding: 40px;">
+                <div class="field-group"><label class="field-label">書籍名稱</label><input type="text" id="mylog-title" class="input-box" placeholder="輸入書名"></div>
+                <div class="field-group"><label class="field-label">私密隨筆</label><textarea id="mylog-notes" class="textarea" style="min-height:150px;" placeholder="寫下專屬於你的私密閱讀感悟..."></textarea></div>
+                <button class="btn" style="width: auto; margin: 0 auto;" onclick="submitReadingLog()">收入書單</button>
             </div>
             <div id="mylog-list"></div>
         </section>
     </main>
 
-    <!-- Modal (固定對話視窗) -->
+    <!-- Modal (信紙展示區，已修改結構解決凍結 BUG) -->
     <div id="modal">
-        <div class="modal-box" id="modal-content">
-            <div class="modal-header">
-                <h3 id="modal-title" class="serif-text">討論內容</h3>
-                <button class="close-btn" onclick="closeModal()">×</button>
-            </div>
-            
-            <!-- 信紙將動態生成於此滾動區 -->
-            <div class="chat-flow" id="chat-flow"></div>
-            
-            <!-- 固定的底部回覆區塊 (不再重複渲染於信紙流中) -->
-            <div class="reply-area">
-                <textarea id="reply-text" class="textarea" placeholder="寫下您的回音與共鳴...（最少 100 字）"></textarea>
-                <div style="text-align: right;">
-                    <button class="btn" style="width: auto; background: var(--color-replies); margin-left: auto;" id="btn-send-reply">發送回覆</button>
-                </div>
+        <button class="modal-close-btn" onclick="closeModal()">×</button>
+        <div class="modal-scroll-wrap">
+            <div class="letter-desk" id="chat-flow">
+                <!-- 這裡將動態生成 .letter-sheet 信紙 -->
             </div>
         </div>
     </div>
@@ -389,7 +396,7 @@
         function hideAuthOverlay() { gsap.to("#auth-overlay", { opacity: 0, duration: 0.6, onComplete: () => { document.getElementById('auth-overlay').style.display = 'none'; run3D = false; }}); }
         function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
         function signOut() { auth.signOut().then(() => window.location.reload()); }
-        function saveName() { const name = document.getElementById('setup-name').value.trim(); if (!name) return alert("請輸入姓名"); db.ref(`users/${currentUser.uid}`).set({ name, email: currentUser.email }).then(() => { document.getElementById('user-name').innerText = name; hideAuthOverlay(); initApp(); }); }
+        function saveName() { const name = document.getElementById('setup-name').value.trim(); if (!name) return alert("請留下稱呼"); db.ref(`users/${currentUser.uid}`).set({ name, email: currentUser.email }).then(() => { document.getElementById('user-name').innerText = name; hideAuthOverlay(); initApp(); }); }
 
         function initApp() { healPool(); db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); setupNotifications(); loadMailbox(); loadReadingLogs(); }
 
@@ -398,14 +405,10 @@
             threadRef.once('value').then(() => { isInitialLoad = false; });
             
             threadRef.on('child_changed', snap => { 
-                if (!isInitialLoad && snap.val().hasUnread) {
-                    triggerNotification("您收到了一則新的回覆！", snap.val().letterId); 
-                }
+                if (!isInitialLoad && snap.val().hasUnread) { triggerNotification("信差帶來了新的回音。", snap.val().letterId); }
             });
             threadRef.on('child_added', snap => { 
-                if (!isInitialLoad && !snap.val().isSender) {
-                    triggerNotification("一封未知的來信抵達了您的信箱！", snap.val().letterId); 
-                }
+                if (!isInitialLoad && !snap.val().isSender) { triggerNotification("遠方寄來了一封新信件。", snap.val().letterId); }
             });
         }
 
@@ -478,12 +481,13 @@
             const pageData = data.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
             pageData.forEach(t => {
-                const timeStr = new Date(t.lastUpdated).toLocaleString([], {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+                const d = new Date(t.lastUpdated);
+                const timeStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
                 const el = document.createElement('div'); el.className = 'list-item';
-                const deleteHTML = t.hasReplied ? `<button class="delete-btn" onclick="deleteThread('${t.letterId}', event)">刪除</button>` : `<button class="delete-btn locked-btn" onclick="event.stopPropagation(); alert('請先回覆後才能刪除。');">刪除</button>`;
-                let badge = !t.hasReplied ? `<span class="badge wait">待回覆</span>` : (t.hasUnread ? `<span class="badge unread">新回覆</span>` : (type==='replies' ? `<span class="badge replied">已讀</span>` : `<span class="badge replied">已回覆</span>`));
+                const deleteHTML = t.hasReplied ? `<button class="delete-btn" onclick="deleteThread('${t.letterId}', event)">焚毀</button>` : `<button class="delete-btn locked-btn" onclick="event.stopPropagation(); alert('請先回覆後才能焚毀信件。');">焚毀</button>`;
+                let badge = !t.hasReplied ? `<span class="badge wait">等待提筆</span>` : (t.hasUnread ? `<span class="badge unread">新信件</span>` : `<span class="badge replied">已讀</span>`);
                 el.onclick = () => openChat(t.letterId);
-                el.innerHTML = `${badge}<div class="item-title">${type==='replies'?'關於':'筆友寄來'}《${escapeHtml(t.bookTitle)}》的${type==='replies'?'回音':'心得'}</div><div class="item-time">${timeStr}</div>${deleteHTML}`;
+                el.innerHTML = `${badge}<div class="item-title">${type==='replies'?'關於':'遠方寄來'}《${escapeHtml(t.bookTitle)}》的${type==='replies'?'回音':'信箋'}</div><div class="item-time">${timeStr}</div>${deleteHTML}`;
                 listEl.appendChild(el);
             });
 
@@ -498,7 +502,7 @@
             }
         }
 
-        window.deleteThread = function(id, e) { e.stopPropagation(); if(confirm("確認刪除此信件？")) db.ref(`user_threads/${currentUser.uid}/${id}`).remove(); };
+        window.deleteThread = function(id, e) { e.stopPropagation(); if(confirm("確認將此信件焚毀？此操作無法還原。")) db.ref(`user_threads/${currentUser.uid}/${id}`).remove(); };
 
         function handleFileSelect(event) {
             const file = event.target.files[0]; if (!file) return;
@@ -525,11 +529,11 @@
             const title = document.getElementById('book-title').value.trim(); const page = document.getElementById('book-page').value.trim();
             const question = document.getElementById('log-question').value.trim(); const text = document.getElementById('log-content').value.trim();
             
-            if (!title || !page || !question || !text) return alert("請填寫完整資訊 (書名、頁數、思考問題與心得)。");
-            if (!selectedFileBase64) return alert("請務必上傳書籍畫面圖片。");
-            if (text.length < 150) return alert("心得最少需要 150 字。");
+            if (!title || !page || !question || !text) return alert("信件尚未寫滿，請完成所有空缺。");
+            if (!selectedFileBase64) return alert("請夾帶一張書籍畫面的相片。");
+            if (text.length < 150) return alert("文字過於簡短，請寫滿至少 150 字。");
             
-            const btn = document.getElementById('btn-submit-task'); btn.innerText = "圖片上傳中，請稍候..."; btn.disabled = true;
+            const btn = document.getElementById('btn-submit-task'); btn.innerText = "正在封裝火漆印..."; btn.disabled = true;
 
             try {
                 const response = await fetch(GAS_URL, { 
@@ -538,20 +542,21 @@
                 });
                 
                 const responseText = await response.text();
-                let result; try { result = JSON.parse(responseText); } catch (e) { throw new Error("伺服器未能回傳正確格式。"); }
-                if (!result.success) throw new Error(result.error || "上傳未成功");
+                let result; try { result = JSON.parse(responseText); } catch (e) { throw new Error("郵差迷路了。"); }
+                if (!result.success) throw new Error(result.error || "信件寄送失敗");
 
-                const combinedText = `【目前進度】\n第 ${page} 頁\n\n【思考問題】\n${question}\n\n【閱讀心得】\n${text}`;
+                const combinedText = `【目前進度】\n停泊在第 ${page} 頁\n\n【思考問題】\n${question}\n\n【閱讀心得】\n${text}`;
                 playAnim('log', null, null, {title: title, text: combinedText, imageUrl: result.url});
             } catch (error) {
-                alert("圖片上傳發生異常。\n詳細錯誤：" + error.message);
-                btn.innerText = "封裝寄出心得"; btn.disabled = false;
+                alert("相片夾帶失敗。\n詳細原因：" + error.message);
+                btn.innerText = "封裝寄出"; btn.disabled = false;
             }
         }
 
         function renderTasks() {
             const grid = document.getElementById('task-grid'); grid.innerHTML = ''; if (!config) return;
             const start = new Date(config.startDate); const total = Math.floor(((new Date(config.endDate) - start) / 86400000) / config.intervalDays);
+            
             db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value', snap => {
                 const submitted = Object.values(snap.val()||{}).map(l=>l.taskIndex); const map = {}; Object.values(snap.val()||{}).forEach(l=>map[l.taskIndex]=l.id);
                 for (let i=0; i<total; i++) {
@@ -560,20 +565,20 @@
                     const today = new Date(); today.setHours(0, 0, 0, 0);
                     const unlockDate = new Date(d); unlockDate.setHours(0, 0, 0, 0);
                     const unlocked = today >= unlockDate; 
-
+                    
                     const done = submitted.includes(i);
                     const el = document.createElement('div'); el.className = `task-card ${done?'completed':''} ${!unlocked&&!done?'locked':''}`;
-                    el.innerHTML = `<span class="task-num">第 ${i+1} 回任務</span><span class="task-date">${d.getMonth()+1}/${d.getDate()} 開放</span>`;
+                    el.innerHTML = `<span class="task-num">第 ${i+1} 封信件</span><span class="task-date">${d.getMonth()+1}/${d.getDate()} 啟封</span>`;
                     el.onclick = () => {
                         if (done) openChat(map[i]);
                         else if (unlocked) {
-                            if (hasUnrepliedLetters) return alert("您有尚未回覆的信件，必須先完成回應後方可開啟新任務。");
-                            selectedTaskIndex = i; document.getElementById('task-title').innerText = `撰寫任務：第 ${i+1} 回心得`;
+                            if (hasUnrepliedLetters) return alert("案頭尚有未回覆的信件，請先執筆回信。");
+                            selectedTaskIndex = i; document.getElementById('task-title').innerText = `撰寫第 ${i+1} 封信件`;
                             document.getElementById('write-editor').style.display = 'block'; document.getElementById('write-editor').scrollIntoView({behavior:'smooth'});
-                            document.getElementById('btn-submit-task').innerText = "封裝寄出心得"; document.getElementById('btn-submit-task').disabled = false;
-                            document.getElementById('file-name-display').innerText = "尚未選擇圖片"; document.getElementById('image-preview').style.display = 'none';
+                            document.getElementById('btn-submit-task').innerText = "封上火漆印，寄出"; document.getElementById('btn-submit-task').disabled = false;
+                            document.getElementById('file-name-display').innerText = "紙張邊緣尚未夾帶相片"; document.getElementById('image-preview').style.display = 'none';
                             selectedFileBase64 = null; document.getElementById('book-image').value = '';
-                        } else alert("時空未到，尚未開放。");
+                        } else alert("時辰未到，信封尚未解鎖。");
                     }; grid.appendChild(el);
                 }
             });
@@ -583,77 +588,83 @@
             db.ref(`user_threads/${currentUser.uid}/${id}`).update({hasUnread: false});
             db.ref(`letters/${id}`).once('value', lSnap => {
                 const l = lSnap.val(); if (!l) return;
-                
-                document.getElementById('modal-title').innerText = `《${l.bookTitle}》閱讀對談`;
                 const flow = document.getElementById('chat-flow'); 
                 const partnerUid = currentUser.uid === l.senderUid ? l.recipientUid : l.senderUid;
                 
-                // 綁定固定在底部的發送按鈕
-                document.getElementById('btn-send-reply').onclick = () => {
-                    const txt = document.getElementById('reply-text').value.trim();
-                    if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
-                    playAnim('reply', id, partnerUid, txt);
-                };
-
                 if (currentChatRef) currentChatRef.off(); currentChatRef = db.ref(`conversations/${id}`);
                 currentChatRef.on('value', cSnap => {
                     flow.innerHTML = '';
                     Object.values(cSnap.val()||{}).forEach((m, index) => {
                         const isMe = m.senderUid === currentUser.uid; 
                         const d = new Date(m.timestamp);
-                        const tStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+                        const tStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
                         
-                        // 轉換標籤為文學感的置中隔斷線
+                        // 將文字轉為高級排版
                         let formattedText = escapeHtml(m.text);
-                        formattedText = formattedText.replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀進度</span>');
-                        formattedText = formattedText.replace(/【思考問題】/g, '<span class="letter-section-divider">思考問題</span>');
-                        formattedText = formattedText.replace(/【閱讀心得】/g, '<span class="letter-section-divider">閱讀心得</span>');
+                        formattedText = formattedText.replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀段落</span>');
+                        formattedText = formattedText.replace(/【思考問題】/g, '<span class="letter-section-divider">文字衍生的提問</span>');
+                        formattedText = formattedText.replace(/【閱讀心得】/g, '<span class="letter-section-divider">閱讀感悟</span>');
 
                         let imgTag = '';
                         if (m.imageUrl) {
                             imgTag = `
-                            <a href="${m.imageUrl}" target="_blank" class="msg-img-container" title="點擊在新分頁放大">
-                                <img src="${m.imageUrl}" class="msg-img" alt="書本照片" referrerpolicy="no-referrer" loading="lazy">
+                            <a href="${m.imageUrl}" target="_blank" class="letter-img-wrap">
+                                <img src="${m.imageUrl}" class="letter-img" alt="隨信相片" referrerpolicy="no-referrer" loading="lazy">
                             </a>`;
                         }
 
-                        // 判斷是誰發送的，賦予不同的紙張顏色與標籤對齊方向
+                        // 判斷是誰發送的，賦予專屬信紙樣式 class
                         const alignmentClass = isMe ? 'is-me' : 'is-other';
-                        const senderName = isMe ? '我的文字' : '筆友的來信';
+                        const senderName = isMe ? '我的筆跡' : '遠方的來信';
 
-                        // 以整張信紙的樣式輸出到滾動對話框中
+                        // 每一封信都是一張獨立的紙
+                        const animationDelay = index * 0.2;
                         flow.innerHTML += `
-                        <div class="letter-sheet ${alignmentClass}">
-                            <div class="letter-meta">${senderName} · ${tStr}</div>
+                        <div class="letter-sheet ${alignmentClass}" style="animation-delay: ${animationDelay}s;">
+                            <div class="letter-header-meta">${senderName} ── ${tStr}</div>
                             <div class="letter-text">${formattedText}</div>
                             ${imgTag}
                         </div>`;
                     });
-                    
-                    // 自動滾動到最底部
-                    setTimeout(() => flow.scrollTop = flow.scrollHeight, 50);
+
+                    // 附加回覆紙張
+                    flow.innerHTML += `
+                    <div class="letter-sheet reply-sheet" style="animation-delay: ${Object.values(cSnap.val()||{}).length * 0.2}s;">
+                        <textarea id="reply-text" class="textarea" placeholder="在此處提筆，寫下你的回音...（最少 100 字）"></textarea>
+                        <div style="text-align: center;"><button class="btn" style="margin: 0 auto; padding: 12px 40px;" id="btn-send-reply">寄出回信</button></div>
+                    </div>`;
+
+                    document.getElementById('btn-send-reply').onclick = () => {
+                        const txt = document.getElementById('reply-text').value.trim();
+                        if (!txt || txt.length < 100) return alert("文字過於簡短，請寫滿至少 100 字。");
+                        playAnim('reply', id, partnerUid, txt);
+                    };
+
                 });
                 
-                // 顯示對話視窗並使用 CSS class 鎖定背景滾動（避免凍結 BUG）
-                document.getElementById('modal').style.display = 'flex'; 
-                document.body.classList.add('no-scroll');
-                gsap.fromTo("#modal-content", {y: 40, opacity: 0}, {y: 0, opacity: 1, duration: 0.4});
+                // 顯示信件桌並鎖定背景滾動，避免凍結 BUG
+                document.getElementById('modal').style.display = 'block'; 
+                document.body.classList.add('modal-open');
             });
         }
         
         function closeModal() { 
             if (currentChatRef) currentChatRef.off(); 
-            // 關閉時徹底解除滾動鎖定
-            document.body.classList.remove('no-scroll');
-            gsap.to("#modal-content", {y: 30, opacity: 0, duration: 0.2, onComplete: () => {
-                document.getElementById('modal').style.display = 'none'; 
-            }}); 
+            document.getElementById('modal').style.display = 'none';
+            document.body.classList.remove('modal-open'); // 關閉時徹底解除鎖定
         }
 
         function playAnim(type, letterId, partnerUid, ObjectData) {
             const overlay = document.getElementById('anim-overlay'); overlay.style.display = 'flex';
-            gsap.set(".env-wrapper", {y: 0, scale: 1, opacity: 1}); gsap.set("#anim-paper", {y: -120, zIndex: 5}); gsap.set("#anim-ptop", {rotateX: 0}); gsap.set("#anim-pbot", {rotateX: 0}); gsap.set("#anim-flap", {rotateX: 180, zIndex: 4}); gsap.set("#anim-seal", {scale: 0});
-            gsap.timeline().to("#anim-pbot", {rotateX: 179, duration: 0.4}).to("#anim-ptop", {rotateX: -179, duration: 0.4}, "-=0.2").to("#anim-paper", {y: 70, duration: 0.5}).set("#anim-flap", {zIndex: 15}).to("#anim-flap", {rotateX: 0, duration: 0.4}).to("#anim-seal", {scale: 1, duration: 0.3, ease: "back.out(1.5)"}).to(".env-wrapper", {y: -400, scale: 0.6, opacity: 0, duration: 0.6, delay: 0.4, onComplete: () => {
+            gsap.set(".env-wrapper", {y: 0, scale: 1, opacity: 1}); gsap.set("#anim-paper", {y: 0, zIndex: 5}); gsap.set("#anim-flap", {rotateX: 180, zIndex: 4}); gsap.set("#anim-seal", {scale: 0});
+            
+            // 將信紙插入信封並封口
+            gsap.timeline()
+                .to("#anim-paper", {y: 200, duration: 0.8, ease: "power2.in"})
+                .set("#anim-flap", {zIndex: 15})
+                .to("#anim-flap", {rotateX: 0, duration: 0.6})
+                .to("#anim-seal", {scale: 1, duration: 0.4, ease: "back.out(1.5)"})
+                .to(".env-wrapper", {y: -500, scale: 0.8, opacity: 0, duration: 0.8, delay: 0.5, ease: "power2.in", onComplete: () => {
                   overlay.style.display = 'none';
                   if (type === 'log') processLog(ObjectData); else processReply(letterId, partnerUid, ObjectData);
             }});
@@ -670,9 +681,9 @@
                     db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, timestamp: ts });
                     
                     document.getElementById('book-title').value = ''; document.getElementById('book-page').value = ''; document.getElementById('log-question').value = ''; document.getElementById('log-content').value = ''; 
-                    document.getElementById('book-image').value=''; selectedFileBase64=null; document.getElementById('file-name-display').innerText="尚未選擇圖片"; document.getElementById('image-preview').style.display = 'none';
-                    document.getElementById('write-editor').style.display = 'none'; document.getElementById('btn-submit-task').disabled=false; document.getElementById('btn-submit-task').innerText="封裝寄出心得";
-                    renderTasks(); alert('心得已寄出！'); switchTab('tab-tasks', document.querySelector('.tab-tasks'));
+                    document.getElementById('book-image').value=''; selectedFileBase64=null; document.getElementById('file-name-display').innerText="紙張邊緣尚未夾帶相片"; document.getElementById('image-preview').style.display = 'none';
+                    document.getElementById('write-editor').style.display = 'none'; document.getElementById('btn-submit-task').disabled=false; document.getElementById('btn-submit-task').innerText="封上火漆印，寄出";
+                    renderTasks(); alert('信件已隨風寄出！'); switchTab('tab-tasks', document.querySelector('.tab-tasks'));
                 });
             });
         }
@@ -682,9 +693,6 @@
             db.ref(`conversations/${id}`).push({ senderUid: currentUser.uid, text, timestamp: ts }).then(() => {
                 if (pUid) db.ref(`user_threads/${pUid}/${id}`).update({ hasUnread: true, lastUpdated: ts, hasBeenRepliedTo: true });
                 db.ref(`user_threads/${currentUser.uid}/${id}`).update({ hasUnread: false, hasReplied: true, lastUpdated: ts });
-                
-                // 送出後清空下方固定回覆框
-                document.getElementById('reply-text').value = ''; 
                 closeModal();
             });
         }
@@ -701,10 +709,10 @@
 
         function submitReadingLog() {
             const title = document.getElementById('mylog-title').value.trim(); const notes = document.getElementById('mylog-notes').value.trim();
-            if(!title) return alert("請輸入書籍名稱。");
+            if(!title) return alert("書籍名稱不得留白。");
             db.ref(`reading_logs/${currentUser.uid}`).push({ bookTitle: title, notes: notes, timestamp: firebase.database.ServerValue.TIMESTAMP }).then(() => {
-                document.getElementById('mylog-title').value = ''; document.getElementById('mylog-notes').value = ''; alert("已成功保存紀錄！");
-                toggleReadingLog();
+                document.getElementById('mylog-title').value = ''; document.getElementById('mylog-notes').value = ''; alert("已收錄至案頭書單。");
+                toggleReadingLog(); 
             });
         }
 
@@ -712,16 +720,16 @@
             db.ref(`reading_logs/${currentUser.uid}`).on('value', snap => {
                 const list = document.getElementById('mylog-list'); list.innerHTML = '';
                 const logsArray = Object.keys(snap.val() || {}).map(k => ({id: k, ...snap.val()[k]})).sort((a,b) => b.timestamp - a.timestamp);
-                if(logsArray.length === 0) { list.innerHTML = `<div class="empty-state"><p>閱讀紀錄空空如也，點擊上方按鈕添加第一本書吧！</p></div>`; return; }
+                if(logsArray.length === 0) { list.innerHTML = `<div class="empty-state"><p>案頭書單仍是一片空白，添置第一本書吧。</p></div>`; return; }
                 logsArray.forEach(log => {
                     const d = new Date(log.timestamp); const el = document.createElement('div'); el.className = 'log-card';
-                    el.innerHTML = `<h4>《${escapeHtml(log.bookTitle)}》</h4>${log.notes ? `<p>${escapeHtml(log.notes)}</p>` : ''}<div class="date">建立於 ${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}</div><button class="delete-btn" onclick="deleteReadingLog('${log.id}')" title="刪除此紀錄">刪除</button>`;
+                    el.innerHTML = `<h4>《${escapeHtml(log.bookTitle)}》</h4>${log.notes ? `<p>${escapeHtml(log.notes)}</p>` : ''}<div class="date">收錄於 ${d.getFullYear()}.${d.getMonth()+1}.${d.getDate()}</div><button class="delete-btn" onclick="deleteReadingLog('${log.id}')" title="移除書單">抹除</button>`;
                     list.appendChild(el);
                 });
             });
         }
 
-        window.deleteReadingLog = function(id) { if(confirm("確定要將這本書從紀錄中移除嗎？")) db.ref(`reading_logs/${currentUser.uid}/${id}`).remove(); };
+        window.deleteReadingLog = function(id) { if(confirm("確定要將這本書從案頭抹除嗎？")) db.ref(`reading_logs/${currentUser.uid}/${id}`).remove(); };
         function switchTab(id, btn) { document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); btn.classList.add('active'); document.getElementById(id).classList.add('active'); }
         function escapeHtml(s) { return s?s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):s; }
     </script>
