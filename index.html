@@ -232,9 +232,38 @@
 }
 
 
-        .letter-img-wrap { display: block; margin: 40px auto; text-align: center; position: relative; z-index: 2; }
-        .letter-img { max-width: 90%; max-height: 380px; border: 8px solid #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.08); object-fit: contain; filter: sepia(10%) contrast(95%); transition: 0.4s; }
-        .letter-img:hover { transform: scale(1.02); filter: none; }
+        .letter-img-wrap { 
+    display: block; 
+    width: fit-content; /* 確保外框包覆圖片，才能完美置中 */
+    margin: 40px auto; 
+    text-align: center; 
+    position: relative; 
+    z-index: 2; 
+    transform: rotate(-2deg); /* 微微傾斜，營造手工夾入的隨性感 */
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.letter-img-wrap:hover {
+    transform: rotate(0deg) scale(1.02); /* 滑鼠懸浮時擺正並微放大 */
+}
+
+.letter-img { 
+    max-width: 90%; 
+    max-height: 380px; 
+    object-fit: cover; 
+    background-color: #fff;
+    /* 拍立得邊框：上左右等寬，下方較寬 */
+    padding: 12px 12px 40px 12px; 
+    border: 1px solid #e6e1d6;
+    box-shadow: 0 8px 25px rgba(140, 120, 100, 0.15), inset 0 0 4px rgba(0,0,0,0.05); 
+    border-radius: 4px;
+    filter: sepia(15%) contrast(90%) brightness(98%); /* 復古泛黃濾鏡 */
+    transition: filter 0.4s; 
+}
+
+.letter-img:hover { 
+    filter: none; /* 移上去時恢復原圖色彩 */
+}
 
         .reply-sheet { padding: 50px 8%; margin-top: 20px; }
         #reply-text { min-height: 160px; border: none; background: transparent; padding: 0; line-height: 40px; margin-bottom: 25px; font-size: 1.12rem; }
@@ -281,6 +310,11 @@
             .toggle-add-btn { align-self: flex-end; margin-top: -45px; }
             .env-wrapper { transform: scale(0.85); }
         }
+
+
+
+
+        
     </style>
 </head>
 <body>
@@ -349,10 +383,10 @@
                 </div>
 
                 <div class="field-group"><label class="field-label">思考問題</label><textarea id="log-question" class="textarea" style="min-height:100px;" placeholder="思考問題（無字數限制）..."></textarea></div>
-                <div class="field-group"><label class="field-label">閱讀心得</label><textarea id="log-content" class="textarea" style="min-height:220px;" placeholder="在此寫下您的閱讀心得...（最少 150 字）"></textarea></div>
+                <div class="field-group"><label class="field-label">閱讀感悟</label><textarea id="log-content" class="textarea" style="min-height:220px;" placeholder="在此寫下您的閱讀心得...（最少 150 字）"></textarea></div>
 
                 <div class="field-group upload-container">
-                    <label class="field-label" style="margin-bottom: 0;">捕捉書籍畫面 (必填)</label>
+                    <label class="field-label" style="margin-bottom: 0;">書頁留影／感悟配圖</label>
                     <div class="privacy-warning">請注意：此照片將傳送給配對到的筆友，請勿拍攝含有個人隱私資訊的畫面。</div>
                     <label class="upload-btn" style="margin-top: 10px;">點擊選擇圖片 <input type="file" id="book-image" accept="image/*" style="display:none;" onchange="handleFileSelect(event)"></label>
                     <span id="file-name-display" class="file-name-display">尚未選擇圖片</span>
@@ -687,8 +721,8 @@
                 const tStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
                 
                 let formattedText = escapeHtml(m.text);
-                formattedText = formattedText.replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀段落</span>');
-                formattedText = formattedText.replace(/【思考問題】/g, '<span class="letter-section-divider">文字衍生的提問</span>');
+                formattedText = formattedText.replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀頁數</span>');
+                formattedText = formattedText.replace(/【思考問題】/g, '<span class="letter-section-divider">思考問題</span>');
                 formattedText = formattedText.replace(/【閱讀心得】/g, '<span class="letter-section-divider">閱讀感悟</span>');
 
                 let imgTag = m.imageUrl ? `<a href="${m.imageUrl}" target="_blank" class="letter-img-wrap" title="點擊檢視相片"><img src="${m.imageUrl}" class="letter-img" alt="隨信相片" referrerpolicy="no-referrer" loading="lazy"></a>` : '';
