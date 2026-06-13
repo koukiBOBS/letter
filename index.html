@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>閱讀交流與書房 - 手寫信箋</title>
+    <title>閱讀交流與書房 - 全螢幕手寫信箋</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -109,9 +109,10 @@
         .flex-row { display: flex; gap: 20px; } .flex-row > div { flex: 1; }
         
         /* 針對只能手寫的輸入框特別樣式 */
-        .handwrite-only { cursor: pointer; background-color: #faf9f7; }
+        .handwrite-only { cursor: pointer; background-color: #fcfbf9; transition: background 0.3s;}
+        .handwrite-only:hover { background-color: #f5f3ec; border-color: #b4a08c;}
         .handwrite-only:focus { border-color: #b4a08c; box-shadow: 0 0 0 3px rgba(180, 160, 140, 0.2); }
-        .handwrite-placeholder { font-size: 0.9rem; color: #9c8a75; font-style: italic; display: block; margin-top: 5px; }
+        .handwrite-placeholder { font-size: 0.9rem; color: #9c8a75; display: block; margin-top: 8px; }
 
         /* Upload */
         .upload-container { background: #fafaf9; padding: 24px; border-radius: 12px; border: 1px dashed #cbd5e1; display: flex; flex-direction: column; gap: 12px; }
@@ -192,12 +193,6 @@
             background-attachment: local; margin-bottom: 25px; 
         }
 
-        .letter-section-divider {
-            display: inline-block; width: 100%; text-align: center; font-size: 0.95rem; color: #9c8a75; 
-            letter-spacing: 0.6em; margin: 0; line-height: 40px; position: relative; font-weight: 400; 
-            font-family: var(--font-serif); vertical-align: top;
-        }
-
         .letter-img-wrap { 
             display: block; width: fit-content; margin: 40px auto; text-align: center; position: relative; z-index: 2; 
             transform: rotate(-2deg); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -213,47 +208,71 @@
         .reply-sheet { padding: 50px 8%; margin-top: 20px; }
 
         /* ====================================================
-           🖋️ 手寫板專屬 UI 設計
+           🖋️ 全螢幕手寫板 (Full-Screen Handwriting Overlay)
            ==================================================== */
-        #hw-keyboard {
-            position: fixed; bottom: -100%; left: 0; right: 0; height: 380px; background: #ece8e1;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.15); z-index: 10005; display: flex; flex-direction: column;
-            transition: bottom 0.4s cubic-bezier(0.2, 0, 0.2, 1); border-top: 1px solid #dcd5c9;
+        #hw-overlay {
+            position: fixed; inset: 0; background: rgba(250, 247, 242, 0.98); 
+            backdrop-filter: blur(10px); z-index: 100000; /* 極高 z-index，蓋過所有元素 */
+            display: none; flex-direction: column; overflow: hidden;
+            /* 加入一點信紙紋理的背景 */
+            background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, rgba(160, 140, 120, 0.1) 39px, rgba(160, 140, 120, 0.1) 40px);
         }
-        #hw-keyboard.active { bottom: 0; }
-        .hw-toolbar {
-            display: flex; gap: 8px; padding: 12px 15px; background: #e3dcd1; border-bottom: 1px solid #d1c8ba;
-            overflow-x: auto; white-space: nowrap; align-items: center;
+        #hw-overlay.active { display: flex; animation: fadeUpIn 0.3s cubic-bezier(0.2, 0, 0.2, 1); }
+        @keyframes fadeUpIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 頂部操作列與預覽區 */
+        .hw-top-container {
+            position: relative; z-index: 10; padding: 20px; background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05); border-bottom: 1px solid #e3dcd1;
+        }
+        .hw-header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .hw-title { font-family: var(--font-serif); font-size: 1.2rem; color: var(--text); font-weight: 600; }
+        .hw-btn-done { background: #1e293b; color: white; border: none; padding: 8px 20px; border-radius: 20px; font-size: 1rem; cursor: pointer; font-family: var(--font-sans); }
+        
+        /* 手寫內容即時預覽框 */
+        #hw-preview {
+            width: 100%; min-height: 80px; max-height: 15vh; overflow-y: auto;
+            background: transparent; border: none; font-family: var(--font-serif); font-size: 1.15rem; 
+            line-height: 1.8; color: var(--letter-ink); outline: none; resize: none;
+        }
+
+        /* 選字與標點符號工具列 */
+        .hw-toolbar { display: flex; flex-direction: column; z-index: 10; background: rgba(250, 247, 242, 0.95); box-shadow: 0 4px 15px rgba(0,0,0,0.03);}
+        .hw-candidates-row {
+            display: flex; gap: 5px; padding: 12px 20px; border-bottom: 1px dashed #e3dcd1;
+            height: 60px; align-items: center; overflow-x: auto; white-space: nowrap;
+        }
+        .hw-candidate {
+            font-size: 1.6rem; font-family: var(--font-serif); padding: 0 18px; cursor: pointer; color: #2c3e50;
+            border-right: 1px dashed #d1c8ba; min-width: 50px; text-align: center;
+        }
+        .hw-candidate:last-child { border-right: none; }
+        .hw-candidate:active { color: var(--color-tasks); background: #f4f0ea; border-radius: 4px; }
+
+        .hw-punctuation-row {
+            display: flex; gap: 8px; padding: 10px 20px; overflow-x: auto; white-space: nowrap; align-items: center;
+            border-bottom: 1px solid #e3dcd1;
         }
         .hw-btn {
             background: #fff; border: 1px solid #c8bdae; color: #4a4238; font-family: var(--font-serif);
             font-size: 1.1rem; padding: 6px 14px; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 0 #d1c8ba;
-            transition: 0.1s; display: inline-flex; align-items: center; justify-content: center;
+            display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
         .hw-btn:active { transform: translateY(2px); box-shadow: 0 0 0 #d1c8ba; }
-        .hw-btn.action { background: #6b8e73; color: white; border-color: #53735a; box-shadow: 0 2px 0 #46644d; font-family: var(--font-sans); font-size: 0.9rem;}
-        .hw-btn.delete { background: #d98a6c; color: white; border-color: #bc6b4c; box-shadow: 0 2px 0 #a35538; font-family: var(--font-sans); font-size: 0.9rem;}
+        .hw-btn.action { background: #d98a6c; color: white; border-color: #bc6b4c; box-shadow: 0 2px 0 #a35538; font-family: var(--font-sans); font-size: 0.9rem; margin-left: auto;}
         
-        .hw-candidates-wrap {
-            display: flex; gap: 5px; padding: 10px 15px; background: #fdfdfc; border-bottom: 1px solid #e3dcd1;
-            height: 55px; align-items: center; overflow-x: auto;
-        }
-        .hw-candidate {
-            font-size: 1.5rem; font-family: var(--font-serif); padding: 0 15px; cursor: pointer; color: #2c3e50;
-            border-right: 1px dashed #d1c8ba; min-width: 50px; text-align: center;
-        }
-        .hw-candidate:last-child { border-right: none; }
-        .hw-candidate:hover { color: var(--color-tasks); font-weight: bold; background: #f4f0ea; border-radius: 4px;}
-
-        .hw-canvas-container { flex: 1; position: relative; background: #faf9f7; cursor: crosshair; }
-        #hw-canvas { width: 100%; height: 100%; display: block; }
-        .hw-clear-btn {
-            position: absolute; bottom: 15px; right: 15px; background: rgba(0,0,0,0.5); color: white;
-            border: none; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; cursor: pointer;
+        /* 畫布區域 */
+        .hw-canvas-wrapper { flex: 1; position: relative; width: 100%; height: 100%; cursor: crosshair; }
+        #hw-canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; /* 徹底禁止預設滑動行為 */ }
+        
+        .hw-hint {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: rgba(156, 138, 117, 0.5); font-family: var(--font-serif); font-size: 1.5rem;
+            pointer-events: none; text-align: center; letter-spacing: 2px; transition: opacity 0.3s;
         }
 
         /* Envelope Anim */
-        #anim-overlay { position: fixed; inset: 0; background: rgba(250, 247, 242, 0.95); z-index: 9999; align-items: center; justify-content: center; perspective: 1200px; display: none;}
+        #anim-overlay { position: fixed; inset: 0; background: rgba(250, 247, 242, 0.95); z-index: 100005; align-items: center; justify-content: center; perspective: 1200px; display: none;}
         .env-wrapper { position: relative; width: 340px; height: 230px; }
         .env-back { position: absolute; inset: 0; background: #e3d3bd; border-radius: 4px; z-index: 1; }
         .paper-anim { position: absolute; bottom: 0; left: 15px; right: 15px; height: 380px; z-index: 5; transform-style: preserve-3d; }
@@ -289,6 +308,13 @@
             .log-header-container { flex-direction: column; align-items: flex-start; gap: 15px; }
             .toggle-add-btn { align-self: flex-end; margin-top: -45px; }
             .env-wrapper { transform: scale(0.85); }
+            
+            /* 手寫板 RWD */
+            .hw-top-container { padding: 15px; }
+            .hw-candidates-row { padding: 8px 15px; height: 50px; }
+            .hw-candidate { font-size: 1.4rem; padding: 0 12px; }
+            .hw-punctuation-row { padding: 8px 15px; }
+            .hw-hint { font-size: 1.2rem; }
         }
     </style>
 </head>
@@ -330,26 +356,36 @@
         </div>
     </div>
 
-    <!-- Handwriting Keyboard Pad -->
-    <div id="hw-keyboard">
+    <!-- 全螢幕沉浸式手寫板 (Full-Screen Handwriting Overlay) -->
+    <div id="hw-overlay">
+        <div class="hw-top-container">
+            <div class="hw-header-actions">
+                <div class="hw-title">✍️ 案頭書寫模式</div>
+                <button class="hw-btn-done" onclick="closeHwKeyboard()">完成書寫</button>
+            </div>
+            <textarea id="hw-preview" readonly placeholder="您手寫的文字將會即時顯示於此..."></textarea>
+        </div>
+        
         <div class="hw-toolbar">
-            <button class="hw-btn" onclick="insertChar('，')">，</button>
-            <button class="hw-btn" onclick="insertChar('。')">。</button>
-            <button class="hw-btn" onclick="insertChar('？')">？</button>
-            <button class="hw-btn" onclick="insertChar('！')">！</button>
-            <button class="hw-btn" onclick="insertChar('、')">、</button>
-            <button class="hw-btn" onclick="insertChar('《')">《</button>
-            <button class="hw-btn" onclick="insertChar('》')">》</button>
-            <span style="flex-grow: 1;"></span>
-            <button class="hw-btn delete" onclick="hwBackspace()">⌫ 刪除</button>
-            <button class="hw-btn action" onclick="closeHwKeyboard()">完成輸入</button>
+            <div class="hw-candidates-row" id="hw-candidates">
+                <div style="color:#9c8a75; font-size:0.95rem;">請在下方畫布書寫文字，辨識結果將顯示於此...</div>
+            </div>
+            <div class="hw-punctuation-row">
+                <button class="hw-btn" onclick="insertChar('，')">，</button>
+                <button class="hw-btn" onclick="insertChar('。')">。</button>
+                <button class="hw-btn" onclick="insertChar('？')">？</button>
+                <button class="hw-btn" onclick="insertChar('！')">！</button>
+                <button class="hw-btn" onclick="insertChar('、')">、</button>
+                <button class="hw-btn" onclick="insertChar('《')">《</button>
+                <button class="hw-btn" onclick="insertChar('》')">》</button>
+                <button class="hw-btn action" onclick="hwBackspace()">⌫ 刪除一字</button>
+                <button class="hw-btn action" style="background:#e2e8f0; color:#475569; border-color:#cbd5e1; box-shadow: 0 2px 0 #94a3b8; margin-left: 8px;" onclick="clearHwCanvas(true)">清除畫板</button>
+            </div>
         </div>
-        <div class="hw-candidates-wrap" id="hw-candidates">
-            <div style="color:#9c8a75; font-size:0.9rem; padding:0 15px;">請在下方畫板手寫文字...</div>
-        </div>
-        <div class="hw-canvas-container">
+
+        <div class="hw-canvas-wrapper">
+            <div class="hw-hint" id="hw-hint">將筆尖落於此處...<br><span style="font-size:1rem; opacity:0.7">（支援連續多筆劃書寫）</span></div>
             <canvas id="hw-canvas"></canvas>
-            <button class="hw-clear-btn" onclick="clearHwCanvas()">清空畫板</button>
         </div>
     </div>
 
@@ -384,13 +420,13 @@
                 <!-- 思考問題與閱讀心得強制手寫 -->
                 <div class="field-group">
                     <label class="field-label">思考問題</label>
-                    <textarea id="log-question" class="textarea handwrite-only" style="min-height:100px;" readonly placeholder="點此喚出手寫板進行書寫..."></textarea>
-                    <span class="handwrite-placeholder">📝 本區域僅限手寫輸入，以保持見字如面的真誠。</span>
+                    <textarea id="log-question" class="textarea handwrite-only" style="min-height:100px;" readonly placeholder="點此喚出全螢幕書寫板..."></textarea>
+                    <span class="handwrite-placeholder">📝 點擊進入全螢幕手寫模式。禁止鍵盤打字或貼上。</span>
                 </div>
                 <div class="field-group">
                     <label class="field-label">閱讀感悟</label>
-                    <textarea id="log-content" class="textarea handwrite-only" style="min-height:220px;" readonly placeholder="在此手寫下您的閱讀心得...（最少 150 字）"></textarea>
-                    <span class="handwrite-placeholder">📝 本區域僅限手寫輸入，禁止鍵盤打字或貼上。</span>
+                    <textarea id="log-content" class="textarea handwrite-only" style="min-height:220px;" readonly placeholder="點此喚出全螢幕書寫板...（最少 150 字）"></textarea>
+                    <span class="handwrite-placeholder">📝 點擊進入全螢幕手寫模式。禁止鍵盤打字或貼上。</span>
                 </div>
 
                 <div class="field-group upload-container">
@@ -468,13 +504,14 @@
         const ITEMS_PER_PAGE = 10; let repliesData = []; let inboxData = []; let currentPageReplies = 1; let currentPageInbox = 1;
         let isSubmittingLog = false; let isSubmittingReply = false;
 
-        // 手寫板相關變數
+        // 全螢幕手寫板相關變數
         let activeHwInput = null;
         let hwCanvas, hwCtx;
         let isDrawing = false;
         let strokes = []; 
-        let currentStroke = [[], [], []]; // x, y, time
+        let currentStroke = [[], [], []]; 
         let hwTimeout = null;
+        let originalBodyOverflow = '';
 
         auth.onAuthStateChanged(user => {
             if (user) {
@@ -510,7 +547,6 @@
             const btn = document.getElementById('btn-setup-name');
             btn.disabled = true; btn.innerText = "設定中...";
             
-            // 🌟 解決問題 3：初始化 receivedCount 為 0
             db.ref(`users/${currentUser.uid}`).set({ name, email: currentUser.email, receivedCount: 0 }).then(() => { 
                 document.getElementById('user-name').innerText = name; 
                 hideAuthOverlay(); 
@@ -596,7 +632,6 @@
                             db.ref(`user_threads/${currentUser.uid}/${rId}`).set({ letterId: rId, bookTitle: lData.bookTitle, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: now });
                             db.ref(`user_threads/${lData.senderUid}/${rId}`).set({ letterId: rId, bookTitle: lData.bookTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: now });
                             
-                            // 🌟 更新接信者的 receivedCount
                             db.ref(`users/${currentUser.uid}/receivedCount`).transaction(count => (count || 0) + 1);
                         }
                     }).catch(err => console.error("配對讀取異常:", err));
@@ -762,7 +797,7 @@
                     contentHTML += `
                     <div class="letter-sheet reply-sheet my-letter" style="animation-delay: ${msgKeys.length * 0.15}s;">
                         <div class="letter-header-meta"><span>✍️ 提筆回信</span><span>紙短情長</span></div>
-                        <textarea id="reply-text" class="textarea handwrite-only" readonly placeholder="點擊喚出手寫板，一筆一劃寫下你的回音...（最少 100 字）"></textarea>
+                        <textarea id="reply-text" class="textarea handwrite-only" readonly placeholder="點此喚出全螢幕書寫板，一筆一劃寫下您的回音...（最少 100 字）"></textarea>
                         <div style="text-align: center;"><button class="btn" style="margin: 20px auto 0; padding: 12px 40px; background: var(--color-replies);" id="btn-send-reply">寄出回信</button></div>
                     </div>`;
 
@@ -788,8 +823,18 @@
             }).catch(err => { alert("讀取信件失敗: " + err.message); unlockScroll(); });
         }
         
-        function lockScroll() { document.body.style.overflow = 'hidden'; }
-        function unlockScroll() { document.body.style.overflow = ''; }
+        function lockScroll() { 
+            if(document.body.style.overflow !== 'hidden') {
+                originalBodyOverflow = document.body.style.overflow; 
+                document.body.style.overflow = 'hidden'; 
+            }
+        }
+        function unlockScroll() { 
+            // 如果 modal 和 hw-overlay 都不在顯示狀態，才解鎖滾動
+            const modalOpen = document.getElementById('modal').style.display === 'flex';
+            const hwOpen = document.getElementById('hw-overlay').classList.contains('active');
+            if(!modalOpen && !hwOpen) document.body.style.overflow = originalBodyOverflow; 
+        }
 
         function closeModal() { 
             if (currentChatRef) currentChatRef.off(); 
@@ -810,7 +855,6 @@
         function processLog(data) {
             const ts = firebase.database.ServerValue.TIMESTAMP; const ref = db.ref('letters').push();
             
-            // 🌟 解決問題 3：均分派發邏輯 (尋找 receivedCount 最少的使用者)
             db.ref('users').once('value').then(snap => {
                 const users = snap.val() || {};
                 let eligibleUids = Object.keys(users).filter(u => u !== currentUser.uid);
@@ -826,7 +870,6 @@
                     let candidates = eligibleUids.filter(uid => (users[uid].receivedCount || 0) === minCount);
                     rec = candidates[Math.floor(Math.random() * candidates.length)];
                     
-                    // 🌟 給抽到的幸運兒增加收信次數
                     db.ref(`users/${rec}/receivedCount`).set(minCount + 1);
                 }
 
@@ -896,21 +939,19 @@
         function escapeHtml(s) { return s?s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):s; }
 
         /* ====================================================
-           🖋️ 核心功能：手寫板與禁止鍵盤輸入邏輯
+           🖋️ 全螢幕手寫核心邏輯 (Immersive Handwriting)
            ==================================================== */
         
-        // 綁定主畫面的兩個手寫框
         document.addEventListener("DOMContentLoaded", () => {
             const q = document.getElementById('log-question');
             const c = document.getElementById('log-content');
             if(q) q.addEventListener('click', function() { openHwKeyboard(this); });
             if(c) c.addEventListener('click', function() { openHwKeyboard(this); });
             
-            // 阻斷鍵盤與貼上 (備用防禦機制，readonly 已經很強)
+            // 防禦實體鍵盤
             document.querySelectorAll('.handwrite-only').forEach(el => {
                 el.addEventListener('keydown', e => { if(e.key !== 'Backspace') e.preventDefault(); });
                 el.addEventListener('paste', e => e.preventDefault());
-                el.addEventListener('drop', e => e.preventDefault());
             });
         });
 
@@ -918,16 +959,17 @@
             hwCanvas = document.getElementById('hw-canvas');
             hwCtx = hwCanvas.getContext('2d');
             
-            // 設定高解析度 Canvas
             function resizeCanvas() {
                 const rect = hwCanvas.parentElement.getBoundingClientRect();
                 hwCanvas.width = rect.width; hwCanvas.height = rect.height;
                 hwCtx.lineCap = "round"; hwCtx.lineJoin = "round";
             }
-            window.addEventListener('resize', resizeCanvas);
+            window.addEventListener('resize', () => {
+                if(document.getElementById('hw-overlay').classList.contains('active')) resizeCanvas();
+            });
+            // 初始綁定
             setTimeout(resizeCanvas, 500);
 
-            // 綁定繪畫事件 (支援滑鼠與觸控)
             hwCanvas.addEventListener('pointerdown', startStroke);
             hwCanvas.addEventListener('pointermove', drawStroke);
             hwCanvas.addEventListener('pointerup', endStroke);
@@ -941,10 +983,11 @@
 
         function startStroke(e) {
             e.preventDefault(); isDrawing = true;
+            document.getElementById('hw-hint').style.opacity = '0'; // 隱藏提示字
             const pos = getPointerPos(e);
             currentStroke = [[pos.x], [pos.y], [Date.now()]];
             hwCtx.beginPath(); hwCtx.moveTo(pos.x, pos.y);
-            hwCtx.lineWidth = 4; hwCtx.strokeStyle = "#4a4238";
+            hwCtx.lineWidth = 5; hwCtx.strokeStyle = "rgba(74, 66, 56, 0.85)";
             clearTimeout(hwTimeout);
         }
 
@@ -958,7 +1001,9 @@
         function endStroke(e) {
             if (!isDrawing) return; isDrawing = false; e.preventDefault();
             if (currentStroke[0].length > 0) strokes.push(currentStroke);
-            hwTimeout = setTimeout(recognizeHandwriting, 600); // 停筆 0.6 秒後自動辨識
+            
+            // 延長等待時間，允許連續寫複雜中文字 (800毫秒)
+            hwTimeout = setTimeout(recognizeHandwriting, 800); 
         }
 
         function recognizeHandwriting() {
@@ -976,7 +1021,7 @@
             })
             .then(res => res.json())
             .then(res => {
-                if (res[0] === "SUCCESS") {
+                if (res[0] === "SUCCESS" && res[1][0]) {
                     const results = res[1][0][1];
                     renderHwCandidates(results);
                 }
@@ -986,47 +1031,71 @@
         function renderHwCandidates(words) {
             const container = document.getElementById('hw-candidates');
             container.innerHTML = '';
-            if (words.length === 0) {
-                container.innerHTML = '<div style="color:#ef4444; font-size:0.9rem; padding:0 15px;">無法辨識，請重新書寫或寫清楚些。</div>';
+            if (!words || words.length === 0) {
+                container.innerHTML = '<div style="color:#ef4444; font-size:0.95rem;">無法辨識，請按清除畫板重寫。</div>';
                 return;
             }
             words.forEach(word => {
                 const span = document.createElement('div');
                 span.className = 'hw-candidate'; span.innerText = word;
-                span.onclick = () => { insertChar(word); clearHwCanvas(); };
+                span.onclick = () => { insertChar(word); clearHwCanvas(false); };
                 container.appendChild(span);
             });
         }
 
-        function clearHwCanvas() {
+        function clearHwCanvas(resetHint = false) {
             strokes = []; hwCtx.clearRect(0, 0, hwCanvas.width, hwCanvas.height);
-            document.getElementById('hw-candidates').innerHTML = '<div style="color:#9c8a75; font-size:0.9rem; padding:0 15px;">請在下方畫板手寫文字...</div>';
+            document.getElementById('hw-candidates').innerHTML = '<div style="color:#9c8a75; font-size:0.95rem;">請在下方畫布書寫文字，辨識結果將顯示於此...</div>';
+            if(resetHint) document.getElementById('hw-hint').style.opacity = '1';
         }
 
         function openHwKeyboard(targetInput) {
             activeHwInput = targetInput;
-            document.getElementById('hw-keyboard').classList.add('active');
+            const overlay = document.getElementById('hw-overlay');
+            const preview = document.getElementById('hw-preview');
+            
+            overlay.classList.add('active');
+            preview.value = activeHwInput.value; // 同步現有文字到預覽區
+            preview.scrollTop = preview.scrollHeight;
+
+            lockScroll(); // 鎖定底層網頁
+            clearHwCanvas(true);
             
             // 觸發視窗重算畫布大小
             setTimeout(() => {
                 const rect = hwCanvas.parentElement.getBoundingClientRect();
-                if(hwCanvas.width !== rect.width) { hwCanvas.width = rect.width; hwCanvas.height = rect.height; hwCtx.lineCap = "round"; hwCtx.lineJoin = "round";}
-            }, 300);
+                if(hwCanvas.width !== rect.width) { 
+                    hwCanvas.width = rect.width; hwCanvas.height = rect.height; 
+                    hwCtx.lineCap = "round"; hwCtx.lineJoin = "round";
+                }
+            }, 100);
         }
 
-        function closeHwKeyboard() { document.getElementById('hw-keyboard').classList.remove('active'); clearHwCanvas(); }
+        function closeHwKeyboard() { 
+            document.getElementById('hw-overlay').classList.remove('active'); 
+            clearHwCanvas();
+            unlockScroll(); 
+        }
 
-        // 插入字元/標點符號的函數
+        // 插入字元/標點符號 (同時更新底層 Input 與 頂層 Preview)
         function insertChar(char) {
             if (!activeHwInput) return;
+            const preview = document.getElementById('hw-preview');
+            
             activeHwInput.value += char;
-            activeHwInput.scrollTop = activeHwInput.scrollHeight; // 自動向下捲動
+            preview.value += char;
+            
+            activeHwInput.scrollTop = activeHwInput.scrollHeight; 
+            preview.scrollTop = preview.scrollHeight; 
         }
 
         // 退格刪除鍵
         function hwBackspace() {
             if (!activeHwInput || activeHwInput.value.length === 0) return;
+            const preview = document.getElementById('hw-preview');
+            
             activeHwInput.value = activeHwInput.value.slice(0, -1);
+            preview.value = preview.value.slice(0, -1);
         }
     </script>
 </body>
