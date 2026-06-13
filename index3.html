@@ -210,6 +210,14 @@
         .dev-btn { background: #4a4a4a; color: #fff; border: 1px solid #666; padding: 8px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.85rem; width: 100%; }
         .dev-btn:hover { background: #666; transform: translateY(-1px); }
         .dev-flex { display: flex; gap: 5px; } .dev-flex .dev-btn { flex: 1; padding: 8px 0; }
+
+
+.tab-btn-custom { background: transparent; border: none; font-size: 1.3rem; font-family: var(--font-serif); color: var(--text-muted); cursor: pointer; padding: 10px 20px; transition: 0.3s; position: relative; }
+.tab-btn-custom.active { color: var(--color-tasks); font-weight: 600; }
+.tab-btn-custom.active::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 40px; height: 3px; background: var(--color-tasks); border-radius: 2px; }
+
+
+        
     </style>
 </head>
 <body>
@@ -305,39 +313,70 @@
     <div id="modal-replies" class="room-modal fullscreen-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal(event, 'modal-replies')">×</button><h2 class="modal-title" style="color: var(--color-replies);">對我的回覆</h2><div class="list-container" id="replies-list"></div></div></div>
     <div id="modal-inbox" class="room-modal fullscreen-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal(event, 'modal-inbox')">×</button><h2 class="modal-title" style="color: var(--color-inbox);">寄來的心得</h2><div class="list-container" id="inbox-list"></div></div></div>
     
-    <div id="modal-tasks" class="room-modal fullscreen-modal">
+   <div id="modal-tasks" class="room-modal fullscreen-modal">
         <div class="room-modal-content">
             <button class="room-modal-close" onclick="closeRoomModal(event, 'modal-tasks')">×</button>
-            <h2 class="modal-title" style="color: var(--color-tasks);">我的任務</h2>
-            <div class="grid" id="task-grid"></div>
+            <div style="display:flex; justify-content:center; gap:20px; margin-bottom:40px; border-bottom:1px solid var(--border); padding-bottom:20px;">
+                <button id="tab-btn-reading" class="tab-btn-custom active" onclick="switchTaskTab('reading')">📖 閱讀任務</button>
+                <button id="tab-btn-random" class="tab-btn-custom" onclick="switchTaskTab('random')">📸 生活隨機探索</button>
+            </div>
             
-            <div class="editor" id="write-editor" style="display: none; max-width: 900px; margin: 0 auto;">
-                <h3 id="task-title" class="serif-text" style="margin-bottom: 30px; font-size: 1.5rem;">撰寫任務</h3>
-                <div class="field-group flex-row">
-                    <div><label class="field-label">書籍名稱</label><input type="text" id="book-title" class="input-box" style="font-family:var(--font-serif);" placeholder="請輸入書名"></div>
-                    <div><label class="field-label">目前閱讀頁數</label><input type="number" id="book-page" class="input-box" placeholder="例如：120" min="1"></div>
-                </div>
-                <div class="field-group">
-                    <label class="field-label">思考問題</label>
-                    <textarea id="log-question" class="textarea handwrite-only" style="min-height:100px;" readonly placeholder="點此喚出全螢幕書寫板..."></textarea>
-             
-                </div>
-                <div class="field-group">
-                    <label class="field-label">閱讀感悟</label>
-                    <textarea id="log-content" class="textarea handwrite-only" style="min-height:220px;" readonly placeholder="點此喚出全螢幕書寫板...（最少 150 字）"></textarea>
-           
-                </div>
-                <div class="field-group upload-container">
-                    <label class="field-label" style="margin-bottom: 0;">書頁留影／感悟配圖</label>
-                    <div class="privacy-warning">請注意：此照片將傳送給配對到的筆友，請勿拍攝含有個人隱私資訊的畫面。</div>
-                    <label class="upload-btn" style="margin-top: 10px;">點擊選擇圖片 <input type="file" id="book-image" accept="image/*" style="display:none;" onchange="handleFileSelect(event)"></label>
-                    <span id="file-name-display" style="font-size: 0.95rem; color: var(--color-tasks); font-weight: 500;">尚未選擇圖片</span>
-                    <img id="image-preview" class="img-preview" src="" alt="圖片預覽">
-                </div>
-                <div style="text-align: right; margin-top: 30px;">
-                    <button id="btn-submit-task" class="btn" style="width: auto; background: var(--color-tasks); margin-left: auto;" onclick="submitLog()">封裝寄出心得</button>
+            <div id="reading-section">
+                <div class="grid" id="task-grid"></div>
+                <div class="editor" id="write-editor" style="display: none; max-width: 900px; margin: 0 auto;">
+                    <!-- 這是你原本的閱讀任務編輯器表單，保留原本內容即可 -->
+                    <h3 id="task-title" class="serif-text" style="margin-bottom: 30px; font-size: 1.5rem;">撰寫任務</h3>
+                    <div class="field-group flex-row">
+                        <div><label class="field-label">書籍名稱</label><input type="text" id="book-title" class="input-box" placeholder="請輸入書名"></div>
+                        <div><label class="field-label">目前閱讀頁數</label><input type="number" id="book-page" class="input-box" placeholder="例如：120" min="1"></div>
+                    </div>
+                    <div class="field-group"><label class="field-label">思考問題</label><textarea id="log-question" class="textarea handwrite-only" style="min-height:100px;" readonly placeholder="點此喚出全螢幕書寫板..."></textarea></div>
+                    <div class="field-group"><label class="field-label">閱讀感悟</label><textarea id="log-content" class="textarea handwrite-only" style="min-height:220px;" readonly placeholder="點此喚出全螢幕書寫板...（最少 150 字）"></textarea></div>
+                    <div class="field-group upload-container">
+                        <label class="field-label" style="margin-bottom: 0;">書頁留影</label>
+                        <label class="upload-btn">點擊選擇圖片 <input type="file" id="book-image" accept="image/*" style="display:none;" onchange="handleFileSelect(event, 'reading')"></label>
+                        <span id="file-name-display">尚未選擇圖片</span><img id="image-preview" class="img-preview" src="">
+                    </div>
+                    <div style="text-align: right; margin-top: 30px;"><button id="btn-submit-task" class="btn" style="background: var(--color-tasks);" onclick="submitLog()">封裝寄出心得</button></div>
                 </div>
             </div>
+
+            <div id="random-section" style="display: none;">
+                <div class="grid" id="random-task-grid"></div>
+                <div class="editor" id="random-editor" style="display: none; max-width: 900px; margin: 0 auto; background: #fdfaf6; border-color: #e6dfd1;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 30px; border-bottom: 1px dashed #c4b8aa; padding-bottom:20px;">
+                        <div>
+                            <h3 id="random-task-date-title" style="font-size: 1rem; color: #a48c76; font-family: var(--font-serif);">任務日期</h3>
+                            <h2 id="random-task-content" style="font-size: 1.8rem; color: #6b4423; font-family: var(--font-serif); margin-top:10px;">（抽到的任務內容）</h2>
+                        </div>
+                        <button id="btn-redraw" class="btn btn-outline" style="border-color:#d98a6c; color:#d98a6c; display:none;" onclick="triggerRedraw()">🎲 重抽一次</button>
+                    </div>
+                    
+                    <div class="field-group upload-container" style="background: #fff; border-color:#e6dfd1;">
+                        <label class="field-label" style="color: #6b4423;">📸 上傳任務證明相片（必填）</label>
+                        <label class="upload-btn" style="border-color:#dcd5c9;">點擊選擇圖片 <input type="file" id="random-image" accept="image/*" style="display:none;" onchange="handleFileSelect(event, 'random')"></label>
+                        <span id="random-file-name-display" style="font-size: 0.95rem; color: #a48c76;">尚未選擇圖片</span>
+                        <img id="random-image-preview" class="img-preview" src="">
+                    </div>
+                    
+                    <div class="field-group">
+                        <label class="field-label" style="color: #6b4423;">📝 備註文字（選填，可簡短說明）</label>
+                        <textarea id="random-note" class="textarea" style="min-height:120px; background:#fff; border-color:#e6dfd1;" placeholder="寫下完成這個任務時的心情或感觸..."></textarea>
+                    </div>
+                    
+                    <div style="text-align: right; margin-top: 30px;"><button id="btn-submit-random" class="btn" style="background: #8b7355;" onclick="submitRandomTask()">封裝完成任務</button></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 抽籤 3D 動畫 Overlay -->
+    <div id="draw-anim-overlay" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(20, 18, 16, 0.95); flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(10px);">
+        <div id="draw-canvas-container" style="width:100%; height:60vh; position:relative;"></div>
+        <div id="draw-result-text" style="opacity:0; transform:translateY(20px); text-align:center; color:#fff; font-family:var(--font-serif); margin-top:20px;">
+            <p style="font-size:1.2rem; color:#d4a373; margin-bottom:10px;">竹籤落地，緣分已定</p>
+            <h2 id="draw-result-h2" style="font-size:2.2rem; letter-spacing:2px; line-height:1.5;"></h2>
+            <button class="btn" style="margin-top:40px; background:#d4a373; color:#fff; border:none; padding:12px 40px; font-size:1.1rem; border-radius:30px;" onclick="closeDrawAnim()">接受任務</button>
         </div>
     </div>
     
@@ -414,6 +453,20 @@
         const firebaseConfig = { apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms", authDomain: "letter-a74d1.firebaseapp.com", databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com", projectId: "letter-a74d1" };
         firebase.initializeApp(firebaseConfig); const auth = firebase.auth(); const db = firebase.database();
 
+
+
+let selectedRandomTaskDate = null;
+let currentDrawnState = null;
+let randomSubmissions = [];
+let drawnTasksData = {};
+
+// 200 種隨機文學與生活探索小任務
+const RANDOM_TASKS = [
+  "拍下一片形狀特別的落葉", "抄寫一句今天讀到最喜歡的句子", "拍下今天天空最美的一刻", "尋找一朵正在盛開的野花並拍下", "寫下此刻窗外的三種聲音", "向同學分享一首你最近常聽的詩歌", "拍下你書桌上最喜歡的一個小物件", "抄寫一位現代作家的佳段一百字", "拍下陽光灑在地板上的影子", "寫下今天讓你微笑的一件小事", "尋找一個有年代感的招牌或建築", "拍下你今天喝水的杯子", "抄寫一首簡短的唐詩或宋詞", "拍下夜晚的一盞路燈", "分享一本你一直想讀卻還沒讀的書名", "觀察一隻昆蟲或小動物，拍下牠的蹤跡", "寫下三個代表你今天心情的形容詞", "拍下你通勤路上最喜歡的風景", "抄寫一段讓你覺得平靜的文字", "尋找一個圓形的自然物品", "拍下你今天的午餐或晚餐", "寫下一句你想對未來的自己說的話", "拍下雨滴（或水滴）留下的痕跡", "抄寫一段關於「時間」的文學名句", "尋找並拍下兩種不同深淺的綠色", "分享一句你最喜歡的電影台詞", "拍下你最喜歡的一雙鞋", "寫下一件你小時候最喜歡的玩具", "拍下今天遇見的一隻貓或狗", "抄寫一段關於「思念」的現代詩", "尋找並拍下一個愛心形狀的物品", "寫下你最喜歡的季節及原因", "拍下你書架的一角", "抄寫泰戈爾《飛鳥集》中的任意一首", "拍下一個看起來很孤單的物品", "分享一個你最近學到的新詞彙", "拍下今天看見的雲朵，並說說它像什麼", "寫下一句能鼓勵別人的話", "拍下你常去的一家店的門面", "抄寫一段關於「海」的描寫", "尋找並拍下一種粗糙的紋理（如樹皮、牆面）", "寫下你今天最滿意的一個決定", "拍下你最常用的一支筆", "抄寫余光中的任意一小段詩", "拍下一個破舊但美麗的東西", "分享一首適合雨天聽的純音樂", "拍下你今天穿的襪子", "寫下一個你一直想去旅行的地方", "拍下路邊的一叢雜草", "抄寫一段關於「月亮」的古典詩詞", "尋找並拍下一個對稱的畫面", "寫下一件你一直堅持的小習慣", "拍下你的一頁手寫筆記", "抄寫張愛玲的一句經典名言", "拍下清晨或傍晚的天色", "分享一個你覺得名字很美的植物", "拍下一個正在反光的物體", "寫下一件你想向別人道歉或道謝的事", "拍下一扇你覺得有故事的窗戶", "抄寫一段散文中的風景描寫", "尋找並拍下三種不同顏色的物品放在一起", "寫下你最喜歡的數字及原因", "拍下你今天使用的鑰匙", "抄寫蘇軾的一闋詞", "拍下一個被人遺忘在角落的物品", "分享一個讓你覺得溫暖的瞬間", "拍下水面（或積水）的倒影", "寫下一件你最近克服的小困難", "拍下你吃的一份點心或水果", "抄寫一段描寫「孤獨」的佳句", "尋找並拍下一個看似微不足道的細節", "寫下一個你喜歡的名字", "拍下你常走的一段樓梯", "抄寫徐志摩的一段詩句", "拍下一張失焦、模糊但有氛圍的照片", "分享一句歌詞，只寫一句", "拍下你手掌的掌紋", "寫下一件讓你覺得自己長大了的事", "拍下天空飛過的鳥或飛機", "抄寫一段關於「相遇」的文字", "尋找並拍下一個「正在生長」的東西", "寫下你最討厭的一種食物及原因", "拍下一個時鐘或手錶的時間", "抄寫席慕蓉的一首小詩", "拍下一束光線", "分享一個你覺得很有趣的冷知識", "拍下一面有塗鴉或痕跡的牆", "寫下你睡前會做的一件事", "拍下你今天背的包包", "抄寫一段關於「告別」的文學段落", "尋找並拍下一個充滿幾何美感的畫面", "寫下一種你最喜歡的氣味", "拍下你今天看到的夕陽或晚霞", "抄寫李白的一首詩", "拍下一個看起來很溫柔的畫面", "分享一個你覺得很有意義的節日", "拍下一雙別人的手（需徵求同意）", "寫下一件你今天覺得遺憾的事", "拍下一個郵筒或信箱", "抄寫一段關於「夢想」的名人語錄", "尋找並拍下一個透明的物品", "寫下你最喜歡的顏色及原因", "拍下你今天走過的一條路", "抄寫一段描寫「雨天」的佳段", "拍下一張黑白濾鏡的照片", "分享一個你喜歡的字體或書法", "拍下一個有文字的標語或招牌", "寫下一件你明天期待去做的事", "拍下你今天看到的月亮或星星", "抄寫村上春樹的一句話", "尋找並拍下一個有故事的舊物", "寫下一種你喜歡的聲音", "拍下一個空無一人的場景", "抄寫一段關於「自由」的文字", "拍下一朵凋謝或枯萎的花", "分享一個你覺得很美的成語", "拍下一杯熱氣騰騰的飲料", "寫下一件你覺得自己很幸運的事", "拍下一個交通工具", "抄寫一段描寫「春天」的文字", "尋找並拍下一個有規律排列的圖案", "寫下你最喜歡的一種天氣", "拍下一個你覺得很有設計感的東西", "抄寫一段描寫「夏天」的文字", "拍下一個讓你覺得有壓力的物品", "分享一個你最近讀到的好書名", "拍下一個你親手做的東西", "寫下一件你覺得很勇敢的事", "拍下一個正在工作的背影", "抄寫一段描寫「秋天」的文字", "尋找並拍下一個反差很大的畫面", "寫下你最喜歡的一種布料觸感", "拍下一個你覺得好笑的東西", "抄寫一段描寫「冬天」的文字", "拍下一個讓你覺得平靜的角落", "分享一個你喜歡的古人名字", "拍下一個你在超市或便利商店買的東西", "寫下一件你覺得很浪費時間但很開心的事", "拍下一個你覺得很奇怪的東西", "抄寫一段關於「青春」的文字", "尋找並拍下一個有生命力的畫面", "寫下你最喜歡的一種花", "拍下一個你覺得很酷的影子", "抄寫一段關於「愛情」的文字", "拍下一個讓你聯想到童年的物品", "分享一個你喜歡的異國單字", "拍下一個你覺得很難畫的東西", "寫下一件你覺得很神奇的事", "拍下一個你在路上看到的有趣畫面", "抄寫一段關於「家」的文字", "尋找並拍下一個讓你覺得溫暖的畫面", "寫下你最喜歡的一種樂器", "拍下一個你覺得很複雜的東西", "抄寫一段關於「旅行」的文字", "拍下一個你覺得很簡單的東西", "分享一個你喜歡的畫家或藝術家", "拍下一個你覺得很珍貴的東西", "寫下一件你覺得很感動的事", "拍下一個你在學校或公司看到的畫面", "抄寫一段關於「等待」的文字", "尋找並拍下一個有層次感的畫面", "寫下你最喜歡的一種交通工具", "拍下一個你覺得很危險的東西", "抄寫一段關於「希望」的文字", "拍下一個你覺得很安全的東西", "分享一個你喜歡的歷史故事", "拍下一個你覺得很吵的東西", "寫下一件你覺得很無奈的事", "拍下一個你覺得很安靜的東西", "抄寫一段關於「記憶」的文字", "尋找並拍下一個有節奏感的畫面", "寫下你最喜歡的一種動物", "拍下一個你覺得很軟的東西", "抄寫一段關於「遺忘」的文字", "拍下一個你覺得很硬的東西", "分享一個你喜歡的神話故事", "拍下一個你覺得很重的東西", "寫下一件你覺得很累的事", "拍下一個你覺得很輕的東西", "抄寫一段關於「原諒」的文字", "尋找並拍下一個有方向感的畫面", "寫下你最喜歡的一種水果", "拍下一個你覺得很長的東西", "抄寫一段關於「承諾」的文字", "拍下一個你覺得很短的東西", "分享一個你喜歡的童話故事", "拍下一個你覺得很大的東西", "寫下一件你覺得很輕鬆的事", "拍下一個你覺得很小的東西", "抄寫一段關於「秘密」的文字", "尋找並拍下一個有溫度的畫面", "寫下你最喜歡的一種飲料", "拍下一個你覺得很高的東西", "抄寫一段關於「謊言」的文字", "拍下一個你覺得很低的東西", "分享一個你喜歡的節日習俗", "拍下一個你覺得很亮的東西", "寫下一件你覺得很幸運的事", "拍下一個你覺得很暗的東西", "抄寫一段關於「真相」的文字"
+];
+
+
+        
       let currentUser = null; let config = null; let selectedTaskIndex = null; let selectedTaskDate = null;
         let selectedFileBase64 = null; let selectedFileName = null;
         let isSubmittingLog = false; let isSubmittingReply = false;
@@ -499,70 +552,97 @@
         }
 
       // 在學生端 HTML 搜尋 "function renderTasks()" 並將整段替換為以下程式碼：
+function switchTaskTab(tab) {
+    document.getElementById('tab-btn-reading').classList.toggle('active', tab === 'reading');
+    document.getElementById('tab-btn-random').classList.toggle('active', tab === 'random');
+    document.getElementById('reading-section').style.display = tab === 'reading' ? 'block' : 'none';
+    document.getElementById('random-section').style.display = tab === 'random' ? 'block' : 'none';
+    
+    // 退回列表視圖
+    document.getElementById('task-grid').style.display = 'grid'; document.getElementById('write-editor').style.display = 'none';
+    document.getElementById('random-task-grid').style.display = 'grid'; document.getElementById('random-editor').style.display = 'none';
+}
+
 function renderTasks() {
-    const grid = document.getElementById('task-grid'); if(!grid) return; grid.innerHTML = '';
+    const rGrid = document.getElementById('task-grid'); const randGrid = document.getElementById('random-task-grid');
+    if(!rGrid || !randGrid) return; rGrid.innerHTML = ''; randGrid.innerHTML = '';
     const classId = currentUser.classId || 'default';
     
     db.ref(`classes/${classId}`).once('value').then(classSnap => {
-        const classData = classSnap.val();
-        if(!classData || !classData.tasks || classData.tasks.length === 0) { 
-            grid.innerHTML = '<div class="empty-state"><p>目前尚未設定任務。</p></div>'; return; 
-        }
+        const classData = classSnap.val() || {};
+        const readingTasks = classData.tasks || [];
+        const randomTasks = classData.randomTasks || [];
         
-        db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value').then(snap => {
-            const letters = Object.values(snap.val()||{});
-            
-            // 找出已繳交的日期 (智慧防錯：新資料直接讀取 taskDate，舊資料確認繳交時間是否合理)
-            const submittedDates = letters.map(l => {
-                if (l.taskDate) return l.taskDate;
-                const dStr = classData.tasks[l.taskIndex];
-                if (dStr && new Date(l.timestamp).setHours(0,0,0,0) >= new Date(dStr).setHours(0,0,0,0)) return dStr;
-                return null;
-            }).filter(v => v);
+        // 同步拉取所有繳交紀錄與抽籤狀態
+        Promise.all([
+            db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value'),
+            db.ref('random_task_submissions').orderByChild('senderUid').equalTo(currentUser.uid).once('value'),
+            db.ref(`users/${currentUser.uid}/drawn_tasks`).once('value')
+        ]).then(([rSnap, randSnap, drawnSnap]) => {
+            const readingLetters = Object.values(rSnap.val() || {});
+            const randSubs = Object.values(randSnap.val() || {});
+            drawnTasksData = drawnSnap.val() || {};
+            randomSubmissions = randSubs;
 
-            const map = {}; 
-            letters.forEach(l => {
-                let d = l.taskDate;
-                if (!d) {
-                    const dStr = classData.tasks[l.taskIndex];
-                    if (dStr && new Date(l.timestamp).setHours(0,0,0,0) >= new Date(dStr).setHours(0,0,0,0)) d = dStr;
-                }
-                if(d) map[d] = l.id;
-            });
+            // 1. 渲染閱讀任務 (保留原邏輯，利用 taskDate)
+            const submittedReadingDates = readingLetters.map(l => l.taskDate || (readingTasks[l.taskIndex] && new Date(l.timestamp).setHours(0,0,0,0) >= new Date(readingTasks[l.taskIndex]).setHours(0,0,0,0) ? readingTasks[l.taskIndex] : null)).filter(v=>v);
+            const rMap = {}; readingLetters.forEach(l => { let d = l.taskDate; if(!d && readingTasks[l.taskIndex] && new Date(l.timestamp).setHours(0,0,0,0) >= new Date(readingTasks[l.taskIndex]).setHours(0,0,0,0)) d = readingTasks[l.taskIndex]; if(d) rMap[d] = l.id; });
             
-            classData.tasks.forEach((dateStr, i) => {
-                const today = new Date(); today.setHours(0, 0, 0, 0); 
-                const unlockDate = new Date(dateStr); unlockDate.setHours(0, 0, 0, 0);
-                const unlocked = today >= unlockDate; 
-                const done = submittedDates.includes(dateStr);
+            if (readingTasks.length === 0) rGrid.innerHTML = '<div class="empty-state"><p>目前尚未設定閱讀任務。</p></div>';
+            readingTasks.forEach((dateStr, i) => {
+                const unlocked = new Date().setHours(0,0,0,0) >= new Date(dateStr).setHours(0,0,0,0);
+                const done = submittedReadingDates.includes(dateStr);
+                const el = document.createElement('div'); el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
+                el.innerHTML = `<span class="task-num">第 ${i+1} 回閱讀</span><span class="task-date">${dateStr} 開放</span>`;
+                el.onclick = () => {
+                    if(done) openChatModal(rMap[dateStr]);
+                    else if(unlocked) {
+                        if(hasUnrepliedLetters) return alert("您有尚未回覆的信件，請先回覆。");
+                        selectedTaskIndex = i; selectedTaskDate = dateStr;
+                        rGrid.style.display = 'none'; document.getElementById('write-editor').style.display = 'block';
+                    } else alert("時空未到，尚未開放。");
+                }; rGrid.appendChild(el);
+            });
+
+            // 2. 渲染隨機任務
+            const submittedRandomDates = randSubs.map(s => s.taskDate);
+            if (randomTasks.length === 0) randGrid.innerHTML = '<div class="empty-state"><p>目前尚未設定探索任務。</p></div>';
+            randomTasks.forEach((dateStr, i) => {
+                const unlocked = new Date().setHours(0,0,0,0) >= new Date(dateStr).setHours(0,0,0,0);
+                const done = submittedRandomDates.includes(dateStr);
+                const el = document.createElement('div'); el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
+                el.innerHTML = `<span class="task-num">第 ${i+1} 回探索</span><span class="task-date">${dateStr} 開放</span>`;
                 
-                const el = document.createElement('div'); 
-                el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
-                el.innerHTML = `<span class="task-num">第 ${i+1} 回任務</span><span class="task-date">${dateStr} 開放</span>`;
+                // 顯示是否有抽過籤的提示
+                if (!done && unlocked && drawnTasksData[dateStr]) { el.innerHTML += `<div style="margin-top:10px; font-size:0.8rem; color:#8b7355; font-weight:600;">已抽籤，待繳交</div>`; }
                 
                 el.onclick = () => {
-                    if (done) { 
-                        openChatModal(map[dateStr]); 
-                    } else if (unlocked) {
-                        if (hasUnrepliedLetters) return alert("您有尚未回覆的信件，必須先完成回應後方可開啟新任務。");
-                        selectedTaskIndex = i; 
-                        selectedTaskDate = dateStr; // 儲存該任務的實體日期
-                        document.getElementById('task-grid').style.display = 'none'; 
-                        document.getElementById('write-editor').style.display = 'block'; 
-                        document.getElementById('task-title').innerText = `撰寫任務：第 ${i+1} 回心得`; 
-                        document.getElementById('log-question').value = ''; 
-                        document.getElementById('btn-submit-task').innerText = "封裝寄出心得"; 
-                        document.getElementById('btn-submit-task').disabled = false; 
-                        document.getElementById('file-name-display').innerText = "尚未選擇圖片"; 
-                        document.getElementById('image-preview').style.display = 'none'; 
-                        selectedFileBase64 = null; 
-                        document.getElementById('book-image').value = '';
-                    } else { alert("時空未到，尚未開放。"); }
-                };
-                grid.appendChild(el);
+                    if(done) alert("此探索任務已完成並上傳！");
+                    else if(unlocked) handleRandomTaskClick(dateStr);
+                    else alert("時空未到，尚未開放。");
+                }; randGrid.appendChild(el);
             });
         });
     });
+}
+
+// 修改原有的圖片選擇功能，支援兩種上傳目標
+function handleFileSelect(event, type = 'reading') {
+    const file = event.target.files[0]; if (!file) return; 
+    selectedFileName = file.name; 
+    const nameDisplay = type === 'reading' ? document.getElementById('file-name-display') : document.getElementById('random-file-name-display');
+    const preview = type === 'reading' ? document.getElementById('image-preview') : document.getElementById('random-image-preview');
+    nameDisplay.innerText = selectedFileName;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            const canvas = document.createElement('canvas'); const MAX_WIDTH = 1200; const scaleSize = MAX_WIDTH / img.width;
+            canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            selectedFileBase64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1]; preview.src = canvas.toDataURL('image/jpeg', 0.6); preview.style.display = 'block';
+        }; img.src = e.target.result;
+    }; reader.readAsDataURL(file);
 }
 
         function escapeHtml(s) { return s?s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):s; }
@@ -878,6 +958,173 @@ function renderTasks() {
             return group;
         }
 
+
+/* =========================================
+ * 隨機任務：狀態與抽籤邏輯
+ * ========================================= */
+function handleRandomTaskClick(dateStr) {
+    selectedTaskDate = dateStr;
+    currentDrawnState = drawnTasksData[dateStr];
+    
+    if (!currentDrawnState) {
+        // 沒抽過，開始抽籤動畫
+        playDrawAnimation(false);
+    } else {
+        // 已經抽過，進入編輯器
+        openRandomEditor();
+    }
+}
+
+function triggerRedraw() {
+    if(confirm("重抽後無法反悔，且僅有一次重抽機會。確定要重抽嗎？")) {
+        playDrawAnimation(true);
+    }
+}
+
+function openRandomEditor() {
+    document.getElementById('random-task-grid').style.display = 'none';
+    document.getElementById('random-editor').style.display = 'block';
+    document.getElementById('random-task-date-title').innerText = `探索期限：${selectedTaskDate}`;
+    document.getElementById('random-task-content').innerText = currentDrawnState.drawnTask;
+    
+    // 判斷是否顯示重抽按鈕
+    const btnRedraw = document.getElementById('btn-redraw');
+    if (currentDrawnState.redrawsLeft > 0) { btnRedraw.style.display = 'inline-flex'; } 
+    else { btnRedraw.style.display = 'none'; }
+    
+    // 清空圖片上傳區
+    selectedFileBase64 = null;
+    document.getElementById('random-image').value = '';
+    document.getElementById('random-file-name-display').innerText = "尚未選擇圖片";
+    document.getElementById('random-image-preview').style.display = 'none';
+    document.getElementById('random-note').value = '';
+}
+
+async function submitRandomTask() {
+    if (!selectedFileBase64) return alert("請務必上傳任務證明相片。");
+    const note = document.getElementById('random-note').value.trim();
+    const btn = document.getElementById('btn-submit-random');
+    btn.innerText = "相片上傳與封裝中..."; btn.disabled = true;
+
+    try {
+        const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ fileName: selectedFileName, mimeType: 'image/jpeg', base64: selectedFileBase64 }) });
+        const responseText = await response.text(); let result = JSON.parse(responseText); 
+        if (!result.success) throw new Error("上傳未成功");
+        
+        const ts = firebase.database.ServerValue.TIMESTAMP;
+        const ref = db.ref('random_task_submissions').push();
+        ref.set({
+            id: ref.key, senderUid: currentUser.uid, classId: currentUser.classId || 'default',
+            taskDate: selectedTaskDate, drawnTask: currentDrawnState.drawnTask, text: note,
+            imageUrl: result.url, timestamp: ts
+        }).then(() => {
+            btn.innerText = "封裝完成任務"; btn.disabled = false;
+            showToast('隨機探索任務已成功繳交！');
+            renderTasks(); // 重新整理列表
+        });
+    } catch (error) { 
+        alert("圖片上傳發生異常：" + error.message); 
+        btn.innerText = "封裝完成任務"; btn.disabled = false; 
+    }
+}
+
+/* =========================================
+ * 隨機任務：3D 籤筒動畫 (THREE.js)
+ * ========================================= */
+let drawScene, drawCam, drawRen, potGroup, sticks = [], chosenStickMesh;
+let isDrawAnimInit = false;
+
+function initDraw3D() {
+    if(isDrawAnimInit) return;
+    const container = document.getElementById('draw-canvas-container');
+    drawScene = new THREE.Scene(); drawScene.fog = new THREE.FogExp2(0x141210, 0.02);
+    drawCam = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
+    drawCam.position.set(0, 10, 25); drawCam.lookAt(0, 3, 0);
+    
+    drawRen = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    drawRen.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(drawRen.domElement);
+    
+    const dLight = new THREE.DirectionalLight(0xffeedd, 1.5); dLight.position.set(10, 20, 10); drawScene.add(dLight);
+    drawScene.add(new THREE.AmbientLight(0x404040, 2.0));
+    const pLight = new THREE.PointLight(0xd4a373, 2, 50); pLight.position.set(0, 5, 5); drawScene.add(pLight);
+
+    potGroup = new THREE.Group(); drawScene.add(potGroup);
+    
+    // 籤筒 (中空圓柱)
+    const potGeo = new THREE.CylinderGeometry(2.5, 2.0, 8, 32, 1, true);
+    const potMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9, side: THREE.DoubleSide });
+    const potMesh = new THREE.Mesh(potGeo, potMat); potMesh.position.y = 4; potGroup.add(potMesh);
+    const potBot = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.0, 0.5, 32), potMat); potGroup.add(potBot);
+
+    // 裡面的籤 (竹籤)
+    const stickMat = new THREE.MeshStandardMaterial({ color: 0xe6c280, roughness: 0.8 });
+    for(let i=0; i<15; i++) {
+        const s = new THREE.Mesh(new THREE.BoxGeometry(0.3, 10, 0.1), stickMat);
+        s.position.set((Math.random()-0.5)*2, 4 + Math.random(), (Math.random()-0.5)*2);
+        s.rotation.set((Math.random()-0.5)*0.2, Math.random()*Math.PI, (Math.random()-0.5)*0.2);
+        potGroup.add(s); sticks.push(s);
+    }
+    
+    // 決定要飛出來的那支籤
+    chosenStickMesh = new THREE.Mesh(new THREE.BoxGeometry(0.4, 12, 0.15), new THREE.MeshStandardMaterial({ color: 0xf5deb3, roughness: 0.7 }));
+    chosenStickMesh.position.set(0, 4, 0); drawScene.add(chosenStickMesh);
+    
+    isDrawAnimInit = true;
+    requestAnimationFrame(animateDrawScene);
+}
+
+function animateDrawScene() {
+    if(document.getElementById('draw-anim-overlay').style.display !== 'none') {
+        drawRen.render(drawScene, drawCam);
+    }
+    requestAnimationFrame(animateDrawScene);
+}
+
+function playDrawAnimation(isRedraw) {
+    document.getElementById('draw-anim-overlay').style.display = 'flex';
+    document.getElementById('draw-result-text').style.opacity = 0;
+    initDraw3D();
+    
+    // 重置位置
+    potGroup.rotation.set(0,0,0); potGroup.position.set(0,0,0);
+    chosenStickMesh.position.set(0, 4, 0); chosenStickMesh.rotation.set(0, 0, 0);
+    
+    // 隨機選一個任務
+    const taskStr = RANDOM_TASKS[Math.floor(Math.random() * RANDOM_TASKS.length)];
+    
+    // 動畫時間軸 (GSAP)
+    const tl = gsap.timeline();
+    // 1. 搖晃籤筒
+    tl.to(potGroup.rotation, { z: 0.3, duration: 0.08, yoyo: true, repeat: 15, ease: "sine.inOut" })
+      .to(potGroup.position, { x: 0.2, duration: 0.08, yoyo: true, repeat: 15 }, "<")
+    // 2. 籤飛出來並放大
+      .to(chosenStickMesh.position, { y: 15, z: 12, duration: 1.2, ease: "power2.out" })
+      .to(chosenStickMesh.rotation, { x: -Math.PI/6, y: Math.PI*2, duration: 1.2 }, "<")
+    // 3. 顯示文字結果
+      .call(() => {
+          document.getElementById('draw-result-h2').innerText = taskStr;
+          gsap.to('#draw-result-text', { opacity: 1, y: 0, duration: 0.8 });
+          
+          // 儲存狀態至 Firebase
+          currentDrawnState = { drawnTask: taskStr, redrawsLeft: isRedraw ? 0 : 1 };
+          drawnTasksData[selectedTaskDate] = currentDrawnState; // 更新本地暫存
+          db.ref(`users/${currentUser.uid}/drawn_tasks/${selectedTaskDate}`).set(currentDrawnState);
+      });
+}
+
+function closeDrawAnim() {
+    gsap.to('#draw-anim-overlay', { opacity: 0, duration: 0.5, onComplete: () => {
+        document.getElementById('draw-anim-overlay').style.display = 'none';
+        document.getElementById('draw-anim-overlay').style.opacity = 1; // 復原供下次使用
+        // 打開編輯器
+        openRandomEditor();
+    }});
+}
+
+
+
+        
         function initRoomScene() {
             const container = document.getElementById('room-canvas-container');
             scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0xc5c1bc, 0.015);
