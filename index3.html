@@ -976,14 +976,22 @@
             clockGrp.add(clockSecHand);
 
             
-          // Coat Rack
-            const rackGrp = new THREE.Group(); rackGrp.position.set(-56, 0, 30); scene.add(rackGrp); // 遠離門口
+         // Coat Rack
+            const rackGrp = new THREE.Group(); rackGrp.position.set(-56, 0, 30); scene.add(rackGrp);
             const rPole = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 22, 16), woodMat); rPole.position.y = 11; rPole.castShadow = true; rackGrp.add(rPole);
             const rBase = new THREE.Mesh(new THREE.CylinderGeometry(3, 3.5, 0.6, 32), woodMat); rBase.position.y = 0.3; rBase.castShadow = true; rackGrp.add(rBase);
-            for(let i=0; i<4; i++) {
-                const piv = new THREE.Group(); piv.position.y = 17 + (i%2)*1.8; piv.rotation.y = i * Math.PI/2 + Math.PI/4;
+            
+            // 將掛鉤數量增加到 8 個，並拉開距離呈螺旋分佈
+            for(let i=0; i<8; i++) { 
+                const piv = new THREE.Group(); 
+                piv.position.y = 10 + i * 1.4; // 從高度 10 開始往上長，每個垂直間距拉大到 1.4
+                piv.rotation.y = i * (Math.PI * 0.75); // 每次旋轉 135 度，形成不會重疊的螺旋上升錯落感
                 const hk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.5), woodMat);
-                hk.position.set(0.8, 0.8, 0); hk.rotation.z = -Math.PI/4; hk.castShadow = true; piv.add(hk); rackGrp.add(piv); // 改為負數，使樹枝向上
+                hk.position.set(0.8, 0.8, 0); 
+                hk.rotation.z = -Math.PI/4; // 保持樹枝向上
+                hk.castShadow = true; 
+                piv.add(hk); 
+                rackGrp.add(piv); 
             }
             
             // Umbrella Stand
