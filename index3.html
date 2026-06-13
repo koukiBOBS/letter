@@ -1318,8 +1318,7 @@
             }
         }
         // 🐾 貓咪每幀更新邏輯
-        // 🐾 貓咪每幀更新邏輯
-       // 🐾 貓咪每幀更新邏輯
+       // 🐾 貓咪每幀更新邏輯 (修訂版：步伐更大、前腿向前伸展更自然)
         function updateCat() {
             if(!catGrp) return;
             const time = Date.now();
@@ -1331,27 +1330,36 @@
                 
                 if (--catTimer <= 0) setCatState('idle');
             } else if (catState === 'walk') {
+                // 身體上下起伏
                 catBody.position.y = 1.6 + Math.abs(Math.sin(time * 0.015)) * 0.15;
                 
+                // 尾巴波浪擺動
                 catTailBones.forEach((bone, i) => {
                     if (i > 0) bone.rotation.z = Math.sin(time * 0.008 - i * 0.4) * 0.15;
                 });
                 
                 const walkSpeed = time * 0.015;
                 
-                // 🐾 膝蓋彎曲邏輯：抬腿時彎曲，落地時伸直
-                legFL.root.rotation.x = Math.sin(walkSpeed) * 0.6;
-                legFL.knee.rotation.x = Math.sin(walkSpeed) < 0 ? Math.abs(Math.sin(walkSpeed)) * 1.0 : 0;
+                // 定義左右腳的擺動週期 (相差半圈 Math.PI)
+                const swingL = Math.sin(walkSpeed);
+                const swingR = Math.sin(walkSpeed + Math.PI);
                 
-                legFR.root.rotation.x = Math.sin(walkSpeed + Math.PI) * 0.6;
-                legFR.knee.rotation.x = Math.sin(walkSpeed + Math.PI) < 0 ? Math.abs(Math.sin(walkSpeed + Math.PI)) * 1.0 : 0;
+                // 🐾 前腳：大幅增加擺動幅度 (0.85)，並加上「往前伸展」的基礎偏移 (+0.2)
+                legFL.root.rotation.x = swingL * 0.85 + 0.2;
+                legFL.knee.rotation.x = swingL > 0 ? swingL * 1.2 : 0; // 往前揮時彎起膝蓋，往後蹬時伸直
                 
-                legBL.root.rotation.x = Math.sin(walkSpeed + Math.PI) * 0.6;
-                legBL.knee.rotation.x = Math.sin(walkSpeed + Math.PI) > 0 ? Math.abs(Math.sin(walkSpeed + Math.PI)) * 0.8 : 0;
+                legFR.root.rotation.x = swingR * 0.85 + 0.2;
+                legFR.knee.rotation.x = swingR > 0 ? swingR * 1.2 : 0;
                 
-                legBR.root.rotation.x = Math.sin(walkSpeed) * 0.6;
-                legBR.knee.rotation.x = Math.sin(walkSpeed) > 0 ? Math.abs(Math.sin(walkSpeed)) * 0.8 : 0;
+                // 🐾 後腳：配合前腳增加步伐幅度 (0.8)，後腳重心天生稍微偏後 (-0.1)
+                // 貓咪是「對角線」走路 (左前配右後)，所以左後腳(BL)配對右邊的擺動週期(swingR)
+                legBL.root.rotation.x = swingR * 0.8 - 0.1;
+                legBL.knee.rotation.x = swingR > 0 ? swingR * 0.9 : 0;
                 
+                legBR.root.rotation.x = swingL * 0.8 - 0.1;
+                legBR.knee.rotation.x = swingL > 0 ? swingL * 0.9 : 0;
+                
+                // 移動與轉向邏輯
                 const dx = catTarget.x - catGrp.position.x;
                 const dz = catTarget.z - catGrp.position.z;
                 const dist = Math.sqrt(dx*dx + dz*dz);
