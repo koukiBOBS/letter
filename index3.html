@@ -46,8 +46,13 @@
         
         #room-canvas-container { position: absolute; inset: 0; z-index: 1; display: none; touch-action: none; }
         #room-ui-layer { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
-        .room-header { position: absolute; top: 20px; left: 20px; pointer-events: auto; background: rgba(255,255,255,0.8); padding: 10px 20px; border-radius: 20px; backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .user-info a { color: var(--color-inbox); cursor: pointer; margin-left: 15px; font-weight: 600;}
+        
+        /* 修改：極簡化頂部 UI */
+        .room-header { position: absolute; top: 20px; left: 20px; pointer-events: auto; display: flex; align-items: center; gap: 12px; background: rgba(250, 247, 242, 0.4); padding: 8px 16px; border-radius: 30px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.3); box-shadow: 0 2px 10px rgba(0,0,0,0.02); transition: 0.3s; }
+        .room-header:hover { background: rgba(250, 247, 242, 0.7); }
+        .user-info { display: flex; align-items: center; gap: 10px; font-size: 0.95rem; font-weight: 600; color: var(--text); font-family: var(--font-serif); }
+        .logout-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; padding: 4px; border-radius: 50%; }
+        .logout-btn:hover { color: #ef4444; background: rgba(239, 68, 68, 0.1); transform: scale(1.05); }
 
         #toast-container { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(100px); background: rgba(44, 62, 80, 0.9); color: white; padding: 14px 28px; border-radius: 30px; font-family: var(--font-sans); font-size: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 10000; opacity: 0; pointer-events: none; backdrop-filter: blur(5px); }
         #notification-banner { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); background: var(--paper); border: 1px solid var(--border); padding: 16px 32px; border-radius: 30px; box-shadow: 0 12px 30px rgba(0,0,0,0.08); z-index: 10001; display: flex; align-items: center; cursor: pointer; font-weight: 600; opacity: 0; }
@@ -55,12 +60,7 @@
         .room-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 4000; display: none; align-items: center; justify-content: center; pointer-events: auto; }
         .room-modal-content { background: var(--bg); width: 90%; max-width: 950px; max-height: 90vh; border-radius: 16px; overflow-y: auto; padding: 40px; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.2); -webkit-overflow-scrolling: touch; }
         
-        /* 全螢幕視窗樣式覆蓋 */
-        .fullscreen-modal .room-modal-content {
-            width: 100vw !important; height: 100vh !important;
-            max-width: none !important; max-height: none !important;
-            border-radius: 0 !important; padding: 60px 12% !important;
-        }
+        .fullscreen-modal .room-modal-content { width: 100vw !important; height: 100vh !important; max-width: none !important; max-height: none !important; border-radius: 0 !important; padding: 60px 12% !important; }
 
         .room-modal-close { position: absolute; top: 20px; right: 30px; font-size: 2.5rem; color: var(--text-muted); cursor: pointer; background: transparent; border: none; z-index: 4010; transition: 0.2s; padding: 5px 15px;}
         .room-modal-close:hover { color: #ef4444; transform: scale(1.1); }
@@ -96,10 +96,9 @@
         .textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; font-family: var(--font-serif); font-size: 1.1rem; line-height: 1.8; resize: vertical; outline: none; }
         .flex-row { display: flex; gap: 20px; } .flex-row > div { flex: 1; }
         
-        .icon-btn { background: transparent; border: 1px solid var(--color-log); color: var(--color-log); border-radius: 50%; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; }
+        .icon-btn { background: transparent; border: 1px solid var(--color-log); color: var(--color-log); border-radius: 50%; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;}
         .icon-btn:hover { background: var(--color-log); color: #fff; transform: rotate(90deg); box-shadow: 0 4px 10px rgba(139, 115, 85, 0.3); }
 
-        /* 手寫相關樣式 */
         .handwrite-only { cursor: pointer; background-color: #fcfbf9; transition: background 0.3s;}
         .handwrite-only:hover { background-color: #f5f3ec; border-color: #b4a08c;}
         .handwrite-placeholder { font-size: 0.9rem; color: #9c8a75; display: block; margin-top: 8px; }
@@ -110,7 +109,6 @@
         .privacy-warning { font-size: 0.85rem; color: #ef4444; line-height: 1.4; }
         .img-preview { display: none; max-width: 100%; height: auto; max-height: 250px; border-radius: 8px; margin-top: 10px; border: 1px solid #e2e8f0; object-fit: contain; object-position: left; }
 
-        /* 對話/信件 Modal */
         #modal { position: fixed; inset: 0; background: rgba(20, 18, 16, 0.88); z-index: 5000; display: none; justify-content: center; overflow-y: auto; padding: 40px 20px; backdrop-filter: blur(8px); pointer-events: auto; -webkit-overflow-scrolling: touch;}
         .letter-desk { width: 100%; max-width: 720px; margin: auto; display: flex; flex-direction: column; gap: 40px; position: relative; }
         .modal-close-btn { position: fixed; top: 20px; right: 30px; background: transparent; border: none; font-size: 2.5rem; color: #e6dfd1; cursor: pointer; z-index: 5100; transition: 0.3s; }
@@ -129,7 +127,6 @@
         .letter-img { max-width: 90%; max-height: 380px; object-fit: cover; background-color: #fff; padding: 12px 12px 40px 12px; border: 1px solid #e6e1d6; box-shadow: 0 8px 25px rgba(140, 120, 100, 0.15); display: block; border-radius: 4px; }
         .reply-sheet { padding: 50px 8%; margin-top: 20px; }
 
-        /* 手寫板 UI */
         #hw-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 100000; display: none; flex-direction: column; overflow: hidden; pointer-events: auto;}
         #hw-overlay.active { display: flex; animation: fadeUpIn 0.3s cubic-bezier(0.2, 0, 0.2, 1) forwards; }
         @keyframes fadeUpIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -152,7 +149,6 @@
         .svg-btn.done { background: var(--color-tasks); color: white; width: 70px; border-color: transparent;}
         .svg-btn.done:hover { background: #57785e; }
 
-        /* Envelope Anim overlay */
         #anim-overlay { position: fixed; inset: 0; background: rgba(250, 247, 242, 0.95); z-index: 100005; align-items: center; justify-content: center; perspective: 1200px; display: none;}
         .env-wrapper { position: relative; width: 340px; height: 230px; }
         .env-back { position: absolute; inset: 0; background: #e3d3bd; border-radius: 4px; z-index: 1; }
@@ -178,22 +174,18 @@
             .env-wrapper { transform: scale(0.85); }
         }
 
-        /* DEV TEST PANEL START */
         #dev-test-panel { position: fixed; bottom: 15px; right: 15px; background: rgba(20, 20, 20, 0.85); color: #fff; padding: 15px 20px; border-radius: 12px; z-index: 999999; display: flex; flex-direction: column; gap: 8px; font-family: sans-serif; box-shadow: 0 5px 20px rgba(0,0,0,0.3); backdrop-filter: blur(5px); width: 220px; }
         #dev-test-panel h3 { margin-bottom: 5px; color: #ffeb3b; font-size: 14px; text-align: center; border-bottom: 1px solid #444; padding-bottom: 8px;}
         .dev-btn { background: #4a4a4a; color: #fff; border: 1px solid #666; padding: 8px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.85rem; width: 100%; }
         .dev-btn:hover { background: #666; transform: translateY(-1px); }
         .dev-flex { display: flex; gap: 5px; } .dev-flex .dev-btn { flex: 1; padding: 8px 0; }
-        /* DEV TEST PANEL END */
     </style>
 </head>
 <body>
 
-    <!-- 通知 -->
     <div id="notification-banner"><span id="notification-text">您有新訊息。</span></div>
     <div id="toast-container">通知訊息</div>
 
-    <!-- DEV TEST PANEL START -->
     <div id="dev-test-panel">
         <h3>開發測試面板</h3>
         <div class="dev-flex">
@@ -209,7 +201,6 @@
         <button class="dev-btn" onclick="devSimulateMail()">模擬新信件/回應</button>
         <button class="dev-btn" onclick="devDisableHandwriting()">一鍵解鎖純手寫限制</button>
     </div>
-    <!-- DEV TEST PANEL END -->
 
     <!-- Auth -->
     <div id="auth-overlay">
@@ -228,13 +219,21 @@
         </div>
     </div>
 
-    <!-- 3D Room Container -->
+    <!-- 3D Room Container & Header -->
     <div id="room-canvas-container"></div>
     <div id="room-ui-layer">
-        <div class="room-header"><span class="serif-text" style="font-size:1.2rem; font-weight:600; margin-right:15px;">我的書房</span><span class="user-info" style="font-size:0.9rem; color:#666;"><span id="user-name">載入中...</span><a onclick="signOut()">登出</a></span></div>
+        <div class="room-header">
+            <span class="user-info"><span id="user-name">載入中...</span></span>
+            <button class="logout-btn" onclick="signOut()" title="登出">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+            </button>
+        </div>
     </div>
 
-    <!-- 植物選擇 Modal -->
     <div id="modal-plant-selector" class="room-modal">
         <div class="room-modal-content" style="max-width: 700px; text-align: center;">
             <button class="room-modal-close" onclick="closeRoomModal(event, 'modal-plant-selector')">×</button>
@@ -250,7 +249,6 @@
         </div>
     </div>
 
-    <!-- 植物狀態 Modal -->
     <div id="modal-plant-status" class="room-modal">
         <div class="room-modal-content" style="max-width: 500px;">
             <button class="room-modal-close" onclick="closeRoomModal(event, 'modal-plant-status')">×</button>
@@ -264,7 +262,6 @@
         </div>
     </div>
 
-    <!-- 全螢幕 UI 面板群 -->
     <div id="modal-replies" class="room-modal fullscreen-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal(event, 'modal-replies')">×</button><h2 class="modal-title" style="color: var(--color-replies);">對我的回覆</h2><div class="list-container" id="replies-list"></div></div></div>
     <div id="modal-inbox" class="room-modal fullscreen-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal(event, 'modal-inbox')">×</button><h2 class="modal-title" style="color: var(--color-inbox);">寄來的心得</h2><div class="list-container" id="inbox-list"></div></div></div>
     
@@ -276,12 +273,10 @@
             
             <div class="editor" id="write-editor" style="display: none; max-width: 900px; margin: 0 auto;">
                 <h3 id="task-title" class="serif-text" style="margin-bottom: 30px; font-size: 1.5rem;">撰寫任務</h3>
-                
                 <div class="field-group flex-row">
                     <div><label class="field-label">書籍名稱</label><input type="text" id="book-title" class="input-box" style="font-family:var(--font-serif);" placeholder="請輸入書名"></div>
                     <div><label class="field-label">目前閱讀頁數</label><input type="number" id="book-page" class="input-box" placeholder="例如：120" min="1"></div>
                 </div>
-
                 <div class="field-group">
                     <label class="field-label">思考問題</label>
                     <textarea id="log-question" class="textarea handwrite-only" style="min-height:100px;" readonly placeholder="點此喚出全螢幕書寫板..."></textarea>
@@ -292,7 +287,6 @@
                     <textarea id="log-content" class="textarea handwrite-only" style="min-height:220px;" readonly placeholder="點此喚出全螢幕書寫板...（最少 150 字）"></textarea>
                     <span class="handwrite-placeholder">📝 點擊進入手寫模式。禁止鍵盤打字或貼上。</span>
                 </div>
-
                 <div class="field-group upload-container">
                     <label class="field-label" style="margin-bottom: 0;">書頁留影／感悟配圖</label>
                     <div class="privacy-warning">請注意：此照片將傳送給配對到的筆友，請勿拍攝含有個人隱私資訊的畫面。</div>
@@ -300,7 +294,6 @@
                     <span id="file-name-display" style="font-size: 0.95rem; color: var(--color-tasks); font-weight: 500;">尚未選擇圖片</span>
                     <img id="image-preview" class="img-preview" src="" alt="圖片預覽">
                 </div>
-                
                 <div style="text-align: right; margin-top: 30px;">
                     <button id="btn-submit-task" class="btn" style="width: auto; background: var(--color-tasks); margin-left: auto;" onclick="submitLog()">封裝寄出心得</button>
                 </div>
@@ -311,7 +304,7 @@
     <div id="modal-log" class="room-modal fullscreen-modal">
         <div class="room-modal-content">
             <button class="room-modal-close" onclick="closeRoomModal(event, 'modal-log')">×</button>
-            <h2 class="modal-title" style="color: var(--color-log); display:flex; justify-content:space-between; align-items:center;">
+            <h2 class="modal-title" style="color: var(--color-log); display:flex; justify-content:flex-start; gap:15px; align-items:center;">
                 我的閱讀紀錄 
                 <button class="icon-btn" onclick="toggleReadingLog()" title="新增紀錄">
                     <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -329,7 +322,7 @@
         </div>
     </div>
 
-    <!-- 手札對話 Modal -->
+    <!-- Handwrite 对话 Modal -->
     <div id="modal">
         <button class="modal-close-btn" onclick="closeChatModal()">×</button>
         <div class="letter-desk" id="chat-flow"></div>
@@ -376,9 +369,7 @@
         </div>
     </div>
 
-    <!-- Scripts -->
     <script>
-        // === Firebase Initialization & App Logic ===
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzcangpOrf05ZRhxzoMUN-C9T57CS3_G80to1lLWv4opXuHbYMMMuKXzap7kkcou3BPsQ/exec"; 
         const firebaseConfig = { apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms", authDomain: "letter-a74d1.firebaseapp.com", databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com", projectId: "letter-a74d1" };
         firebase.initializeApp(firebaseConfig); const auth = firebase.auth(); const db = firebase.database();
@@ -389,67 +380,33 @@
         let userPlantData = null; 
         let timeForced = false;
 
-        // 手寫板變數
         let activeHwInput = null; let hwCanvas, hwCtx; let isDrawing = false; let strokes = []; let currentStroke = [[], [], []]; let hwTimeout = null; let originalBodyOverflow = '';
         let holdTimer = null; let isHoldScrolling = false; let startY = 0; let startScrollTop = 0; let movedTooFarToHold = false;
 
         const plantNames = { 1: "龜背芋", 2: "多肉蓮座", 3: "綠幽盆景", 4: "紫韻薰衣", 5: "仙人掌" };
 
-        // DEV TEST PANEL START
-        window.devSetTime = function(phase) {
-            timeForced = true;
-            setEnvironmentPhase(phase);
-            showToast("測試：已強制切換時間至 " + phase);
-        };
+        window.devSetTime = function(phase) { timeForced = true; setEnvironmentPhase(phase); showToast("測試：已強制切換時間至 " + phase); };
         window.devCancelWatering = function() {
             if (!userPlantData) return alert("尚未選擇植物");
             let pData = Object.assign({}, userPlantData);
-            pData.lastWatered = Date.now() - 86400000; // 精準回退 1 天，允許當日再澆水且不觸發枯萎
-            pData.wilt = 0; // 同步重置缺水，確保健康
-            pData.isDead = false;
-            db.ref(`users/${currentUser.uid}/plant`).update(pData);
-            showToast("測試：已取消今日澆水狀態 (可再次澆水)");
+            pData.lastWatered = Date.now() - 86400000; pData.wilt = 0; pData.isDead = false;
+            db.ref(`users/${currentUser.uid}/plant`).update(pData); showToast("測試：已取消今日澆水狀態 (可再次澆水)");
         };
-        window.devReselectPlant = function() {
-            document.getElementById('modal-plant-selector').style.display = 'flex';
-        };
+        window.devReselectPlant = function() { document.getElementById('modal-plant-selector').style.display = 'flex'; };
         window.devAddGrowth = function() {
-            if (!userPlantData) return alert("尚未選擇植物");
-            let pData = Object.assign({}, userPlantData);
-            pData.growth = Math.min(100, pData.growth + 10);
-            pData.plantedAt = pData.plantedAt - 86400000 * 10; 
-            pData.daysAccompanied = Math.floor((Date.now() - pData.plantedAt) / 86400000);
-            db.ref(`users/${currentUser.uid}/plant`).update(pData);
-            showToast("測試：植物加快生長 10 天");
+            if (!userPlantData) return alert("尚未選擇植物"); let pData = Object.assign({}, userPlantData);
+            pData.growth = Math.min(100, pData.growth + 10); pData.plantedAt = pData.plantedAt - 86400000 * 10; 
+            pData.daysAccompanied = Math.floor((Date.now() - pData.plantedAt) / 86400000); db.ref(`users/${currentUser.uid}/plant`).update(pData); showToast("測試：植物加快生長 10 天");
         };
         window.devAddWilt = function() {
-            if (!userPlantData) return alert("尚未選擇植物");
-            let pData = Object.assign({}, userPlantData);
-            pData.wilt = Math.min(7, pData.wilt + 1);
-            if (pData.wilt >= 7) pData.isDead = true;
-            db.ref(`users/${currentUser.uid}/plant`).update(pData);
-            showToast("測試：植物缺水天數 +1");
+            if (!userPlantData) return alert("尚未選擇植物"); let pData = Object.assign({}, userPlantData);
+            pData.wilt = Math.min(7, pData.wilt + 1); if (pData.wilt >= 7) pData.isDead = true; db.ref(`users/${currentUser.uid}/plant`).update(pData); showToast("測試：植物缺水天數 +1");
         };
-        window.devSimulateMail = function() {
-            triggerNotification("測試：您有一封新的模擬信件！", "dummy_test_id");
-            updateDrawerIndicators(true, true);
-        };
-        window.devDisableHandwriting = function() {
-            document.querySelectorAll('.handwrite-only').forEach(el => {
-                el.removeAttribute('readonly');
-                el.classList.remove('handwrite-only');
-                let placeholder = el.nextElementSibling;
-                if (placeholder && placeholder.classList.contains('handwrite-placeholder')) {
-                    placeholder.style.display = 'none';
-                }
-            });
-            showToast("測試：已解鎖純手寫限制，可自由鍵盤輸入");
-        };
-        // DEV TEST PANEL END
+        window.devSimulateMail = function() { triggerNotification("測試：您有一封新的模擬信件！", "dummy_test_id"); updateDrawerIndicators(true, true); };
+        window.devDisableHandwriting = function() { document.querySelectorAll('.handwrite-only').forEach(el => { el.removeAttribute('readonly'); el.classList.remove('handwrite-only'); let placeholder = el.nextElementSibling; if (placeholder && placeholder.classList.contains('handwrite-placeholder')) { placeholder.style.display = 'none'; } }); showToast("測試：已解鎖純手寫限制，可自由鍵盤輸入"); };
 
         function showToast(msg) {
-            const toast = document.getElementById('toast-container');
-            toast.innerText = msg;
+            const toast = document.getElementById('toast-container'); toast.innerText = msg;
             gsap.fromTo(toast, {y: 100, opacity: 0}, {y: 0, opacity: 1, duration: 0.5, ease: "back.out(1.5)"});
             setTimeout(() => gsap.to(toast, {y: 100, opacity: 0, duration: 0.5}), 3500);
         }
@@ -471,19 +428,15 @@
         function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert("登入失敗")); }
         function signOut() { auth.signOut().then(() => window.location.reload()); }
         function saveName() { 
-            const name = document.getElementById('setup-name').value.trim(); 
-            if (!name) return alert("請輸入姓名"); 
+            const name = document.getElementById('setup-name').value.trim(); if (!name) return alert("請輸入姓名"); 
             document.getElementById('btn-setup-name').disabled = true; document.getElementById('btn-setup-name').innerText = "設定中...";
-            db.ref(`users/${currentUser.uid}`).set({ name, email: currentUser.email, receivedCount: 0 }).then(() => { 
-                document.getElementById('user-name').innerText = name; hideAuthOverlay(); initApp(); 
-            }); 
+            db.ref(`users/${currentUser.uid}`).set({ name, email: currentUser.email, receivedCount: 0 }).then(() => { document.getElementById('user-name').innerText = name; hideAuthOverlay(); initApp(); }); 
         }
         function hideAuthOverlay() { gsap.to("#auth-overlay", { opacity: 0, duration: 0.6, onComplete: () => { document.getElementById('auth-overlay').style.display = 'none'; }}); }
 
         function initApp() { 
             document.getElementById('room-canvas-container').style.display = 'block'; 
-            initRoomScene(); 
-            healPool();
+            initRoomScene(); healPool();
             db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); 
             setupNotifications(); loadMailbox(); loadUserPlant(); initHandwriting();
         }
@@ -495,8 +448,7 @@
                     const rId = ids[Math.floor(Math.random() * ids.length)];
                     db.ref(`letters/${rId}`).once('value').then(lSnap => {
                         const lData = lSnap.val(); if(lData) {
-                            db.ref(`letters/${rId}/recipientUid`).set(currentUser.uid); db.ref(`unassigned_letters/${rId}`).remove();
-                            const now = firebase.database.ServerValue.TIMESTAMP;
+                            db.ref(`letters/${rId}/recipientUid`).set(currentUser.uid); db.ref(`unassigned_letters/${rId}`).remove(); const now = firebase.database.ServerValue.TIMESTAMP;
                             db.ref(`user_threads/${currentUser.uid}/${rId}`).set({ letterId: rId, bookTitle: lData.bookTitle, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: now });
                             db.ref(`user_threads/${lData.senderUid}/${rId}`).set({ letterId: rId, bookTitle: lData.bookTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: now });
                             db.ref(`users/${currentUser.uid}/receivedCount`).transaction(count => (count || 0) + 1);
@@ -506,64 +458,33 @@
             });
         }
 
-        // --- 核心任務生成 ---
        function renderTasks() {
-            const grid = document.getElementById('task-grid');
-            if(!grid) return; 
-            grid.innerHTML = '';
+            const grid = document.getElementById('task-grid'); if(!grid) return; grid.innerHTML = '';
+            if(!config) { grid.innerHTML = '<div class="empty-state"><p>目前尚未設定任務。</p></div>'; return; }
             
-            if(!config) {
-                grid.innerHTML = '<div class="empty-state"><p>目前尚未設定任務。</p></div>';
-                return;
-            }
-            
-            const start = new Date(config.startDate); 
-            const total = Math.floor(((new Date(config.endDate) - start) / 86400000) / config.intervalDays);
+            const start = new Date(config.startDate); const total = Math.floor(((new Date(config.endDate) - start) / 86400000) / config.intervalDays);
             
             db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value').then(snap => {
-                const submitted = Object.values(snap.val()||{}).map(l=>l.taskIndex); 
-                const map = {}; Object.values(snap.val()||{}).forEach(l=>map[l.taskIndex]=l.id);
+                const submitted = Object.values(snap.val()||{}).map(l=>l.taskIndex); const map = {}; Object.values(snap.val()||{}).forEach(l=>map[l.taskIndex]=l.id);
                 
                 for (let i = 0; i < total; i++) {
-                    const d = new Date(start.getTime() + i * config.intervalDays * 86400000); 
-                    const today = new Date(); today.setHours(0, 0, 0, 0); 
-                    const unlockDate = new Date(d); unlockDate.setHours(0, 0, 0, 0);
-                    const unlocked = today >= unlockDate; 
-                    const done = submitted.includes(i);
-                    
-                    const el = document.createElement('div');
-                    el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
+                    const d = new Date(start.getTime() + i * config.intervalDays * 86400000); const today = new Date(); today.setHours(0, 0, 0, 0); const unlockDate = new Date(d); unlockDate.setHours(0, 0, 0, 0);
+                    const unlocked = today >= unlockDate; const done = submitted.includes(i);
+                    const el = document.createElement('div'); el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
                     el.innerHTML = `<span class="task-num">第 ${i+1} 回任務</span><span class="task-date">${d.getMonth()+1}/${d.getDate()} 開放</span>`;
                     
                     el.onclick = () => {
-                        if (done) {
-                            openChatModal(map[i]); 
+                        if (done) { openChatModal(map[i]); 
                         } else if (unlocked) {
                             if (hasUnrepliedLetters) return alert("您有尚未回覆的信件，必須先完成回應後方可開啟新任務。");
-                            selectedTaskIndex = i; 
-                            
-                            document.getElementById('task-grid').style.display = 'none';
-                            document.getElementById('write-editor').style.display = 'block';
-                            
-                            document.getElementById('task-title').innerText = `撰寫任務：第 ${i+1} 回心得`;
-                            document.getElementById('log-question').value = ''; 
-                            
-                            document.getElementById('btn-submit-task').innerText = "封裝寄出心得"; 
-                            document.getElementById('btn-submit-task').disabled = false;
-                            document.getElementById('file-name-display').innerText = "尚未選擇圖片"; 
-                            document.getElementById('image-preview').style.display = 'none'; 
-                            selectedFileBase64 = null; 
-                            document.getElementById('book-image').value = '';
-                        } else {
-                            alert("時空未到，尚未開放。");
-                        }
+                            selectedTaskIndex = i; document.getElementById('task-grid').style.display = 'none'; document.getElementById('write-editor').style.display = 'block'; document.getElementById('task-title').innerText = `撰寫任務：第 ${i+1} 回心得`; document.getElementById('log-question').value = ''; document.getElementById('btn-submit-task').innerText = "封裝寄出心得"; document.getElementById('btn-submit-task').disabled = false; document.getElementById('file-name-display').innerText = "尚未選擇圖片"; document.getElementById('image-preview').style.display = 'none'; selectedFileBase64 = null; document.getElementById('book-image').value = '';
+                        } else { alert("時空未到，尚未開放。"); }
                     };
                     grid.appendChild(el);
                 }
             });
         }
 
-        // --- Chat Modal & Submission Logic ---
         function escapeHtml(s) { return s?s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):s; }
 
         function openChatModal(id) {
@@ -575,10 +496,7 @@
                 
                 currentChatRef.once('value').then(cSnap => {
                     const messages = cSnap.val() || {}; const msgKeys = Object.keys(messages); let contentHTML = '';
-                    
-                    // 判斷最後一則訊息是否為對方所發，決定是否顯示回信區塊
-                    const lastMsg = messages[msgKeys[msgKeys.length - 1]];
-                    const canReply = lastMsg && lastMsg.senderUid !== currentUser.uid;
+                    const lastMsg = messages[msgKeys[msgKeys.length - 1]]; const canReply = lastMsg && lastMsg.senderUid !== currentUser.uid;
 
                     msgKeys.forEach((key, index) => {
                         const m = messages[key]; const isMe = m.senderUid === currentUser.uid; const d = new Date(m.timestamp);
@@ -588,7 +506,6 @@
                         contentHTML += `<div class="letter-sheet ${isMe ? 'my-letter' : 'partner-letter'}"><div class="letter-header-meta"><span>${isMe ? '✍️ 我的手札' : '📬 筆友的來信'}</span><span>${tStr}</span></div><div class="letter-text">${formattedText}</div>${imgTag}</div>`;
                     });
 
-                    // 僅在對方傳來最新訊息時，才允許使用者進行回覆
                     if (canReply) {
                         contentHTML += `<div class="letter-sheet reply-sheet my-letter"><div class="letter-header-meta"><span>✍️ 提筆回信</span><span>紙短情長</span></div><textarea id="reply-text" class="textarea handwrite-only" readonly placeholder="點此喚出全螢幕書寫板，一筆一劃寫下您的回音...（最少 100 字）"></textarea><div style="text-align: center;"><button class="btn" style="margin: 20px auto 0; padding: 12px 40px; background: var(--color-replies);" id="btn-send-reply">寄出回信</button></div></div>`;
                     }
@@ -599,8 +516,6 @@
                         document.getElementById('btn-send-reply').onclick = () => {
                             const txt = document.getElementById('reply-text').value.trim(); if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
                             if (isSubmittingReply) return; isSubmittingReply = true; document.getElementById('btn-send-reply').disabled = true; document.getElementById('btn-send-reply').innerText = "封裝寄出中...";
-                            
-                            // 呼叫信封寄出動畫，並將實際的寄出邏輯放在動畫回呼中
                             playAnim('reply', id, partnerUid, txt);
                         };
                     }
@@ -613,7 +528,6 @@
         function unlockScroll() { const modalOpen = document.getElementById('modal').style.display === 'flex'; const hwOpen = document.getElementById('hw-overlay').classList.contains('active'); if(!modalOpen && !hwOpen) document.body.style.overflow = originalBodyOverflow; }
         function closeChatModal() { if (currentChatRef) currentChatRef.off(); document.getElementById('modal').style.display = 'none'; closeHwKeyboard(); unlockScroll(); }
 
-        // --- 寄信信封動畫 ---
         function playAnim(type, letterId, partnerUid, ObjectData) {
             const overlay = document.getElementById('anim-overlay'); overlay.style.display = 'flex';
             gsap.set(".env-wrapper", {y: 0, scale: 1, opacity: 1}); gsap.set("#anim-paper", {y: -120, zIndex: 5}); gsap.set("#anim-ptop", {rotateX: 0}); gsap.set("#anim-pbot", {rotateX: 0}); gsap.set("#anim-flap", {rotateX: 180, zIndex: 4}); gsap.set("#anim-seal", {scale: 0});
@@ -623,7 +537,6 @@
             }});
         }
 
-        // --- 寄出邏輯封裝 (由動畫 OnComplete 觸發) ---
         function processLog(data) {
             const ts = firebase.database.ServerValue.TIMESTAMP; const ref = db.ref('letters').push();
             db.ref('users').once('value').then(snap => {
@@ -665,38 +578,28 @@
                 const img = new Image();
                 img.onload = function() {
                     const canvas = document.createElement('canvas'); const MAX_WIDTH = 1200; const scaleSize = MAX_WIDTH / img.width;
-                    canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize;
-                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    selectedFileBase64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
-                    const preview = document.getElementById('image-preview'); preview.src = canvas.toDataURL('image/jpeg', 0.6); preview.style.display = 'block';
+                    canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    selectedFileBase64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1]; const preview = document.getElementById('image-preview'); preview.src = canvas.toDataURL('image/jpeg', 0.6); preview.style.display = 'block';
                 }
                 img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
+            }; reader.readAsDataURL(file);
         }
 
         async function submitLog() {
             const title = document.getElementById('book-title').value.trim(); const page = document.getElementById('book-page').value.trim();
             const question = document.getElementById('log-question').value.trim(); const text = document.getElementById('log-content').value.trim();
             if (!title || !page || !question || !text) return alert("請填寫完整資訊 (書名、頁數、思考問題與心得)。");
-            if (!selectedFileBase64) return alert("請務必上傳書籍畫面圖片。");
-            if (text.length < 150) return alert("心得最少需要 150 字。");
-            if (isSubmittingLog) return; isSubmittingLog = true;
-            const btn = document.getElementById('btn-submit-task'); btn.innerText = "圖片上傳與封裝中..."; btn.disabled = true;
+            if (!selectedFileBase64) return alert("請務必上傳書籍畫面圖片。"); if (text.length < 150) return alert("心得最少需要 150 字。");
+            if (isSubmittingLog) return; isSubmittingLog = true; const btn = document.getElementById('btn-submit-task'); btn.innerText = "圖片上傳與封裝中..."; btn.disabled = true;
 
             try {
                 const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ fileName: selectedFileName, mimeType: 'image/jpeg', base64: selectedFileBase64 }) });
-                const responseText = await response.text();
-                let result = JSON.parse(responseText); if (!result.success) throw new Error(result.error || "上傳未成功");
+                const responseText = await response.text(); let result = JSON.parse(responseText); if (!result.success) throw new Error(result.error || "上傳未成功");
                 const combinedText = `【目前進度】\n第 ${page} 頁\n\n【思考問題】\n${question}\n\n【閱讀心得】\n${text}`;
-                
-                // 觸發折疊信封動畫
                 playAnim('log', null, null, { title: title, text: combinedText, imageUrl: result.url });
-
             } catch (error) { alert("圖片上傳發生異常：" + error.message); isSubmittingLog = false; btn.innerText = "封裝寄出心得"; btn.disabled = false; }
         }
 
-        // --- Plant Logic ---
         function loadUserPlant() { 
             db.ref(`users/${currentUser.uid}/plant`).on('value', snap => { 
                 let p = snap.val(); userPlantData = p;
@@ -722,14 +625,8 @@
             } 
             
             let calculatedDays = Math.floor((Date.now() - p.plantedAt) / 86400000) || 0;
-            if (p.daysAccompanied !== calculatedDays) {
-                p.daysAccompanied = calculatedDays;
-                needsUpdate = true;
-            }
-
-            if (needsUpdate) db.ref(`users/${currentUser.uid}/plant`).update({
-                type: p.type, growth: p.growth, wilt: p.wilt, isDead: p.isDead, daysAccompanied: p.daysAccompanied
-            }); 
+            if (p.daysAccompanied !== calculatedDays) { p.daysAccompanied = calculatedDays; needsUpdate = true; }
+            if (needsUpdate) db.ref(`users/${currentUser.uid}/plant`).update({ type: p.type, growth: p.growth, wilt: p.wilt, isDead: p.isDead, daysAccompanied: p.daysAccompanied }); 
             buildPlantIn3D(p.type, p.growth, p.wilt); 
         }
 
@@ -739,15 +636,19 @@
             let days = p.daysAccompanied || Math.floor((Date.now() - p.plantedAt) / 86400000) || 0;
             document.getElementById('status-days').innerText = `${days} 天`; document.getElementById('status-growth').innerText = `${p.growth}%`;
             let healthEl = document.getElementById('status-health');
-            if(p.isDead) { healthEl.innerText = "已枯萎 🥀"; healthEl.style.color = "#8d6e63"; }
-            else if(p.wilt > 0) { healthEl.innerText = `缺水缺了 ${p.wilt} 天 🍂`; healthEl.style.color = "#d98a6c"; }
-            else { healthEl.innerText = "健康充滿生機 🌱"; healthEl.style.color = "#6b8e73"; }
+            if(p.isDead) { healthEl.innerText = "已枯萎 🥀"; healthEl.style.color = "#8d6e63"; } else if(p.wilt > 0) { healthEl.innerText = `缺水缺了 ${p.wilt} 天 🍂`; healthEl.style.color = "#d98a6c"; } else { healthEl.innerText = "健康充滿生機 🌱"; healthEl.style.color = "#6b8e73"; }
             document.getElementById('modal-plant-status').style.display = 'flex';
         }
 
-        // --- Mailbox & Notification Logic ---
         function setupNotifications() { const threadRef = db.ref(`user_threads/${currentUser.uid}`); threadRef.once('value').then(() => { isInitialLoad = false; }); threadRef.on('child_changed', snap => { if (!isInitialLoad && snap.val().hasUnread) triggerNotification("您收到了一則新的回覆！", snap.val().letterId); }); threadRef.on('child_added', snap => { if (!isInitialLoad && !snap.val().isSender) triggerNotification("一封未知的來信抵達了您的信箱！", snap.val().letterId); }); }
-        function triggerNotification(msg, id) { const b = document.getElementById('notification-banner'); document.getElementById('notification-text').innerText = msg; gsap.fromTo(b, {y:0, opacity:0}, {y:120, opacity:1, duration:0.6, ease:"back.out(1.5)"}); b.onclick = () => { closeRoomModal(null, 'modal-replies'); closeRoomModal(null, 'modal-inbox'); openChatModal(id); gsap.to(b, {y:0, opacity:0, duration:0.4}); }; setTimeout(() => gsap.to(b, {y:0, opacity:0, duration:0.4}), 8000); }
+        
+        function triggerNotification(msg, id) { 
+            const b = document.getElementById('notification-banner'); document.getElementById('notification-text').innerText = msg; 
+            gsap.fromTo(b, {y:0, opacity:0}, {y:120, opacity:1, duration:0.6, ease:"back.out(1.5)"}); 
+            b.onclick = () => { closeRoomModal(null, 'modal-replies'); closeRoomModal(null, 'modal-inbox'); openChatModal(id); gsap.to(b, {y:0, opacity:0, duration:0.4}); }; 
+            setTimeout(() => gsap.to(b, {y:0, opacity:0, duration:0.4}), 8000); 
+        }
+
         function loadMailbox() { 
             db.ref(`user_threads/${currentUser.uid}`).on('value', snap => { 
                 let all = Object.values(snap.val() || {}).sort((a, b) => b.lastUpdated - a.lastUpdated); 
@@ -756,8 +657,7 @@
                     if (t.isSender) { if (t.hasBeenRepliedTo) { repliesData.push(t); if(!t.hasReplied) hasUnrepliedLetters = true; if(t.hasUnread) uRep = true; } } 
                     else { inboxData.push(t); if(!t.hasReplied) hasUnrepliedLetters = true; if(t.hasUnread) uIn = true; } 
                 }); 
-                renderList('replies', repliesData); renderList('inbox', inboxData); 
-                updateDrawerIndicators(uRep, uIn); 
+                renderList('replies', repliesData); renderList('inbox', inboxData); updateDrawerIndicators(uRep, uIn); 
             }); 
         }
         
@@ -774,14 +674,15 @@
         }
 
         window.closeRoomModal = function(event, id) {
-            if(event) event.stopPropagation(); document.getElementById(id).style.display = 'none';
-            if(id === 'modal-replies') gsap.to(leftDrawer.position, {z: 0, duration: 0.5});
-            if(id === 'modal-inbox') gsap.to(rightDrawer.position, {z: 0, duration: 0.5});
+            if(event) event.stopPropagation(); 
+            const el = document.getElementById(id);
+            if (el.style.display !== 'none' && el.style.display !== '') {
+                if(id === 'modal-replies') gsap.to(leftDrawer.position, {z: 0, duration: 0.5});
+                if(id === 'modal-inbox') gsap.to(rightDrawer.position, {z: 0, duration: 0.5});
+            }
+            el.style.display = 'none';
         };
 
-        // ==========================================
-        // 🌟 THREE.JS 沉浸式 3D 書房 
-        // ==========================================
         let scene, camera, renderer, controls, raycaster, mouse;
         let desk, leftDrawer, rightDrawer, book, clipboard, wateringCan, plantGroup, windowGroup, sceneryGroup;
         let dummySpoutTip; let indicatorLeft, indicatorRight; let interactables = []; let timePhase = 'noon'; let animScenery = { cars: [], buildings: [] };
@@ -793,8 +694,7 @@
             authCam = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000); authCam.position.z = 40;
             authRen = new THREE.WebGLRenderer({ antialias: true, alpha: true }); authRen.setSize(window.innerWidth, window.innerHeight); authRen.setClearColor(0xfaf7f2, 1);
             document.getElementById('canvas-container').innerHTML=''; document.getElementById('canvas-container').appendChild(authRen.domElement); 
-            authScene.add(new THREE.AmbientLight(0xffffff, 0.7)); authScene.add(new THREE.DirectionalLight(0xfffaeb, 0.6));
-            authParts = new THREE.Group(); authScene.add(authParts);
+            authScene.add(new THREE.AmbientLight(0xffffff, 0.7)); authScene.add(new THREE.DirectionalLight(0xfffaeb, 0.6)); authParts = new THREE.Group(); authScene.add(authParts);
             const geo = new THREE.PlaneGeometry(1.5, 2.2); const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide, roughness: 0.9, transparent: true, opacity: 0.85 });
             for(let i=0; i<80; i++) { const m = new THREE.Mesh(geo, mat); m.position.set((Math.random()-0.5)*120, (Math.random()-0.5)*100, (Math.random()-0.5)*60); m.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI); m.userData={rx:(Math.random()-0.5)*0.015, ry:(Math.random()-0.5)*0.015, sy:Math.random()*0.03+0.01}; authParts.add(m); }
             animateAuth();
@@ -803,84 +703,57 @@
 
         function createWoodTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#a89381'; ctx.fillRect(0,0,512,512); 
-            for(let i=0; i<300; i++) { ctx.fillStyle = `rgba(130, 110, 95, ${Math.random()*0.2})`; ctx.fillRect(0, Math.random()*512, 512, Math.random()*5+1); }
-            return new THREE.CanvasTexture(canvas);
+            ctx.fillStyle = '#a89381'; ctx.fillRect(0,0,512,512); for(let i=0; i<300; i++) { ctx.fillStyle = `rgba(130, 110, 95, ${Math.random()*0.2})`; ctx.fillRect(0, Math.random()*512, 512, Math.random()*5+1); } return new THREE.CanvasTexture(canvas);
         }
         function createCoverTexture(text, color) {
             const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256; const ctx = canvas.getContext('2d');
-            ctx.fillStyle = color; ctx.fillRect(0,0,256,256);
-            if (text) { ctx.fillStyle = '#fff'; ctx.font = 'bold 36px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(text, 128, 140); }
-            return new THREE.CanvasTexture(canvas);
+            ctx.fillStyle = color; ctx.fillRect(0,0,256,256); if (text) { ctx.fillStyle = '#fff'; ctx.font = 'bold 36px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(text, 128, 140); } return new THREE.CanvasTexture(canvas);
         }
         function createBuildingTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 256; const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#445'; ctx.fillRect(0, 0, 128, 256); ctx.fillStyle = '#ffea99'; 
-            for(let y=10; y<250; y+=18) { for(let x=10; x<110; x+=25) { if(Math.random() > 0.3) ctx.fillRect(x, y, 14, 8); } }
+            ctx.fillStyle = '#445'; ctx.fillRect(0, 0, 128, 256); ctx.fillStyle = '#ffea99'; for(let y=10; y<250; y+=18) { for(let x=10; x<110; x+=25) { if(Math.random() > 0.3) ctx.fillRect(x, y, 14, 8); } }
             const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
         }
         function createPaintingTexture(type) {
             const c = document.createElement('canvas'); c.width = 256; c.height = 256; const ctx = c.getContext('2d');
-            if(type === 1) { // Landscape
-                ctx.fillStyle = '#A3C6C4'; ctx.fillRect(0,0,256,128); ctx.fillStyle = '#6B8E73'; ctx.fillRect(0,128,256,128); 
-                ctx.fillStyle = '#4A4238'; ctx.beginPath(); ctx.moveTo(50,128); ctx.lineTo(100,60); ctx.lineTo(150,128); ctx.fill(); 
-                ctx.fillStyle = '#F4A261'; ctx.beginPath(); ctx.arc(200, 60, 20, 0, Math.PI*2); ctx.fill(); 
-            } else if (type === 2) { // Abstract warm
-                ctx.fillStyle = '#F5E6CC'; ctx.fillRect(0,0,256,256); ctx.fillStyle = '#E76F51'; ctx.beginPath(); ctx.arc(128, 128, 70, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = '#2A9D8F'; ctx.fillRect(60,100,136,80);
-            } else if (type === 3) { // Geometric modern
-                ctx.fillStyle = '#264653'; ctx.fillRect(0,0,256,256);
-                ctx.fillStyle = '#e9c46a'; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(256,256); ctx.lineTo(0,256); ctx.fill();
-                ctx.fillStyle = '#f4a261'; ctx.beginPath(); ctx.arc(128, 128, 50, 0, Math.PI*2); ctx.fill();
-            } else if (type === 4) { // Night Sky
-                ctx.fillStyle = '#14213d'; ctx.fillRect(0,0,256,256);
-                ctx.fillStyle = '#fca311'; ctx.beginPath(); ctx.arc(200, 50, 25, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = '#ffffff'; 
-                for(let i=0; i<30; i++) { ctx.fillRect(Math.random()*256, Math.random()*256, 3, 3); }
-            }
+            if(type === 1) { ctx.fillStyle = '#A3C6C4'; ctx.fillRect(0,0,256,128); ctx.fillStyle = '#6B8E73'; ctx.fillRect(0,128,256,128); ctx.fillStyle = '#4A4238'; ctx.beginPath(); ctx.moveTo(50,128); ctx.lineTo(100,60); ctx.lineTo(150,128); ctx.fill(); ctx.fillStyle = '#F4A261'; ctx.beginPath(); ctx.arc(200, 60, 20, 0, Math.PI*2); ctx.fill(); 
+            } else if (type === 2) { ctx.fillStyle = '#F5E6CC'; ctx.fillRect(0,0,256,256); ctx.fillStyle = '#E76F51'; ctx.beginPath(); ctx.arc(128, 128, 70, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#2A9D8F'; ctx.fillRect(60,100,136,80);
+            } else if (type === 3) { ctx.fillStyle = '#264653'; ctx.fillRect(0,0,256,256); ctx.fillStyle = '#e9c46a'; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(256,256); ctx.lineTo(0,256); ctx.fill(); ctx.fillStyle = '#f4a261'; ctx.beginPath(); ctx.arc(128, 128, 50, 0, Math.PI*2); ctx.fill();
+            } else if (type === 4) { ctx.fillStyle = '#14213d'; ctx.fillRect(0,0,256,256); ctx.fillStyle = '#fca311'; ctx.beginPath(); ctx.arc(200, 50, 25, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#ffffff'; for(let i=0; i<30; i++) { ctx.fillRect(Math.random()*256, Math.random()*256, 3, 3); } }
             return new THREE.CanvasTexture(c);
         }
         function createFloorTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 1024; const ctx = canvas.getContext('2d');
-            // 純白/極淺米白底色
             ctx.fillStyle = '#f7f6f2'; ctx.fillRect(0, 0, 1024, 1024);
-            // 細緻的大理石雜色微粒
-            for(let i=0; i<3000; i++) {
-                ctx.fillStyle = `rgba(200, 195, 190, ${Math.random()*0.15})`;
-                ctx.beginPath(); ctx.arc(Math.random()*1024, Math.random()*1024, Math.random()*3+1, 0, Math.PI*2); ctx.fill();
-            }
-            // 雅緻的大型方形拼花線條
+            for(let i=0; i<3000; i++) { ctx.fillStyle = `rgba(200, 195, 190, ${Math.random()*0.15})`; ctx.beginPath(); ctx.arc(Math.random()*1024, Math.random()*1024, Math.random()*3+1, 0, Math.PI*2); ctx.fill(); }
             ctx.strokeStyle = 'rgba(218, 210, 200, 0.4)'; ctx.lineWidth = 2;
-            for(let i=0; i<=1024; i+=256) {
-                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 1024); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1024, i); ctx.stroke();
-            }
-            const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(10, 10);
-            return tex;
+            for(let i=0; i<=1024; i+=256) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 1024); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1024, i); ctx.stroke(); }
+            const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(10, 10); return tex;
         }
         
-        // 建立真正的中空抽屜模型
         function createHollowDrawer(userData) {
+            const group = new THREE.Group(); group.userData = userData; const mat = woodMat;
+            const bot = new THREE.Mesh(new THREE.BoxGeometry(10.2, 0.4, 11.2), mat); bot.position.y = -1.05; bot.castShadow = true; bot.receiveShadow = true; group.add(bot);
+            const left = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.5, 11.2), mat); left.position.set(-5.3, 0, 0); left.castShadow = true; group.add(left);
+            const right = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.5, 11.2), mat); right.position.set(5.3, 0, 0); right.castShadow = true; group.add(right);
+            const back = new THREE.Mesh(new THREE.BoxGeometry(11, 2.5, 0.4), mat); back.position.set(0, 0, -5.8); back.castShadow = true; group.add(back);
+            const front = new THREE.Mesh(new THREE.BoxGeometry(11, 2.5, 0.4), mat); front.position.set(0, 0, 5.8); front.castShadow = true; group.add(front);
+            const paper = new THREE.Mesh(new THREE.BoxGeometry(8, 0.05, 10), new THREE.MeshStandardMaterial({color: 0xffffff})); paper.position.set(0, -0.8, 0); paper.rotation.y = 0.1; group.add(paper);
+            return group;
+        }
+
+        // 重新設計懸浮信件外觀
+        function createFloatingLetter() {
             const group = new THREE.Group();
-            group.userData = userData; 
-            const mat = woodMat;
+            const envGeo = new THREE.BoxGeometry(1.6, 1.0, 0.05);
+            const envMat = new THREE.MeshStandardMaterial({color: 0xfaf5eb, roughness: 0.5, emissive: 0x222222});
+            const envMesh = new THREE.Mesh(envGeo, envMat); group.add(envMesh);
             
-            // 外圍尺寸約: 11 x 2.5 x 12. 板厚: 0.4
-            const bot = new THREE.Mesh(new THREE.BoxGeometry(10.2, 0.4, 11.2), mat);
-            bot.position.y = -1.05; bot.castShadow = true; bot.receiveShadow = true; group.add(bot);
-            const left = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.5, 11.2), mat);
-            left.position.set(-5.3, 0, 0); left.castShadow = true; group.add(left);
-            const right = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.5, 11.2), mat);
-            right.position.set(5.3, 0, 0); right.castShadow = true; group.add(right);
-            const back = new THREE.Mesh(new THREE.BoxGeometry(11, 2.5, 0.4), mat);
-            back.position.set(0, 0, -5.8); back.castShadow = true; group.add(back);
-            const front = new THREE.Mesh(new THREE.BoxGeometry(11, 2.5, 0.4), mat);
-            front.position.set(0, 0, 5.8); front.castShadow = true; group.add(front);
-
-            // 裡面放一點紙張裝飾
-            const paper = new THREE.Mesh(new THREE.BoxGeometry(8, 0.05, 10), new THREE.MeshStandardMaterial({color: 0xffffff}));
-            paper.position.set(0, -0.8, 0); paper.rotation.y = 0.1; group.add(paper);
-
+            const sealGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.08, 16);
+            const sealMat = new THREE.MeshStandardMaterial({color: 0xb23a3a, roughness: 0.4, emissive: 0x330000});
+            const sealMesh = new THREE.Mesh(sealGeo, sealMat); sealMesh.rotation.x = Math.PI / 2; sealMesh.position.set(0, 0, 0.03); group.add(sealMesh);
+            
+            const pointLight = new THREE.PointLight(0xffeeba, 0.5, 5); group.add(pointLight);
             return group;
         }
 
@@ -888,87 +761,47 @@
             const container = document.getElementById('room-canvas-container');
             scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0xc5c1bc, 0.015);
             camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
-            
             renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.outputEncoding = THREE.sRGBEncoding;
             container.innerHTML = ''; container.appendChild(renderer.domElement);
             
             controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.maxPolarAngle = Math.PI/2 - 0.05; controls.minDistance = 10; controls.maxDistance = 60; 
             
-            // 讀取視角 Local Storage 或套用預設值（稍微拉遠）
             const savedState = localStorage.getItem('roomCameraState');
-            if (savedState) {
-                try {
-                    const s = JSON.parse(savedState);
-                    camera.position.set(s.cp.x, s.cp.y, s.cp.z);
-                    controls.target.set(s.ct.x, s.ct.y, s.ct.z);
-                } catch(e) { setDefaultCamera(); }
-            } else { setDefaultCamera(); }
-            
-            controls.update();
-            controls.addEventListener('change', () => {
-                if(!camera || !controls) return;
-                const state = { cp: {x: camera.position.x, y: camera.position.y, z: camera.position.z}, ct: {x: controls.target.x, y: controls.target.y, z: controls.target.z} };
-                localStorage.setItem('roomCameraState', JSON.stringify(state));
-            });
-
+            if (savedState) { try { const s = JSON.parse(savedState); camera.position.set(s.cp.x, s.cp.y, s.cp.z); controls.target.set(s.ct.x, s.ct.y, s.ct.z); } catch(e) { setDefaultCamera(); } } else { setDefaultCamera(); }
+            controls.update(); controls.addEventListener('change', () => { if(!camera || !controls) return; const state = { cp: {x: camera.position.x, y: camera.position.y, z: camera.position.z}, ct: {x: controls.target.x, y: controls.target.y, z: controls.target.z} }; localStorage.setItem('roomCameraState', JSON.stringify(state)); });
             raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2();
             
             window.addEventListener('pointerdown', onPointerDown); window.addEventListener('pointerup', onPointerUp); window.addEventListener('pointermove', onPointerMove); window.addEventListener('resize', onWinResize);
-
             buildRoomEnvironment(); syncEnvironmentTime(); animateRoom();
         }
 
-        function setDefaultCamera() {
-            if (window.innerWidth < 768) { camera.position.set(0, 26, 48); } else { camera.position.set(0, 22, 45); }
-            controls.target.set(0, 7, 0);
-        }
+        function setDefaultCamera() { if (window.innerWidth < 768) { camera.position.set(0, 26, 48); } else { camera.position.set(0, 22, 45); } controls.target.set(0, 7, 0); }
 
         function buildRoomEnvironment() {
             hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); scene.add(hemiLight);
-            
             dirLight = new THREE.DirectionalLight(0xffeedd, 1.2); dirLight.position.set(15, 45, -70); dirLight.target.position.set(0, 0, 0); 
-            dirLight.castShadow = true; dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048;
-            dirLight.shadow.camera.left = -40; dirLight.shadow.camera.right = 40; dirLight.shadow.camera.top = 40; dirLight.shadow.camera.bottom = -40; dirLight.shadow.bias = -0.0005;
+            dirLight.castShadow = true; dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048; dirLight.shadow.camera.left = -40; dirLight.shadow.camera.right = 40; dirLight.shadow.camera.top = 40; dirLight.shadow.camera.bottom = -40; dirLight.shadow.bias = -0.0005;
             scene.add(dirLight); scene.add(dirLight.target);
-
             const pointLight = new THREE.PointLight(0xffe8c4, 0.4, 20); pointLight.position.set(-5, 15, 10); scene.add(pointLight);
 
-            // 天花板吸頂燈與向下光源
             const lampGroup = new THREE.Group(); lampGroup.position.set(0, 39, 21); scene.add(lampGroup);
             const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 1, 32), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.5})); lampGroup.add(lampBase);
             lampBulb = new THREE.Mesh(new THREE.SphereGeometry(2.5, 32, 16), new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0x000000})); lampBulb.position.y = -1; lampGroup.add(lampBulb);
             ceilingLight = new THREE.PointLight(0xfff0dd, 0, 150); ceilingLight.position.set(0, 36, 21); ceilingLight.castShadow = false; ceilingLight.shadow.mapSize.width = 1024; ceilingLight.shadow.mapSize.height = 1024; ceilingLight.shadow.bias = -0.001; scene.add(ceilingLight);
 
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0xdbd4cc, roughness: 1.0, side: THREE.DoubleSide });
-            const floorMat = new THREE.MeshStandardMaterial({ map: createFloorTexture(), roughness: 0.3, metalness: 0.05 });
-            
-            // 地板與天花板 (限制在室內 z = -18 到 z = 60 的範圍)
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0xdbd4cc, roughness: 1.0, side: THREE.DoubleSide }); const floorMat = new THREE.MeshStandardMaterial({ map: createFloorTexture(), roughness: 0.3, metalness: 0.05 });
             const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 78), floorMat); floor.rotation.x = -Math.PI/2; floor.position.set(0, 0, 21); floor.receiveShadow = true; scene.add(floor);
             const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(120, 78), wallMat); ceiling.rotation.x = Math.PI/2; ceiling.position.set(0, 40, 21); scene.add(ceiling);
 
-            // 正面牆壁 (窗戶)
             const wallShape = new THREE.Shape(); wallShape.moveTo(-60, 0); wallShape.lineTo(60, 0); wallShape.lineTo(60, 40); wallShape.lineTo(-60, 40);
             const windowHole = new THREE.Path(); windowHole.moveTo(-9, 10); windowHole.lineTo(9, 10); windowHole.lineTo(9, 22); windowHole.lineTo(-9, 22); wallShape.holes.push(windowHole);
             const frontWall = new THREE.Mesh(new THREE.ExtrudeGeometry(wallShape, { depth: 1, bevelEnabled: false }), wallMat); frontWall.position.set(0, 0, -18); frontWall.castShadow = true; frontWall.receiveShadow = true; scene.add(frontWall);
-
-            // 左、右、後牆壁
-            const sideWallGeo = new THREE.PlaneGeometry(78, 40);
-            const leftWall = new THREE.Mesh(sideWallGeo, wallMat); leftWall.rotation.y = Math.PI/2; leftWall.position.set(-60, 20, 21); scene.add(leftWall);
-            const rightWall = new THREE.Mesh(sideWallGeo, wallMat); rightWall.rotation.y = -Math.PI/2; rightWall.position.set(60, 20, 21); scene.add(rightWall);
+            const sideWallGeo = new THREE.PlaneGeometry(78, 40); const leftWall = new THREE.Mesh(sideWallGeo, wallMat); leftWall.rotation.y = Math.PI/2; leftWall.position.set(-60, 20, 21); scene.add(leftWall); const rightWall = new THREE.Mesh(sideWallGeo, wallMat); rightWall.rotation.y = -Math.PI/2; rightWall.position.set(60, 20, 21); scene.add(rightWall);
             const backWall = new THREE.Mesh(new THREE.PlaneGeometry(120, 40), wallMat); backWall.position.set(0, 20, 60); scene.add(backWall);
 
-            // 畫作共 4 幅 (左二、右二，裝飾牆面)
-            function createPainting(x, y, z, type) {
-                const frameGroup = new THREE.Group(); frameGroup.position.set(x, y, z);
-                const frame = new THREE.Mesh(new THREE.BoxGeometry(10, 12, 0.6), new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.8})); frameGroup.add(frame);
-                const canvas = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 10.5), new THREE.MeshStandardMaterial({map: createPaintingTexture(type), roughness: 0.9})); canvas.position.z = 0.31; frameGroup.add(canvas);
-                scene.add(frameGroup);
-            }
-            createPainting(-40, 22, -17.5, 1); 
-            createPainting(-22, 17, -17.5, 3); 
-            createPainting(22, 17, -17.5, 4); 
-            createPainting(40, 22, -17.5, 2);
+            function createPainting(x, y, z, type) { const frameGroup = new THREE.Group(); frameGroup.position.set(x, y, z); const frame = new THREE.Mesh(new THREE.BoxGeometry(10, 12, 0.6), new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.8})); frameGroup.add(frame); const canvas = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 10.5), new THREE.MeshStandardMaterial({map: createPaintingTexture(type), roughness: 0.9})); canvas.position.z = 0.31; frameGroup.add(canvas); scene.add(frameGroup); }
+            createPainting(-40, 22, -17.5, 1); createPainting(-22, 17, -17.5, 3); createPainting(22, 17, -17.5, 4); createPainting(40, 22, -17.5, 2);
 
             const windowFrameGroup = new THREE.Group(); windowFrameGroup.position.set(0, 16, -17.5); scene.add(windowFrameGroup);
             const frameMat = new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.5, metalness: 0.1}); const frameThickness = 0.6; const frameDepth = 1.0;
@@ -977,10 +810,8 @@
             const topF = new THREE.Mesh(new THREE.BoxGeometry(18, frameThickness, frameDepth), frameMat); topF.position.set(0, 6 - frameThickness/2, 0); topF.castShadow = true; windowFrameGroup.add(topF);
             const botF = new THREE.Mesh(new THREE.BoxGeometry(18, frameThickness, frameDepth), frameMat); botF.position.set(0, -6 + frameThickness/2, 0); botF.castShadow = true; windowFrameGroup.add(botF);
             const midV = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 12, frameDepth - 0.2), frameMat); midV.castShadow = true; windowFrameGroup.add(midV);
-            const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, roughness: 0.1, transmission: 0.8, thickness: 0.5 });
-            const glassPane = new THREE.Mesh(new THREE.BoxGeometry(17.5, 11.5, 0.05), glassMat); windowFrameGroup.add(glassPane);
+            const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, roughness: 0.1, transmission: 0.8, thickness: 0.5 }); const glassPane = new THREE.Mesh(new THREE.BoxGeometry(17.5, 11.5, 0.05), glassMat); windowFrameGroup.add(glassPane);
 
-            // 門與空調
             const doorGroup = new THREE.Group(); doorGroup.position.set(-59.5, 14, 0); doorGroup.rotation.y = Math.PI/2; scene.add(doorGroup);
             const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(16, 28, 1), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.8})); doorGroup.add(doorFrame);
             const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(14, 26, 1.2), new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.7})); doorGroup.add(doorPanel);
@@ -990,57 +821,37 @@
             const acBody = new THREE.Mesh(new THREE.BoxGeometry(2, 6, 16), new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.3})); acGroup.add(acBody);
             const acVent = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1, 14), new THREE.MeshStandardMaterial({color: 0x111111})); acVent.position.set(-0.1, -2, 0); acGroup.add(acVent);
 
-            // 三個大書櫃
             function createBookcase(x, z) {
-                const shelfGroup = new THREE.Group(); shelfGroup.position.set(x, 15, z); scene.add(shelfGroup);
-                const shelfMat = new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.8});
-                const shelfBack = new THREE.Mesh(new THREE.BoxGeometry(22, 30, 0.5), shelfMat); shelfGroup.add(shelfBack);
-                const sideGeo = new THREE.BoxGeometry(0.5, 30, 6);
-                const leftSide = new THREE.Mesh(sideGeo, shelfMat); leftSide.position.set(-11, 0, -2.5); leftSide.castShadow = true; shelfGroup.add(leftSide);
-                const rightSide = new THREE.Mesh(sideGeo, shelfMat); rightSide.position.set(11, 0, -2.5); rightSide.castShadow = true; shelfGroup.add(rightSide);
-                const topBotGeo = new THREE.BoxGeometry(22, 0.5, 6);
-                const topBoard = new THREE.Mesh(topBotGeo, shelfMat); topBoard.position.set(0, 15, -2.5); topBoard.castShadow = true; shelfGroup.add(topBoard);
-                const botBoard = new THREE.Mesh(topBotGeo, shelfMat); botBoard.position.set(0, -15, -2.5); botBoard.castShadow = true; shelfGroup.add(botBoard);
-
+                const shelfGroup = new THREE.Group(); shelfGroup.position.set(x, 15, z); scene.add(shelfGroup); const shelfMat = new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.8});
+                const shelfBack = new THREE.Mesh(new THREE.BoxGeometry(22, 30, 0.5), shelfMat); shelfGroup.add(shelfBack); const sideGeo = new THREE.BoxGeometry(0.5, 30, 6);
+                const leftSide = new THREE.Mesh(sideGeo, shelfMat); leftSide.position.set(-11, 0, -2.5); leftSide.castShadow = true; shelfGroup.add(leftSide); const rightSide = new THREE.Mesh(sideGeo, shelfMat); rightSide.position.set(11, 0, -2.5); rightSide.castShadow = true; shelfGroup.add(rightSide);
+                const topBotGeo = new THREE.BoxGeometry(22, 0.5, 6); const topBoard = new THREE.Mesh(topBotGeo, shelfMat); topBoard.position.set(0, 15, -2.5); topBoard.castShadow = true; shelfGroup.add(topBoard); const botBoard = new THREE.Mesh(topBotGeo, shelfMat); botBoard.position.set(0, -15, -2.5); botBoard.castShadow = true; shelfGroup.add(botBoard);
                 for(let sy = -10; sy <= 10; sy += 6.5) {
                     const shelfBoard = new THREE.Mesh(new THREE.BoxGeometry(21.5, 0.5, 5), shelfMat); shelfBoard.position.set(0, sy, -2.5); shelfBoard.castShadow = true; shelfGroup.add(shelfBoard);
                     const bookColors = [0x8b3a3a, 0x3a5f8b, 0x4f8b3a, 0x8b6b3a, 0x222222, 0xdddddd]; let bx = -10;
-                    while(bx < 10) {
-                        let bw = Math.random() * 0.8 + 0.3; let bh = Math.random() * 2.5 + 3; if(bx + bw > 10) break;
-                        const b = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.05, bh, 4), new THREE.MeshStandardMaterial({color: bookColors[Math.floor(Math.random()*bookColors.length)], roughness: 0.7}));
-                        if(Math.random() > 0.7) { b.rotation.z = (Math.random() - 0.5) * 0.3; bx += 0.4; } 
-                        b.position.set(bx + bw/2, sy + bh/2 + 0.25, -2.5); b.castShadow = true; shelfGroup.add(b); bx += bw;
-                    }
+                    while(bx < 10) { let bw = Math.random() * 0.8 + 0.3; let bh = Math.random() * 2.5 + 3; if(bx + bw > 10) break; const b = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.05, bh, 4), new THREE.MeshStandardMaterial({color: bookColors[Math.floor(Math.random()*bookColors.length)], roughness: 0.7})); if(Math.random() > 0.7) { b.rotation.z = (Math.random() - 0.5) * 0.3; bx += 0.4; } b.position.set(bx + bw/2, sy + bh/2 + 0.25, -2.5); b.castShadow = true; shelfGroup.add(b); bx += bw; }
                 }
             }
             createBookcase(-25, 59); createBookcase(0, 59); createBookcase(25, 59);
 
-            // 桌子與物件 
             woodMat = new THREE.MeshStandardMaterial({ map: createWoodTexture(), roughness: 0.6 });
             desk = new THREE.Group(); scene.add(desk);
             const top = new THREE.Mesh(new THREE.BoxGeometry(28, 0.8, 14), woodMat); top.position.y = 8; top.receiveShadow = true; top.castShadow = true; desk.add(top);
-            const legGeo = new THREE.CylinderGeometry(0.4, 0.3, 8, 16);
-            [[-12,-5],[12,-5],[-12,5],[12,5]].forEach(pos => { const leg = new THREE.Mesh(legGeo, woodMat); leg.position.set(pos[0], 4, pos[1]); leg.castShadow = true; leg.receiveShadow = true; desk.add(leg); });
+            const legGeo = new THREE.CylinderGeometry(0.4, 0.3, 8, 16); [[-12,-5],[12,-5],[-12,5],[12,5]].forEach(pos => { const leg = new THREE.Mesh(legGeo, woodMat); leg.position.set(pos[0], 4, pos[1]); leg.castShadow = true; leg.receiveShadow = true; desk.add(leg); });
 
-            // 圓凳軟墊無椅背座椅 (符合桌面比例)
             const chairGroup = new THREE.Group(); chairGroup.position.set(0, 0, 11); scene.add(chairGroup);
             const seatGeo = new THREE.CylinderGeometry(2.5, 2.5, 1.0, 32); const cushionMat = new THREE.MeshStandardMaterial({color: 0x2b4c3f, roughness: 0.9, metalness: 0.1});
             const seat = new THREE.Mesh(seatGeo, cushionMat); seat.position.y = 4.0; seat.castShadow = true; seat.receiveShadow = true; chairGroup.add(seat);
             const cLegGeo = new THREE.CylinderGeometry(0.2, 0.1, 4.0); const legMat = new THREE.MeshStandardMaterial({color: 0xdaa520, metalness: 0.8, roughness: 0.3});
-            const positions = [[-1.5, 2.0, -1.5], [1.5, 2.0, -1.5], [-1.5, 2.0, 1.5], [1.5, 2.0, 1.5]];
-            positions.forEach(pos => { const leg = new THREE.Mesh(cLegGeo, legMat); leg.position.set(...pos); leg.castShadow = true; chairGroup.add(leg); });
+            [[-1.5, 2.0, -1.5], [1.5, 2.0, -1.5], [-1.5, 2.0, 1.5], [1.5, 2.0, 1.5]].forEach(pos => { const leg = new THREE.Mesh(cLegGeo, legMat); leg.position.set(...pos); leg.castShadow = true; chairGroup.add(leg); });
 
-            // 生成中空抽屜
             leftDrawer = createHollowDrawer({type: 'replies'}); leftDrawer.position.set(-7, 6, 0); desk.add(leftDrawer);
             rightDrawer = createHollowDrawer({type: 'inbox'}); rightDrawer.position.set(7, 6, 0); desk.add(rightDrawer);
-            
             const knobGeo = new THREE.SphereGeometry(0.5, 32, 32); const knobMat = new THREE.MeshStandardMaterial({color:0x555555, metalness:0.8, roughness:0.2});
-            const knobL = new THREE.Mesh(knobGeo, knobMat); knobL.position.z = 6.05; leftDrawer.add(knobL);
-            const knobR = new THREE.Mesh(knobGeo, knobMat); knobR.position.z = 6.05; rightDrawer.add(knobR);
+            const knobL = new THREE.Mesh(knobGeo, knobMat); knobL.position.z = 6.05; leftDrawer.add(knobL); const knobR = new THREE.Mesh(knobGeo, knobMat); knobR.position.z = 6.05; rightDrawer.add(knobR);
             
-            const envGeo = new THREE.BoxGeometry(1.2, 0.8, 0.1); const envMat = new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0x444444});
-            indicatorLeft = new THREE.Mesh(envGeo, envMat); indicatorLeft.position.set(-7, 10, 2); indicatorLeft.visible = false; desk.add(indicatorLeft);
-            indicatorRight = new THREE.Mesh(envGeo, envMat); indicatorRight.position.set(7, 10, 2); indicatorRight.visible = false; desk.add(indicatorRight);
+            indicatorLeft = createFloatingLetter(); indicatorLeft.position.set(-7, 10, 1.5); indicatorLeft.rotation.set(-0.2, 0, 0.1); indicatorLeft.visible = false; desk.add(indicatorLeft);
+            indicatorRight = createFloatingLetter(); indicatorRight.position.set(7, 10, 1.5); indicatorRight.rotation.set(-0.2, 0, -0.1); indicatorRight.visible = false; desk.add(indicatorRight);
             
             book = new THREE.Group(); book.position.set(8, 8.6, 2); book.rotation.y = -0.2; book.userData = {type: 'log'}; desk.add(book);
             const bookPages = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.6, 5.2), new THREE.MeshStandardMaterial({color:0xffffff})); bookPages.castShadow = true; book.add(bookPages);
@@ -1065,10 +876,7 @@
             const road = new THREE.Mesh(new THREE.PlaneGeometry(120, 8), new THREE.MeshStandardMaterial({color:0x333333})); road.rotation.x = -Math.PI/2; road.position.set(0, -4.9, 0); road.receiveShadow=true; sceneryGroup.add(road);
             for(let i=0; i<6; i++) { const c = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 2.5), new THREE.MeshStandardMaterial({color: Math.random()>0.5?0xff3333:0xeeeeee, roughness:0.4})); c.position.set((Math.random()-0.5)*80, -4.6, (Math.random()-0.5)*4); c.castShadow = true; c.userData={speed: (Math.random()*0.3+0.15) * (Math.random()>0.5?1:-1)}; sceneryGroup.add(c); animScenery.cars.push(c); }
             const treeMat = new THREE.MeshStandardMaterial({color: 0x2d4c1e, roughness: 0.9}); const trunkMat = new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 0.9});
-            for (let i = -50; i <= 50; i += 15) {
-                if (Math.abs(i) < 5) continue; 
-                [[-7], [7]].forEach(pos => { const t = new THREE.Group(); const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 3), trunkMat); tr.position.y = 1.5; tr.castShadow = true; t.add(tr); const lf = new THREE.Mesh(new THREE.ConeGeometry(2.5, 6, 8), treeMat); lf.position.y = 4.5; lf.castShadow = true; t.add(lf); t.position.set(i + (Math.random()-0.5)*3, -4.9, pos[0]); sceneryGroup.add(t); });
-            }
+            for (let i = -50; i <= 50; i += 15) { if (Math.abs(i) < 5) continue; [[-7], [7]].forEach(pos => { const t = new THREE.Group(); const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 3), trunkMat); tr.position.y = 1.5; tr.castShadow = true; t.add(tr); const lf = new THREE.Mesh(new THREE.ConeGeometry(2.5, 6, 8), treeMat); lf.position.y = 4.5; lf.castShadow = true; t.add(lf); t.position.set(i + (Math.random()-0.5)*3, -4.9, pos[0]); sceneryGroup.add(t); }); }
 
             interactables = [leftDrawer, rightDrawer, book, clipboard, wateringCan];
         }
@@ -1083,8 +891,7 @@
             
             const isDead = wilt >= 7; const scale = 0.1 + (growth / 100) * 0.15; const wiltFactor = isDead ? 1 : wilt / 7;
             const leafColor = isDead ? new THREE.Color(0x5d4037) : new THREE.Color(0x4c7c2b).lerp(new THREE.Color(0x8d6e63), wiltFactor);
-            const mat = new THREE.MeshStandardMaterial({color: leafColor, roughness: 0.9, side: THREE.DoubleSide});
-            const plantBody = new THREE.Group(); plantBody.position.y = 1.6; plantGroup.add(plantBody);
+            const mat = new THREE.MeshStandardMaterial({color: leafColor, roughness: 0.9, side: THREE.DoubleSide}); const plantBody = new THREE.Group(); plantBody.position.y = 1.6; plantGroup.add(plantBody);
 
             if (type === 1) { 
                 const count = Math.floor(growth / 8) + 3; const leafGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.05, 16); 
@@ -1121,10 +928,7 @@
         function syncEnvironmentTime() {
             if (timeForced) return;
             const h = (new Date().getUTCHours() + 8) % 24; 
-            if (h >= 5 && h < 9) setEnvironmentPhase('dawn');
-            else if (h >= 9 && h < 16) setEnvironmentPhase('noon');
-            else if (h >= 16 && h < 19) setEnvironmentPhase('dusk');
-            else setEnvironmentPhase('night');
+            if (h >= 5 && h < 9) setEnvironmentPhase('dawn'); else if (h >= 9 && h < 16) setEnvironmentPhase('noon'); else if (h >= 16 && h < 19) setEnvironmentPhase('dusk'); else setEnvironmentPhase('night');
         }
         
         function setEnvironmentPhase(phaseStr) {
@@ -1138,30 +942,19 @@
             scene.background = new THREE.Color(p.sky); scene.fog.color = new THREE.Color(p.fog);
             dirLight.color = new THREE.Color(p.dir); dirLight.intensity = p.int; dirLight.castShadow = p.shadow; 
             
-            // 夜晚大廈窗戶燈光增強與室內溫暖光線
             animScenery.buildings.forEach(b => {
-                b.material.emissiveIntensity = p.windowLight ? (phaseStr === 'night' ? 2.0 : 0.8) : 0.0;
-                b.material.emissive.setHex(p.windowLight ? 0xffcc88 : 0x000000);
+                b.material.emissiveIntensity = p.windowLight ? (phaseStr === 'night' ? 4.0 : 1.5) : 0.0;
+                b.material.emissive.setHex(p.windowLight ? 0xffea88 : 0x000000);
             });
             
             if (ceilingLight && lampBulb) {
-                ceilingLight.intensity = p.ceilingOn ? (phaseStr === 'night' ? 1.5 : 0.8) : 0.0;
-                ceilingLight.color.setHex(phaseStr === 'night' ? 0xffcc88 : 0xfff0dd);
-                lampBulb.material.emissiveIntensity = p.ceilingOn ? 1.0 : 0.0;
-                lampBulb.material.emissive.setHex(phaseStr === 'night' ? 0xffcc88 : 0xfff0dd);
-                ceilingLight.castShadow = p.ceilingOn; 
+                ceilingLight.intensity = p.ceilingOn ? (phaseStr === 'night' ? 1.5 : 0.8) : 0.0; ceilingLight.color.setHex(phaseStr === 'night' ? 0xffcc88 : 0xfff0dd);
+                lampBulb.material.emissiveIntensity = p.ceilingOn ? 1.0 : 0.0; lampBulb.material.emissive.setHex(phaseStr === 'night' ? 0xffcc88 : 0xfff0dd); ceilingLight.castShadow = p.ceilingOn; 
             }
-
-            if (hemiLight) {
-                hemiLight.color.setHex(phaseStr === 'night' ? 0x887766 : 0xffffff);
-                hemiLight.groundColor.setHex(phaseStr === 'night' ? 0x332222 : 0x444444);
-            }
+            if (hemiLight) { hemiLight.color.setHex(phaseStr === 'night' ? 0x887766 : 0xffffff); hemiLight.groundColor.setHex(phaseStr === 'night' ? 0x332222 : 0x444444); }
         }
 
-        function onWinResize() { 
-            if(!camera) return; camera.aspect = window.innerWidth/window.innerHeight; 
-            camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); 
-        }
+        function onWinResize() { if(!camera) return; camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
         
         let pointerDownPos = {x:0, y:0};
         function onPointerDown(e) { pointerDownPos.x = e.clientX; pointerDownPos.y = e.clientY; }
@@ -1192,22 +985,17 @@
                 } else if(type === 'log') { gsap.to(book.position, {y: 9, rotationY: 0, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-log').style.display = 'flex'; }});
                 } else if(type === 'tasks') { gsap.to(clipboard.position, {y: 9, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-tasks').style.display = 'flex'; }});
                 } else if(type === 'water') { performWateringAnimation();
-                } else if(type === 'plant') { 
-                    if (userPlantData && userPlantData.isDead) { showToast("🥀 這盆植物已經枯萎了，請重新挑選一盆吧。"); setTimeout(() => document.getElementById('modal-plant-selector').style.display = 'flex', 1500); } 
-                    else { showPlantStatus(); }
-                }
+                } else if(type === 'plant') { if (userPlantData && userPlantData.isDead) { showToast("🥀 這盆植物已經枯萎了，請重新挑選一盆吧。"); setTimeout(() => document.getElementById('modal-plant-selector').style.display = 'flex', 1500); } else { showPlantStatus(); } }
             }
         }
 
-        // 精準對齊植物中心的澆水動畫
         function performWateringAnimation() {
             if (!userPlantData) { document.getElementById('modal-plant-selector').style.display = 'flex'; return; }
             if (userPlantData.isDead) return showToast("🥀 植物已經枯萎，無法再澆水了...");
             let today = new Date().toDateString(); let lastW = new Date(userPlantData.lastWatered).toDateString();
             if (today === lastW) return showToast("💧 已經澆過水了，明天再來吧！");
 
-            const startPos = {x: -11, y: 8.5, z: -3}; 
-            const waterPos = {x: -2.0, y: 12.5, z: -3}; // 將水壺移到盆栽上方偏左，讓壺嘴精確對齊中心
+            const startPos = {x: -11, y: 8.5, z: -3}; const waterPos = {x: -2.0, y: 12.5, z: -3}; 
             
             gsap.timeline().to(wateringCan.position, {x: waterPos.x, y: waterPos.y, z: waterPos.z, duration: 0.8, ease: "power2.out"})
                 .to(wateringCan.rotation, {z: -Math.PI/4, duration: 0.4}) 
@@ -1217,118 +1005,63 @@
                         if (dropCount++ > 15) { clearInterval(waterInterval); return; }
                         dummySpoutTip.getWorldPosition(targetPos);
                         const p = new THREE.Mesh(new THREE.SphereGeometry(0.12), new THREE.MeshBasicMaterial({color:0x66ccff, transparent:true, opacity:0.8})); p.position.copy(targetPos); scene.add(p);
-                        gsap.to(p.position, { 
-                            x: targetPos.x + (Math.random()-0.5)*0.2, // 完美集中於植物中心
-                            y: 9.0, // 落到土壤高度
-                            z: targetPos.z + (Math.random()-0.5)*0.2, 
-                            duration: 0.4, ease: "power1.in", onComplete: () => scene.remove(p) 
-                        });
+                        gsap.to(p.position, { x: targetPos.x + (Math.random()-0.5)*0.2, y: 9.0, z: targetPos.z + (Math.random()-0.5)*0.2, duration: 0.4, ease: "power1.in", onComplete: () => scene.remove(p) });
                     }, 50);
                     let pData = Object.assign({}, userPlantData);
                     if (pData.wilt > 0) pData.wilt -= 1; else if (pData.growth < 100) pData.growth += 1;
-                    pData.lastWatered = Date.now(); 
-                    pData.daysAccompanied = Math.floor((Date.now() - pData.plantedAt) / 86400000);
-                    db.ref(`users/${currentUser.uid}/plant`).update(pData); showToast("💧 澆水完成！植物正茁壯成長。");
+                    pData.lastWatered = Date.now(); pData.daysAccompanied = Math.floor((Date.now() - pData.plantedAt) / 86400000); db.ref(`users/${currentUser.uid}/plant`).update(pData); showToast("💧 澆水完成！植物正茁壯成長。");
                 }).to(wateringCan.rotation, {z: 0, duration: 0.4, delay: 0.8}).to(wateringCan.position, {x: startPos.x, y: startPos.y, z: startPos.z, duration: 0.8});
         }
 
         function animateRoom() {
             requestAnimationFrame(animateRoom); if(controls) controls.update();
             animScenery.cars.forEach(c => { c.position.x += c.userData.speed; if(c.position.x > 60) c.position.x = -60; else if(c.position.x < -60) c.position.x = 60; });
-            if(indicatorLeft && indicatorLeft.visible) { indicatorLeft.position.y = 10 + Math.sin(Date.now()*0.003)*0.3; indicatorLeft.rotation.y += 0.02; }
-            if(indicatorRight && indicatorRight.visible) { indicatorRight.position.y = 10 + Math.sin(Date.now()*0.003)*0.3; indicatorRight.rotation.y += 0.02; }
+            if(indicatorLeft && indicatorLeft.visible) { indicatorLeft.position.y = 9.5 + Math.sin(Date.now()*0.003)*0.2; indicatorLeft.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
+            if(indicatorRight && indicatorRight.visible) { indicatorRight.position.y = 9.5 + Math.sin(Date.now()*0.003)*0.2; indicatorRight.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
             if(renderer && scene && camera) renderer.render(scene, camera);
         }
 
-        // ====================================================
-        // 🖋️ 沉浸式手寫板核心：長按捲動與極速辨識
-        // ====================================================
         document.addEventListener("DOMContentLoaded", () => {
             const q = document.getElementById('log-question'); const c = document.getElementById('log-content');
-            if(q) q.addEventListener('click', function() { openHwKeyboard(this); });
-            if(c) c.addEventListener('click', function() { openHwKeyboard(this); });
+            if(q) q.addEventListener('click', function() { openHwKeyboard(this); }); if(c) c.addEventListener('click', function() { openHwKeyboard(this); });
             document.querySelectorAll('.handwrite-only').forEach(el => { el.addEventListener('keydown', e => { if(el.classList.contains('handwrite-only') && e.key !== 'Backspace') e.preventDefault(); }); el.addEventListener('paste', e => { if(el.classList.contains('handwrite-only')) e.preventDefault(); }); });
         });
 
         function initHandwriting() {
             hwCanvas = document.getElementById('hw-canvas'); hwCtx = hwCanvas.getContext('2d');
             function resizeCanvas() { const rect = hwCanvas.parentElement.getBoundingClientRect(); hwCanvas.width = rect.width; hwCanvas.height = rect.height; hwCtx.lineCap = "round"; hwCtx.lineJoin = "round"; }
-            window.addEventListener('resize', () => { if(document.getElementById('hw-overlay').classList.contains('active')) resizeCanvas(); });
-            setTimeout(resizeCanvas, 500);
-            
-            hwCanvas.addEventListener('touchstart', startStroke, {passive: false}); 
-            hwCanvas.addEventListener('touchmove', drawStroke, {passive: false}); 
-            hwCanvas.addEventListener('touchend', endStroke); 
-            hwCanvas.addEventListener('touchcancel', endStroke);
-            
-            hwCanvas.addEventListener('mousedown', (e) => { e.touches = [{clientX: e.clientX, clientY: e.clientY}]; startStroke(e); });
-            hwCanvas.addEventListener('mousemove', (e) => { if(isDrawing || isHoldScrolling) { e.touches = [{clientX: e.clientX, clientY: e.clientY}]; drawStroke(e); }});
-            window.addEventListener('mouseup', (e) => { if(isDrawing || isHoldScrolling) endStroke(e); });
-            hwCanvas.addEventListener('wheel', (e) => { document.getElementById('hw-preview').scrollTop += e.deltaY; }, {passive: true});
+            window.addEventListener('resize', () => { if(document.getElementById('hw-overlay').classList.contains('active')) resizeCanvas(); }); setTimeout(resizeCanvas, 500);
+            hwCanvas.addEventListener('touchstart', startStroke, {passive: false}); hwCanvas.addEventListener('touchmove', drawStroke, {passive: false}); hwCanvas.addEventListener('touchend', endStroke); hwCanvas.addEventListener('touchcancel', endStroke);
+            hwCanvas.addEventListener('mousedown', (e) => { e.touches = [{clientX: e.clientX, clientY: e.clientY}]; startStroke(e); }); hwCanvas.addEventListener('mousemove', (e) => { if(isDrawing || isHoldScrolling) { e.touches = [{clientX: e.clientX, clientY: e.clientY}]; drawStroke(e); }}); window.addEventListener('mouseup', (e) => { if(isDrawing || isHoldScrolling) endStroke(e); }); hwCanvas.addEventListener('wheel', (e) => { document.getElementById('hw-preview').scrollTop += e.deltaY; }, {passive: true});
         }
 
         function getPointerPos(touch) { const rect = hwCanvas.getBoundingClientRect(); return { x: touch.clientX - rect.left, y: touch.clientY - rect.top }; }
 
         function startStroke(e) {
-            e.preventDefault(); let touch = e.touches ? e.touches[0] : e;
-            startY = touch.clientY; startScrollTop = document.getElementById('hw-preview').scrollTop;
-            isHoldScrolling = false; movedTooFarToHold = false;
-            
-            holdTimer = setTimeout(() => {
-                if (!movedTooFarToHold) { isHoldScrolling = true; isDrawing = false; clearHwCanvas(); hwCanvas.style.background = "rgba(0,0,0,0.02)"; }
-            }, 400);
-
-            isDrawing = true; const pos = getPointerPos(touch); 
-            currentStroke = [[pos.x], [pos.y], [Date.now()]];
-            hwCtx.beginPath(); hwCtx.moveTo(pos.x, pos.y); hwCtx.lineWidth = 5; hwCtx.strokeStyle = "rgba(74, 66, 56, 0.85)"; clearTimeout(hwTimeout);
+            e.preventDefault(); let touch = e.touches ? e.touches[0] : e; startY = touch.clientY; startScrollTop = document.getElementById('hw-preview').scrollTop; isHoldScrolling = false; movedTooFarToHold = false;
+            holdTimer = setTimeout(() => { if (!movedTooFarToHold) { isHoldScrolling = true; isDrawing = false; clearHwCanvas(); hwCanvas.style.background = "rgba(0,0,0,0.02)"; } }, 400);
+            isDrawing = true; const pos = getPointerPos(touch); currentStroke = [[pos.x], [pos.y], [Date.now()]]; hwCtx.beginPath(); hwCtx.moveTo(pos.x, pos.y); hwCtx.lineWidth = 5; hwCtx.strokeStyle = "rgba(74, 66, 56, 0.85)"; clearTimeout(hwTimeout);
         }
 
-        function drawStroke(e) {
-            e.preventDefault(); let touch = e.touches ? e.touches[0] : e;
-            if (isHoldScrolling) { let deltaY = startY - touch.clientY; document.getElementById('hw-preview').scrollTop = startScrollTop + deltaY; return; }
-            if (!isDrawing) return;
-            if (!movedTooFarToHold && Math.abs(touch.clientY - startY) > 10) { movedTooFarToHold = true; clearTimeout(holdTimer); }
-            const pos = getPointerPos(touch);
-            currentStroke[0].push(pos.x); currentStroke[1].push(pos.y); currentStroke[2].push(Date.now()); hwCtx.lineTo(pos.x, pos.y); hwCtx.stroke();
-        }
+        function drawStroke(e) { e.preventDefault(); let touch = e.touches ? e.touches[0] : e; if (isHoldScrolling) { let deltaY = startY - touch.clientY; document.getElementById('hw-preview').scrollTop = startScrollTop + deltaY; return; } if (!isDrawing) return; if (!movedTooFarToHold && Math.abs(touch.clientY - startY) > 10) { movedTooFarToHold = true; clearTimeout(holdTimer); } const pos = getPointerPos(touch); currentStroke[0].push(pos.x); currentStroke[1].push(pos.y); currentStroke[2].push(Date.now()); hwCtx.lineTo(pos.x, pos.y); hwCtx.stroke(); }
 
-        function endStroke(e) {
-            clearTimeout(holdTimer); hwCanvas.style.background = "transparent";
-            if (isHoldScrolling) { isHoldScrolling = false; return; }
-            if (!isDrawing) return; isDrawing = false;
-            if (currentStroke[0].length > 0) strokes.push(currentStroke);
-            hwTimeout = setTimeout(recognizeHandwriting, 400); 
-        }
+        function endStroke(e) { clearTimeout(holdTimer); hwCanvas.style.background = "transparent"; if (isHoldScrolling) { isHoldScrolling = false; return; } if (!isDrawing) return; isDrawing = false; if (currentStroke[0].length > 0) strokes.push(currentStroke); hwTimeout = setTimeout(recognizeHandwriting, 400); }
 
         function recognizeHandwriting() {
-            if (strokes.length === 0) return;
-            document.getElementById('hw-loader').classList.add('active'); 
+            if (strokes.length === 0) return; document.getElementById('hw-loader').classList.add('active'); 
             const data = { "options": "enable_pre_space", "requests": [{ "writing_guide": { "width": hwCanvas.width, "height": hwCanvas.height }, "ink": strokes, "language": "zh-TW" }] };
             fetch("https://inputtools.google.com/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
-            .then(res => res.json()).then(res => {
-                document.getElementById('hw-loader').classList.remove('active');
-                if (res[0] === "SUCCESS" && res[1][0] && res[1][0][1] && res[1][0][1].length > 0) { insertChar(res[1][0][1][0]); clearHwCanvas(); } else clearHwCanvas(); 
-            }).catch(e => { console.error("辨識失敗", e); document.getElementById('hw-loader').classList.remove('active'); clearHwCanvas(); });
+            .then(res => res.json()).then(res => { document.getElementById('hw-loader').classList.remove('active'); if (res[0] === "SUCCESS" && res[1][0] && res[1][0][1] && res[1][0][1].length > 0) { insertChar(res[1][0][1][0]); clearHwCanvas(); } else clearHwCanvas(); }).catch(e => { console.error("辨識失敗", e); document.getElementById('hw-loader').classList.remove('active'); clearHwCanvas(); });
         }
 
         function clearHwCanvas() { strokes = []; hwCtx.clearRect(0, 0, hwCanvas.width, hwCanvas.height); }
 
-        function openHwKeyboard(targetInput) {
-            if(!targetInput.classList.contains('handwrite-only')) return;
-            activeHwInput = targetInput; document.getElementById('hw-overlay').classList.add('active');
-            const preview = document.getElementById('hw-preview'); preview.value = activeHwInput.value;
-            setTimeout(() => { preview.scrollTop = preview.scrollHeight; }, 50);
-            lockScroll(); clearHwCanvas();
-            setTimeout(() => { const rect = hwCanvas.parentElement.getBoundingClientRect(); if(hwCanvas.width !== rect.width) { hwCanvas.width = rect.width; hwCanvas.height = rect.height; hwCtx.lineCap = "round"; hwCtx.lineJoin = "round";} }, 100);
-        }
-
+        function openHwKeyboard(targetInput) { if(!targetInput.classList.contains('handwrite-only')) return; activeHwInput = targetInput; document.getElementById('hw-overlay').classList.add('active'); const preview = document.getElementById('hw-preview'); preview.value = activeHwInput.value; setTimeout(() => { preview.scrollTop = preview.scrollHeight; }, 50); lockScroll(); clearHwCanvas(); setTimeout(() => { const rect = hwCanvas.parentElement.getBoundingClientRect(); if(hwCanvas.width !== rect.width) { hwCanvas.width = rect.width; hwCanvas.height = rect.height; hwCtx.lineCap = "round"; hwCtx.lineJoin = "round";} }, 100); }
         function closeHwKeyboard() { document.getElementById('hw-overlay').classList.remove('active'); clearHwCanvas(); unlockScroll(); }
         function insertChar(char) { if (!activeHwInput) return; const preview = document.getElementById('hw-preview'); activeHwInput.value += char; preview.value += char; activeHwInput.scrollTop = activeHwInput.scrollHeight; preview.scrollTop = preview.scrollHeight; }
         function hwBackspace() { if (!activeHwInput || activeHwInput.value.length === 0) return; const preview = document.getElementById('hw-preview'); activeHwInput.value = activeHwInput.value.slice(0, -1); preview.value = preview.value.slice(0, -1); }
-        
         function toggleReadingLog() { const el = document.getElementById('mylog-editor'); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
         function submitReadingLog() { showToast("紀錄已儲存！"); document.getElementById('mylog-editor').style.display = 'none'; }
-
     </script>
 </body>
 </html>
