@@ -182,20 +182,19 @@
         }
 
        .letter-text {
-    position: relative; z-index: 2; font-family: var(--font-serif); font-size: 1.12rem; color: var(--letter-ink); 
-    line-height: 40px; letter-spacing: 1.5px; white-space: pre-wrap; text-align: justify;
-    word-break: break-word; /* 加上這行強制長單字換行 */
-    overflow-wrap: break-word; /* 加上這行確保超出容器時換行 */
-}
+            position: relative; z-index: 2; font-family: var(--font-serif); font-size: 1.12rem; color: var(--letter-ink); 
+            line-height: 40px; letter-spacing: 1.5px; white-space: pre-wrap; text-align: justify;
+            word-break: break-word; /* 加上這行強制長單字換行 */
+            overflow-wrap: break-word; /* 加上這行確保超出容器時換行 */
+        }
 
         .letter-section-divider {
             display: block; text-align: center; font-size: 0.95rem; color: #9c8a75; letter-spacing: 0.6em; 
             margin: 2.5em 0 1.5em 0; position: relative; font-weight: 400; font-family: var(--font-serif);
         }
-       .letter-section-divider::before, .letter-section-divider::after {
-    content: ''; position: absolute; top: 50%; width: 20%; height: 1px; background: rgba(160, 140, 120, 0.25);
-}
-.letter-section-divider::before { left: 5%; } .letter-section-divider::after { right: 5%; }
+        .letter-section-divider::before, .letter-section-divider::after {
+            content: ''; position: absolute; top: 50%; width: 20%; height: 1px; background: rgba(160, 140, 120, 0.25);
+        }
         .letter-section-divider::before { left: 5%; } .letter-section-divider::after { right: 5%; }
 
         .letter-img-wrap { display: block; margin: 40px auto; text-align: center; position: relative; z-index: 2; }
@@ -223,46 +222,28 @@
            ✨ 響應式設計 (RWD) 針對手機與小螢幕適配 ✨
            ==================================================== */
         @media (max-width: 768px) {
-            /* Auth 畫面 */
             #auth-overlay { flex-direction: column; justify-content: center; align-items: center; }
-            .auth-hero { display: none; /* 手機版隱藏標語，讓登入框更直覺 */ }
+            .auth-hero { display: none; }
             .auth-sidebar { width: 90%; max-width: 400px; padding: 40px 25px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.4); }
-            
-            /* 導覽與版面 */
             header { flex-direction: column; align-items: flex-start; gap: 15px; margin-top: 20px; }
             .user-info { display: flex; align-items: center; width: 100%; justify-content: space-between; }
             .tabs { padding: 0 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; border-bottom: none; }
             .tab-btn { justify-content: center; font-size: 0.95rem; border: 1px solid var(--border); border-radius: 8px; padding: 12px 5px; }
             .tab-btn.active::after { display: none; }
             .tab-btn.active { background: var(--border); }
-            
-            /* 編輯器與網格 */
             .flex-row { flex-direction: column; gap: 15px; }
             .editor { padding: 25px 20px; }
             .grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
-            
-            /* 列表項目 */
             .list-item { flex-direction: column; align-items: flex-start; padding: 18px; gap: 8px; }
             .list-item .badge { margin-bottom: 5px; }
             .list-item .delete-btn { position: absolute; right: 15px; bottom: 15px; }
-            
-            /* 信箋 Modal 適配 */
             #modal { padding: 20px 10px; }
-            .modal-close-btn { 
-                top: 15px; right: 15px; font-size: 2rem; background: rgba(0,0,0,0.6); 
-                width: 45px; height: 45px; border-radius: 50%; display: flex; 
-                align-items: center; justify-content: center; line-height: 1; padding-bottom: 4px;
-            }
+            .modal-close-btn { top: 15px; right: 15px; font-size: 2rem; background: rgba(0,0,0,0.6); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; line-height: 1; padding-bottom: 4px;}
             .letter-sheet { padding: 40px 6% 50px 6%; }
             .letter-sheet::after { left: 6%; right: 6%; }
             .letter-text { font-size: 1.05rem; }
-          
-            
-            /* 閱讀紀錄適配 */
             .log-header-container { flex-direction: column; align-items: flex-start; gap: 15px; }
             .toggle-add-btn { align-self: flex-end; margin-top: -45px; }
-            
-            /* 信封動畫適配 */
             .env-wrapper { transform: scale(0.85); }
         }
     </style>
@@ -286,7 +267,7 @@
             <div id="name-setup-container" class="auth-panel-content" style="display:none;">
                 <div><h2>設定筆名</h2><p>請輸入真實姓名或學號（系統中對筆友將保持完全匿名）。</p></div>
                 <div class="input-group"><input type="text" id="setup-name" class="input-box" placeholder="例如：林小明 / 50211"></div>
-                <button class="btn" onclick="saveName()">確認進入</button>
+                <button class="btn" id="btn-setup-name" onclick="saveName()">確認進入</button>
             </div>
         </div>
     </div>
@@ -357,7 +338,7 @@
                 <h4 class="serif-text" style="margin-bottom: 20px; color: var(--color-log);">新增紀錄</h4>
                 <div class="field-group"><label class="field-label">書籍名稱</label><input type="text" id="mylog-title" class="input-box" style="font-family:var(--font-serif);" placeholder="請輸入書名"></div>
                 <div class="field-group"><label class="field-label">私密筆記</label><textarea id="mylog-notes" class="textarea" style="min-height:100px;" placeholder="寫下專屬於你的私密閱讀筆記 (自由發揮)..."></textarea></div>
-                <button class="btn" style="background: var(--color-log); width: auto;" onclick="submitReadingLog()">保存紀錄</button>
+                <button class="btn" id="btn-save-log" style="background: var(--color-log); width: auto;" onclick="submitReadingLog()">保存紀錄</button>
             </div>
             <div id="mylog-list"></div>
         </section>
@@ -410,11 +391,11 @@
         const ITEMS_PER_PAGE = 10; let repliesData = []; let inboxData = []; let currentPageReplies = 1; let currentPageInbox = 1;
         let isSubmittingLog = false; let isSubmittingReply = false;
 
-        // 🌟 自動登入機制修復：直接透過 onAuthStateChanged 接管狀態判斷，無須額外設定 Persistence (預設已是 LOCAL)
+        // 🌟 自動登入機制修復：增加錯誤捕捉，避免意外卡死
         auth.onAuthStateChanged(user => {
             if (user) {
                 currentUser = user;
-                db.ref(`users/${user.uid}`).once('value', snap => {
+                db.ref(`users/${user.uid}`).once('value').then(snap => {
                     if (snap.val() && snap.val().name) { 
                         document.getElementById('user-name').innerText = snap.val().name; 
                         hideAuthOverlay(); 
@@ -423,6 +404,9 @@
                         document.getElementById('login-container').style.display = 'none'; 
                         document.getElementById('name-setup-container').style.display = 'flex'; 
                     }
+                }).catch(err => {
+                    console.error("讀取使用者資料失敗:", err);
+                    alert("連線異常，請重新整理網頁再試一次。");
                 });
             } else { 
                 document.getElementById('auth-overlay').style.display = 'flex'; 
@@ -433,15 +417,30 @@
         });
 
         function hideAuthOverlay() { gsap.to("#auth-overlay", { opacity: 0, duration: 0.6, onComplete: () => { document.getElementById('auth-overlay').style.display = 'none'; run3D = false; }}); }
-        function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+        function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert("登入失敗: " + e.message)); }
         function signOut() { auth.signOut().then(() => window.location.reload()); }
-        function saveName() { const name = document.getElementById('setup-name').value.trim(); if (!name) return alert("請輸入姓名"); db.ref(`users/${currentUser.uid}`).set({ name, email: currentUser.email }).then(() => { document.getElementById('user-name').innerText = name; hideAuthOverlay(); initApp(); }); }
+        
+        function saveName() { 
+            const name = document.getElementById('setup-name').value.trim(); 
+            if (!name) return alert("請輸入姓名"); 
+            const btn = document.getElementById('btn-setup-name');
+            btn.disabled = true; btn.innerText = "設定中...";
+            
+            db.ref(`users/${currentUser.uid}`).set({ name, email: currentUser.email }).then(() => { 
+                document.getElementById('user-name').innerText = name; 
+                hideAuthOverlay(); 
+                initApp(); 
+            }).catch(err => {
+                alert("設定失敗，請確認網路連線或規則設定: " + err.message);
+                btn.disabled = false; btn.innerText = "確認進入";
+            }); 
+        }
 
-        function initApp() { healPool(); db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); setupNotifications(); loadMailbox(); loadReadingLogs(); }
+        function initApp() { healPool(); db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }, err => console.error(err)); setupNotifications(); loadMailbox(); loadReadingLogs(); }
 
         function setupNotifications() {
             const threadRef = db.ref(`user_threads/${currentUser.uid}`);
-            threadRef.once('value').then(() => { isInitialLoad = false; });
+            threadRef.once('value').then(() => { isInitialLoad = false; }).catch(e => console.error(e));
             
             threadRef.on('child_changed', snap => { 
                 if (!isInitialLoad && snap.val().hasUnread) {
@@ -492,24 +491,24 @@
 
                 renderPaginatedList('replies', repliesData, currentPageReplies);
                 renderPaginatedList('inbox', inboxData, currentPageInbox);
-            });
+            }, err => console.error("Mailbox Error:", err));
         }
 
         function healPool() {
-            db.ref('unassigned_letters').once('value', snap => {
+            db.ref('unassigned_letters').once('value').then(snap => {
                 const pool = snap.val() || {}; const ids = Object.keys(pool).filter(id => pool[id].senderUid !== currentUser.uid);
                 if (ids.length > 0) {
                     const rId = ids[Math.floor(Math.random() * ids.length)];
-                    db.ref(`letters/${rId}`).once('value', lSnap => {
+                    db.ref(`letters/${rId}`).once('value').then(lSnap => {
                         const lData = lSnap.val(); if(lData) {
                             db.ref(`letters/${rId}/recipientUid`).set(currentUser.uid); db.ref(`unassigned_letters/${rId}`).remove();
                             const now = firebase.database.ServerValue.TIMESTAMP;
                             db.ref(`user_threads/${currentUser.uid}/${rId}`).set({ letterId: rId, bookTitle: lData.bookTitle, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: now });
                             db.ref(`user_threads/${lData.senderUid}/${rId}`).set({ letterId: rId, bookTitle: lData.bookTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: now });
                         }
-                    });
+                    }).catch(err => console.error("配對讀取異常:", err));
                 }
-            });
+            }).catch(err => console.error("池子讀取異常:", err));
         }
 
         function renderPaginatedList(type, data, currentPage) {
@@ -543,7 +542,7 @@
             }
         }
 
-        window.deleteThread = function(id, e) { e.stopPropagation(); if(confirm("確認刪除此信件？")) db.ref(`user_threads/${currentUser.uid}/${id}`).remove(); };
+        window.deleteThread = function(id, e) { e.stopPropagation(); if(confirm("確認刪除此信件？")) db.ref(`user_threads/${currentUser.uid}/${id}`).remove().catch(err => alert("刪除失敗: " + err.message)); };
 
         function handleFileSelect(event) {
             const file = event.target.files[0]; if (!file) return;
@@ -601,7 +600,7 @@
         function renderTasks() {
             const grid = document.getElementById('task-grid'); grid.innerHTML = ''; if (!config) return;
             const start = new Date(config.startDate); const total = Math.floor(((new Date(config.endDate) - start) / 86400000) / config.intervalDays);
-            db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value', snap => {
+            db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value').then(snap => {
                 const submitted = Object.values(snap.val()||{}).map(l=>l.taskIndex); const map = {}; Object.values(snap.val()||{}).forEach(l=>map[l.taskIndex]=l.id);
                 for (let i=0; i<total; i++) {
                     const d = new Date(start.getTime() + i*config.intervalDays*86400000); 
@@ -624,12 +623,12 @@
                         } else alert("時空未到，尚未開放。");
                     }; grid.appendChild(el);
                 }
-            });
+            }).catch(err => console.error("讀取任務狀態異常:", err));
         }
 
         function openChat(id) {
             db.ref(`user_threads/${currentUser.uid}/${id}`).update({hasUnread: false});
-            db.ref(`letters/${id}`).once('value', lSnap => {
+            db.ref(`letters/${id}`).once('value').then(lSnap => {
                 const l = lSnap.val(); if (!l) return;
                 
                 const flow = document.getElementById('chat-flow'); 
@@ -687,6 +686,9 @@
                 
                 document.getElementById('modal').style.display = 'flex'; 
                 lockScroll();
+            }).catch(err => {
+                alert("無法讀取信件資料，請稍後再試。(" + err.message + ")");
+                unlockScroll();
             });
         }
         
@@ -711,7 +713,7 @@
 
         function processLog(data) {
             const ts = firebase.database.ServerValue.TIMESTAMP; const ref = db.ref('letters').push();
-            db.ref('users').once('value', snap => {
+            db.ref('users').once('value').then(snap => {
                 const uids = Object.keys(snap.val() || {}).filter(u => u !== currentUser.uid); const rec = uids.length ? uids[Math.floor(Math.random() * uids.length)] : "";
                 ref.set({ id: ref.key, senderUid: currentUser.uid, bookTitle: data.title, timestamp: ts, taskIndex: selectedTaskIndex, recipientUid: rec }).then(() => {
                     db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: ts });
@@ -728,6 +730,8 @@
                 }).catch(err => {
                     isSubmittingLog = false; const btn = document.getElementById('btn-submit-task'); if (btn) { btn.disabled = false; btn.innerText = "封裝寄出心得"; } alert("發送失敗，請重試：" + err.message);
                 });
+            }).catch(err => {
+                isSubmittingLog = false; const btn = document.getElementById('btn-submit-task'); if (btn) { btn.disabled = false; btn.innerText = "封裝寄出心得"; } alert("配對異常：" + err.message);
             });
         }
         
@@ -757,8 +761,13 @@
         function submitReadingLog() {
             const title = document.getElementById('mylog-title').value.trim(); const notes = document.getElementById('mylog-notes').value.trim();
             if(!title) return alert("請輸入書籍名稱。");
+            
+            const btn = document.getElementById('btn-save-log'); btn.disabled = true; btn.innerText = "保存中...";
             db.ref(`reading_logs/${currentUser.uid}`).push({ bookTitle: title, notes: notes, timestamp: firebase.database.ServerValue.TIMESTAMP }).then(() => {
                 document.getElementById('mylog-title').value = ''; document.getElementById('mylog-notes').value = ''; alert("已成功保存紀錄！"); toggleReadingLog();
+                btn.disabled = false; btn.innerText = "保存紀錄";
+            }).catch(err => {
+                alert("保存失敗：" + err.message); btn.disabled = false; btn.innerText = "保存紀錄";
             });
         }
 
@@ -772,10 +781,10 @@
                     el.innerHTML = `<h4>《${escapeHtml(log.bookTitle)}》</h4>${log.notes ? `<p>${escapeHtml(log.notes)}</p>` : ''}<div class="date">建立於 ${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}</div><button class="delete-btn" onclick="deleteReadingLog('${log.id}')" title="刪除此紀錄">刪除</button>`;
                     list.appendChild(el);
                 });
-            });
+            }, err => console.error("Logs Error:", err));
         }
 
-        window.deleteReadingLog = function(id) { if(confirm("確定要將這本書從紀錄中移除嗎？")) db.ref(`reading_logs/${currentUser.uid}/${id}`).remove(); };
+        window.deleteReadingLog = function(id) { if(confirm("確定要將這本書從紀錄中移除嗎？")) db.ref(`reading_logs/${currentUser.uid}/${id}`).remove().catch(e => alert("刪除失敗:" + e.message)); };
         function switchTab(id, btn) { document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); btn.classList.add('active'); document.getElementById(id).classList.add('active'); }
         function escapeHtml(s) { return s?s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):s; }
     </script>
