@@ -169,7 +169,7 @@
 
 
         /* ====================================================
-           🖋️ 全螢幕沉浸式畫布 (文字與畫布融合、底部 SVG 工具列)
+           🖋️ 全螢幕沉浸式畫布 (長按捲動版)
            ==================================================== */
         #hw-overlay {
             position: fixed; inset: 0; background: var(--bg); z-index: 100000; 
@@ -178,44 +178,33 @@
         #hw-overlay.active { display: flex; animation: fadeUpIn 0.3s cubic-bezier(0.2, 0, 0.2, 1); }
         @keyframes fadeUpIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* 頂部標題列 */
-        .hw-top-bar {
-            background: rgba(250, 247, 242, 0.95); padding: 15px 20px; border-bottom: 1px solid #e3dcd1;
-            display: flex; justify-content: space-between; align-items: center; z-index: 20;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-        }
-        .hw-title { font-family: var(--font-serif); font-size: 1.1rem; color: var(--text); font-weight: 600; }
-        .hw-hint-text { font-size: 0.85rem; color: var(--color-log); opacity: 0.8; font-weight: 500; letter-spacing: 0.5px;}
-
-        /* 中間：信紙區塊 (可捲動、文字與畫布重疊) */
+        /* 信紙區塊 (無頂部狀態列) */
         .hw-letter-area {
             flex: 1; position: relative; background-color: var(--letter-paper);
-            /* 信紙邊緣陰影質感 */
             box-shadow: inset 0 0 40px rgba(180, 160, 130, 0.05);
         }
 
-        /* 文字預覽框 (置底，處理原生捲動與文字顯示) */
+        /* 文字預覽框 (處理原生捲動與文字顯示) */
         #hw-preview {
             position: absolute; inset: 0; width: 100%; height: 100%;
             border: none; outline: none; resize: none; background: transparent;
-            padding: 20px 8%; /* 左右留白，像真實信紙 */
+            padding: 30px 8%; /* 上下左右留白，像真實信紙 */
             font-family: var(--font-serif); font-size: 1.25rem; color: var(--letter-ink); letter-spacing: 2px;
             
             /* 完美對齊的信紙橫線 */
             line-height: 44px; 
             background-image: repeating-linear-gradient(to bottom, transparent, transparent 43px, var(--letter-line) 43px, var(--letter-line) 44px);
             background-attachment: local; /* 線條跟隨文字捲動 */
-            background-position: top 20px left 0; /* 對齊 padding-top */
+            background-position: top 30px left 0; /* 對齊 padding-top */
             
             overflow-y: auto; scrollbar-width: thin; z-index: 5;
-            /* 防止鍵盤彈出 */
-            pointer-events: none; 
+            pointer-events: none; /* 防止原生虛擬鍵盤彈出 */
         }
 
         /* 手寫畫布 (置頂，攔截觸控) */
         #hw-canvas {
             position: absolute; inset: 0; width: 100%; height: 100%;
-            z-index: 10; touch-action: none; cursor: crosshair;
+            z-index: 10; touch-action: none; cursor: crosshair; transition: background 0.3s;
         }
 
         /* 底部：標點與工具列 */
@@ -237,7 +226,7 @@
         }
         .hw-punct-btn:active { transform: translateY(2px); box-shadow: 0 0 0 #d1c8ba; }
 
-        /* 功能按鍵列 (純 SVG) */
+        /* 功能按鍵列 (純 SVG，無垃圾桶) */
         .hw-actions { display: flex; justify-content: center; align-items: center; padding: 10px 15px; background: #ebe6df; gap: 20px; }
         .svg-btn {
             background: #fff; border: 1px solid #dcd5c9; cursor: pointer; display: flex; align-items: center; justify-content: center;
@@ -290,7 +279,7 @@
             .env-wrapper { transform: scale(0.85); }
             
             /* 手寫板 RWD */
-            #hw-preview { font-size: 1.15rem; line-height: 40px; padding: 15px 6%; background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--letter-line) 39px, var(--letter-line) 40px); background-position: top 15px left 0; }
+            #hw-preview { font-size: 1.15rem; line-height: 40px; padding: 20px 6%; background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--letter-line) 39px, var(--letter-line) 40px); background-position: top 20px left 0; }
             .svg-btn { width: 44px; height: 44px; border-radius: 10px; }
             .svg-btn.done { width: 55px; }
             .hw-punct-btn { padding: 6px 14px; font-size: 1.15rem;}
@@ -337,19 +326,14 @@
     </div>
 
     <!-- ==============================================
-         🌟 沉浸式手寫板 (文字預覽與畫布合一)
+         🌟 沉浸式手寫板 (文字預覽與畫布合一、長按捲動)
          ============================================== -->
     <div id="hw-overlay">
         
-        <div class="hw-top-bar">
-            <span class="hw-title">✍️ 案頭書寫模式</span>
-            <span class="hw-hint-text">單指寫字・雙指捲動</span>
-        </div>
-        
-        <!-- 中間信紙區塊 -->
+        <!-- 信紙區塊 -->
         <div class="hw-letter-area">
             <!-- 負責顯示文字與原生捲動 -->
-            <textarea id="hw-preview" readonly placeholder="在此信箋上，直接下筆寫下您的回音..."></textarea>
+            <textarea id="hw-preview" readonly placeholder="在此信箋上，直接下筆寫下您的回音...（長按可上下滑動檢視）"></textarea>
             <!-- 負責攔截觸控並繪圖 (蓋在上面) -->
             <canvas id="hw-canvas"></canvas>
             <div class="hw-loader" id="hw-loader"></div>
@@ -370,19 +354,13 @@
                 <button class="hw-punct-btn" onclick="insertChar('》')">》</button>
             </div>
             <div class="hw-actions">
-                <!-- 清空畫布 (垃圾桶) -->
-                <button class="svg-btn" onclick="clearHwCanvas()" title="清空畫布筆跡">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                </button>
-                <!-- 刪除文字 (Backspace) -->
+                <!-- 刪除文字 (Backspace SVG) -->
                 <button class="svg-btn" onclick="hwBackspace()" title="刪除最後一個字">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line>
                     </svg>
                 </button>
-                <!-- 完成送出 (打勾) -->
+                <!-- 完成送出 (打勾 SVG) -->
                 <button class="svg-btn done" onclick="closeHwKeyboard()" title="完成書寫並收起">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="20 6 9 17 4 12"></polyline>
@@ -423,12 +401,12 @@
                 <div class="field-group">
                     <label class="field-label">思考問題</label>
                     <textarea id="log-question" class="textarea handwrite-only" style="min-height:100px;" readonly placeholder="點此喚出全螢幕書寫板..."></textarea>
-                    <span class="handwrite-placeholder">📝 點擊進入全螢幕手寫模式。禁止鍵盤打字或貼上。</span>
+                    <span class="handwrite-placeholder">📝 點擊進入手寫模式。禁止鍵盤打字或貼上。</span>
                 </div>
                 <div class="field-group">
                     <label class="field-label">閱讀感悟</label>
                     <textarea id="log-content" class="textarea handwrite-only" style="min-height:220px;" readonly placeholder="點此喚出全螢幕書寫板...（最少 150 字）"></textarea>
-                    <span class="handwrite-placeholder">📝 點擊進入全螢幕手寫模式。禁止鍵盤打字或貼上。</span>
+                    <span class="handwrite-placeholder">📝 點擊進入手寫模式。禁止鍵盤打字或貼上。</span>
                 </div>
 
                 <div class="field-group upload-container">
@@ -508,12 +486,17 @@
         let activeHwInput = null;
         let hwCanvas, hwCtx;
         let isDrawing = false;
-        let isTwoFingerScroll = false; // 紀錄是否正在雙指滑動
-        let lastTouchY = 0;
         let strokes = []; 
         let currentStroke = [[], [], []]; 
         let hwTimeout = null;
         let originalBodyOverflow = '';
+
+        // 長按捲動變數
+        let holdTimer = null;
+        let isHoldScrolling = false;
+        let startY = 0;
+        let startScrollTop = 0;
+        let movedTooFarToHold = false;
 
         auth.onAuthStateChanged(user => {
             if (user) {
@@ -768,7 +751,7 @@
         function escapeHtml(s) { return s?s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):s; }
 
         /* ====================================================
-           🖋️ 沉浸式畫布：單指畫畫、雙指捲動、快速辨識
+           🖋️ 沉浸式畫布：長按捲動與極速辨識核心邏輯
            ==================================================== */
         document.addEventListener("DOMContentLoaded", () => {
             const q = document.getElementById('log-question'); const c = document.getElementById('log-content');
@@ -783,18 +766,17 @@
             window.addEventListener('resize', () => { if(document.getElementById('hw-overlay').classList.contains('active')) resizeCanvas(); });
             setTimeout(resizeCanvas, 500);
             
-            // 監聽觸控與滑鼠事件
+            // 監聽觸控與滑鼠事件 (統一由 Pointer Events 處理會更乾淨，但這裡相容性處理)
             hwCanvas.addEventListener('touchstart', startStroke, {passive: false}); 
             hwCanvas.addEventListener('touchmove', drawStroke, {passive: false}); 
             hwCanvas.addEventListener('touchend', endStroke); 
             hwCanvas.addEventListener('touchcancel', endStroke);
             
-            // 滑鼠支援
             hwCanvas.addEventListener('mousedown', (e) => { e.touches = [{clientX: e.clientX, clientY: e.clientY}]; startStroke(e); });
-            hwCanvas.addEventListener('mousemove', (e) => { if(!isDrawing)return; e.touches = [{clientX: e.clientX, clientY: e.clientY}]; drawStroke(e); });
-            window.addEventListener('mouseup', (e) => { if(isDrawing) endStroke(e); });
+            hwCanvas.addEventListener('mousemove', (e) => { if(isDrawing || isHoldScrolling) { e.touches = [{clientX: e.clientX, clientY: e.clientY}]; drawStroke(e); }});
+            window.addEventListener('mouseup', (e) => { if(isDrawing || isHoldScrolling) endStroke(e); });
 
-            // 電腦版滑鼠滾輪支援
+            // 電腦版滑鼠滾輪支援 (不需長按也可滾動)
             hwCanvas.addEventListener('wheel', (e) => {
                 document.getElementById('hw-preview').scrollTop += e.deltaY;
             }, {passive: true});
@@ -804,35 +786,64 @@
 
         function startStroke(e) {
             e.preventDefault();
-            // 判斷是否為雙指
-            if (e.touches && e.touches.length >= 2) {
-                isTwoFingerScroll = true; isDrawing = false; lastTouchY = e.touches[0].clientY; return;
-            }
+            let touch = e.touches ? e.touches[0] : e;
+            startY = touch.clientY;
+            startScrollTop = document.getElementById('hw-preview').scrollTop;
+            isHoldScrolling = false;
+            movedTooFarToHold = false;
             
-            isTwoFingerScroll = false; isDrawing = true;
-            const pos = getPointerPos(e.touches[0]); currentStroke = [[pos.x], [pos.y], [Date.now()]];
+            // 設定長按計時器 (400ms 後若未大幅移動，則進入捲動模式)
+            holdTimer = setTimeout(() => {
+                if (!movedTooFarToHold) {
+                    isHoldScrolling = true;
+                    isDrawing = false;
+                    clearHwCanvas(); // 清除長按產生的起始點墨跡
+                    hwCanvas.style.background = "rgba(0,0,0,0.02)"; // 微弱視覺回饋提示已進入捲動模式
+                }
+            }, 400);
+
+            // 預設先進入畫圖模式
+            isDrawing = true;
+            const pos = getPointerPos(touch); 
+            currentStroke = [[pos.x], [pos.y], [Date.now()]];
             hwCtx.beginPath(); hwCtx.moveTo(pos.x, pos.y); hwCtx.lineWidth = 5; hwCtx.strokeStyle = "rgba(74, 66, 56, 0.85)"; clearTimeout(hwTimeout);
         }
 
         function drawStroke(e) {
             e.preventDefault();
-            // 雙指捲動邏輯
-            if (e.touches && e.touches.length >= 2) {
-                if (isTwoFingerScroll) {
-                    const deltaY = lastTouchY - e.touches[0].clientY;
-                    document.getElementById('hw-preview').scrollTop += deltaY;
-                    lastTouchY = e.touches[0].clientY;
-                }
+            let touch = e.touches ? e.touches[0] : e;
+
+            // 如果已經確認是長按捲動模式
+            if (isHoldScrolling) {
+                let deltaY = startY - touch.clientY;
+                document.getElementById('hw-preview').scrollTop = startScrollTop + deltaY;
                 return;
             }
-            if (!isDrawing || isTwoFingerScroll) return; 
-            const pos = getPointerPos(e.touches[0]);
+
+            if (!isDrawing) return;
+
+            // 若尚未進入長按捲動模式，但移動距離超過 10px，則視為寫字，取消長按判定
+            if (!movedTooFarToHold && Math.abs(touch.clientY - startY) > 10) {
+                movedTooFarToHold = true;
+                clearTimeout(holdTimer);
+            }
+
+            // 正常畫圖
+            const pos = getPointerPos(touch);
             currentStroke[0].push(pos.x); currentStroke[1].push(pos.y); currentStroke[2].push(Date.now()); hwCtx.lineTo(pos.x, pos.y); hwCtx.stroke();
         }
 
         function endStroke(e) {
-            if (isTwoFingerScroll) { if (!e.touches || e.touches.length === 0) { isTwoFingerScroll = false; } return; }
-            if (!isDrawing) return; isDrawing = false;
+            clearTimeout(holdTimer);
+            hwCanvas.style.background = "transparent";
+
+            if (isHoldScrolling) {
+                isHoldScrolling = false;
+                return; // 如果剛才是在捲動，放開就不做任何事
+            }
+
+            if (!isDrawing) return; 
+            isDrawing = false;
             if (currentStroke[0].length > 0) strokes.push(currentStroke);
             
             // 🌟 極速辨識：停筆 400 毫秒後即送出辨識請求
@@ -865,7 +876,6 @@
             document.getElementById('hw-overlay').classList.add('active');
             const preview = document.getElementById('hw-preview');
             preview.value = activeHwInput.value;
-            // 滾動到底部
             setTimeout(() => { preview.scrollTop = preview.scrollHeight; }, 50);
             
             lockScroll(); clearHwCanvas();
@@ -878,7 +888,6 @@
             if (!activeHwInput) return;
             const preview = document.getElementById('hw-preview');
             activeHwInput.value += char; preview.value += char;
-            // 每次輸入自動捲動到底部，保持最新文字在視野內
             activeHwInput.scrollTop = activeHwInput.scrollHeight; preview.scrollTop = preview.scrollHeight; 
         }
 
