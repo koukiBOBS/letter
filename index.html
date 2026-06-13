@@ -1,3 +1,5 @@
+--- START OF FILE Paste June 13, 2026 - 8:59AM ---
+
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
@@ -141,7 +143,7 @@
         /* ====================================================
            MODAL UI & BEAUTIFUL LETTER FORMATTING (信紙排版更新)
            ==================================================== */
-        #modal { position: fixed; inset: 0; background: rgba(245,242,235,0.85); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(8px); }
+        #modal { position: fixed; inset: 0; background: rgba(240, 237, 230, 0.96); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; }
         .modal-box { background: var(--paper); border-radius: 16px; width: 100%; max-width: 800px; height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.1); }
         .modal-header { padding: 20px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; background: #ffffff; z-index: 10;}
         .close-btn { background: none; border: none; font-size: 2rem; cursor: pointer; color: #94a3b8; transition: 0.2s; }
@@ -154,26 +156,64 @@
             background-color: #fbf9f4; /* 象牙白 */
             background-image: linear-gradient(to right, transparent 49.5%, rgba(0,0,0,0.015) 50%, transparent 50.5%);
             box-shadow: 0 10px 30px rgba(0,0,0,0.05), inset 0 0 20px rgba(180, 160, 130, 0.03);
-            border-radius: 2px;
-            padding: 60px 8%;
+            border-radius: 6px;
+            padding: 50px 8% 60px;
             position: relative;
             width: 100%;
-            margin: 0 auto;
+            max-width: 680px;
+            margin: 10px auto 30px;
+            border: 1px solid var(--border);
+        }
+
+        /* 區分自己寄的與筆友寄的信紙 */
+        .letter-sheet.my-letter {
+            background-color: #fafcfc; 
+            border-top: 4px solid var(--color-tasks);
+            box-shadow: 0 8px 24px rgba(107, 142, 115, 0.05), inset 0 0 20px rgba(180, 160, 130, 0.02);
+        }
+        .letter-sheet.partner-letter {
+            background-color: #fcfaf5; 
+            border-top: 4px solid var(--color-inbox);
+            box-shadow: 0 8px 24px rgba(217, 138, 108, 0.05), inset 0 0 20px rgba(180, 160, 130, 0.02);
+        }
+
+        /* 橫跨信紙的優雅徽章標籤 */
+        .letter-badge {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            font-size: 0.75rem;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            z-index: 10;
+            font-family: var(--font-sans);
+        }
+        .my-letter .letter-badge {
+            background: rgba(107, 142, 115, 0.1);
+            color: var(--color-tasks);
+            border: 1px solid rgba(107, 142, 115, 0.2);
+        }
+        .partner-letter .letter-badge {
+            background: rgba(217, 138, 108, 0.1);
+            color: var(--color-inbox);
+            border: 1px solid rgba(217, 138, 108, 0.2);
         }
 
         /* 淺色、一致且不干擾文字的橫紋 */
         .letter-sheet::after {
             content: '';
             position: absolute;
-            top: 80px; bottom: 60px; left: 6%; right: 6%;
-            border-top: 1px solid rgba(160, 140, 120, 0.2);
+            top: 110px; bottom: 50px; left: 8%; right: 8%;
+            border-top: 1px solid rgba(160, 140, 120, 0.12);
             /* 每 40px 一條橫線，顏色統一且淺淡 */
-            background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, rgba(160, 140, 120, 0.2) 39px, rgba(160, 140, 120, 0.2) 40px);
+            background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, rgba(160, 140, 120, 0.12) 39px, rgba(160, 140, 120, 0.12) 40px);
             pointer-events: none;
             z-index: 1;
         }
 
-        .letter-meta { font-size: 0.85rem; font-family: var(--font-sans); color: #94a3b8; text-align: right; margin-bottom: 30px; position: relative; z-index: 2; border-bottom: 1px dashed #e2e8f0; padding-bottom: 15px; }
+        .letter-meta { font-size: 0.85rem; font-family: var(--font-sans); color: #94a3b8; text-align: right; margin-bottom: 25px; margin-top: 5px; position: relative; z-index: 2; border-bottom: 1px dashed #e2e8f0; padding-bottom: 15px; }
         
         /* 文字高度完美吻合橫紋 (40px) */
         .letter-text { position: relative; z-index: 2; font-family: var(--font-serif); font-size: 1.1rem; color: #4a4238; line-height: 40px; white-space: pre-wrap; text-align: justify; }
@@ -202,6 +242,12 @@
         .env-flap { position: absolute; top: 0; left: 0; right: 0; height: 140px; background: #d8c8b0; clip-path: polygon(0 0, 100% 0, 50% 100%); transform-origin: top; z-index: 15; }
         .env-seal { position: absolute; top: 110px; left: 50%; transform: translate(-50%, -50%) scale(0); width: 45px; height: 45px; background: #c25953; border-radius: 50%; z-index: 20; }
     </style>
+    <script>
+        // 用戶快速登入狀態視覺處理，避免登入按鈕於未載入完成前閃爍
+        if (localStorage.getItem('hasLoggedIn') === 'true') {
+            document.write('<style>#login-container { display: none !important; } #loading-container { display: flex !important; }</style>');
+        }
+    </script>
 </head>
 <body>
 
@@ -215,6 +261,12 @@
             <p>在喧囂的世界裡，留一方靜謐的角落。<br>寫下你的閱讀感悟，等待另一顆靈魂的真誠共鳴。</p>
         </div>
         <div class="auth-sidebar">
+            <!-- Loading Box for Auto-Login -->
+            <div id="loading-container" class="auth-panel-content" style="display:none;">
+                <div><h2>歡迎歸來</h2><p>正在為您整理書齋，請稍候...</p></div>
+                <div style="font-size: 0.9rem; color: var(--text-muted); font-style: italic;">見字如面，正在載入書信與對話...</div>
+            </div>
+
             <div id="login-container" class="auth-panel-content">
                 <div><h2>登入交流</h2><p>開啟您的文字旅程</p></div>
                 <button class="btn btn-google" onclick="signIn()">使用 Google 帳號登入</button>
@@ -313,6 +365,17 @@
     <!-- Three.js Background -->
     <script>
         let scene, camera, renderer, particles; let run3D = true;
+        
+        function handleResize() {
+            if (!camera || !renderer) return;
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            if (w === 0 || h === 0) return; // 避免維度為零時計算出 NaN 導致渲染崩潰
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+        }
+
         function initThreeJS() {
             const container = document.getElementById('canvas-container');
             scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0xfaf7f2, 0.0025);
@@ -326,8 +389,24 @@
                 m.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
                 m.userData = { rotSpeedX:(Math.random()-0.5)*0.015, rotSpeedY:(Math.random()-0.5)*0.015, floatSpeed:Math.random()*0.03+0.01 }; particles.add(m);
             }
-            window.addEventListener('resize', () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }); animateThreeJS();
+            window.addEventListener('resize', handleResize); animateThreeJS();
         }
+
+        function destroyThreeJS() {
+            run3D = false;
+            if (renderer) {
+                try {
+                    renderer.dispose();
+                } catch (e) {
+                    console.warn("Renderer already disposed.", e);
+                }
+                renderer = null;
+            }
+            const container = document.getElementById('canvas-container');
+            if (container) container.innerHTML = '';
+            window.removeEventListener('resize', handleResize);
+        }
+
         function animateThreeJS() { if(!run3D) return; requestAnimationFrame(animateThreeJS); particles.children.forEach(m => { m.rotation.x+=m.userData.rotSpeedX; m.rotation.y+=m.userData.rotSpeedY; m.position.y+=m.userData.floatSpeed; m.position.x+=Math.sin(m.position.y*0.05)*0.02; if(m.position.y>60) m.position.y=-60; }); renderer.render(scene, camera); }
         initThreeJS();
     </script>
@@ -355,16 +434,41 @@
             if (user) {
                 currentUser = user;
                 db.ref(`users/${user.uid}`).once('value', snap => {
-                    if (snap.val() && snap.val().name) { document.getElementById('user-name').innerText = snap.val().name; hideAuthOverlay(); initApp(); } 
-                    else { document.getElementById('login-container').style.display = 'none'; document.getElementById('name-setup-container').style.display = 'flex'; }
+                    if (snap.val() && snap.val().name) { 
+                        localStorage.setItem('hasLoggedIn', 'true');
+                        document.getElementById('user-name').innerText = snap.val().name; 
+                        hideAuthOverlay(); 
+                        initApp(); 
+                    } 
+                    else { 
+                        document.getElementById('loading-container').style.display = 'none';
+                        document.getElementById('login-container').style.display = 'none'; 
+                        document.getElementById('name-setup-container').style.display = 'flex'; 
+                    }
                 });
-            } else { document.getElementById('auth-overlay').style.display = 'flex'; document.getElementById('login-container').style.display = 'flex'; document.getElementById('name-setup-container').style.display = 'none'; run3D = true; animateThreeJS(); }
+            } else { 
+                localStorage.removeItem('hasLoggedIn');
+                document.getElementById('loading-container').style.display = 'none';
+                document.getElementById('auth-overlay').style.display = 'flex'; 
+                document.getElementById('login-container').style.display = 'flex'; 
+                document.getElementById('name-setup-container').style.display = 'none'; 
+                run3D = true; 
+                animateThreeJS(); 
+            }
         });
 
-        function hideAuthOverlay() { gsap.to("#auth-overlay", { opacity: 0, duration: 0.6, onComplete: () => { document.getElementById('auth-overlay').style.display = 'none'; run3D = false; }}); }
+        function hideAuthOverlay() { 
+            gsap.to("#auth-overlay", { opacity: 0, duration: 0.6, onComplete: () => { 
+                document.getElementById('auth-overlay').style.display = 'none'; 
+                destroyThreeJS(); // 登入後徹底銷毀 3D 背景，避免背景運作造成分頁重回時凍結
+            }}); 
+        }
         function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
-        function signOut() { auth.signOut().then(() => window.location.reload()); }
-        function saveName() { const name = document.getElementById('setup-name').value.trim(); if (!name) return alert("請輸入姓名"); db.ref(`users/${currentUser.uid}`).set({ name, email: currentUser.email }).then(() => { document.getElementById('user-name').innerText = name; hideAuthOverlay(); initApp(); }); }
+        function signOut() { 
+            localStorage.removeItem('hasLoggedIn');
+            auth.signOut().then(() => window.location.reload()); 
+        }
+        function saveName() { const name = document.getElementById('setup-name').value.trim(); if (!name) return alert("請輸入姓名"); db.ref(`users/${currentUser.uid}`).set({ name, email: currentUser.email }).then(() => { localStorage.setItem('hasLoggedIn', 'true'); document.getElementById('user-name').innerText = name; hideAuthOverlay(); initApp(); }); }
 
         function initApp() { healPool(); db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); setupNotifications(); loadMailbox(); loadReadingLogs(); }
 
@@ -416,8 +520,14 @@
                 document.querySelector('.tab-replies').classList.toggle('has-unread', unreadInReplies);
                 document.querySelector('.tab-inbox').classList.toggle('has-unread', unreadInInbox);
 
-                if (currentPageReplies > Math.ceil(repliesData.length / ITEMS_PER_PAGE) || 1) currentPageReplies = Math.ceil(repliesData.length / ITEMS_PER_PAGE) || 1;
-                if (currentPageInbox > Math.ceil(inboxData.length / ITEMS_PER_PAGE) || 1) currentPageInbox = Math.ceil(inboxData.length / ITEMS_PER_PAGE) || 1;
+                const maxPageReplies = Math.ceil(repliesData.length / ITEMS_PER_PAGE) || 1;
+                if (currentPageReplies > maxPageReplies) {
+                    currentPageReplies = maxPageReplies;
+                }
+                const maxPageInbox = Math.ceil(inboxData.length / ITEMS_PER_PAGE) || 1;
+                if (currentPageInbox > maxPageInbox) {
+                    currentPageInbox = maxPageInbox;
+                }
 
                 renderPaginatedList('replies', repliesData, currentPageReplies);
                 renderPaginatedList('inbox', inboxData, currentPageInbox);
@@ -589,10 +699,11 @@
                             </a>`;
                         }
 
-                        // 以信紙樣式輸出
+                        // 以信紙樣式輸出，並區分自己與對方
                         flow.innerHTML += `
-                        <div class="letter-sheet">
-                            <div class="letter-meta">${isMe ? '我的文字' : '筆友的來信'} · ${tStr}</div>
+                        <div class="letter-sheet ${isMe ? 'my-letter' : 'partner-letter'}">
+                            <span class="letter-badge">${isMe ? '我寄出的信' : '筆友的來信'}</span>
+                            <div class="letter-meta">${isMe ? '寄自 我的書房' : '來自 筆友的信箱'} · ${tStr}</div>
                             <div class="letter-text">${formattedText}</div>
                             ${imgTag}
                         </div>`;
