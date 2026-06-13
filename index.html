@@ -181,18 +181,21 @@
             letter-spacing: 1px; margin-bottom: 40px; position: relative; z-index: 2; border-bottom: 1px dashed rgba(160, 140, 120, 0.3); padding-bottom: 15px;
         }
 
-        .letter-text {
-            position: relative; z-index: 2; font-family: var(--font-serif); font-size: 1.12rem; color: var(--letter-ink); 
-            line-height: 40px; letter-spacing: 1.5px; white-space: pre-wrap; text-align: justify;
-        }
+       .letter-text {
+    position: relative; z-index: 2; font-family: var(--font-serif); font-size: 1.12rem; color: var(--letter-ink); 
+    line-height: 40px; letter-spacing: 1.5px; white-space: pre-wrap; text-align: justify;
+    word-break: break-word; /* 加上這行強制長單字換行 */
+    overflow-wrap: break-word; /* 加上這行確保超出容器時換行 */
+}
 
         .letter-section-divider {
             display: block; text-align: center; font-size: 0.95rem; color: #9c8a75; letter-spacing: 0.6em; 
             margin: 2.5em 0 1.5em 0; position: relative; font-weight: 400; font-family: var(--font-serif);
         }
-        .letter-section-divider::before, .letter-section-divider::after {
-            content: ''; position: absolute; top: 50%; width: 20%; height: 1px; background: rgba(160, 140, 120, 0.25);
-        }
+       .letter-section-divider::before, .letter-section-divider::after {
+    content: ''; position: absolute; top: 50%; width: 20%; height: 1px; background: rgba(160, 140, 120, 0.25);
+}
+.letter-section-divider::before { left: 5%; } .letter-section-divider::after { right: 5%; }
         .letter-section-divider::before { left: 5%; } .letter-section-divider::after { right: 5%; }
 
         .letter-img-wrap { display: block; margin: 40px auto; text-align: center; position: relative; z-index: 2; }
@@ -253,8 +256,7 @@
             .letter-sheet { padding: 40px 6% 50px 6%; }
             .letter-sheet::after { left: 6%; right: 6%; }
             .letter-text { font-size: 1.05rem; }
-            .letter-section-divider::before { left: 2%; width: 15%; }
-            .letter-section-divider::after { right: 2%; width: 15%; }
+          
             
             /* 閱讀紀錄適配 */
             .log-header-container { flex-direction: column; align-items: flex-start; gap: 15px; }
