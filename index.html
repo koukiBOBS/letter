@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>閱讀交流與書房</title>
+    <title>閱讀交流與書房 - 手寫信箋</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -107,6 +107,11 @@
         .textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; font-family: var(--font-serif); font-size: 1.1rem; line-height: 1.8; resize: vertical; outline: none; }
         .textarea:focus { border-color: var(--color-tasks); box-shadow: 0 0 0 3px rgba(107, 142, 115, 0.1); }
         .flex-row { display: flex; gap: 20px; } .flex-row > div { flex: 1; }
+        
+        /* 針對只能手寫的輸入框特別樣式 */
+        .handwrite-only { cursor: pointer; background-color: #faf9f7; }
+        .handwrite-only:focus { border-color: #b4a08c; box-shadow: 0 0 0 3px rgba(180, 160, 140, 0.2); }
+        .handwrite-placeholder { font-size: 0.9rem; color: #9c8a75; font-style: italic; display: block; margin-top: 5px; }
 
         /* Upload */
         .upload-container { background: #fafaf9; padding: 24px; border-radius: 12px; border: 1px dashed #cbd5e1; display: flex; flex-direction: column; gap: 12px; }
@@ -155,7 +160,6 @@
         }
         .modal-close-btn:hover { transform: scale(1.1); color: #fff; }
 
-        /* Elegant Letter Sheets */
         .letter-sheet {
             background-color: var(--letter-paper);
             background-image: linear-gradient(to right, transparent 49.8%, rgba(0,0,0,0.02) 50%, transparent 50.2%);
@@ -169,105 +173,84 @@
         .letter-sheet.my-letter { background-color: #faf6eb; border-left: 4px solid var(--color-replies); }
         .letter-sheet.partner-letter { background-color: #fcfbfa; border-left: 4px solid var(--color-inbox); }
 
-        .letter-sheet::after {
-            content: ''; position: absolute; top: 100px; bottom: 80px; left: 8%; right: 8%;
-            border-top: 1px solid rgba(160, 140, 120, 0.2);
-            background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--letter-line) 39px, var(--letter-line) 40px);
-            pointer-events: none; z-index: 1;
-            display: none; /* 關閉舊的背景線，改由文字區塊自行繪製 */
-        }
-
         .letter-header-meta {
             display: flex; justify-content: space-between; font-family: var(--font-serif); font-size: 0.9rem; color: #a48c76; 
             letter-spacing: 1px; margin-bottom: 40px; position: relative; z-index: 2; border-bottom: 1px dashed rgba(160, 140, 120, 0.3); padding-bottom: 15px;
         }
 
-      .letter-text {
-    position: relative; 
-    z-index: 2; 
-    font-family: var(--font-serif); 
-    font-size: 1.12rem; 
-    color: var(--letter-ink); 
-    
-    /* 核心對齊設定 */
-    line-height: 40px; 
-    background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--letter-line) 39px, var(--letter-line) 40px);
-    background-position: top 0 left 0;
-    
-    letter-spacing: 1.5px; 
-    white-space: pre-wrap; 
-    text-align: justify;
-    word-break: break-word; 
-    overflow-wrap: break-word; 
-}
+        .letter-text {
+            position: relative; z-index: 2; font-family: var(--font-serif); font-size: 1.12rem; color: var(--letter-ink); 
+            line-height: 40px; background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--letter-line) 39px, var(--letter-line) 40px);
+            background-position: top 0 left 0; letter-spacing: 1.5px; white-space: pre-wrap; text-align: justify;
+            word-break: break-word; overflow-wrap: break-word; 
+        }
 
-#reply-text { 
-    min-height: 160px; 
-    border: none; 
-    padding: 0; 
-    font-size: 1.12rem; 
-    
-    /* 回信框也套用相同的對齊設定 */
-    line-height: 40px; 
-    background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--letter-line) 39px, var(--letter-line) 40px);
-    background-position: top 0 left 0;
-    background-color: transparent;
-    background-attachment: local; /* 確保打字往下捲動時，線條也會跟著捲動 */
-    margin-bottom: 25px; 
-}
+        #reply-text { 
+            min-height: 160px; border: none; padding: 0; font-size: 1.12rem; 
+            line-height: 40px; background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--letter-line) 39px, var(--letter-line) 40px);
+            background-position: top 0 left 0; background-color: transparent;
+            background-attachment: local; margin-bottom: 25px; 
+        }
 
-     .letter-section-divider {
-    display: inline-block; /* 關鍵修正：避免與前段的換行符號產生雙重高度 */
-    width: 100%;           /* 確保它仍佔滿整行 */
-    text-align: center; 
-    font-size: 0.95rem; 
-    color: #9c8a75; 
-    letter-spacing: 0.6em; 
-    margin: 0; 
-    line-height: 40px;     /* 鎖定 40px 確保不跑位 */
-    position: relative; 
-    font-weight: 400; 
-    font-family: var(--font-serif);
-    vertical-align: top;
-}
-
+        .letter-section-divider {
+            display: inline-block; width: 100%; text-align: center; font-size: 0.95rem; color: #9c8a75; 
+            letter-spacing: 0.6em; margin: 0; line-height: 40px; position: relative; font-weight: 400; 
+            font-family: var(--font-serif); vertical-align: top;
+        }
 
         .letter-img-wrap { 
-    display: block; 
-    width: fit-content; /* 確保外框包覆圖片，才能完美置中 */
-    margin: 40px auto; 
-    text-align: center; 
-    position: relative; 
-    z-index: 2; 
-    transform: rotate(-2deg); /* 微微傾斜，營造手工夾入的隨性感 */
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.letter-img-wrap:hover {
-    transform: rotate(0deg) scale(1.02); /* 滑鼠懸浮時擺正並微放大 */
-}
-
-.letter-img { 
-    max-width: 90%; 
-    max-height: 380px; 
-    object-fit: cover; 
-    background-color: #fff;
-    /* 拍立得邊框：上左右等寬，下方較寬 */
-    padding: 12px 12px 40px 12px; 
-    border: 1px solid #e6e1d6;
-    box-shadow: 0 8px 25px rgba(140, 120, 100, 0.15), inset 0 0 4px rgba(0,0,0,0.05); 
-    border-radius: 4px;
-    filter: sepia(15%) contrast(90%) brightness(98%); /* 復古泛黃濾鏡 */
-    transition: filter 0.4s; 
-}
-
-.letter-img:hover { 
-    filter: none; /* 移上去時恢復原圖色彩 */
-}
-
+            display: block; width: fit-content; margin: 40px auto; text-align: center; position: relative; z-index: 2; 
+            transform: rotate(-2deg); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .letter-img-wrap:hover { transform: rotate(0deg) scale(1.02); }
+        .letter-img { 
+            max-width: 90%; max-height: 380px; object-fit: cover; background-color: #fff;
+            padding: 12px 12px 40px 12px; border: 1px solid #e6e1d6;
+            box-shadow: 0 8px 25px rgba(140, 120, 100, 0.15), inset 0 0 4px rgba(0,0,0,0.05); 
+            border-radius: 4px; filter: sepia(15%) contrast(90%) brightness(98%); transition: filter 0.4s; 
+        }
+        .letter-img:hover { filter: none; }
         .reply-sheet { padding: 50px 8%; margin-top: 20px; }
-        #reply-text { min-height: 160px; border: none; background: transparent; padding: 0; line-height: 40px; margin-bottom: 25px; font-size: 1.12rem; }
-        #reply-text:focus { box-shadow: none; background: transparent; }
+
+        /* ====================================================
+           🖋️ 手寫板專屬 UI 設計
+           ==================================================== */
+        #hw-keyboard {
+            position: fixed; bottom: -100%; left: 0; right: 0; height: 380px; background: #ece8e1;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.15); z-index: 10005; display: flex; flex-direction: column;
+            transition: bottom 0.4s cubic-bezier(0.2, 0, 0.2, 1); border-top: 1px solid #dcd5c9;
+        }
+        #hw-keyboard.active { bottom: 0; }
+        .hw-toolbar {
+            display: flex; gap: 8px; padding: 12px 15px; background: #e3dcd1; border-bottom: 1px solid #d1c8ba;
+            overflow-x: auto; white-space: nowrap; align-items: center;
+        }
+        .hw-btn {
+            background: #fff; border: 1px solid #c8bdae; color: #4a4238; font-family: var(--font-serif);
+            font-size: 1.1rem; padding: 6px 14px; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 0 #d1c8ba;
+            transition: 0.1s; display: inline-flex; align-items: center; justify-content: center;
+        }
+        .hw-btn:active { transform: translateY(2px); box-shadow: 0 0 0 #d1c8ba; }
+        .hw-btn.action { background: #6b8e73; color: white; border-color: #53735a; box-shadow: 0 2px 0 #46644d; font-family: var(--font-sans); font-size: 0.9rem;}
+        .hw-btn.delete { background: #d98a6c; color: white; border-color: #bc6b4c; box-shadow: 0 2px 0 #a35538; font-family: var(--font-sans); font-size: 0.9rem;}
+        
+        .hw-candidates-wrap {
+            display: flex; gap: 5px; padding: 10px 15px; background: #fdfdfc; border-bottom: 1px solid #e3dcd1;
+            height: 55px; align-items: center; overflow-x: auto;
+        }
+        .hw-candidate {
+            font-size: 1.5rem; font-family: var(--font-serif); padding: 0 15px; cursor: pointer; color: #2c3e50;
+            border-right: 1px dashed #d1c8ba; min-width: 50px; text-align: center;
+        }
+        .hw-candidate:last-child { border-right: none; }
+        .hw-candidate:hover { color: var(--color-tasks); font-weight: bold; background: #f4f0ea; border-radius: 4px;}
+
+        .hw-canvas-container { flex: 1; position: relative; background: #faf9f7; cursor: crosshair; }
+        #hw-canvas { width: 100%; height: 100%; display: block; }
+        .hw-clear-btn {
+            position: absolute; bottom: 15px; right: 15px; background: rgba(0,0,0,0.5); color: white;
+            border: none; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; cursor: pointer;
+        }
 
         /* Envelope Anim */
         #anim-overlay { position: fixed; inset: 0; background: rgba(250, 247, 242, 0.95); z-index: 9999; align-items: center; justify-content: center; perspective: 1200px; display: none;}
@@ -282,9 +265,6 @@
         .env-flap { position: absolute; top: 0; left: 0; right: 0; height: 140px; background: #d8c8b0; clip-path: polygon(0 0, 100% 0, 50% 100%); transform-origin: top; z-index: 15; }
         .env-seal { position: absolute; top: 110px; left: 50%; transform: translate(-50%, -50%) scale(0); width: 45px; height: 45px; background: #c25953; border-radius: 50%; z-index: 20; }
 
-        /* ====================================================
-           ✨ 響應式設計 (RWD) 針對手機與小螢幕適配 ✨
-           ==================================================== */
         @media (max-width: 768px) {
             #auth-overlay { flex-direction: column; justify-content: center; align-items: center; }
             .auth-hero { display: none; }
@@ -310,11 +290,6 @@
             .toggle-add-btn { align-self: flex-end; margin-top: -45px; }
             .env-wrapper { transform: scale(0.85); }
         }
-
-
-
-
-        
     </style>
 </head>
 <body>
@@ -326,7 +301,7 @@
         <div id="canvas-container"></div>
         <div class="auth-hero">
             <h1>紙短情長<br>見字如面</h1>
-            <p>在喧囂的世界裡，留一方靜謐的角落。<br>寫下你的閱讀感悟，等待另一顆靈魂的真誠共鳴。</p>
+            <p>在喧囂的世界裡，留一方靜謐的角落。<br>一筆一劃寫下感悟，等待另一顆靈魂的真誠共鳴。</p>
         </div>
         <div class="auth-sidebar">
             <div id="login-container" class="auth-panel-content">
@@ -355,6 +330,29 @@
         </div>
     </div>
 
+    <!-- Handwriting Keyboard Pad -->
+    <div id="hw-keyboard">
+        <div class="hw-toolbar">
+            <button class="hw-btn" onclick="insertChar('，')">，</button>
+            <button class="hw-btn" onclick="insertChar('。')">。</button>
+            <button class="hw-btn" onclick="insertChar('？')">？</button>
+            <button class="hw-btn" onclick="insertChar('！')">！</button>
+            <button class="hw-btn" onclick="insertChar('、')">、</button>
+            <button class="hw-btn" onclick="insertChar('《')">《</button>
+            <button class="hw-btn" onclick="insertChar('》')">》</button>
+            <span style="flex-grow: 1;"></span>
+            <button class="hw-btn delete" onclick="hwBackspace()">⌫ 刪除</button>
+            <button class="hw-btn action" onclick="closeHwKeyboard()">完成輸入</button>
+        </div>
+        <div class="hw-candidates-wrap" id="hw-candidates">
+            <div style="color:#9c8a75; font-size:0.9rem; padding:0 15px;">請在下方畫板手寫文字...</div>
+        </div>
+        <div class="hw-canvas-container">
+            <canvas id="hw-canvas"></canvas>
+            <button class="hw-clear-btn" onclick="clearHwCanvas()">清空畫板</button>
+        </div>
+    </div>
+
     <header>
         <h2>閱讀交流</h2>
         <div class="user-info"><span id="user-name">載入中...</span><a onclick="signOut()">暫別登出</a></div>
@@ -378,12 +376,22 @@
                 <h3 id="task-title" class="serif-text" style="margin-bottom: 30px; font-size: 1.5rem;">撰寫任務</h3>
                 
                 <div class="field-group flex-row">
+                    <!-- 書名與頁數允許鍵盤輸入 -->
                     <div><label class="field-label">書籍名稱</label><input type="text" id="book-title" class="input-box" style="font-family:var(--font-serif);" placeholder="請輸入書名"></div>
                     <div><label class="field-label">目前閱讀頁數</label><input type="number" id="book-page" class="input-box" placeholder="例如：120" min="1"></div>
                 </div>
 
-                <div class="field-group"><label class="field-label">思考問題</label><textarea id="log-question" class="textarea" style="min-height:100px;" placeholder="思考問題（無字數限制）..."></textarea></div>
-                <div class="field-group"><label class="field-label">閱讀感悟</label><textarea id="log-content" class="textarea" style="min-height:220px;" placeholder="在此寫下您的閱讀心得...（最少 150 字）"></textarea></div>
+                <!-- 思考問題與閱讀心得強制手寫 -->
+                <div class="field-group">
+                    <label class="field-label">思考問題</label>
+                    <textarea id="log-question" class="textarea handwrite-only" style="min-height:100px;" readonly placeholder="點此喚出手寫板進行書寫..."></textarea>
+                    <span class="handwrite-placeholder">📝 本區域僅限手寫輸入，以保持見字如面的真誠。</span>
+                </div>
+                <div class="field-group">
+                    <label class="field-label">閱讀感悟</label>
+                    <textarea id="log-content" class="textarea handwrite-only" style="min-height:220px;" readonly placeholder="在此手寫下您的閱讀心得...（最少 150 字）"></textarea>
+                    <span class="handwrite-placeholder">📝 本區域僅限手寫輸入，禁止鍵盤打字或貼上。</span>
+                </div>
 
                 <div class="field-group upload-container">
                     <label class="field-label" style="margin-bottom: 0;">書頁留影／感悟配圖</label>
@@ -406,7 +414,7 @@
             <div class="editor" id="mylog-editor" style="display: none; margin-bottom: 30px;">
                 <h4 class="serif-text" style="margin-bottom: 20px; color: var(--color-log);">新增紀錄</h4>
                 <div class="field-group"><label class="field-label">書籍名稱</label><input type="text" id="mylog-title" class="input-box" style="font-family:var(--font-serif);" placeholder="請輸入書名"></div>
-                <div class="field-group"><label class="field-label">私密筆記</label><textarea id="mylog-notes" class="textarea" style="min-height:100px;" placeholder="寫下專屬於你的私密閱讀筆記 (自由發揮)..."></textarea></div>
+                <div class="field-group"><label class="field-label">私密筆記</label><textarea id="mylog-notes" class="textarea" style="min-height:100px;" placeholder="寫下專屬於你的私密閱讀筆記 (此處允許自由打字)..."></textarea></div>
                 <button class="btn" id="btn-save-log" style="background: var(--color-log); width: auto;" onclick="submitReadingLog()">保存紀錄</button>
             </div>
             <div id="mylog-list"></div>
@@ -417,7 +425,7 @@
     <div id="modal">
         <button class="modal-close-btn" onclick="closeModal()">×</button>
         <div class="letter-desk" id="chat-flow">
-            <!-- 動態生成 .letter-sheet 信紙與回信信箋 -->
+            <!-- 動態生成 -->
         </div>
     </div>
 
@@ -460,7 +468,14 @@
         const ITEMS_PER_PAGE = 10; let repliesData = []; let inboxData = []; let currentPageReplies = 1; let currentPageInbox = 1;
         let isSubmittingLog = false; let isSubmittingReply = false;
 
-        // 🌟 自動登入機制修復：增加錯誤捕捉，避免意外卡死
+        // 手寫板相關變數
+        let activeHwInput = null;
+        let hwCanvas, hwCtx;
+        let isDrawing = false;
+        let strokes = []; 
+        let currentStroke = [[], [], []]; // x, y, time
+        let hwTimeout = null;
+
         auth.onAuthStateChanged(user => {
             if (user) {
                 currentUser = user;
@@ -495,7 +510,8 @@
             const btn = document.getElementById('btn-setup-name');
             btn.disabled = true; btn.innerText = "設定中...";
             
-            db.ref(`users/${currentUser.uid}`).set({ name, email: currentUser.email }).then(() => { 
+            // 🌟 解決問題 3：初始化 receivedCount 為 0
+            db.ref(`users/${currentUser.uid}`).set({ name, email: currentUser.email, receivedCount: 0 }).then(() => { 
                 document.getElementById('user-name').innerText = name; 
                 hideAuthOverlay(); 
                 initApp(); 
@@ -505,7 +521,12 @@
             }); 
         }
 
-        function initApp() { healPool(); db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }, err => console.error(err)); setupNotifications(); loadMailbox(); loadReadingLogs(); }
+        function initApp() { 
+            healPool(); 
+            db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }, err => console.error(err)); 
+            setupNotifications(); loadMailbox(); loadReadingLogs(); 
+            initHandwriting();
+        }
 
         function setupNotifications() {
             const threadRef = db.ref(`user_threads/${currentUser.uid}`);
@@ -574,6 +595,9 @@
                             const now = firebase.database.ServerValue.TIMESTAMP;
                             db.ref(`user_threads/${currentUser.uid}/${rId}`).set({ letterId: rId, bookTitle: lData.bookTitle, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: now });
                             db.ref(`user_threads/${lData.senderUid}/${rId}`).set({ letterId: rId, bookTitle: lData.bookTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: now });
+                            
+                            // 🌟 更新接信者的 receivedCount
+                            db.ref(`users/${currentUser.uid}/receivedCount`).transaction(count => (count || 0) + 1);
                         }
                     }).catch(err => console.error("配對讀取異常:", err));
                 }
@@ -695,87 +719,82 @@
             }).catch(err => console.error("讀取任務狀態異常:", err));
         }
 
-      function openChat(id) {
-    db.ref(`user_threads/${currentUser.uid}/${id}`).update({hasUnread: false});
-    db.ref(`letters/${id}`).once('value').then(lSnap => {
-        const l = lSnap.val(); if (!l) return;
-        
-        const flow = document.getElementById('chat-flow'); 
-        const partnerUid = currentUser.uid === l.senderUid ? l.recipientUid : l.senderUid;
-        
-        if (currentChatRef) currentChatRef.off(); 
-        currentChatRef = db.ref(`conversations/${id}`);
-        
-        // 🌟 修正 1：改用 .once('value')，避免回信動畫播放時背景重新渲染導致閃爍
-        currentChatRef.once('value').then(cSnap => {
-            const messages = cSnap.val() || {};
-            const msgKeys = Object.keys(messages);
-            
-            // 🌟 修正 2：用 contentHTML 集中組裝字串，最後一次性寫入，大幅提升效能
-            let contentHTML = '';
-            
-            msgKeys.forEach((key, index) => {
-                const m = messages[key];
-                const isMe = m.senderUid === currentUser.uid; 
-                const d = new Date(m.timestamp);
-                const tStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+        function openChat(id) {
+            db.ref(`user_threads/${currentUser.uid}/${id}`).update({hasUnread: false});
+            db.ref(`letters/${id}`).once('value').then(lSnap => {
+                const l = lSnap.val(); if (!l) return;
                 
-                let formattedText = escapeHtml(m.text);
-                formattedText = formattedText.replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀頁數</span>');
-                formattedText = formattedText.replace(/【思考問題】/g, '<span class="letter-section-divider">思考問題</span>');
-                formattedText = formattedText.replace(/【閱讀心得】/g, '<span class="letter-section-divider">閱讀感悟</span>');
-
-                let imgTag = m.imageUrl ? `<a href="${m.imageUrl}" target="_blank" class="letter-img-wrap" title="點擊檢視相片"><img src="${m.imageUrl}" class="letter-img" alt="隨信相片" referrerpolicy="no-referrer" loading="lazy"></a>` : '';
-                const letterClass = isMe ? 'my-letter' : 'partner-letter';
-                const letterHeaderLabel = isMe ? '✍️ 我的手札' : '📬 筆友的來信';
-
-                contentHTML += `
-                <div class="letter-sheet ${letterClass}" style="animation-delay: ${index * 0.15}s;">
-                    <div class="letter-header-meta"><span>${letterHeaderLabel}</span><span>${tStr}</span></div>
-                    <div class="letter-text">${formattedText}</div>
-                    ${imgTag}
-                </div>`;
-            });
-
-            contentHTML += `
-            <div class="letter-sheet reply-sheet my-letter" style="animation-delay: ${msgKeys.length * 0.15}s;">
-                <div class="letter-header-meta"><span>✍️ 提筆回信</span><span>紙短情長</span></div>
-                <textarea id="reply-text" class="textarea" placeholder="在此處提筆，寫下你的回音...（最少 100 字）"></textarea>
-                <div style="text-align: center;"><button class="btn" style="margin: 0 auto; padding: 12px 40px; background: var(--color-replies);" id="btn-send-reply">寄出回信</button></div>
-            </div>`;
-
-            // 一次性將組裝好的信件寫入畫面
-            flow.innerHTML = contentHTML;
-
-            document.getElementById('btn-send-reply').onclick = () => {
-                const txt = document.getElementById('reply-text').value.trim();
-                if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
-                if (isSubmittingReply) return;
-                isSubmittingReply = true;
+                const flow = document.getElementById('chat-flow'); 
+                const partnerUid = currentUser.uid === l.senderUid ? l.recipientUid : l.senderUid;
                 
-                const sendBtn = document.getElementById('btn-send-reply');
-                sendBtn.disabled = true; sendBtn.innerText = "寄送中...";
-                playAnim('reply', id, partnerUid, txt);
-            };
+                if (currentChatRef) currentChatRef.off(); 
+                currentChatRef = db.ref(`conversations/${id}`);
+                
+                currentChatRef.once('value').then(cSnap => {
+                    const messages = cSnap.val() || {};
+                    const msgKeys = Object.keys(messages);
+                    let contentHTML = '';
+                    
+                    msgKeys.forEach((key, index) => {
+                        const m = messages[key];
+                        const isMe = m.senderUid === currentUser.uid; 
+                        const d = new Date(m.timestamp);
+                        const tStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+                        
+                        let formattedText = escapeHtml(m.text);
+                        formattedText = formattedText.replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀頁數</span>');
+                        formattedText = formattedText.replace(/【思考問題】/g, '<span class="letter-section-divider">思考問題</span>');
+                        formattedText = formattedText.replace(/【閱讀心得】/g, '<span class="letter-section-divider">閱讀感悟</span>');
 
-            // 🌟 修正 3：將顯示視窗的語法移到資料讀取與排版都「完成後」，才顯示彈跳視窗
-            document.getElementById('modal').style.display = 'flex'; 
-            lockScroll();
-        });
+                        let imgTag = m.imageUrl ? `<a href="${m.imageUrl}" target="_blank" class="letter-img-wrap" title="點擊檢視相片"><img src="${m.imageUrl}" class="letter-img" alt="隨信相片" referrerpolicy="no-referrer" loading="lazy"></a>` : '';
+                        const letterClass = isMe ? 'my-letter' : 'partner-letter';
+                        const letterHeaderLabel = isMe ? '✍️ 我的手札' : '📬 筆友的來信';
+
+                        contentHTML += `
+                        <div class="letter-sheet ${letterClass}" style="animation-delay: ${index * 0.15}s;">
+                            <div class="letter-header-meta"><span>${letterHeaderLabel}</span><span>${tStr}</span></div>
+                            <div class="letter-text">${formattedText}</div>
+                            ${imgTag}
+                        </div>`;
+                    });
+
+                    // 綁定手寫專用的 Reply Textarea
+                    contentHTML += `
+                    <div class="letter-sheet reply-sheet my-letter" style="animation-delay: ${msgKeys.length * 0.15}s;">
+                        <div class="letter-header-meta"><span>✍️ 提筆回信</span><span>紙短情長</span></div>
+                        <textarea id="reply-text" class="textarea handwrite-only" readonly placeholder="點擊喚出手寫板，一筆一劃寫下你的回音...（最少 100 字）"></textarea>
+                        <div style="text-align: center;"><button class="btn" style="margin: 20px auto 0; padding: 12px 40px; background: var(--color-replies);" id="btn-send-reply">寄出回信</button></div>
+                    </div>`;
+
+                    flow.innerHTML = contentHTML;
+
+                    // 綁定手寫喚醒事件
+                    document.getElementById('reply-text').addEventListener('click', function() { openHwKeyboard(this); });
+
+                    document.getElementById('btn-send-reply').onclick = () => {
+                        const txt = document.getElementById('reply-text').value.trim();
+                        if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
+                        if (isSubmittingReply) return;
+                        isSubmittingReply = true;
+                        
+                        const sendBtn = document.getElementById('btn-send-reply');
+                        sendBtn.disabled = true; sendBtn.innerText = "寄送中...";
+                        playAnim('reply', id, partnerUid, txt);
+                    };
+
+                    document.getElementById('modal').style.display = 'flex'; 
+                    lockScroll();
+                });
+            }).catch(err => { alert("讀取信件失敗: " + err.message); unlockScroll(); });
+        }
         
-    }).catch(err => {
-        alert("無法讀取信件資料，請稍後再試。(" + err.message + ")");
-        unlockScroll();
-    });
-}
-        
-        // 🌟 滾動鎖定機制修復：直接隱藏 body overflow，保證不會卡死
         function lockScroll() { document.body.style.overflow = 'hidden'; }
         function unlockScroll() { document.body.style.overflow = ''; }
 
         function closeModal() { 
             if (currentChatRef) currentChatRef.off(); 
             document.getElementById('modal').style.display = 'none'; 
+            closeHwKeyboard();
             unlockScroll();
         }
 
@@ -790,8 +809,27 @@
 
         function processLog(data) {
             const ts = firebase.database.ServerValue.TIMESTAMP; const ref = db.ref('letters').push();
+            
+            // 🌟 解決問題 3：均分派發邏輯 (尋找 receivedCount 最少的使用者)
             db.ref('users').once('value').then(snap => {
-                const uids = Object.keys(snap.val() || {}).filter(u => u !== currentUser.uid); const rec = uids.length ? uids[Math.floor(Math.random() * uids.length)] : "";
+                const users = snap.val() || {};
+                let eligibleUids = Object.keys(users).filter(u => u !== currentUser.uid);
+                let rec = "";
+
+                if (eligibleUids.length > 0) {
+                    let minCount = Infinity;
+                    eligibleUids.forEach(uid => {
+                        let count = users[uid].receivedCount || 0;
+                        if (count < minCount) minCount = count;
+                    });
+                    
+                    let candidates = eligibleUids.filter(uid => (users[uid].receivedCount || 0) === minCount);
+                    rec = candidates[Math.floor(Math.random() * candidates.length)];
+                    
+                    // 🌟 給抽到的幸運兒增加收信次數
+                    db.ref(`users/${rec}/receivedCount`).set(minCount + 1);
+                }
+
                 ref.set({ id: ref.key, senderUid: currentUser.uid, bookTitle: data.title, timestamp: ts, taskIndex: selectedTaskIndex, recipientUid: rec }).then(() => {
                     db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: ts });
                     if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
@@ -805,7 +843,7 @@
                         renderTasks(); alert('心得已寄出！'); switchTab('tab-tasks', document.querySelector('.tab-tasks'));
                     });
                 }).catch(err => {
-                    isSubmittingLog = false; const btn = document.getElementById('btn-submit-task'); if (btn) { btn.disabled = false; btn.innerText = "封裝寄出心得"; } alert("發送失敗，請重試：" + err.message);
+                    isSubmittingLog = false; const btn = document.getElementById('btn-submit-task'); if (btn) { btn.disabled = false; btn.innerText = "封裝寄出心得"; } alert("發送失敗：" + err.message);
                 });
             }).catch(err => {
                 isSubmittingLog = false; const btn = document.getElementById('btn-submit-task'); if (btn) { btn.disabled = false; btn.innerText = "封裝寄出心得"; } alert("配對異常：" + err.message);
@@ -817,8 +855,7 @@
             db.ref(`conversations/${id}`).push({ senderUid: currentUser.uid, text, timestamp: ts }).then(() => {
                 if (pUid) db.ref(`user_threads/${pUid}/${id}`).update({ hasUnread: true, lastUpdated: ts, hasBeenRepliedTo: true });
                 db.ref(`user_threads/${currentUser.uid}/${id}`).update({ hasUnread: false, hasReplied: true, lastUpdated: ts }).then(() => {
-                    isSubmittingReply = false;
-                    closeModal();
+                    isSubmittingReply = false; closeModal();
                 });
             }).catch(err => {
                 isSubmittingReply = false; const sendBtn = document.getElementById('btn-send-reply'); if (sendBtn) { sendBtn.disabled = false; sendBtn.innerText = "寄出回信"; } alert("回信失敗，請重試：" + err.message);
@@ -828,24 +865,18 @@
         function toggleReadingLog() {
             const editor = document.getElementById('mylog-editor');
             if (editor.style.display === 'none') {
-                editor.style.display = 'block';
-                gsap.fromTo(editor, {height: 0, opacity: 0}, {height: 'auto', opacity: 1, duration: 0.4});
-            } else {
-                gsap.to(editor, {opacity: 0, duration: 0.3, onComplete: () => editor.style.display = 'none'});
-            }
+                editor.style.display = 'block'; gsap.fromTo(editor, {height: 0, opacity: 0}, {height: 'auto', opacity: 1, duration: 0.4});
+            } else gsap.to(editor, {opacity: 0, duration: 0.3, onComplete: () => editor.style.display = 'none'});
         }
 
         function submitReadingLog() {
             const title = document.getElementById('mylog-title').value.trim(); const notes = document.getElementById('mylog-notes').value.trim();
             if(!title) return alert("請輸入書籍名稱。");
-            
             const btn = document.getElementById('btn-save-log'); btn.disabled = true; btn.innerText = "保存中...";
             db.ref(`reading_logs/${currentUser.uid}`).push({ bookTitle: title, notes: notes, timestamp: firebase.database.ServerValue.TIMESTAMP }).then(() => {
                 document.getElementById('mylog-title').value = ''; document.getElementById('mylog-notes').value = ''; alert("已成功保存紀錄！"); toggleReadingLog();
                 btn.disabled = false; btn.innerText = "保存紀錄";
-            }).catch(err => {
-                alert("保存失敗：" + err.message); btn.disabled = false; btn.innerText = "保存紀錄";
-            });
+            }).catch(err => { alert("保存失敗：" + err.message); btn.disabled = false; btn.innerText = "保存紀錄"; });
         }
 
         function loadReadingLogs() {
@@ -855,15 +886,148 @@
                 if(logsArray.length === 0) { list.innerHTML = `<div class="empty-state"><p>閱讀紀錄空空如也，點擊上方按鈕添加第一本書吧！</p></div>`; return; }
                 logsArray.forEach(log => {
                     const d = new Date(log.timestamp); const el = document.createElement('div'); el.className = 'log-card';
-                    el.innerHTML = `<h4>《${escapeHtml(log.bookTitle)}》</h4>${log.notes ? `<p>${escapeHtml(log.notes)}</p>` : ''}<div class="date">建立於 ${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}</div><button class="delete-btn" onclick="deleteReadingLog('${log.id}')" title="刪除此紀錄">刪除</button>`;
+                    el.innerHTML = `<h4>《${escapeHtml(log.bookTitle)}》</h4>${log.notes ? `<p>${escapeHtml(log.notes)}</p>` : ''}<div class="date">建立於 ${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}</div><button class="delete-btn" onclick="deleteReadingLog('${log.id}')">刪除</button>`;
                     list.appendChild(el);
                 });
-            }, err => console.error("Logs Error:", err));
+            });
         }
-
-        window.deleteReadingLog = function(id) { if(confirm("確定要將這本書從紀錄中移除嗎？")) db.ref(`reading_logs/${currentUser.uid}/${id}`).remove().catch(e => alert("刪除失敗:" + e.message)); };
+        window.deleteReadingLog = function(id) { if(confirm("確定要將這本書從紀錄中移除嗎？")) db.ref(`reading_logs/${currentUser.uid}/${id}`).remove().catch(e=>alert("刪除失敗")); };
         function switchTab(id, btn) { document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); btn.classList.add('active'); document.getElementById(id).classList.add('active'); }
         function escapeHtml(s) { return s?s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):s; }
+
+        /* ====================================================
+           🖋️ 核心功能：手寫板與禁止鍵盤輸入邏輯
+           ==================================================== */
+        
+        // 綁定主畫面的兩個手寫框
+        document.addEventListener("DOMContentLoaded", () => {
+            const q = document.getElementById('log-question');
+            const c = document.getElementById('log-content');
+            if(q) q.addEventListener('click', function() { openHwKeyboard(this); });
+            if(c) c.addEventListener('click', function() { openHwKeyboard(this); });
+            
+            // 阻斷鍵盤與貼上 (備用防禦機制，readonly 已經很強)
+            document.querySelectorAll('.handwrite-only').forEach(el => {
+                el.addEventListener('keydown', e => { if(e.key !== 'Backspace') e.preventDefault(); });
+                el.addEventListener('paste', e => e.preventDefault());
+                el.addEventListener('drop', e => e.preventDefault());
+            });
+        });
+
+        function initHandwriting() {
+            hwCanvas = document.getElementById('hw-canvas');
+            hwCtx = hwCanvas.getContext('2d');
+            
+            // 設定高解析度 Canvas
+            function resizeCanvas() {
+                const rect = hwCanvas.parentElement.getBoundingClientRect();
+                hwCanvas.width = rect.width; hwCanvas.height = rect.height;
+                hwCtx.lineCap = "round"; hwCtx.lineJoin = "round";
+            }
+            window.addEventListener('resize', resizeCanvas);
+            setTimeout(resizeCanvas, 500);
+
+            // 綁定繪畫事件 (支援滑鼠與觸控)
+            hwCanvas.addEventListener('pointerdown', startStroke);
+            hwCanvas.addEventListener('pointermove', drawStroke);
+            hwCanvas.addEventListener('pointerup', endStroke);
+            hwCanvas.addEventListener('pointercancel', endStroke);
+        }
+
+        function getPointerPos(e) {
+            const rect = hwCanvas.getBoundingClientRect();
+            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        }
+
+        function startStroke(e) {
+            e.preventDefault(); isDrawing = true;
+            const pos = getPointerPos(e);
+            currentStroke = [[pos.x], [pos.y], [Date.now()]];
+            hwCtx.beginPath(); hwCtx.moveTo(pos.x, pos.y);
+            hwCtx.lineWidth = 4; hwCtx.strokeStyle = "#4a4238";
+            clearTimeout(hwTimeout);
+        }
+
+        function drawStroke(e) {
+            if (!isDrawing) return; e.preventDefault();
+            const pos = getPointerPos(e);
+            currentStroke[0].push(pos.x); currentStroke[1].push(pos.y); currentStroke[2].push(Date.now());
+            hwCtx.lineTo(pos.x, pos.y); hwCtx.stroke();
+        }
+
+        function endStroke(e) {
+            if (!isDrawing) return; isDrawing = false; e.preventDefault();
+            if (currentStroke[0].length > 0) strokes.push(currentStroke);
+            hwTimeout = setTimeout(recognizeHandwriting, 600); // 停筆 0.6 秒後自動辨識
+        }
+
+        function recognizeHandwriting() {
+            if (strokes.length === 0) return;
+            const data = {
+                "options": "enable_pre_space",
+                "requests": [{
+                    "writing_guide": { "width": hwCanvas.width, "height": hwCanvas.height },
+                    "ink": strokes, "language": "zh-TW"
+                }]
+            };
+
+            fetch("https://inputtools.google.com/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8", {
+                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res[0] === "SUCCESS") {
+                    const results = res[1][0][1];
+                    renderHwCandidates(results);
+                }
+            }).catch(e => console.error("辨識失敗", e));
+        }
+
+        function renderHwCandidates(words) {
+            const container = document.getElementById('hw-candidates');
+            container.innerHTML = '';
+            if (words.length === 0) {
+                container.innerHTML = '<div style="color:#ef4444; font-size:0.9rem; padding:0 15px;">無法辨識，請重新書寫或寫清楚些。</div>';
+                return;
+            }
+            words.forEach(word => {
+                const span = document.createElement('div');
+                span.className = 'hw-candidate'; span.innerText = word;
+                span.onclick = () => { insertChar(word); clearHwCanvas(); };
+                container.appendChild(span);
+            });
+        }
+
+        function clearHwCanvas() {
+            strokes = []; hwCtx.clearRect(0, 0, hwCanvas.width, hwCanvas.height);
+            document.getElementById('hw-candidates').innerHTML = '<div style="color:#9c8a75; font-size:0.9rem; padding:0 15px;">請在下方畫板手寫文字...</div>';
+        }
+
+        function openHwKeyboard(targetInput) {
+            activeHwInput = targetInput;
+            document.getElementById('hw-keyboard').classList.add('active');
+            
+            // 觸發視窗重算畫布大小
+            setTimeout(() => {
+                const rect = hwCanvas.parentElement.getBoundingClientRect();
+                if(hwCanvas.width !== rect.width) { hwCanvas.width = rect.width; hwCanvas.height = rect.height; hwCtx.lineCap = "round"; hwCtx.lineJoin = "round";}
+            }, 300);
+        }
+
+        function closeHwKeyboard() { document.getElementById('hw-keyboard').classList.remove('active'); clearHwCanvas(); }
+
+        // 插入字元/標點符號的函數
+        function insertChar(char) {
+            if (!activeHwInput) return;
+            activeHwInput.value += char;
+            activeHwInput.scrollTop = activeHwInput.scrollHeight; // 自動向下捲動
+        }
+
+        // 退格刪除鍵
+        function hwBackspace() {
+            if (!activeHwInput || activeHwInput.value.length === 0) return;
+            activeHwInput.value = activeHwInput.value.slice(0, -1);
+        }
     </script>
 </body>
 </html>
