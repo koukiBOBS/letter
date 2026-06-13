@@ -22,7 +22,7 @@
             --primary: #475569; --primary-hover: #334155; --green: #10b981; --red: #ef4444; --yellow: #f59e0b;
             --font-sans: 'Inter', sans-serif; --font-serif: 'Noto Serif TC', serif;
             
-            /* Letter Styles (Imported from Student App) */
+            /* Letter Styles */
             --color-replies: #548ca8; --color-inbox: #d98a6c;
             --letter-paper: #fbf9f4; --letter-ink: #4a4238; --letter-line: rgba(160, 140, 120, 0.25);
         }
@@ -49,11 +49,10 @@
         .section-container.active { display: block; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- Panels & Cards --- */
+        /* --- Panels & Forms --- */
         .panel { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 30px; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
         .panel-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 20px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center;}
         
-        /* Form Elements */
         .form-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
         .form-group { display: flex; flex-direction: column; flex: 1; min-width: 200px; }
         label { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 500; }
@@ -67,22 +66,35 @@
         .btn-danger { background: #fee2e2; color: var(--red); border: 1px solid #fecaca; }
         .btn-danger:hover { background: #fca5a5; color: #fff; }
 
-        /* Tables & Lists */
         .data-table { width: 100%; border-collapse: collapse; }
         .data-table th, .data-table td { padding: 15px; text-align: left; border-bottom: 1px solid var(--border); }
         .data-table th { color: var(--text-muted); font-weight: 500; font-size: 0.9rem; }
         
-        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
-        .task-card { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative;}
+        /* --- Accordion Lists & Tabs (依學生/依任務) --- */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { background: var(--bg); color: var(--text-main); border: 1px solid var(--border); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 500; transition: 0.2s; }
+        .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        
+        .list-item { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; background: var(--paper); overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02);}
+        .list-header { padding: 18px 25px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; transition: 0.2s; }
+        .list-header:hover { background: #f1f5f9; }
+        .list-title { font-weight: 600; font-size: 1.05rem; display: flex; align-items: center; gap: 10px;}
+        .list-subtitle { font-size: 0.85rem; color: var(--text-muted); margin-left: 10px; font-weight: 400;}
+        .list-body { display: none; padding: 25px; border-top: 1px solid var(--border); background: #fff;}
+
+        /* --- Grid Cards --- */
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
+        .task-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; text-align: center; transition: 0.2s; }
+        .task-card:hover { transform: translateY(-3px); box-shadow: 0 8px 16px rgba(0,0,0,0.06); }
         .task-date { font-size: 1.2rem; font-weight: 600; margin-bottom: 5px; }
         .task-index { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px; }
         
-        .status-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+        .status-badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
         .s-ok { background: #dcfce7; color: var(--green); }
         .s-late { background: #fef3c7; color: var(--yellow); }
         .s-miss { background: #fee2e2; color: var(--red); }
 
-        /* --- Letter Reading Modal (Identical to Student View) --- */
+        /* --- Letter Reading Modal --- */
         .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         #modal-reader { position: fixed; inset: 0; background: rgba(20, 18, 16, 0.88); z-index: 5000; display: none; justify-content: center; overflow-y: auto; padding: 40px 20px; backdrop-filter: blur(8px); }
         .modal-close-btn { position: fixed; top: 20px; right: 30px; background: transparent; border: none; font-size: 2.5rem; color: #e6dfd1; cursor: pointer; z-index: 5100; transition: 0.3s; }
@@ -98,7 +110,6 @@
         .letter-img-wrap { display: block; width: fit-content; margin: 40px auto; text-align: center; transform: rotate(-2deg); }
         .letter-img { max-width: 90%; max-height: 380px; object-fit: cover; background-color: #fff; padding: 12px 12px 40px 12px; border: 1px solid #e6e1d6; box-shadow: 0 8px 25px rgba(140, 120, 100, 0.15); display: block; border-radius: 4px; }
 
-        /* Responsive */
         @media (max-width: 768px) {
             body { flex-direction: column; }
             .sidebar { position: relative; width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border); flex-direction: row; align-items: center; justify-content: space-between; padding: 0 15px;}
@@ -114,19 +125,14 @@
 </head>
 <body>
 
-    <!-- 登入畫面 -->
     <div class="overlay" id="auth-screen">
         <div class="panel" style="text-align: center; max-width: 400px; width: 90%;">
             <h2 style="font-family: var(--font-serif); margin-bottom: 10px;">紙短情長</h2>
             <p style="color: var(--text-muted); margin-bottom: 30px;">導師管理中心</p>
-            <button class="btn" style="width: 100%; justify-content: center;" onclick="signIn()">
-                <svg style="width:20px;height:20px;" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C8.36,19.27 5,16.25 5,12C5,7.9 8.2,4.73 12.2,4.73C15.29,4.73 17.1,6.7 17.1,6.7L19,4.72C19,4.72 16.56,2 12.1,2C6.42,2 2.03,6.8 2.03,12C2.03,17.05 6.36,22 12.2,22C17.6,22 21.5,18.33 21.5,12.91C21.5,11.76 21.35,11.1 21.35,11.1V11.1Z" /></svg>
-                使用 Google 帳號登入
-            </button>
+            <button class="btn" style="width: 100%; justify-content: center;" onclick="signIn()">使用 Google 帳號登入</button>
         </div>
     </div>
 
-    <!-- 側邊欄 -->
     <nav class="sidebar">
         <div class="brand">✍️ 導師中心</div>
         <div class="nav-menu">
@@ -140,29 +146,23 @@
         </div>
     </nav>
 
-    <!-- 主內容區 -->
     <main class="main-content">
         
         <!-- 班級管理頁面 -->
         <section id="page-classes" class="section-container active">
             <div class="page-header"><h1 class="page-title">班級管理</h1></div>
-            
             <div class="panel">
                 <div class="panel-title">建立新班級</div>
                 <div class="form-row" style="align-items: flex-end;">
-                    <div class="form-group">
-                        <label>班級名稱</label>
-                        <input type="text" id="new-class-name" placeholder="例如：中一A班">
-                    </div>
+                    <div class="form-group"><label>班級名稱</label><input type="text" id="new-class-name" placeholder="例如：中一A班"></div>
                     <button class="btn" onclick="createClass()">新增班級</button>
                 </div>
             </div>
-
             <div class="panel">
                 <div class="panel-title">學生名單與分班</div>
                 <table class="data-table" id="students-table">
                     <thead><tr><th>學生姓名</th><th>Email</th><th>目前班級</th><th>操作</th></tr></thead>
-                    <tbody><!-- 動態載入 --></tbody>
+                    <tbody></tbody>
                 </table>
             </div>
         </section>
@@ -170,14 +170,11 @@
         <!-- 任務派發頁面 -->
         <section id="page-tasks" class="section-container">
             <div class="page-header"><h1 class="page-title">任務派發</h1></div>
-            
             <div class="panel">
                 <div class="panel-title">選擇班級</div>
                 <select id="task-class-select" style="width: 100%; max-width: 400px;" onchange="renderTasksList()"></select>
             </div>
-
             <div class="form-row">
-                <!-- 週期派發 -->
                 <div class="panel" style="flex: 2; margin-bottom: 0;">
                     <div class="panel-title">按時段週期派發</div>
                     <div class="form-row">
@@ -187,46 +184,34 @@
                     </div>
                     <button class="btn" onclick="assignPeriodicTasks()">批次派發</button>
                 </div>
-
-                <!-- 單次派發 -->
                 <div class="panel" style="flex: 1; margin-bottom: 0;">
                     <div class="panel-title">單次指定派發</div>
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label>指定日期</label>
-                        <input type="date" id="single-date">
-                    </div>
+                    <div class="form-group" style="margin-bottom: 20px;"><label>指定日期</label><input type="date" id="single-date"></div>
                     <button class="btn btn-outline" style="width: 100%; justify-content: center;" onclick="assignSingleTask()">加派單次任務</button>
                 </div>
             </div>
-
             <div class="panel" style="margin-top: 30px;">
                 <div class="panel-title">已派發任務列表</div>
-                <div class="grid-container" id="tasks-grid">
-                    <!-- 動態載入 -->
-                </div>
+                <div class="grid-container" id="tasks-grid"></div>
             </div>
         </section>
 
-        <!-- 作業批閱頁面 -->
+        <!-- 作業批閱頁面 (完整保留折疊式清單) -->
         <section id="page-records" class="section-container">
             <div class="page-header"><h1 class="page-title">作業批閱</h1></div>
             
             <div class="panel">
-                <div class="panel-title">篩選</div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>選擇班級</label>
-                        <select id="record-class-select" onchange="renderRecords()"></select>
-                    </div>
-                    <div class="form-group">
-                        <label>選擇學生</label>
-                        <select id="record-student-select" onchange="renderRecords()"></select>
-                    </div>
+                <div class="panel-title">選擇查看班級</div>
+                <select id="record-class-select" style="width: 100%; max-width: 400px; margin-bottom: 25px;" onchange="renderRecords()"></select>
+                
+                <div class="tabs">
+                    <button class="tab-btn active" id="tab-student" onclick="switchRecordTab('student')">依學生查看</button>
+                    <button class="tab-btn" id="tab-task" onclick="switchRecordTab('task')">依任務查看</button>
                 </div>
-            </div>
 
-            <div id="records-container">
-                <!-- 動態載入學生卡片與任務進度 -->
+                <div id="records-accordion-container">
+                    <!-- 動態載入折疊列表 -->
+                </div>
             </div>
         </section>
 
@@ -235,351 +220,182 @@
     <!-- 信件閱讀器 Modal -->
     <div id="modal-reader">
         <button class="modal-close-btn" onclick="closeReaderModal()">×</button>
-        <div class="letter-desk" id="chat-flow">
-            <!-- 動態載入真實信件樣式 -->
-        </div>
+        <div class="letter-desk" id="chat-flow"></div>
     </div>
 
     <script>
         const ALLOWED_EMAILS = ["kenchan20151@gmail.com"];
-
         const firebaseConfig = { apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms", authDomain: "letter-a74d1.firebaseapp.com", databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com", projectId: "letter-a74d1" };
         firebase.initializeApp(firebaseConfig); const auth = firebase.auth(); const db = firebase.database();
 
-        let dbClasses = {};
-        let dbUsers = {};
-        let dbLetters = {};
-        
-        // 確保預設班級存在
-        function ensureDefaultClass() {
-            if (!dbClasses['default']) {
-                db.ref('classes/default').set({ name: "預設班", tasks: [] });
-            }
-        }
+        let dbClasses = {}; let dbUsers = {}; let dbLetters = {};
+        let currentRecordTab = 'student';
+
+        function ensureDefaultClass() { if (!dbClasses['default']) db.ref('classes/default').set({ name: "預設班", tasks: [] }); }
 
         auth.onAuthStateChanged(user => {
-            if (user) {
-                if (ALLOWED_EMAILS.includes(user.email)) {
-                    document.getElementById('auth-screen').style.display = 'none';
-                    document.getElementById('user-email').innerText = user.email;
-                    initDataListeners();
-                } else {
-                    auth.signOut(); alert("無權限：您的 Email 不在導師名單中。");
-                }
-            } else {
-                document.getElementById('auth-screen').style.display = 'flex';
-            }
+            if (user && ALLOWED_EMAILS.includes(user.email)) {
+                document.getElementById('auth-screen').style.display = 'none';
+                document.getElementById('user-email').innerText = user.email;
+                initDataListeners();
+            } else if (user) { auth.signOut(); alert("無權限：您的 Email 不在導師名單中。"); }
+            else { document.getElementById('auth-screen').style.display = 'flex'; }
         });
 
-        function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(err => console.error(err)); }
+        function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
         function signOut() { auth.signOut().then(() => window.location.reload()); }
 
-        // ==========================================
-        // 資料監聽與初始化
-        // ==========================================
         function initDataListeners() {
             db.ref('classes').on('value', snap => {
-                dbClasses = snap.val() || {};
-                ensureDefaultClass();
-                updateClassSelects();
+                dbClasses = snap.val() || {}; ensureDefaultClass(); updateClassSelects();
                 if(document.getElementById('page-classes').classList.contains('active')) renderStudentsTable();
                 if(document.getElementById('page-tasks').classList.contains('active')) renderTasksList();
-            });
-
-            db.ref('users').on('value', snap => {
-                dbUsers = snap.val() || {};
-                if(document.getElementById('page-classes').classList.contains('active')) renderStudentsTable();
-                updateStudentSelect();
                 if(document.getElementById('page-records').classList.contains('active')) renderRecords();
             });
-
-            db.ref('letters').on('value', snap => {
-                dbLetters = snap.val() || {};
-                if(document.getElementById('page-records').classList.contains('active')) renderRecords();
-            });
+            db.ref('users').on('value', snap => { dbUsers = snap.val() || {}; if(document.getElementById('page-classes').classList.contains('active')) renderStudentsTable(); if(document.getElementById('page-records').classList.contains('active')) renderRecords(); });
+            db.ref('letters').on('value', snap => { dbLetters = snap.val() || {}; if(document.getElementById('page-records').classList.contains('active')) renderRecords(); });
         }
 
         function switchPage(pageId) {
-            document.querySelectorAll('.section-container').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            document.getElementById(pageId).classList.add('active');
-            event.currentTarget.classList.add('active');
-
+            document.querySelectorAll('.section-container, .nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active'); event.currentTarget.classList.add('active');
             if(pageId === 'page-classes') renderStudentsTable();
             if(pageId === 'page-tasks') renderTasksList();
             if(pageId === 'page-records') renderRecords();
         }
 
-        // ==========================================
-        // 班級管理邏輯
-        // ==========================================
         function createClass() {
-            const name = document.getElementById('new-class-name').value.trim();
-            if(!name) return alert("請輸入班級名稱");
-            const newRef = db.ref('classes').push();
-            newRef.set({ name: name, tasks: [] }).then(() => {
-                document.getElementById('new-class-name').value = '';
-                alert("班級建立成功！");
-            });
+            const name = document.getElementById('new-class-name').value.trim(); if(!name) return alert("請輸入班級名稱");
+            db.ref('classes').push().set({ name: name, tasks: [] }).then(() => { document.getElementById('new-class-name').value = ''; alert("班級建立成功！"); });
         }
 
         function updateClassSelects() {
-            let options = '';
-            for(let cid in dbClasses) {
-                options += `<option value="${cid}">${escapeHtml(dbClasses[cid].name)}</option>`;
-            }
-            const taskSelect = document.getElementById('task-class-select');
-            const recordSelect = document.getElementById('record-class-select');
-            const currentTaskVal = taskSelect.value; const currentRecVal = recordSelect.value;
-            
-            taskSelect.innerHTML = options; recordSelect.innerHTML = '<option value="all">所有班級</option>' + options;
-            
-            if(currentTaskVal && dbClasses[currentTaskVal]) taskSelect.value = currentTaskVal;
-            if(currentRecVal && (dbClasses[currentRecVal] || currentRecVal==='all')) recordSelect.value = currentRecVal;
+            let options = ''; for(let cid in dbClasses) options += `<option value="${cid}">${escapeHtml(dbClasses[cid].name)}</option>`;
+            const ts = document.getElementById('task-class-select'); const rs = document.getElementById('record-class-select');
+            const cTask = ts.value; const cRec = rs.value;
+            ts.innerHTML = options; rs.innerHTML = options;
+            if(cTask && dbClasses[cTask]) ts.value = cTask; if(cRec && dbClasses[cRec]) rs.value = cRec;
         }
 
         function renderStudentsTable() {
-            const tbody = document.querySelector('#students-table tbody');
-            tbody.innerHTML = '';
-            let classOptions = '';
-            for(let cid in dbClasses) classOptions += `<option value="${cid}">${escapeHtml(dbClasses[cid].name)}</option>`;
-
+            const tbody = document.querySelector('#students-table tbody'); tbody.innerHTML = '';
+            let ops = ''; for(let cid in dbClasses) ops += `<option value="${cid}">${escapeHtml(dbClasses[cid].name)}</option>`;
             for(let uid in dbUsers) {
-                const u = dbUsers[uid];
-                const userClassId = u.classId || 'default';
-                const selectHtml = `
-                    <select onchange="changeStudentClass('${uid}', this.value)" style="padding: 6px; font-size: 0.9rem;">
-                        ${classOptions.replace(`value="${userClassId}"`, `value="${userClassId}" selected`)}
-                    </select>
-                `;
-                tbody.innerHTML += `
-                    <tr>
-                        <td style="font-weight: 500;">${escapeHtml(u.name)}</td>
-                        <td style="color: var(--text-muted);">${escapeHtml(u.email)}</td>
-                        <td>${dbClasses[userClassId] ? escapeHtml(dbClasses[userClassId].name) : '未知'}</td>
-                        <td>${selectHtml}</td>
-                    </tr>
-                `;
+                const u = dbUsers[uid]; const cId = u.classId || 'default';
+                tbody.innerHTML += `<tr><td style="font-weight: 500;">${escapeHtml(u.name)}</td><td style="color: var(--text-muted);">${escapeHtml(u.email)}</td><td>${dbClasses[cId] ? escapeHtml(dbClasses[cId].name) : '未知'}</td><td><select onchange="changeStudentClass('${uid}', this.value)" style="padding: 6px; font-size: 0.9rem;">${ops.replace(`value="${cId}"`, `value="${cId}" selected`)}</select></td></tr>`;
             }
         }
+        function changeStudentClass(uid, newCid) { db.ref(`users/${uid}/classId`).set(newCid).then(() => alert("已更新學生班級")); }
 
-        function changeStudentClass(uid, newClassId) {
-            db.ref(`users/${uid}/classId`).set(newClassId).then(() => alert("已更新學生班級"));
-        }
-
-        // ==========================================
-        // 任務派發邏輯
-        // ==========================================
         function renderTasksList() {
-            const cid = document.getElementById('task-class-select').value;
-            const grid = document.getElementById('tasks-grid');
-            if(!cid || !dbClasses[cid]) return;
-
-            const tasks = dbClasses[cid].tasks || [];
-            grid.innerHTML = '';
-            if(tasks.length === 0) {
-                grid.innerHTML = '<p style="color: var(--text-muted); grid-column: 1/-1;">此班級尚未派發任何任務。</p>';
-                return;
-            }
-
-            tasks.forEach((dateStr, index) => {
-                grid.innerHTML += `
-                    <div class="task-card">
-                        <div class="task-index">第 ${index + 1} 回任務</div>
-                        <div class="task-date">${dateStr}</div>
-                        <button class="btn btn-danger" style="position:absolute; top:20px; right:20px; padding: 6px 12px; font-size:0.85rem;" onclick="deleteTask('${cid}', ${index})">刪除</button>
-                    </div>
-                `;
-            });
+            const cid = document.getElementById('task-class-select').value; const grid = document.getElementById('tasks-grid');
+            if(!cid || !dbClasses[cid]) return; const tasks = dbClasses[cid].tasks || []; grid.innerHTML = '';
+            if(tasks.length === 0) return grid.innerHTML = '<p style="color: var(--text-muted); grid-column: 1/-1;">此班級尚未派發任何任務。</p>';
+            tasks.forEach((d, i) => { grid.innerHTML += `<div class="task-card" style="text-align:left;"><div class="task-index">第 ${i + 1} 回任務</div><div class="task-date">${d}</div><button class="btn btn-danger" style="position:absolute; top:15px; right:15px; padding: 6px 12px; font-size:0.85rem;" onclick="deleteTask('${cid}', ${i})">刪除</button></div>`; });
         }
 
         function assignPeriodicTasks() {
-            const cid = document.getElementById('task-class-select').value;
-            const start = document.getElementById('periodic-start').value;
-            const end = document.getElementById('periodic-end').value;
-            const interval = parseInt(document.getElementById('periodic-interval').value);
-
+            const cid = document.getElementById('task-class-select').value; const start = document.getElementById('periodic-start').value; const end = document.getElementById('periodic-end').value; const interval = parseInt(document.getElementById('periodic-interval').value);
             if(!cid || !start || !end || !interval) return alert("請填寫完整參數。");
-
-            let startDate = new Date(start); const endDate = new Date(end);
-            let newDates = [];
-            while(startDate <= endDate) {
-                newDates.push(startDate.toISOString().split('T')[0]);
-                startDate.setDate(startDate.getDate() + interval);
+            let sDate = new Date(start); const eDate = new Date(end); let newDates = [];
+            while(sDate <= eDate) { newDates.push(sDate.toISOString().split('T')[0]); sDate.setDate(sDate.getDate() + interval); }
+            let exist = dbClasses[cid].tasks || [];
+            if (exist.length > 0) {
+                const eFirst = new Date(exist[0]), eLast = new Date(exist[exist.length - 1]), nFirst = new Date(newDates[0]), nLast = new Date(newDates[newDates.length - 1]);
+                if ((nFirst <= eLast && nFirst >= eFirst) || (nLast <= eLast && nLast >= eFirst) || (nFirst <= eFirst && nLast >= eLast)) return alert("衝突錯誤：您選擇的區間與該班級現有的任務區間重疊！\n請更換區間，或使用「單次指定派發」在空檔日加派任務。");
             }
-
-            let existingTasks = dbClasses[cid].tasks || [];
-            
-            // 衝突檢查：如果新生成的日期落在已有任務的最早與最晚日期之間，提示重疊
-            if (existingTasks.length > 0) {
-                const earliest = new Date(existingTasks[0]);
-                const latest = new Date(existingTasks[existingTasks.length - 1]);
-                const newFirst = new Date(newDates[0]);
-                const newLast = new Date(newDates[newDates.length - 1]);
-
-                if ((newFirst <= latest && newFirst >= earliest) || (newLast <= latest && newLast >= earliest) || (newFirst <= earliest && newLast >= latest)) {
-                    return alert("衝突錯誤：您選擇的區間與該班級現有的任務區間重疊！\n請更換區間，或使用「單次指定派發」在空檔日加派任務。");
-                }
-            }
-
-            // 合併並排序
-            let combined = [...new Set([...existingTasks, ...newDates])].sort();
-            db.ref(`classes/${cid}/tasks`).set(combined).then(() => {
-                alert("批次派發成功！");
-                document.getElementById('periodic-start').value = '';
-                document.getElementById('periodic-end').value = '';
-                document.getElementById('periodic-interval').value = '';
-            });
+            db.ref(`classes/${cid}/tasks`).set([...new Set([...exist, ...newDates])].sort()).then(() => { alert("批次派發成功！"); document.getElementById('periodic-start').value = ''; document.getElementById('periodic-end').value = ''; document.getElementById('periodic-interval').value = ''; });
         }
 
         function assignSingleTask() {
-            const cid = document.getElementById('task-class-select').value;
-            const dateStr = document.getElementById('single-date').value;
-            if(!cid || !dateStr) return alert("請選擇日期");
-
-            let existingTasks = dbClasses[cid].tasks || [];
-            if(existingTasks.includes(dateStr)) return alert("該日期已經有任務了！");
-
-            existingTasks.push(dateStr);
-            existingTasks.sort();
-            db.ref(`classes/${cid}/tasks`).set(existingTasks).then(() => {
-                alert("加派單次任務成功！");
-                document.getElementById('single-date').value = '';
-            });
+            const cid = document.getElementById('task-class-select').value; const dateStr = document.getElementById('single-date').value;
+            if(!cid || !dateStr) return alert("請選擇日期"); let exist = dbClasses[cid].tasks || [];
+            if(exist.includes(dateStr)) return alert("該日期已經有任務了！"); exist.push(dateStr); exist.sort();
+            db.ref(`classes/${cid}/tasks`).set(exist).then(() => { alert("加派單次任務成功！"); document.getElementById('single-date').value = ''; });
         }
 
-        function deleteTask(cid, index) {
-            if(!confirm(`確定要刪除第 ${index+1} 回任務嗎？\n注意：這可能會影響已依據此回數繳交的學生紀錄對應。`)) return;
-            let tasks = dbClasses[cid].tasks || [];
-            tasks.splice(index, 1);
-            db.ref(`classes/${cid}/tasks`).set(tasks);
+        function deleteTask(cid, index) { if(confirm(`確定要刪除第 ${index+1} 回任務嗎？`)) { let tasks = dbClasses[cid].tasks || []; tasks.splice(index, 1); db.ref(`classes/${cid}/tasks`).set(tasks); } }
+
+        /* --- 作業批閱：折疊列表保留邏輯 --- */
+        function switchRecordTab(tab) {
+            currentRecordTab = tab;
+            document.getElementById('tab-student').className = tab === 'student' ? 'tab-btn active' : 'tab-btn';
+            document.getElementById('tab-task').className = tab === 'task' ? 'tab-btn active' : 'tab-btn';
+            renderRecords();
         }
 
-        // ==========================================
-        // 作業批閱邏輯
-        // ==========================================
-        function updateStudentSelect() {
-            const cid = document.getElementById('record-class-select').value;
-            const stuSelect = document.getElementById('record-student-select');
-            let options = '<option value="all">所有學生</option>';
-            for(let uid in dbUsers) {
-                if(cid === 'all' || (dbUsers[uid].classId || 'default') === cid) {
-                    options += `<option value="${uid}">${escapeHtml(dbUsers[uid].name)}</option>`;
-                }
-            }
-            stuSelect.innerHTML = options;
+        function toggleAccordion(id) {
+            const el = document.getElementById(`acc-body-${id}`);
+            el.style.display = el.style.display === 'block' ? 'none' : 'block';
         }
 
         function renderRecords() {
-            const cidFilter = document.getElementById('record-class-select').value;
-            const uidFilter = document.getElementById('record-student-select').value;
-            const container = document.getElementById('records-container');
+            const cid = document.getElementById('record-class-select').value;
+            const container = document.getElementById('records-accordion-container');
             container.innerHTML = '';
-
+            
+            if(!cid || !dbClasses[cid]) return;
+            const tasks = dbClasses[cid].tasks || [];
             const lettersArray = Object.values(dbLetters);
+            const studentsInClass = Object.keys(dbUsers).filter(uid => (dbUsers[uid].classId || 'default') === cid);
 
-            for(let uid in dbUsers) {
-                const u = dbUsers[uid];
-                const uClassId = u.classId || 'default';
-                if(cidFilter !== 'all' && uClassId !== cidFilter) continue;
-                if(uidFilter !== 'all' && uid !== uidFilter) continue;
-
-                const classData = dbClasses[uClassId];
-                if(!classData || !classData.tasks || classData.tasks.length === 0) continue;
-
-                let tasksHtml = '';
-                classData.tasks.forEach((deadlineStr, index) => {
-                    const deadline = new Date(deadlineStr);
-                    // 根據 senderUid 和 taskIndex 找信件
-                    const letter = lettersArray.find(l => l.senderUid === uid && l.taskIndex === index);
-                    
-                    let statusClass = "s-miss"; let statusText = "未交"; let btnHtml = '';
-                    if(letter) {
-                        const submitTime = new Date(letter.timestamp);
-                        if(submitTime.setHours(0,0,0,0) <= deadline.setHours(0,0,0,0)) { statusClass = "s-ok"; statusText = "準時"; } 
-                        else { statusClass = "s-late"; statusText = "遲交"; }
-                        btnHtml = `<button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:10px; font-size:0.9rem;" onclick="openReaderModal('${letter.id}')">批閱交流</button>`;
-                    }
-
-                    tasksHtml += `
-                        <div style="border: 1px solid var(--border); border-radius: 8px; padding: 15px; text-align: center;">
-                            <div style="font-size:0.9rem; font-weight:600; margin-bottom:5px;">第 ${index+1} 回</div>
-                            <span class="status-badge ${statusClass}">${statusText}</span>
-                            <div style="font-size:0.8rem; color:var(--text-muted); margin-top:10px;">期限: ${deadlineStr}</div>
-                            ${btnHtml}
-                        </div>
-                    `;
+            if (currentRecordTab === 'student') {
+                studentsInClass.forEach(uid => {
+                    const u = dbUsers[uid];
+                    let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('stu-${uid}')"><div class="list-title">🧑‍🎓 ${escapeHtml(u.name)} <span class="list-subtitle">${escapeHtml(u.email)}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看任務 ▾</span></div><div class="list-body" id="acc-body-stu-${uid}"><div class="grid-container">`;
+                    tasks.forEach((dateStr, idx) => {
+                        const letter = lettersArray.find(l => l.senderUid === uid && l.taskIndex === idx);
+                        html += buildGridCard(`第 ${idx+1} 回`, dateStr, letter);
+                    });
+                    if(tasks.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級尚未派發任務。</p>`;
+                    html += `</div></div></div>`; container.innerHTML += html;
                 });
-
-                container.innerHTML += `
-                    <div class="panel" style="padding: 20px;">
-                        <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 15px; display:flex; align-items:center; gap:10px;">
-                            <span>🧑‍🎓 ${escapeHtml(u.name)}</span>
-                            <span style="font-size:0.85rem; color:var(--text-muted); font-weight:400;">(${escapeHtml(dbClasses[uClassId].name)})</span>
-                        </div>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px;">
-                            ${tasksHtml}
-                        </div>
-                    </div>
-                `;
+                if(studentsInClass.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級目前沒有學生。</p>`;
+            } else {
+                tasks.forEach((dateStr, idx) => {
+                    let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('task-${idx}')"><div class="list-title">📋 第 ${idx + 1} 回 <span class="list-subtitle">期限: ${dateStr}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看學生 ▾</span></div><div class="list-body" id="acc-body-task-${idx}"><div class="grid-container">`;
+                    studentsInClass.forEach(uid => {
+                        const u = dbUsers[uid];
+                        const letter = lettersArray.find(l => l.senderUid === uid && l.taskIndex === idx);
+                        html += buildGridCard(escapeHtml(u.name), dateStr, letter);
+                    });
+                    if(studentsInClass.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級目前沒有學生。</p>`;
+                    html += `</div></div></div>`; container.innerHTML += html;
+                });
+                if(tasks.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級尚未派發任務。</p>`;
             }
         }
 
-        // ==========================================
-        // 閱讀器與信件渲染 (原汁原味)
-        // ==========================================
+        function buildGridCard(title, deadlineStr, letter) {
+            let statusClass = "s-miss"; let statusText = "未交"; let btnHtml = '';
+            if(letter) {
+                const submitTime = new Date(letter.timestamp); const deadline = new Date(deadlineStr);
+                if(submitTime.setHours(0,0,0,0) <= deadline.setHours(0,0,0,0)) { statusClass = "s-ok"; statusText = "準時"; } 
+                else { statusClass = "s-late"; statusText = "遲交"; }
+                btnHtml = `<button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem;" onclick="openReaderModal('${letter.id}')">批閱交流</button>`;
+            }
+            return `<div class="task-card"><div style="font-size:1.05rem; font-weight:600; margin-bottom:10px;">${title}</div><span class="status-badge ${statusClass}">${statusText}</span><div style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">期限: ${deadlineStr}</div>${btnHtml}</div>`;
+        }
+
+        /* --- 原汁原味閱讀器 --- */
         function escapeHtml(str) { return str?str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):str; }
-
         function openReaderModal(letterId) {
-            const letter = dbLetters[letterId];
-            if(!letter) return;
-            
-            const flow = document.getElementById('chat-flow');
-            flow.innerHTML = '<div style="text-align:center; color:#fff;">載入中...</div>';
-            document.getElementById('modal-reader').style.display = 'flex';
-            document.body.style.overflow = 'hidden';
-
+            const letter = dbLetters[letterId]; if(!letter) return;
+            const flow = document.getElementById('chat-flow'); flow.innerHTML = '<div style="text-align:center; color:#fff;">載入中...</div>';
+            document.getElementById('modal-reader').style.display = 'flex'; document.body.style.overflow = 'hidden';
             db.ref(`conversations/${letterId}`).once('value').then(snap => {
-                const messages = snap.val() || {};
-                let contentHTML = '';
-
-                Object.values(messages).forEach(m => {
+                const msgs = snap.val() || {}; let html = '';
+                Object.values(msgs).forEach(m => {
                     const senderName = dbUsers[m.senderUid] ? dbUsers[m.senderUid].name : '未知學生';
-                    const isOriginalSender = m.senderUid === letter.senderUid; // 判斷是樓主還是回覆者
-                    
-                    const d = new Date(m.timestamp);
-                    const tStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-                    
-                    let formattedText = escapeHtml(m.text)
-                        .replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀頁數</span>')
-                        .replace(/【思考問題】/g, '<span class="letter-section-divider">思考問題</span>')
-                        .replace(/【閱讀心得】/g, '<span class="letter-section-divider">閱讀感悟</span>');
-                    
-                    let imgTag = m.imageUrl ? `<a href="${m.imageUrl}" target="_blank" class="letter-img-wrap"><img src="${m.imageUrl}" class="letter-img" loading="lazy"></a>` : '';
-                    
-                    // 根據身分給予不同的顏色 (與學生端邏輯一致)
-                    const sheetClass = isOriginalSender ? 'my-letter' : 'partner-letter';
-                    const icon = isOriginalSender ? '✍️' : '📬';
-
-                    contentHTML += `
-                        <div class="letter-sheet ${sheetClass}">
-                            <div class="letter-header-meta">
-                                <span>${icon} [${escapeHtml(senderName)}] 的${isOriginalSender?'手札':'回音'}</span>
-                                <span>${tStr}</span>
-                            </div>
-                            <div class="letter-text">${formattedText}</div>
-                            ${imgTag}
-                        </div>`;
-                });
-
-                flow.innerHTML = contentHTML;
+                    const isOriginal = m.senderUid === letter.senderUid;
+                    const d = new Date(m.timestamp); const tStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+                    let fText = escapeHtml(m.text).replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀頁數</span>').replace(/【思考問題】/g, '<span class="letter-section-divider">思考問題</span>').replace(/【閱讀心得】/g, '<span class="letter-section-divider">閱讀感悟</span>');
+                    let img = m.imageUrl ? `<a href="${m.imageUrl}" target="_blank" class="letter-img-wrap"><img src="${m.imageUrl}" class="letter-img" loading="lazy"></a>` : '';
+                    html += `<div class="letter-sheet ${isOriginal ? 'my-letter' : 'partner-letter'}"><div class="letter-header-meta"><span>${isOriginal ? '✍️' : '📬'} [${escapeHtml(senderName)}] 的${isOriginal?'手札':'回音'}</span><span>${tStr}</span></div><div class="letter-text">${fText}</div>${img}</div>`;
+                }); flow.innerHTML = html;
             });
         }
-
-        function closeReaderModal() {
-            document.getElementById('modal-reader').style.display = 'none';
-            document.body.style.overflow = '';
-        }
+        function closeReaderModal() { document.getElementById('modal-reader').style.display = 'none'; document.body.style.overflow = ''; }
     </script>
 </body>
 </html>
