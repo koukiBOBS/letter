@@ -681,11 +681,12 @@ function renderTasks() {
 }
 
 // 修改原有的圖片選擇功能，支援兩種上傳目標
+// 這是正確的，保留這個即可！
 function handleFileSelect(event, type = 'reading') {
     const file = event.target.files[0]; 
     if (!file) return; 
     
-    // 精確判斷是「隨機任務」還是「閱讀任務」，抓取對應的預覽框 ID
+    // 精確判斷是「隨機任務」還是「閱讀任務」
     const isRandom = (type === 'random');
     const nameDisplayId = isRandom ? 'random-file-name-display' : 'file-name-display';
     const previewId = isRandom ? 'random-image-preview' : 'image-preview';
@@ -718,7 +719,6 @@ function handleFileSelect(event, type = 'reading') {
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
                 selectedFileBase64 = dataUrl.split(',')[1]; 
                 
-                // 將圖片顯示在正確的預覽框內
                 if (preview) {
                     preview.src = dataUrl; 
                     preview.style.display = 'block';
@@ -829,19 +829,7 @@ function handleFileSelect(event, type = 'reading') {
             });
         }
 
-       function handleFileSelect(event) {
-    const file = event.target.files[0]; if (!file) return; selectedFileName = file.name; document.getElementById('file-name-display').innerText = selectedFileName;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-            const canvas = document.createElement('canvas'); const MAX_WIDTH = 1200; const scaleSize = MAX_WIDTH / img.width;
-            canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            selectedFileBase64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1]; const preview = document.getElementById('image-preview'); preview.src = canvas.toDataURL('image/jpeg', 0.6); preview.style.display = 'block';
-        }
-        img.src = e.target.result;
-    }; reader.readAsDataURL(file);
-}
+   
 
         async function submitLog() {
             const title = document.getElementById('book-title').value.trim(); const page = document.getElementById('book-page').value.trim();
