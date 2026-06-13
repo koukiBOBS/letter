@@ -1078,7 +1078,7 @@
             legBL = createLeg(0.5, -0.8); legBR = createLeg(-0.5, -0.8);
 
         // 🐾 尾巴 (高段數圓柱體，修復材質蒙皮失效與綁定錯位問題)
-            catTailGrp = new THREE.Group(); 
+          catTailGrp = new THREE.Group(); 
             catTailGrp.position.set(0, 0.5, -1.1); 
             catTailGrp.rotation.x = -0.4; // 尾巴根部的初始下垂角度
             catBody.add(catTailGrp);
@@ -1095,14 +1095,12 @@
             for(let i = 1; i <= boneCount; i++) {
                 const bone = new THREE.Bone();
                 bone.position.y = tailLength / boneCount;
-                // ★ 修正 1：建立骨架時絕對不能先旋轉，必須保持筆直，確保 bind() 綁定正確
                 prevBone.add(bone);
                 catTailBones.push(bone);
                 prevBone = bone;
             }
             const skeleton = new THREE.Skeleton(catTailBones);
             
-            // 使用高段數的 CylinderGeometry，讓頂端變細 (0.04) 根部較粗 (0.16)
             const tailGeo = new THREE.CylinderGeometry(0.04, 0.16, tailLength, 16, heightSegments);
             tailGeo.translate(0, tailLength / 2, 0); 
             
@@ -1110,7 +1108,6 @@
             const skinIndices = [];
             const skinWeights = [];
             
-            // 計算蒙皮權重
             for(let i = 0; i < posAttr.count; i++) {
                 const y = Math.max(0, posAttr.getY(i)); 
                 const exactIndex = (y / tailLength) * boneCount;
@@ -1130,10 +1127,12 @@
             tailGeo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndices, 4));
             tailGeo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeights, 4));
             
-            // ★ 致命關鍵修正 2：複製原材質，並強制開啟 skinning: true
-            // 在 r128 版本中，沒有開啟這個屬性，模型就不會跟隨骨架彎曲！
-            const tailSkinMat = catMat.clone();
-            tailSkinMat.skinning = true;
+            // ★ 修正 1：建立【專屬】的蒙皮材質，確保使用原本的毛色 (catMat.map)
+            const tailSkinMat = new THREE.MeshStandardMaterial({
+                map: catMat.map,       // 繼承貓咪原本的橘貓毛色紋理
+                roughness: 0.9,
+                skinning: true         // 這個材質只給 SkinnedMesh 使用
+            });
             
             const tailMesh = new THREE.SkinnedMesh(tailGeo, tailSkinMat);
             tailMesh.add(catTailBones[0]); 
@@ -1141,11 +1140,12 @@
             tailMesh.castShadow = true;
             catTailGrp.add(tailMesh);
             
-            // ★ 修正 3：球體收口也要套用開啟 skinning 的材質，這時它就會緊緊黏在軟軟的尾巴尖端了
-            const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), tailSkinMat);
+            // ★ 修正 2：收口球體是普通的 Mesh (它只跟著骨頭移動，不會自己變形)
+            // 所以它必須使用原本【沒有 skinning】的貓咪身體材質 (catMat)！
+            const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), catMat);
             catTailBones[boneCount].add(tailTip);
             
-            setCatState('idle'); // 啟動貓咪狀態 (這時骨架才會開始彎曲)
+            setCatState('idle'); // 啟動貓咪狀態
         }
 
         function buildPlantIn3D(type, growth, wilt) {
