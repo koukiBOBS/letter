@@ -1078,6 +1078,7 @@
             legBL = createLeg(0.5, -0.8); legBR = createLeg(-0.5, -0.8);
 
          // 🐾 尾巴 (改良版：柔軟連續、無突兀球體)
+         // 🐾 尾巴 (高段數圓柱體 + 收口技術，完美連續無縫隙且保持柔軟)
             catTailGrp = new THREE.Group(); 
             catTailGrp.position.set(0, 0.5, -1.1); 
             catTailGrp.rotation.x = -0.4; // 尾巴根部的初始下垂角度
@@ -1085,7 +1086,7 @@
             
             const tailLength = 2.5;
             const boneCount = 8;          // 骨頭數量
-            const heightSegments = 30;    // ★ 關鍵：增加幾何體垂直分段，解決「太硬、起角」問題
+            const heightSegments = 30;    // ★ 關鍵：增加垂直分段達 30 段，解決彎曲時「太硬、起角」問題
             
             catTailBones = [];
             let prevBone = new THREE.Bone();
@@ -1103,9 +1104,9 @@
             }
             const skeleton = new THREE.Skeleton(catTailBones);
             
-            // ★ 關鍵：改用 CapsuleGeometry (膠囊體)，末端自帶完美的圓潤收口，不用再加球體
-            const tailGeo = new THREE.CapsuleGeometry(0.08, tailLength, 8, heightSegments);
-            // 將幾何體中心上移，讓旋轉軸心(0,0,0)落在底部
+            // 使用 r128 支援的 CylinderGeometry
+            // radiusTop = 0.04 (尾巴尖端變細), radiusBottom = 0.16 (尾巴根部較粗)
+            const tailGeo = new THREE.CylinderGeometry(0.04, 0.16, tailLength, 16, heightSegments);
             tailGeo.translate(0, tailLength / 2, 0); 
             
             const posAttr = tailGeo.attributes.position;
@@ -1114,7 +1115,7 @@
             
             // 精確計算蒙皮權重，確保彎曲時極度平滑
             for(let i = 0; i < posAttr.count; i++) {
-                const y = Math.max(0, posAttr.getY(i)); // 避免膠囊底部的負值干擾
+                const y = Math.max(0, posAttr.getY(i)); 
                 const exactIndex = (y / tailLength) * boneCount;
                 
                 let bone1 = Math.floor(exactIndex);
@@ -1137,6 +1138,10 @@
             tailMesh.bind(skeleton);
             tailMesh.castShadow = true;
             catTailGrp.add(tailMesh);
+            
+            // 在末端加上一個極小的圓球來完美收口 (半徑 0.04 完全對應上方 Cylinder 的 radiusTop，達到視覺無縫)
+            const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), catMat);
+            catTailBones[boneCount].add(tailTip);
             
             setCatState('idle'); // 啟動貓咪狀態
         }
