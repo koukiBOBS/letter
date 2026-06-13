@@ -1023,6 +1023,7 @@
         interactables = [leftDrawer, rightDrawer, book, clipboard, wateringCan];
             
             // 🐾 1. 動態生成毛髮紋理 (Fur Texture)
+          // 🐾 1. 動態生成毛髮紋理 (Fur Texture)
             function createFurTexture(baseColor, highlight, shadow) {
                 const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
                 ctx.fillStyle = baseColor; ctx.fillRect(0,0,512,512);
@@ -1035,7 +1036,6 @@
                 const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2, 2); return tex;
             }
 
-            // 建立具有凹凸質感的毛髮材質
             const orangeFur = createFurTexture('#d48035', 'rgba(255,255,255,0.15)', 'rgba(160,70,20,0.2)');
             const whiteFur = createFurTexture('#f0f0f0', 'rgba(255,255,255,0.8)', 'rgba(200,200,200,0.3)');
             const catMat = new THREE.MeshStandardMaterial({map: orangeFur, roughness: 0.9, bumpMap: orangeFur, bumpScale: 0.02});
@@ -1045,13 +1045,12 @@
             catGrp = new THREE.Group(); catGrp.position.set(0, 0, 25); scene.add(catGrp);
             catBody = new THREE.Group(); catBody.position.y = 1.6; catGrp.add(catBody);
             
-            // 身體與白肚皮
+            // 身體與頭部
             const bodyMesh = new THREE.Mesh(new THREE.SphereGeometry(1.2, 32, 32), catMat);
             bodyMesh.scale.set(0.8, 0.8, 1.4); bodyMesh.castShadow = true; catBody.add(bodyMesh);
             const belly = new THREE.Mesh(new THREE.SphereGeometry(1.15, 32, 32), whiteMat);
             belly.scale.set(0.75, 0.75, 1.35); belly.position.y = -0.15; catBody.add(belly);
 
-            // 頭部與五官 (白嘴管、粉紅鼻、水汪汪黑眼)
             catHeadGrp = new THREE.Group(); catHeadGrp.position.set(0, 0.6, 1.3); catBody.add(catHeadGrp);
             const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.85, 32, 32), catMat); headMesh.castShadow = true; catHeadGrp.add(headMesh);
             const snout = new THREE.Mesh(new THREE.SphereGeometry(0.35, 24, 24), whiteMat); snout.position.set(0, -0.2, 0.7); catHeadGrp.add(snout); 
@@ -1065,85 +1064,81 @@
             const earL = new THREE.Mesh(earGeo, catMat); earL.position.set(0.4, 0.5, 0); earL.rotation.set(-0.2, 0, -0.3); catHeadGrp.add(earL);
             const earR = new THREE.Mesh(earGeo, catMat); earR.position.set(-0.4, 0.5, 0); earR.rotation.set(-0.2, 0, 0.3); catHeadGrp.add(earR);
 
-            // 建立四肢 (附帶白手套腳掌)
+            // 🐾 3. 建立柔軟關節四肢 (骨架蒙皮)
+            const legSkinMat = new THREE.MeshStandardMaterial({ map: catMat.map, roughness: 0.9, skinning: true });
+            
             function createLeg(x, z) {
-                const legGrp = new THREE.Group(); legGrp.position.set(x, -0.2, z);
-                const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.18, 1.2, 16), catMat);
-                leg.position.y = -0.6; leg.castShadow = true; legGrp.add(leg);
+                const legGrp = new THREE.Group(); legGrp.position.set(x, 0, z);
+                const legLength = 1.2; const boneCount = 2;
+                const bones = []; let prevBone = new THREE.Bone(); prevBone.position.y = 0; bones.push(prevBone);
+                
+                for(let i=1; i<=boneCount; i++) {
+                    const bone = new THREE.Bone(); bone.position.y = -legLength / boneCount;
+                    prevBone.add(bone); bones.push(bone); prevBone = bone;
+                }
+                const skeleton = new THREE.Skeleton(bones);
+                const legGeo = new THREE.CylinderGeometry(0.25, 0.18, legLength, 16, 10);
+                legGeo.translate(0, -legLength / 2, 0);
+                
+                const posAttr = legGeo.attributes.position; const skinIndices = []; const skinWeights = [];
+                for(let i=0; i<posAttr.count; i++) {
+                    const y = Math.abs(Math.min(0, posAttr.getY(i))); 
+                    const exactIndex = (y / legLength) * boneCount;
+                    let bone1 = Math.floor(exactIndex); let bone2 = bone1 + 1;
+                    let weight2 = exactIndex - bone1; let weight1 = 1 - weight2;
+                    if (bone1 >= boneCount) { bone1 = boneCount; weight1 = 1; weight2 = 0; bone2 = 0; }
+                    if (bone2 > boneCount) bone2 = boneCount;
+                    skinIndices.push(bone1, bone2, 0, 0); skinWeights.push(weight1, weight2, 0, 0);
+                }
+                legGeo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndices, 4));
+                legGeo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeights, 4));
+                
+                const legMesh = new THREE.SkinnedMesh(legGeo, legSkinMat);
+                legMesh.add(bones[0]); legMesh.bind(skeleton); legMesh.castShadow = true; legGrp.add(legMesh);
+                
                 const paw = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), whiteMat); 
-                paw.position.set(0, -1.2, 0.08); paw.scale.set(1, 0.6, 1.2); paw.castShadow = true; legGrp.add(paw);
-                catBody.add(legGrp); return legGrp;
+                paw.position.set(0, 0, 0.08); paw.scale.set(1, 0.6, 1.2); paw.castShadow = true; 
+                bones[boneCount].add(paw); catBody.add(legGrp); 
+                
+                return { root: bones[0], knee: bones[1] };
             }
+
             legFL = createLeg(0.5, 0.8); legFR = createLeg(-0.5, 0.8);
             legBL = createLeg(0.5, -0.8); legBR = createLeg(-0.5, -0.8);
 
-        // 🐾 尾巴 (高段數圓柱體，修復材質蒙皮失效與綁定錯位問題)
-          catTailGrp = new THREE.Group(); 
-            catTailGrp.position.set(0, 0.5, -1.1); 
-            catTailGrp.rotation.x = -0.4; // 尾巴根部的初始下垂角度
+            // 🐾 4. 柔軟貓尾巴
+            catTailGrp = new THREE.Group(); catTailGrp.position.set(0, 0.5, -1.1); catTailGrp.rotation.x = -0.4; 
             catBody.add(catTailGrp);
             
-            const tailLength = 2.5;
-            const boneCount = 8;
-            const heightSegments = 30;
-            
-            catTailBones = [];
-            let prevBone = new THREE.Bone();
-            prevBone.position.y = 0;
-            catTailBones.push(prevBone);
-            
-            for(let i = 1; i <= boneCount; i++) {
-                const bone = new THREE.Bone();
-                bone.position.y = tailLength / boneCount;
-                prevBone.add(bone);
-                catTailBones.push(bone);
-                prevBone = bone;
+            const tailLength = 2.5; const tailBoneCount = 8;
+            catTailBones = []; let prevTBone = new THREE.Bone(); prevTBone.position.y = 0; catTailBones.push(prevTBone);
+            for(let i=1; i<=tailBoneCount; i++) {
+                const bone = new THREE.Bone(); bone.position.y = tailLength / tailBoneCount;
+                prevTBone.add(bone); catTailBones.push(bone); prevTBone = bone;
             }
-            const skeleton = new THREE.Skeleton(catTailBones);
-            
-            const tailGeo = new THREE.CylinderGeometry(0.04, 0.16, tailLength, 16, heightSegments);
+            const tailSkeleton = new THREE.Skeleton(catTailBones);
+            const tailGeo = new THREE.CylinderGeometry(0.04, 0.16, tailLength, 16, 30);
             tailGeo.translate(0, tailLength / 2, 0); 
             
-            const posAttr = tailGeo.attributes.position;
-            const skinIndices = [];
-            const skinWeights = [];
-            
-            for(let i = 0; i < posAttr.count; i++) {
-                const y = Math.max(0, posAttr.getY(i)); 
-                const exactIndex = (y / tailLength) * boneCount;
-                
-                let bone1 = Math.floor(exactIndex);
-                let bone2 = bone1 + 1;
-                let weight2 = exactIndex - bone1;
-                let weight1 = 1 - weight2;
-                
-                if (bone1 >= boneCount) { bone1 = boneCount; weight1 = 1; weight2 = 0; bone2 = 0; }
-                if (bone2 > boneCount) bone2 = boneCount;
-                
-                skinIndices.push(bone1, bone2, 0, 0);
-                skinWeights.push(weight1, weight2, 0, 0);
+            const tPosAttr = tailGeo.attributes.position; const tSkinIndices = []; const tSkinWeights = [];
+            for(let i=0; i<tPosAttr.count; i++) {
+                const y = Math.max(0, tPosAttr.getY(i)); 
+                const exactIndex = (y / tailLength) * tailBoneCount;
+                let bone1 = Math.floor(exactIndex); let bone2 = bone1 + 1;
+                let weight2 = exactIndex - bone1; let weight1 = 1 - weight2;
+                if (bone1 >= tailBoneCount) { bone1 = tailBoneCount; weight1 = 1; weight2 = 0; bone2 = 0; }
+                if (bone2 > tailBoneCount) bone2 = tailBoneCount;
+                tSkinIndices.push(bone1, bone2, 0, 0); tSkinWeights.push(weight1, weight2, 0, 0);
             }
+            tailGeo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(tSkinIndices, 4));
+            tailGeo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(tSkinWeights, 4));
             
-            tailGeo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndices, 4));
-            tailGeo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeights, 4));
-            
-            // ★ 修正 1：建立【專屬】的蒙皮材質，確保使用原本的毛色 (catMat.map)
-            const tailSkinMat = new THREE.MeshStandardMaterial({
-                map: catMat.map,       // 繼承貓咪原本的橘貓毛色紋理
-                roughness: 0.9,
-                skinning: true         // 這個材質只給 SkinnedMesh 使用
-            });
-            
+            const tailSkinMat = new THREE.MeshStandardMaterial({ map: catMat.map, roughness: 0.9, skinning: true });
             const tailMesh = new THREE.SkinnedMesh(tailGeo, tailSkinMat);
-            tailMesh.add(catTailBones[0]); 
-            tailMesh.bind(skeleton);
-            tailMesh.castShadow = true;
-            catTailGrp.add(tailMesh);
+            tailMesh.add(catTailBones[0]); tailMesh.bind(tailSkeleton); tailMesh.castShadow = true; catTailGrp.add(tailMesh);
             
-            // ★ 修正 2：收口球體是普通的 Mesh (它只跟著骨頭移動，不會自己變形)
-            // 所以它必須使用原本【沒有 skinning】的貓咪身體材質 (catMat)！
             const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), catMat);
-            catTailBones[boneCount].add(tailTip);
+            catTailBones[tailBoneCount].add(tailTip);
             
             setCatState('idle'); // 啟動貓咪狀態
         }
@@ -1281,9 +1276,11 @@
         }
 
     // 🐾 設定貓咪狀態的函數
-      // 🐾 設定貓咪狀態的函數
         function setCatState(newState) {
             catState = newState;
+            const allRoots = [legFL.root.rotation, legFR.root.rotation, legBL.root.rotation, legBR.root.rotation];
+            const allKnees = [legFL.knee.rotation, legFR.knee.rotation, legBL.knee.rotation, legBR.knee.rotation];
+
             if (newState === 'idle') {
                 catTimer = 100 + Math.random() * 200;
                 gsap.to(catBody.scale, {x: 1, y: 1, z: 1, duration: 0.5});
@@ -1291,35 +1288,38 @@
                 gsap.to(catHeadGrp.rotation, {x: 0, y: 0, z: 0, duration: 0.5});
                 gsap.to(catHeadGrp.position, {y: 0.6, z: 1.3, duration: 0.5});
                 
-                // 恢復骨架為自然微彎的 U 型 / S 型
                 catTailBones.forEach((bone, i) => gsap.to(bone.rotation, {x: i===0 ? 0.2 : 0.15, y: 0, z: 0, duration: 0.5}));
-                gsap.to([legFL.rotation, legFR.rotation, legBL.rotation, legBR.rotation], {x: 0, duration: 0.3});
+                
+                // 坐下時：前腿直，後腿微彎
+                gsap.to([legFL.root.rotation, legFR.root.rotation], {x: 0.1, duration: 0.3});
+                gsap.to([legFL.knee.rotation, legFR.knee.rotation], {x: 0, duration: 0.3});
+                gsap.to([legBL.root.rotation, legBR.root.rotation], {x: -0.3, duration: 0.3});
+                gsap.to([legBL.knee.rotation, legBR.knee.rotation], {x: 0.4, duration: 0.3});
+                
             } else if (newState === 'sleep') {
                 catTimer = 400 + Math.random() * 600;
-                gsap.to(catBody.scale, {x: 1.1, y: 0.8, z: 1.1, duration: 1.0}); // 壓扁身體
-                gsap.to(catBody.position, {y: 0.8, duration: 1.0}); // 趴下
-                gsap.to(catHeadGrp.rotation, {x: 0.4, y: 0.6, duration: 1.0}); // 歪頭睡
+                gsap.to(catBody.scale, {x: 1.1, y: 0.8, z: 1.1, duration: 1.0}); 
+                gsap.to(catBody.position, {y: 0.8, duration: 1.0}); 
+                gsap.to(catHeadGrp.rotation, {x: 0.4, y: 0.6, duration: 1.0}); 
                 gsap.to(catHeadGrp.position, {y: 0, z: 1.0, duration: 1.0});
                 
-                // 睡覺時尾巴平滑捲曲貼在身側
                 catTailBones.forEach((bone, i) => gsap.to(bone.rotation, {x: 0.1, y: 0.3, z: 0, duration: 1.0}));
                 
-                gsap.to([legFL.rotation, legFR.rotation], {x: -1.2, duration: 1.0}); // 農民揣
-                gsap.to([legBL.rotation, legBR.rotation], {x: 1.2, duration: 1.0});  
-            } else if (newState === 'walk') {
-                // 限制範圍在地毯與書桌附近
-                catTarget.set((Math.random()-0.5)*32, 0, 6 + Math.random()*12);
+                // 農民揣：大腿往內收，膝蓋大彎曲
+                gsap.to(allRoots, {x: -1.0, duration: 1.0});
+                gsap.to(allKnees, {x: 1.5, duration: 1.0}); 
                 
+            } else if (newState === 'walk') {
+                catTarget.set((Math.random()-0.5)*32, 0, 6 + Math.random()*12);
                 gsap.to(catBody.scale, {x: 1, y: 1, z: 1, duration: 0.3});
                 gsap.to(catBody.position, {y: 1.6, duration: 0.3});
                 
-                // 走路時尾巴根部翹起，後面自然垂彎
                 catTailBones.forEach((bone, i) => gsap.to(bone.rotation, {x: i===0 ? 0.6 : -0.08, duration: 0.3}));
             }
         }
-
         // 🐾 貓咪每幀更新邏輯
         // 🐾 貓咪每幀更新邏輯
+       // 🐾 貓咪每幀更新邏輯
         function updateCat() {
             if(!catGrp) return;
             const time = Date.now();
@@ -1327,23 +1327,30 @@
             if (catState === 'sleep') {
                 catBody.scale.y = 0.8 + Math.sin(time * 0.002) * 0.03;
                 catBody.scale.x = 1.1 + Math.sin(time * 0.002) * 0.02;
-                
-                // 睡覺時尾巴尖端微小且緩慢的抽動
                 catTailBones[catTailBones.length-1].rotation.z = Math.sin(time * 0.002) * 0.1;
                 
                 if (--catTimer <= 0) setCatState('idle');
             } else if (catState === 'walk') {
                 catBody.position.y = 1.6 + Math.abs(Math.sin(time * 0.015)) * 0.15;
                 
-                // 走路時尾巴的波浪連動 (加大相位差 i * 0.4，讓動作像波浪一樣傳遞)
                 catTailBones.forEach((bone, i) => {
                     if (i > 0) bone.rotation.z = Math.sin(time * 0.008 - i * 0.4) * 0.15;
                 });
                 
-                legFL.rotation.x = Math.sin(time * 0.015) * 0.6;
-                legBR.rotation.x = Math.sin(time * 0.015) * 0.6;
-                legFR.rotation.x = Math.sin(time * 0.015 + Math.PI) * 0.6;
-                legBL.rotation.x = Math.sin(time * 0.015 + Math.PI) * 0.6;
+                const walkSpeed = time * 0.015;
+                
+                // 🐾 膝蓋彎曲邏輯：抬腿時彎曲，落地時伸直
+                legFL.root.rotation.x = Math.sin(walkSpeed) * 0.6;
+                legFL.knee.rotation.x = Math.sin(walkSpeed) < 0 ? Math.abs(Math.sin(walkSpeed)) * 1.0 : 0;
+                
+                legFR.root.rotation.x = Math.sin(walkSpeed + Math.PI) * 0.6;
+                legFR.knee.rotation.x = Math.sin(walkSpeed + Math.PI) < 0 ? Math.abs(Math.sin(walkSpeed + Math.PI)) * 1.0 : 0;
+                
+                legBL.root.rotation.x = Math.sin(walkSpeed + Math.PI) * 0.6;
+                legBL.knee.rotation.x = Math.sin(walkSpeed + Math.PI) > 0 ? Math.abs(Math.sin(walkSpeed + Math.PI)) * 0.8 : 0;
+                
+                legBR.root.rotation.x = Math.sin(walkSpeed) * 0.6;
+                legBR.knee.rotation.x = Math.sin(walkSpeed) > 0 ? Math.abs(Math.sin(walkSpeed)) * 0.8 : 0;
                 
                 const dx = catTarget.x - catGrp.position.x;
                 const dz = catTarget.z - catGrp.position.z;
@@ -1361,7 +1368,6 @@
                     catGrp.rotation.y += diff * 0.1;
                 }
             } else if (catState === 'idle') {
-                // 坐著時尾巴緩慢、柔順的Ｓ型搖擺
                 catTailBones.forEach((bone, i) => {
                     if (i > 0) bone.rotation.z = Math.sin(time * 0.002 - i * 0.3) * 0.12;
                 });
@@ -1369,7 +1375,6 @@
                 if (--catTimer <= 0) { Math.random() < 0.4 ? setCatState('sleep') : setCatState('walk'); }
             }
         }
-
         
         function animateRoom() {
             requestAnimationFrame(animateRoom); if(controls) controls.update();
