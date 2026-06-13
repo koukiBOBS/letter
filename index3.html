@@ -569,10 +569,15 @@ function switchTaskTab(tab) {
 }
 
 function renderTasks() {
-    const rGrid = document.getElementById('task-grid'); const randGrid = document.getElementById('random-task-grid');
-    if(!rGrid || !randGrid) return; rGrid.innerHTML = ''; randGrid.innerHTML = '';
+    const rGrid = document.getElementById('task-grid'); 
+    const randGrid = document.getElementById('random-task-grid');
+    if(!rGrid || !randGrid) return; 
+    rGrid.innerHTML = ''; randGrid.innerHTML = '';
+    
+    if (!currentUser) return; // 確保有登入才執行
     const classId = currentUser.classId || 'default';
     
+    // 這裡加上了 .catch 來防止卡死
     db.ref(`classes/${classId}`).once('value').then(classSnap => {
         const classData = classSnap.val() || {};
         const readingTasks = classData.tasks || [];
