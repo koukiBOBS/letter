@@ -1077,16 +1077,15 @@
             legFL = createLeg(0.5, 0.8); legFR = createLeg(-0.5, 0.8);
             legBL = createLeg(0.5, -0.8); legBR = createLeg(-0.5, -0.8);
 
-         // 🐾 尾巴 (改良版：柔軟連續、無突兀球體)
-         // 🐾 尾巴 (高段數圓柱體 + 收口技術，完美連續無縫隙且保持柔軟)
+        // 🐾 尾巴 (高段數圓柱體，修復材質蒙皮失效與綁定錯位問題)
             catTailGrp = new THREE.Group(); 
             catTailGrp.position.set(0, 0.5, -1.1); 
             catTailGrp.rotation.x = -0.4; // 尾巴根部的初始下垂角度
             catBody.add(catTailGrp);
             
             const tailLength = 2.5;
-            const boneCount = 8;          // 骨頭數量
-            const heightSegments = 30;    // ★ 關鍵：增加垂直分段達 30 段，解決彎曲時「太硬、起角」問題
+            const boneCount = 8;
+            const heightSegments = 30;
             
             catTailBones = [];
             let prevBone = new THREE.Bone();
@@ -1096,16 +1095,14 @@
             for(let i = 1; i <= boneCount; i++) {
                 const bone = new THREE.Bone();
                 bone.position.y = tailLength / boneCount;
-                // ★ 關鍵：給予初始的微彎弧度，讓尾巴平時就是一個柔軟的曲線
-                bone.rotation.x = 0.15; 
+                // ★ 修正 1：建立骨架時絕對不能先旋轉，必須保持筆直，確保 bind() 綁定正確
                 prevBone.add(bone);
                 catTailBones.push(bone);
                 prevBone = bone;
             }
             const skeleton = new THREE.Skeleton(catTailBones);
             
-            // 使用 r128 支援的 CylinderGeometry
-            // radiusTop = 0.04 (尾巴尖端變細), radiusBottom = 0.16 (尾巴根部較粗)
+            // 使用高段數的 CylinderGeometry，讓頂端變細 (0.04) 根部較粗 (0.16)
             const tailGeo = new THREE.CylinderGeometry(0.04, 0.16, tailLength, 16, heightSegments);
             tailGeo.translate(0, tailLength / 2, 0); 
             
@@ -1113,7 +1110,7 @@
             const skinIndices = [];
             const skinWeights = [];
             
-            // 精確計算蒙皮權重，確保彎曲時極度平滑
+            // 計算蒙皮權重
             for(let i = 0; i < posAttr.count; i++) {
                 const y = Math.max(0, posAttr.getY(i)); 
                 const exactIndex = (y / tailLength) * boneCount;
@@ -1133,17 +1130,22 @@
             tailGeo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndices, 4));
             tailGeo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeights, 4));
             
-            const tailMesh = new THREE.SkinnedMesh(tailGeo, catMat);
+            // ★ 致命關鍵修正 2：複製原材質，並強制開啟 skinning: true
+            // 在 r128 版本中，沒有開啟這個屬性，模型就不會跟隨骨架彎曲！
+            const tailSkinMat = catMat.clone();
+            tailSkinMat.skinning = true;
+            
+            const tailMesh = new THREE.SkinnedMesh(tailGeo, tailSkinMat);
             tailMesh.add(catTailBones[0]); 
             tailMesh.bind(skeleton);
             tailMesh.castShadow = true;
             catTailGrp.add(tailMesh);
             
-            // 在末端加上一個極小的圓球來完美收口 (半徑 0.04 完全對應上方 Cylinder 的 radiusTop，達到視覺無縫)
-            const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), catMat);
+            // ★ 修正 3：球體收口也要套用開啟 skinning 的材質，這時它就會緊緊黏在軟軟的尾巴尖端了
+            const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), tailSkinMat);
             catTailBones[boneCount].add(tailTip);
             
-            setCatState('idle'); // 啟動貓咪狀態
+            setCatState('idle'); // 啟動貓咪狀態 (這時骨架才會開始彎曲)
         }
 
         function buildPlantIn3D(type, growth, wilt) {
