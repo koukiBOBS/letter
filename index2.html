@@ -70,10 +70,10 @@
         .data-table th, .data-table td { padding: 15px; text-align: left; border-bottom: 1px solid var(--border); }
         .data-table th { color: var(--text-muted); font-weight: 500; font-size: 0.9rem; }
         
-        /* --- Accordion Lists & Tabs (依學生/依任務) --- */
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab-btn { background: var(--bg); color: var(--text-main); border: 1px solid var(--border); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 500; transition: 0.2s; }
-        .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        /* --- Accordion Lists & Tabs --- */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 10px;}
+        .tab-btn { background: transparent; color: var(--text-muted); border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1.05rem; transition: 0.2s; position: relative;}
+        .tab-btn.active { color: var(--primary); background: #f1f5f9; }
         
         .list-item { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; background: var(--paper); overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02);}
         .list-header { padding: 18px 25px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; transition: 0.2s; }
@@ -94,12 +94,13 @@
         .s-late { background: #fef3c7; color: var(--yellow); }
         .s-miss { background: #fee2e2; color: var(--red); }
 
-        /* --- Letter Reading Modal --- */
+        /* --- Reading Modals --- */
         .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #modal-reader { position: fixed; inset: 0; background: rgba(20, 18, 16, 0.88); z-index: 5000; display: none; justify-content: center; overflow-y: auto; padding: 40px 20px; backdrop-filter: blur(8px); }
+        #modal-reader, #modal-random-reader { position: fixed; inset: 0; background: rgba(20, 18, 16, 0.88); z-index: 5000; display: none; justify-content: center; overflow-y: auto; padding: 40px 20px; backdrop-filter: blur(8px); }
         .modal-close-btn { position: fixed; top: 20px; right: 30px; background: transparent; border: none; font-size: 2.5rem; color: #e6dfd1; cursor: pointer; z-index: 5100; transition: 0.3s; }
         .modal-close-btn:hover { transform: scale(1.1); color: #fff; }
         
+        /* Letter Style */
         .letter-desk { width: 100%; max-width: 720px; margin: auto; display: flex; flex-direction: column; gap: 40px; position: relative; }
         .letter-sheet { background-color: var(--letter-paper); box-shadow: 0 30px 60px rgba(0,0,0,0.35); padding: 60px 8% 80px 8%; border-radius: 4px; }
         .letter-sheet.my-letter { background-color: #faf6eb; border-left: 4px solid var(--color-replies); }
@@ -109,6 +110,13 @@
         .letter-section-divider { display: inline-block; width: 100%; text-align: center; font-size: 0.95rem; color: #9c8a75; letter-spacing: 0.6em; margin: 0; line-height: 40px; position: relative; font-weight: 400; font-family: var(--font-serif); vertical-align: top; }
         .letter-img-wrap { display: block; width: fit-content; margin: 40px auto; text-align: center; transform: rotate(-2deg); }
         .letter-img { max-width: 90%; max-height: 380px; object-fit: cover; background-color: #fff; padding: 12px 12px 40px 12px; border: 1px solid #e6e1d6; box-shadow: 0 8px 25px rgba(140, 120, 100, 0.15); display: block; border-radius: 4px; }
+
+        /* Random Task Style (Polaroid Look) */
+        .polaroid-card { background: #fff; padding: 20px 20px 40px 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.4); border-radius: 4px; width: 100%; max-width: 500px; margin: auto; transform: rotate(1deg); }
+        .polaroid-img { width: 100%; height: auto; max-height: 500px; object-fit: cover; background: #f0f0f0; border: 1px solid #eee; margin-bottom: 25px; }
+        .polaroid-title { font-family: var(--font-serif); font-size: 1.4rem; color: #333; text-align: center; margin-bottom: 15px; font-weight: 600;}
+        .polaroid-note { font-family: var(--font-sans); font-size: 1.05rem; color: #555; text-align: center; line-height: 1.6; white-space: pre-wrap;}
+        .polaroid-meta { text-align: center; font-size: 0.85rem; color: #999; margin-top: 20px; border-top: 1px dashed #eee; padding-top: 15px;}
 
         @media (max-width: 768px) {
             body { flex-direction: column; }
@@ -170,33 +178,56 @@
         <!-- 任務派發頁面 -->
         <section id="page-tasks" class="section-container">
             <div class="page-header"><h1 class="page-title">任務派發</h1></div>
+            
             <div class="panel">
                 <div class="panel-title">選擇班級</div>
                 <select id="task-class-select" style="width: 100%; max-width: 400px;" onchange="renderTasksList()"></select>
             </div>
-            <div class="form-row">
-                <div class="panel" style="flex: 2; margin-bottom: 0;">
-                    <div class="panel-title">按時段週期派發</div>
-                    <div class="form-row">
-                        <div class="form-group"><label>開始日期</label><input type="date" id="periodic-start"></div>
-                        <div class="form-group"><label>結束日期</label><input type="date" id="periodic-end"></div>
-                        <div class="form-group"><label>間隔天數</label><input type="number" id="periodic-interval" min="1" placeholder="例：7"></div>
+
+            <div class="tabs">
+                <button class="tab-btn active" id="assign-tab-reading" onclick="switchAssignTab('reading')">📖 常規閱讀任務</button>
+                <button class="tab-btn" id="assign-tab-random" onclick="switchAssignTab('random')">📸 隨機探索任務</button>
+            </div>
+
+            <!-- 常規任務表單 -->
+            <div id="assign-reading-form">
+                <div class="form-row">
+                    <div class="panel" style="flex: 2; margin-bottom: 0;">
+                        <div class="panel-title">按時段週期派發</div>
+                        <div class="form-row">
+                            <div class="form-group"><label>開始日期</label><input type="date" id="periodic-start"></div>
+                            <div class="form-group"><label>結束日期</label><input type="date" id="periodic-end"></div>
+                            <div class="form-group"><label>間隔天數</label><input type="number" id="periodic-interval" min="1" placeholder="例：7"></div>
+                        </div>
+                        <button class="btn" onclick="assignPeriodicTasks()">批次派發</button>
                     </div>
-                    <button class="btn" onclick="assignPeriodicTasks()">批次派發</button>
-                </div>
-                <div class="panel" style="flex: 1; margin-bottom: 0;">
-                    <div class="panel-title">單次指定派發</div>
-                    <div class="form-group" style="margin-bottom: 20px;"><label>指定日期</label><input type="date" id="single-date"></div>
-                    <button class="btn btn-outline" style="width: 100%; justify-content: center;" onclick="assignSingleTask()">加派單次任務</button>
+                    <div class="panel" style="flex: 1; margin-bottom: 0;">
+                        <div class="panel-title">單次指定派發</div>
+                        <div class="form-group" style="margin-bottom: 20px;"><label>指定日期</label><input type="date" id="single-date"></div>
+                        <button class="btn btn-outline" style="width: 100%; justify-content: center;" onclick="assignSingleTask('reading')">加派閱讀任務</button>
+                    </div>
                 </div>
             </div>
+
+            <!-- 隨機任務表單 -->
+            <div id="assign-random-form" style="display: none;">
+                <div class="panel" style="background: #fdfaf6; border-color: #e6dfd1;">
+                    <div class="panel-title" style="color: #8b7355;">單次隨機探索任務派發</div>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">學生將會在上傳介面中，透過抽籤動畫隨機獲取一項生活小任務（例如：拍下一片落葉）。</p>
+                    <div class="form-row" style="align-items: flex-end;">
+                        <div class="form-group"><label>指定截止日期</label><input type="date" id="single-random-date"></div>
+                        <button class="btn" style="background: #8b7355;" onclick="assignSingleTask('random')">加派隨機任務</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="panel" style="margin-top: 30px;">
-                <div class="panel-title">已派發任務列表</div>
+                <div class="panel-title" id="task-list-title">已派發列表</div>
                 <div class="grid-container" id="tasks-grid"></div>
             </div>
         </section>
 
-        <!-- 作業批閱頁面 (完整保留折疊式清單) -->
+        <!-- 作業批閱頁面 -->
         <section id="page-records" class="section-container">
             <div class="page-header"><h1 class="page-title">作業批閱</h1></div>
             
@@ -208,6 +239,16 @@
                     <button class="tab-btn active" id="tab-student" onclick="switchRecordTab('student')">依學生查看</button>
                     <button class="tab-btn" id="tab-task" onclick="switchRecordTab('task')">依任務查看</button>
                 </div>
+                
+                <!-- 任務類型篩選器 -->
+                <div style="margin-bottom: 20px; display: flex; gap: 10px;">
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: var(--text-main);">
+                        <input type="radio" name="recordType" value="reading" checked onchange="renderRecords()"> 📖 常規閱讀
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: var(--text-main); margin-left: 15px;">
+                        <input type="radio" name="recordType" value="random" onchange="renderRecords()"> 📸 隨機探索
+                    </label>
+                </div>
 
                 <div id="records-accordion-container"></div>
             </div>
@@ -215,10 +256,16 @@
 
     </main>
 
-    <!-- 信件閱讀器 Modal -->
+    <!-- 信件閱讀器 Modal (閱讀任務) -->
     <div id="modal-reader">
-        <button class="modal-close-btn" onclick="closeReaderModal()">×</button>
+        <button class="modal-close-btn" onclick="closeReaderModal('modal-reader')">×</button>
         <div class="letter-desk" id="chat-flow"></div>
+    </div>
+
+    <!-- 拍立得閱讀器 Modal (隨機任務) -->
+    <div id="modal-random-reader">
+        <button class="modal-close-btn" onclick="closeReaderModal('modal-random-reader')">×</button>
+        <div id="polaroid-flow" style="width: 100%; display: flex; justify-content: center; align-items: center; min-height: 100%;"></div>
     </div>
 
     <script>
@@ -226,10 +273,11 @@
         const firebaseConfig = { apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms", authDomain: "letter-a74d1.firebaseapp.com", databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com", projectId: "letter-a74d1" };
         firebase.initializeApp(firebaseConfig); const auth = firebase.auth(); const db = firebase.database();
 
-        let dbClasses = {}; let dbUsers = {}; let dbLetters = {};
+        let dbClasses = {}; let dbUsers = {}; let dbLetters = {}; let dbRandomSubs = {};
         let currentRecordTab = 'student';
+        let currentAssignType = 'reading'; // 'reading' or 'random'
 
-        function ensureDefaultClass() { if (!dbClasses['default']) db.ref('classes/default').set({ name: "預設班", tasks: [] }); }
+        function ensureDefaultClass() { if (!dbClasses['default']) db.ref('classes/default').set({ name: "預設班", tasks: [], randomTasks: [] }); }
 
         auth.onAuthStateChanged(user => {
             if (user && ALLOWED_EMAILS.includes(user.email)) {
@@ -251,7 +299,9 @@
                 if(document.getElementById('page-records').classList.contains('active')) renderRecords();
             });
             db.ref('users').on('value', snap => { dbUsers = snap.val() || {}; if(document.getElementById('page-classes').classList.contains('active')) renderStudentsTable(); if(document.getElementById('page-records').classList.contains('active')) renderRecords(); });
-            db.ref('letters').on('value', snap => { dbLetters = snap.val() || {}; if(document.getElementById('page-records').classList.contains('active')) renderRecords(); });
+            db.ref('letters').on('value', snap => { dbLetters = snap.val() || {}; if(document.getElementById('page-records').classList.contains('active') && getRecordType()==='reading') renderRecords(); });
+            // 監聽隨機任務繳交資料
+            db.ref('random_task_submissions').on('value', snap => { dbRandomSubs = snap.val() || {}; if(document.getElementById('page-records').classList.contains('active') && getRecordType()==='random') renderRecords(); });
         }
 
         function switchPage(pageId) {
@@ -264,7 +314,7 @@
 
         function createClass() {
             const name = document.getElementById('new-class-name').value.trim(); if(!name) return alert("請輸入班級名稱");
-            db.ref('classes').push().set({ name: name, tasks: [] }).then(() => { document.getElementById('new-class-name').value = ''; alert("班級建立成功！"); });
+            db.ref('classes').push().set({ name: name, tasks: [], randomTasks: [] }).then(() => { document.getElementById('new-class-name').value = ''; alert("班級建立成功！"); });
         }
 
         function updateClassSelects() {
@@ -285,11 +335,28 @@
         }
         function changeStudentClass(uid, newCid) { db.ref(`users/${uid}/classId`).set(newCid).then(() => alert("已更新學生班級")); }
 
+        /* --- 任務派發 --- */
+        function switchAssignTab(type) {
+            currentAssignType = type;
+            document.getElementById('assign-tab-reading').className = type === 'reading' ? 'tab-btn active' : 'tab-btn';
+            document.getElementById('assign-tab-random').className = type === 'random' ? 'tab-btn active' : 'tab-btn';
+            document.getElementById('assign-reading-form').style.display = type === 'reading' ? 'block' : 'none';
+            document.getElementById('assign-random-form').style.display = type === 'random' ? 'block' : 'none';
+            document.getElementById('task-list-title').innerText = type === 'reading' ? '已派發閱讀任務' : '已派發隨機任務';
+            renderTasksList();
+        }
+
         function renderTasksList() {
             const cid = document.getElementById('task-class-select').value; const grid = document.getElementById('tasks-grid');
-            if(!cid || !dbClasses[cid]) return; const tasks = dbClasses[cid].tasks || []; grid.innerHTML = '';
-            if(tasks.length === 0) return grid.innerHTML = '<p style="color: var(--text-muted); grid-column: 1/-1;">此班級尚未派發任何任務。</p>';
-            tasks.forEach((d, i) => { grid.innerHTML += `<div class="task-card" style="text-align:left;"><div class="task-index">第 ${i + 1} 回任務</div><div class="task-date">${d}</div><button class="btn btn-danger" style="position:absolute; top:15px; right:15px; padding: 6px 12px; font-size:0.85rem;" onclick="deleteTask('${cid}', ${i})">刪除</button></div>`; });
+            if(!cid || !dbClasses[cid]) return; 
+            
+            const arrayName = currentAssignType === 'reading' ? 'tasks' : 'randomTasks';
+            const tasks = dbClasses[cid][arrayName] || []; grid.innerHTML = '';
+            if(tasks.length === 0) return grid.innerHTML = '<p style="color: var(--text-muted); grid-column: 1/-1;">此班級尚未派發此類任務。</p>';
+            
+            tasks.forEach((d, i) => { 
+                grid.innerHTML += `<div class="task-card" style="text-align:left;"><div class="task-index">${currentAssignType==='reading'?'📖 閱讀':'📸 隨機'} 第 ${i + 1} 回</div><div class="task-date">${d}</div><button class="btn btn-danger" style="position:absolute; top:15px; right:15px; padding: 6px 12px; font-size:0.85rem;" onclick="deleteTask('${cid}', ${i}, '${arrayName}')">刪除</button></div>`; 
+            });
         }
 
         function assignPeriodicTasks() {
@@ -300,21 +367,33 @@
             let exist = dbClasses[cid].tasks || [];
             if (exist.length > 0) {
                 const eFirst = new Date(exist[0]), eLast = new Date(exist[exist.length - 1]), nFirst = new Date(newDates[0]), nLast = new Date(newDates[newDates.length - 1]);
-                if ((nFirst <= eLast && nFirst >= eFirst) || (nLast <= eLast && nLast >= eFirst) || (nFirst <= eFirst && nLast >= eLast)) return alert("衝突錯誤：您選擇的區間與該班級現有的任務區間重疊！\n請更換區間，或使用「單次指定派發」在空檔日加派任務。");
+                if ((nFirst <= eLast && nFirst >= eFirst) || (nLast <= eLast && nLast >= eFirst) || (nFirst <= eFirst && nLast >= eLast)) return alert("衝突錯誤：您選擇的區間與該班級現有的任務區間重疊！");
             }
             db.ref(`classes/${cid}/tasks`).set([...new Set([...exist, ...newDates])].sort()).then(() => { alert("批次派發成功！"); document.getElementById('periodic-start').value = ''; document.getElementById('periodic-end').value = ''; document.getElementById('periodic-interval').value = ''; });
         }
 
-        function assignSingleTask() {
-            const cid = document.getElementById('task-class-select').value; const dateStr = document.getElementById('single-date').value;
-            if(!cid || !dateStr) return alert("請選擇日期"); let exist = dbClasses[cid].tasks || [];
-            if(exist.includes(dateStr)) return alert("該日期已經有任務了！"); exist.push(dateStr); exist.sort();
-            db.ref(`classes/${cid}/tasks`).set(exist).then(() => { alert("加派單次任務成功！"); document.getElementById('single-date').value = ''; });
+        function assignSingleTask(type) {
+            const cid = document.getElementById('task-class-select').value; 
+            const inputId = type === 'reading' ? 'single-date' : 'single-random-date';
+            const dateStr = document.getElementById(inputId).value;
+            const arrayName = type === 'reading' ? 'tasks' : 'randomTasks';
+
+            if(!cid || !dateStr) return alert("請選擇日期"); 
+            let exist = dbClasses[cid][arrayName] || [];
+            if(exist.includes(dateStr)) return alert("該日期已經有任務了！"); 
+            exist.push(dateStr); exist.sort();
+            
+            db.ref(`classes/${cid}/${arrayName}`).set(exist).then(() => { alert("加派單次任務成功！"); document.getElementById(inputId).value = ''; });
         }
 
-        function deleteTask(cid, index) { if(confirm(`確定要刪除第 ${index+1} 回任務嗎？`)) { let tasks = dbClasses[cid].tasks || []; tasks.splice(index, 1); db.ref(`classes/${cid}/tasks`).set(tasks); } }
+        function deleteTask(cid, index, arrayName) { 
+            if(confirm(`確定要刪除第 ${index+1} 回任務嗎？`)) { 
+                let tasks = dbClasses[cid][arrayName] || []; tasks.splice(index, 1); 
+                db.ref(`classes/${cid}/${arrayName}`).set(tasks); 
+            } 
+        }
 
-        /* --- 作業批閱：智慧防錯比對邏輯 --- */
+        /* --- 作業批閱 --- */
         function switchRecordTab(tab) {
             currentRecordTab = tab;
             document.getElementById('tab-student').className = tab === 'student' ? 'tab-btn active' : 'tab-btn';
@@ -327,29 +406,35 @@
             el.style.display = el.style.display === 'block' ? 'none' : 'block';
         }
 
+        function getRecordType() {
+            return document.querySelector('input[name="recordType"]:checked').value;
+        }
+
         function findLetterSafe(uid, dateStr, idx, lettersArray) {
             return lettersArray.find(l => {
                 if (l.senderUid !== uid) return false;
-                
-                // 如果是升級後的新功課（有存日期），精準比對日期
                 if (l.taskDate) return l.taskDate === dateStr;
-                
-                // 防呆機制：如果是舊功課 (只存 Index)，為了避免「錯認到新加派的任務上」，
-                // 必須檢查「繳交時間」是否合理 (繳交時間 不可能 早於 該任務的開放日期)
                 const submitDate = new Date(l.timestamp).setHours(0,0,0,0);
                 const taskOpenDate = new Date(dateStr).setHours(0,0,0,0);
                 return l.taskIndex === idx && submitDate >= taskOpenDate;
             });
+        }
+        
+        function findRandomSafe(uid, dateStr, randomArray) {
+            return randomArray.find(l => l.senderUid === uid && l.taskDate === dateStr);
         }
 
         function renderRecords() {
             const cid = document.getElementById('record-class-select').value;
             const container = document.getElementById('records-accordion-container');
             container.innerHTML = '';
-            
             if(!cid || !dbClasses[cid]) return;
-            const tasks = dbClasses[cid].tasks || [];
-            const lettersArray = Object.values(dbLetters);
+
+            const recType = getRecordType();
+            const arrayName = recType === 'reading' ? 'tasks' : 'randomTasks';
+            const tasks = dbClasses[cid][arrayName] || [];
+            
+            const dataArray = recType === 'reading' ? Object.values(dbLetters) : Object.values(dbRandomSubs);
             const studentsInClass = Object.keys(dbUsers).filter(uid => (dbUsers[uid].classId || 'default') === cid);
 
             if (currentRecordTab === 'student') {
@@ -357,8 +442,8 @@
                     const u = dbUsers[uid];
                     let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('stu-${uid}')"><div class="list-title">🧑‍🎓 ${escapeHtml(u.name)} <span class="list-subtitle">${escapeHtml(u.email)}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看任務 ▾</span></div><div class="list-body" id="acc-body-stu-${uid}"><div class="grid-container">`;
                     tasks.forEach((dateStr, idx) => {
-                        const letter = findLetterSafe(uid, dateStr, idx, lettersArray);
-                        html += buildGridCard(`第 ${idx+1} 回`, dateStr, letter);
+                        const record = recType === 'reading' ? findLetterSafe(uid, dateStr, idx, dataArray) : findRandomSafe(uid, dateStr, dataArray);
+                        html += buildGridCard(`第 ${idx+1} 回`, dateStr, record, recType);
                     });
                     if(tasks.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級尚未派發任務。</p>`;
                     html += `</div></div></div>`; container.innerHTML += html;
@@ -366,11 +451,11 @@
                 if(studentsInClass.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級目前沒有學生。</p>`;
             } else {
                 tasks.forEach((dateStr, idx) => {
-                    let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('task-${idx}')"><div class="list-title">📋 第 ${idx + 1} 回 <span class="list-subtitle">期限: ${dateStr}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看學生 ▾</span></div><div class="list-body" id="acc-body-task-${idx}"><div class="grid-container">`;
+                    let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('task-${idx}')"><div class="list-title">${recType==='reading'?'📋':'📸'} 第 ${idx + 1} 回 <span class="list-subtitle">期限: ${dateStr}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看學生 ▾</span></div><div class="list-body" id="acc-body-task-${idx}"><div class="grid-container">`;
                     studentsInClass.forEach(uid => {
                         const u = dbUsers[uid];
-                        const letter = findLetterSafe(uid, dateStr, idx, lettersArray);
-                        html += buildGridCard(escapeHtml(u.name), dateStr, letter);
+                        const record = recType === 'reading' ? findLetterSafe(uid, dateStr, idx, dataArray) : findRandomSafe(uid, dateStr, dataArray);
+                        html += buildGridCard(escapeHtml(u.name), dateStr, record, recType);
                     });
                     if(studentsInClass.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級目前沒有學生。</p>`;
                     html += `</div></div></div>`; container.innerHTML += html;
@@ -379,20 +464,26 @@
             }
         }
 
-        function buildGridCard(title, deadlineStr, letter) {
+        function buildGridCard(title, deadlineStr, record, recType) {
             let statusClass = "s-miss"; let statusText = "未交"; let btnHtml = '';
-            if(letter) {
-                const submitTime = new Date(letter.timestamp); const deadline = new Date(deadlineStr);
+            if(record) {
+                const submitTime = new Date(record.timestamp); const deadline = new Date(deadlineStr);
                 if(submitTime.setHours(0,0,0,0) <= deadline.setHours(0,0,0,0)) { statusClass = "s-ok"; statusText = "準時"; } 
                 else { statusClass = "s-late"; statusText = "遲交"; }
-                btnHtml = `<button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem;" onclick="openReaderModal('${letter.id}')">批閱交流</button>`;
+                
+                if (recType === 'reading') {
+                    btnHtml = `<button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem;" onclick="openReadingModal('${record.id}')">批閱信件</button>`;
+                } else {
+                    btnHtml = `<button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem; border-color:#8b7355; color:#8b7355;" onclick="openRandomModal('${record.id}')">檢視相片</button>`;
+                }
             }
             return `<div class="task-card"><div style="font-size:1.05rem; font-weight:600; margin-bottom:10px;">${title}</div><span class="status-badge ${statusClass}">${statusText}</span><div style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">期限: ${deadlineStr}</div>${btnHtml}</div>`;
         }
 
-        /* --- 原汁原味閱讀器 --- */
+        /* --- 閱讀器 Modals --- */
         function escapeHtml(str) { return str?str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):str; }
-        function openReaderModal(letterId) {
+        
+        function openReadingModal(letterId) {
             const letter = dbLetters[letterId]; if(!letter) return;
             const flow = document.getElementById('chat-flow'); flow.innerHTML = '<div style="text-align:center; color:#fff;">載入中...</div>';
             document.getElementById('modal-reader').style.display = 'flex'; document.body.style.overflow = 'hidden';
@@ -408,7 +499,32 @@
                 }); flow.innerHTML = html;
             });
         }
-        function closeReaderModal() { document.getElementById('modal-reader').style.display = 'none'; document.body.style.overflow = ''; }
+
+        function openRandomModal(subId) {
+            const sub = dbRandomSubs[subId]; if(!sub) return;
+            const flow = document.getElementById('polaroid-flow');
+            const studentName = dbUsers[sub.senderUid] ? dbUsers[sub.senderUid].name : '未知學生';
+            const d = new Date(sub.timestamp); const tStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+            
+            flow.innerHTML = `
+                <div class="polaroid-card">
+                    <img src="${sub.imageUrl || ''}" class="polaroid-img" alt="隨機任務相片">
+                    <div class="polaroid-title">「${escapeHtml(sub.drawnTask)}」</div>
+                    ${sub.text ? `<div class="polaroid-note">${escapeHtml(sub.text)}</div>` : ''}
+                    <div class="polaroid-meta">
+                        📸 來自 ${escapeHtml(studentName)} 的生活捕捉<br>
+                        ${tStr}
+                    </div>
+                </div>
+            `;
+            document.getElementById('modal-random-reader').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeReaderModal(modalId) { 
+            document.getElementById(modalId).style.display = 'none'; 
+            document.body.style.overflow = ''; 
+        }
     </script>
 </body>
 </html>
