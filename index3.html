@@ -110,6 +110,21 @@
         .field-group { margin-bottom: 20px; }
         .field-label { display: block; font-family: var(--font-serif); font-size: 1.1rem; font-weight: 600; color: var(--color-tasks); margin-bottom: 10px; }
         .textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; font-family: var(--font-serif); font-size: 1.1rem; line-height: 1.8; resize: vertical; outline: none; }
+        /* 編輯器輸入框統一設定 (與 textarea 樣式對齊) */
+.input-box { 
+    width: 100%; 
+    border: 1px solid #cbd5e1; 
+    border-radius: 8px; 
+    padding: 15px 20px; 
+    font-family: var(--font-serif); 
+    font-size: 1.1rem; 
+    outline: none; 
+    background-color: #fff;
+    transition: border-color 0.3s;
+}
+.input-box:focus { 
+    border-color: var(--color-tasks); 
+}
         .flex-row { display: flex; gap: 20px; } .flex-row > div { flex: 1; }
         
         .icon-btn { background: transparent; border: 1px solid var(--color-log); color: var(--color-log); border-radius: 50%; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; flex-shrink: 0;}
@@ -305,12 +320,12 @@
                 <div class="field-group">
                     <label class="field-label">思考問題</label>
                     <textarea id="log-question" class="textarea handwrite-only" style="min-height:100px;" readonly placeholder="點此喚出全螢幕書寫板..."></textarea>
-                    <span class="handwrite-placeholder">📝 點擊進入手寫模式。禁止鍵盤打字或貼上。</span>
+             
                 </div>
                 <div class="field-group">
                     <label class="field-label">閱讀感悟</label>
                     <textarea id="log-content" class="textarea handwrite-only" style="min-height:220px;" readonly placeholder="點此喚出全螢幕書寫板...（最少 150 字）"></textarea>
-                    <span class="handwrite-placeholder">📝 點擊進入手寫模式。禁止鍵盤打字或貼上。</span>
+           
                 </div>
                 <div class="field-group upload-container">
                     <label class="field-label" style="margin-bottom: 0;">書頁留影／感悟配圖</label>
