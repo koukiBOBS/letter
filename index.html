@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>閱讀交流與書房 - 自動辨識手寫信箋</title>
+    <title>閱讀交流與書房 - 沉浸式手寫信箋</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -40,7 +40,7 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background-color: var(--bg); color: var(--text); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; line-height: 1.6; }
+        body { background-color: var(--bg); color: var(--text); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; line-height: 1.6; touch-action: manipulation;}
         h1, h2, h3, h4, .serif-text { font-family: var(--font-serif); }
 
         /* Notification Banner */
@@ -68,25 +68,20 @@
         .user-info { font-size: 0.9rem; color: var(--text-muted); font-weight: 500; }
         .user-info a { color: var(--color-inbox); cursor: pointer; margin-left: 15px; padding: 6px 12px; border-radius: 20px; background: rgba(217, 138, 108, 0.1); }
 
-        /* TABS */
+        /* TABS & MAIN */
         .tabs { max-width: 950px; margin: 0 auto 30px; padding: 0 20px; display: flex; flex-wrap: wrap; gap: 10px; border-bottom: 2px solid var(--border); }
         .tab-btn { background: none; border: none; font-family: var(--font-sans); font-weight: 500; font-size: 1rem; cursor: pointer; color: var(--text-muted); padding: 14px 20px; position: relative; display: flex; align-items: center; gap: 8px; border-radius: 8px 8px 0 0; }
         .tab-btn.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; }
-        
         .tab-btn.tab-replies.active { color: var(--color-replies); } .tab-btn.tab-replies.active::after { background: var(--color-replies); }
         .tab-btn.tab-inbox.active { color: var(--color-inbox); } .tab-btn.tab-inbox.active::after { background: var(--color-inbox); }
         .tab-btn.tab-tasks.active { color: var(--color-tasks); } .tab-btn.tab-tasks.active::after { background: var(--color-tasks); }
         .tab-btn.tab-log.active { color: var(--color-log); } .tab-btn.tab-log.active::after { background: var(--color-log); }
 
-        .has-unread::before {
-            content: ''; position: absolute; top: 8px; right: 8px; width: 10px; height: 10px; background: #ef4444; border-radius: 50%;
-            animation: pulse 1.5s infinite; z-index: 10;
-        }
+        .has-unread::before { content: ''; position: absolute; top: 8px; right: 8px; width: 10px; height: 10px; background: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; z-index: 10; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
 
         main { max-width: 950px; margin: 0 auto 100px; padding: 0 20px; }
-        .section { display: none; }
-        .section.active { display: block; animation: fadeIn 0.4s ease-out; }
+        .section { display: none; } .section.active { display: block; animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Tasks & List */
@@ -135,16 +130,7 @@
         .delete-btn { background: none; border: none; cursor: pointer; padding: 8px; color: #cbd5e1; border-radius: 50%; transition: all 0.2s; margin-left: 5px; font-size: 0.9rem;}
         .delete-btn:hover { color: #ef4444; transform: scale(1.1); } .delete-btn.locked-btn { opacity: 0.5; cursor: not-allowed; }
 
-        /* Log Card */
-        .log-header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-        .toggle-add-btn { background: var(--paper); border: 1px solid var(--border); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-log); transition: all 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .toggle-add-btn:hover { background: var(--color-log); color: white; transform: rotate(90deg); }
-        .log-card { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; position: relative; }
-        .log-card h4 { font-family: var(--font-serif); font-size: 1.2rem; color: #1e293b; margin-bottom: 8px; padding-right: 40px;}
-        .log-card p { color: #475569; font-size: 1rem; line-height: 1.6; white-space: pre-wrap; }
-        .log-card .date { font-size: 0.8rem; color: #94a3b8; margin-top: 12px; } .log-card .delete-btn { position: absolute; top: 16px; right: 16px; }
-
-        /* MODAL UI & THE LETTER AESTHETIC */
+        /* MODAL UI */
         #modal { position: fixed; inset: 0; background: rgba(20, 18, 16, 0.88); z-index: 2000; display: none; justify-content: center; overflow-y: auto; padding: 40px 20px; backdrop-filter: blur(8px); }
         .letter-desk { width: 100%; max-width: 720px; margin: auto; display: flex; flex-direction: column; gap: 40px; position: relative; }
         .modal-close-btn { position: fixed; top: 30px; right: 40px; background: transparent; border: none; font-size: 2.5rem; font-weight: 200; color: #e6dfd1; cursor: pointer; transition: 0.3s; z-index: 2100; }
@@ -174,7 +160,6 @@
             line-height: 40px; background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--letter-line) 39px, var(--letter-line) 40px);
             background-position: top 0 left 0; background-color: transparent; background-attachment: local; margin-bottom: 25px; 
         }
-
         .letter-section-divider { display: inline-block; width: 100%; text-align: center; font-size: 0.95rem; color: #9c8a75; letter-spacing: 0.6em; margin: 0; line-height: 40px; position: relative; font-weight: 400; font-family: var(--font-serif); vertical-align: top; }
         .letter-img-wrap { display: block; width: fit-content; margin: 40px auto; text-align: center; position: relative; z-index: 2; transform: rotate(-2deg); transition: transform 0.4s; }
         .letter-img-wrap:hover { transform: rotate(0deg) scale(1.02); }
@@ -182,8 +167,9 @@
         .letter-img:hover { filter: none; }
         .reply-sheet { padding: 50px 8%; margin-top: 20px; }
 
+
         /* ====================================================
-           🖋️ 全螢幕沉浸式手寫板 (50% 文字區 / 50% 手寫區)
+           🖋️ 全螢幕沉浸式畫布 (文字與畫布融合、底部 SVG 工具列)
            ==================================================== */
         #hw-overlay {
             position: fixed; inset: 0; background: var(--bg); z-index: 100000; 
@@ -192,56 +178,79 @@
         #hw-overlay.active { display: flex; animation: fadeUpIn 0.3s cubic-bezier(0.2, 0, 0.2, 1); }
         @keyframes fadeUpIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* 上半部：信紙預覽區 (50%) */
-        .hw-top-half { flex: 1; display: flex; flex-direction: column; border-bottom: 2px solid #d1c8ba; background: var(--letter-paper); }
-        #hw-preview {
-            flex: 1; width: 100%; border: none; resize: none; outline: none;
-            padding: 8px 6%; /* 對齊信紙紋路 */
-            font-family: var(--font-serif); font-size: 1.15rem; color: var(--letter-ink); letter-spacing: 1.5px;
-            
-            /* 完美的信紙橫線對齊設定 */
-            line-height: 40px; 
-            background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--letter-line) 39px, var(--letter-line) 40px);
-            background-attachment: local; /* 讓線條跟著文字捲動 */
+        /* 頂部標題列 */
+        .hw-top-bar {
+            background: rgba(250, 247, 242, 0.95); padding: 15px 20px; border-bottom: 1px solid #e3dcd1;
+            display: flex; justify-content: space-between; align-items: center; z-index: 20;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        }
+        .hw-title { font-family: var(--font-serif); font-size: 1.1rem; color: var(--text); font-weight: 600; }
+        .hw-hint-text { font-size: 0.85rem; color: var(--color-log); opacity: 0.8; font-weight: 500; letter-spacing: 0.5px;}
+
+        /* 中間：信紙區塊 (可捲動、文字與畫布重疊) */
+        .hw-letter-area {
+            flex: 1; position: relative; background-color: var(--letter-paper);
+            /* 信紙邊緣陰影質感 */
+            box-shadow: inset 0 0 40px rgba(180, 160, 130, 0.05);
         }
 
-        /* 下半部：手寫與工具區 (50%) */
-        .hw-bottom-half { flex: 1; display: flex; flex-direction: column; background: #faf9f7; position: relative;}
-        
-        /* 圖示功能列 (SVG) */
-        .hw-toolbar-actions {
-            display: flex; justify-content: flex-end; align-items: center; padding: 10px 15px; 
-            background: #ebe6df; border-bottom: 1px solid #dcd5c9; gap: 15px;
+        /* 文字預覽框 (置底，處理原生捲動與文字顯示) */
+        #hw-preview {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            border: none; outline: none; resize: none; background: transparent;
+            padding: 20px 8%; /* 左右留白，像真實信紙 */
+            font-family: var(--font-serif); font-size: 1.25rem; color: var(--letter-ink); letter-spacing: 2px;
+            
+            /* 完美對齊的信紙橫線 */
+            line-height: 44px; 
+            background-image: repeating-linear-gradient(to bottom, transparent, transparent 43px, var(--letter-line) 43px, var(--letter-line) 44px);
+            background-attachment: local; /* 線條跟隨文字捲動 */
+            background-position: top 20px left 0; /* 對齊 padding-top */
+            
+            overflow-y: auto; scrollbar-width: thin; z-index: 5;
+            /* 防止鍵盤彈出 */
+            pointer-events: none; 
         }
-        .svg-btn {
-            background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            width: 44px; height: 44px; border-radius: 8px; color: #5a5042; transition: all 0.2s;
+
+        /* 手寫畫布 (置頂，攔截觸控) */
+        #hw-canvas {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            z-index: 10; touch-action: none; cursor: crosshair;
         }
-        .svg-btn:hover { background: rgba(0,0,0,0.05); color: #2c3e50; }
-        .svg-btn:active { transform: scale(0.92); }
-        .svg-btn svg { width: 24px; height: 24px; }
-        .svg-btn.done { background: #6b8e73; color: white; margin-left: 10px; }
-        .svg-btn.done:hover { background: #53735a; }
+
+        /* 底部：標點與工具列 */
+        .hw-footer {
+            background: #faf9f7; border-top: 1px solid #dcd5c9; display: flex; flex-direction: column; z-index: 20;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.03);
+        }
 
         /* 標點符號列 */
-        .hw-toolbar-punctuations {
-            display: flex; gap: 10px; padding: 12px 15px; overflow-x: auto; white-space: nowrap; align-items: center;
-            border-bottom: 1px solid #e3dcd1; background: #f4f0ea;
+        .hw-punctuations {
+            display: flex; gap: 8px; padding: 12px 15px; overflow-x: auto; white-space: nowrap; align-items: center;
+            border-bottom: 1px solid #ebe6df; background: #fdfcfb;
         }
-        .hw-toolbar-punctuations::-webkit-scrollbar { height: 0px; background: transparent; } /* 隱藏滾動條 */
+        .hw-punctuations::-webkit-scrollbar { height: 0px; background: transparent; }
         .hw-punct-btn {
             background: #fff; border: 1px solid #d1c8ba; color: #4a4238; font-family: var(--font-serif);
-            font-size: 1.2rem; padding: 8px 18px; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 0 #d1c8ba;
+            font-size: 1.2rem; padding: 8px 18px; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 0 #d1c8ba;
             display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; transition: 0.1s;
         }
         .hw-punct-btn:active { transform: translateY(2px); box-shadow: 0 0 0 #d1c8ba; }
+
+        /* 功能按鍵列 (純 SVG) */
+        .hw-actions { display: flex; justify-content: center; align-items: center; padding: 10px 15px; background: #ebe6df; gap: 20px; }
+        .svg-btn {
+            background: #fff; border: 1px solid #dcd5c9; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            width: 50px; height: 50px; border-radius: 12px; color: #5a5042; transition: all 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .svg-btn:active { transform: scale(0.92); box-shadow: 0 0 2px rgba(0,0,0,0.05);}
+        .svg-btn svg { width: 24px; height: 24px; }
         
-        /* 手寫畫布 */
-        .hw-canvas-wrapper { flex: 1; position: relative; width: 100%; height: 100%; cursor: crosshair; }
-        #hw-canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
-        
-        /* 載入/等待動畫 */
-        .hw-loader { position: absolute; top: 15px; left: 15px; width: 20px; height: 20px; border: 3px solid rgba(160, 140, 120, 0.2); border-top-color: var(--color-tasks); border-radius: 50%; animation: spin 0.8s linear infinite; opacity: 0; transition: opacity 0.2s;}
+        .svg-btn.done { background: var(--color-tasks); color: white; border-color: #53735a; width: 65px;}
+        .svg-btn.done:hover { background: #53735a; }
+
+        /* 辨識等待小圈圈 */
+        .hw-loader { position: absolute; top: 20px; right: 20px; width: 20px; height: 20px; border: 3px solid rgba(160, 140, 120, 0.2); border-top-color: var(--color-tasks); border-radius: 50%; animation: spin 0.8s linear infinite; opacity: 0; transition: opacity 0.2s; z-index: 15;}
         .hw-loader.active { opacity: 1; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -278,12 +287,14 @@
             .modal-close-btn { top: 15px; right: 15px; font-size: 2rem; background: rgba(0,0,0,0.6); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; line-height: 1; padding-bottom: 4px;}
             .letter-sheet { padding: 40px 6% 50px 6%; }
             .letter-sheet::after { left: 6%; right: 6%; }
-            .log-header-container { flex-direction: column; align-items: flex-start; gap: 15px; }
-            .toggle-add-btn { align-self: flex-end; margin-top: -45px; }
+            .env-wrapper { transform: scale(0.85); }
             
             /* 手寫板 RWD */
-            .svg-btn { width: 40px; height: 40px; }
-            .hw-punct-btn { padding: 6px 14px; font-size: 1.1rem;}
+            #hw-preview { font-size: 1.15rem; line-height: 40px; padding: 15px 6%; background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--letter-line) 39px, var(--letter-line) 40px); background-position: top 15px left 0; }
+            .svg-btn { width: 44px; height: 44px; border-radius: 10px; }
+            .svg-btn.done { width: 55px; }
+            .hw-punct-btn { padding: 6px 14px; font-size: 1.15rem;}
+            .hw-actions { gap: 12px; padding: 8px 10px;}
         }
     </style>
 </head>
@@ -326,44 +337,27 @@
     </div>
 
     <!-- ==============================================
-         🌟 全螢幕自動辨識手寫板 (50/50 分割)
+         🌟 沉浸式手寫板 (文字預覽與畫布合一)
          ============================================== -->
     <div id="hw-overlay">
-        <!-- 上半部 50%：信紙背景的預覽文字區 -->
-        <div class="hw-top-half">
-            <textarea id="hw-preview" readonly placeholder="在此信箋上，您手寫的文字將會即刻躍然紙上..."></textarea>
+        
+        <div class="hw-top-bar">
+            <span class="hw-title">✍️ 案頭書寫模式</span>
+            <span class="hw-hint-text">單指寫字・雙指捲動</span>
         </div>
         
-        <!-- 下半部 50%：工具列與畫板 -->
-        <div class="hw-bottom-half">
-            <!-- 功能按鈕列 (純 SVG) -->
-            <div class="hw-toolbar-actions">
-                <div style="flex-grow: 1; color: #a48c76; font-size: 0.9rem; font-family: var(--font-serif); padding-left: 10px;">請在下方揮灑筆墨...</div>
-                
-                <!-- 清空畫布按鈕 (垃圾桶) -->
-                <button class="svg-btn" onclick="clearHwCanvas()" title="清空畫布">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                </button>
-                
-                <!-- 刪除文字按鈕 (Backspace) -->
-                <button class="svg-btn" onclick="hwBackspace()" title="刪除最後一個字">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line>
-                    </svg>
-                </button>
-                
-                <!-- 完成收起按鈕 (打勾) -->
-                <button class="svg-btn done" onclick="closeHwKeyboard()" title="完成書寫">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                </button>
-            </div>
-
-            <!-- 標點符號列 -->
-            <div class="hw-toolbar-punctuations">
+        <!-- 中間信紙區塊 -->
+        <div class="hw-letter-area">
+            <!-- 負責顯示文字與原生捲動 -->
+            <textarea id="hw-preview" readonly placeholder="在此信箋上，直接下筆寫下您的回音..."></textarea>
+            <!-- 負責攔截觸控並繪圖 (蓋在上面) -->
+            <canvas id="hw-canvas"></canvas>
+            <div class="hw-loader" id="hw-loader"></div>
+        </div>
+        
+        <!-- 底部工具區 -->
+        <div class="hw-footer">
+            <div class="hw-punctuations">
                 <button class="hw-punct-btn" onclick="insertChar('，')">，</button>
                 <button class="hw-punct-btn" onclick="insertChar('。')">。</button>
                 <button class="hw-punct-btn" onclick="insertChar('？')">？</button>
@@ -375,13 +369,28 @@
                 <button class="hw-punct-btn" onclick="insertChar('《')">《</button>
                 <button class="hw-punct-btn" onclick="insertChar('》')">》</button>
             </div>
-
-            <!-- 手寫畫布 -->
-            <div class="hw-canvas-wrapper">
-                <div class="hw-loader" id="hw-loader"></div> <!-- 辨識中動畫 -->
-                <canvas id="hw-canvas"></canvas>
+            <div class="hw-actions">
+                <!-- 清空畫布 (垃圾桶) -->
+                <button class="svg-btn" onclick="clearHwCanvas()" title="清空畫布筆跡">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
+                <!-- 刪除文字 (Backspace) -->
+                <button class="svg-btn" onclick="hwBackspace()" title="刪除最後一個字">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line>
+                    </svg>
+                </button>
+                <!-- 完成送出 (打勾) -->
+                <button class="svg-btn done" onclick="closeHwKeyboard()" title="完成書寫並收起">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </button>
             </div>
         </div>
+
     </div>
 
     <header>
@@ -499,6 +508,8 @@
         let activeHwInput = null;
         let hwCanvas, hwCtx;
         let isDrawing = false;
+        let isTwoFingerScroll = false; // 紀錄是否正在雙指滑動
+        let lastTouchY = 0;
         let strokes = []; 
         let currentStroke = [[], [], []]; 
         let hwTimeout = null;
@@ -757,9 +768,8 @@
         function escapeHtml(s) { return s?s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):s; }
 
         /* ====================================================
-           🖋️ 自動辨識手寫邏輯核心 (Auto-Select & Quick Clear)
+           🖋️ 沉浸式畫布：單指畫畫、雙指捲動、快速辨識
            ==================================================== */
-        
         document.addEventListener("DOMContentLoaded", () => {
             const q = document.getElementById('log-question'); const c = document.getElementById('log-content');
             if(q) q.addEventListener('click', function() { openHwKeyboard(this); });
@@ -772,24 +782,57 @@
             function resizeCanvas() { const rect = hwCanvas.parentElement.getBoundingClientRect(); hwCanvas.width = rect.width; hwCanvas.height = rect.height; hwCtx.lineCap = "round"; hwCtx.lineJoin = "round"; }
             window.addEventListener('resize', () => { if(document.getElementById('hw-overlay').classList.contains('active')) resizeCanvas(); });
             setTimeout(resizeCanvas, 500);
-            hwCanvas.addEventListener('pointerdown', startStroke); hwCanvas.addEventListener('pointermove', drawStroke); hwCanvas.addEventListener('pointerup', endStroke); hwCanvas.addEventListener('pointercancel', endStroke);
+            
+            // 監聽觸控與滑鼠事件
+            hwCanvas.addEventListener('touchstart', startStroke, {passive: false}); 
+            hwCanvas.addEventListener('touchmove', drawStroke, {passive: false}); 
+            hwCanvas.addEventListener('touchend', endStroke); 
+            hwCanvas.addEventListener('touchcancel', endStroke);
+            
+            // 滑鼠支援
+            hwCanvas.addEventListener('mousedown', (e) => { e.touches = [{clientX: e.clientX, clientY: e.clientY}]; startStroke(e); });
+            hwCanvas.addEventListener('mousemove', (e) => { if(!isDrawing)return; e.touches = [{clientX: e.clientX, clientY: e.clientY}]; drawStroke(e); });
+            window.addEventListener('mouseup', (e) => { if(isDrawing) endStroke(e); });
+
+            // 電腦版滑鼠滾輪支援
+            hwCanvas.addEventListener('wheel', (e) => {
+                document.getElementById('hw-preview').scrollTop += e.deltaY;
+            }, {passive: true});
         }
 
-        function getPointerPos(e) { const rect = hwCanvas.getBoundingClientRect(); return { x: e.clientX - rect.left, y: e.clientY - rect.top }; }
+        function getPointerPos(touch) { const rect = hwCanvas.getBoundingClientRect(); return { x: touch.clientX - rect.left, y: touch.clientY - rect.top }; }
 
         function startStroke(e) {
-            e.preventDefault(); isDrawing = true;
-            const pos = getPointerPos(e); currentStroke = [[pos.x], [pos.y], [Date.now()]];
+            e.preventDefault();
+            // 判斷是否為雙指
+            if (e.touches && e.touches.length >= 2) {
+                isTwoFingerScroll = true; isDrawing = false; lastTouchY = e.touches[0].clientY; return;
+            }
+            
+            isTwoFingerScroll = false; isDrawing = true;
+            const pos = getPointerPos(e.touches[0]); currentStroke = [[pos.x], [pos.y], [Date.now()]];
             hwCtx.beginPath(); hwCtx.moveTo(pos.x, pos.y); hwCtx.lineWidth = 5; hwCtx.strokeStyle = "rgba(74, 66, 56, 0.85)"; clearTimeout(hwTimeout);
         }
 
         function drawStroke(e) {
-            if (!isDrawing) return; e.preventDefault(); const pos = getPointerPos(e);
+            e.preventDefault();
+            // 雙指捲動邏輯
+            if (e.touches && e.touches.length >= 2) {
+                if (isTwoFingerScroll) {
+                    const deltaY = lastTouchY - e.touches[0].clientY;
+                    document.getElementById('hw-preview').scrollTop += deltaY;
+                    lastTouchY = e.touches[0].clientY;
+                }
+                return;
+            }
+            if (!isDrawing || isTwoFingerScroll) return; 
+            const pos = getPointerPos(e.touches[0]);
             currentStroke[0].push(pos.x); currentStroke[1].push(pos.y); currentStroke[2].push(Date.now()); hwCtx.lineTo(pos.x, pos.y); hwCtx.stroke();
         }
 
         function endStroke(e) {
-            if (!isDrawing) return; isDrawing = false; e.preventDefault();
+            if (isTwoFingerScroll) { if (!e.touches || e.touches.length === 0) { isTwoFingerScroll = false; } return; }
+            if (!isDrawing) return; isDrawing = false;
             if (currentStroke[0].length > 0) strokes.push(currentStroke);
             
             // 🌟 極速辨識：停筆 400 毫秒後即送出辨識請求
@@ -798,7 +841,7 @@
 
         function recognizeHandwriting() {
             if (strokes.length === 0) return;
-            document.getElementById('hw-loader').classList.add('active'); // 顯示轉圈動畫
+            document.getElementById('hw-loader').classList.add('active'); 
             
             const data = { "options": "enable_pre_space", "requests": [{ "writing_guide": { "width": hwCanvas.width, "height": hwCanvas.height }, "ink": strokes, "language": "zh-TW" }] };
             fetch("https://inputtools.google.com/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8", {
@@ -807,12 +850,11 @@
                 document.getElementById('hw-loader').classList.remove('active');
                 if (res[0] === "SUCCESS" && res[1][0]) {
                     const results = res[1][0][1];
-                    // 🌟 自動選取：直接拿第一個最相似的字插入，然後瞬間清空畫布
+                    // 🌟 自動選取最相似的字並清空畫布
                     if (results && results.length > 0) {
-                        insertChar(results[0]);
-                        clearHwCanvas();
+                        insertChar(results[0]); clearHwCanvas();
                     }
-                } else clearHwCanvas(); // 辨識失敗也清空讓他重寫
+                } else clearHwCanvas(); 
             }).catch(e => { console.error("辨識失敗", e); document.getElementById('hw-loader').classList.remove('active'); clearHwCanvas(); });
         }
 
@@ -821,8 +863,11 @@
         function openHwKeyboard(targetInput) {
             activeHwInput = targetInput;
             document.getElementById('hw-overlay').classList.add('active');
-            document.getElementById('hw-preview').value = activeHwInput.value;
-            document.getElementById('hw-preview').scrollTop = document.getElementById('hw-preview').scrollHeight;
+            const preview = document.getElementById('hw-preview');
+            preview.value = activeHwInput.value;
+            // 滾動到底部
+            setTimeout(() => { preview.scrollTop = preview.scrollHeight; }, 50);
+            
             lockScroll(); clearHwCanvas();
             setTimeout(() => { const rect = hwCanvas.parentElement.getBoundingClientRect(); if(hwCanvas.width !== rect.width) { hwCanvas.width = rect.width; hwCanvas.height = rect.height; hwCtx.lineCap = "round"; hwCtx.lineJoin = "round";} }, 100);
         }
@@ -833,6 +878,7 @@
             if (!activeHwInput) return;
             const preview = document.getElementById('hw-preview');
             activeHwInput.value += char; preview.value += char;
+            // 每次輸入自動捲動到底部，保持最新文字在視野內
             activeHwInput.scrollTop = activeHwInput.scrollHeight; preview.scrollTop = preview.scrollHeight; 
         }
 
