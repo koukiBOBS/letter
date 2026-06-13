@@ -19,7 +19,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <style>
-        /* 8:14AM 版本的基礎 CSS 變數 */
         :root {
             --bg: #faf7f2; 
             --paper: #ffffff; 
@@ -32,10 +31,15 @@
             --color-inbox: #d98a6c; 
             --color-tasks: #6b8e73; 
             --color-log: #8b7355;
+            
+            /* 信紙美學變數 */
+            --letter-ink: #4a4238;
+            --letter-line: rgba(160, 140, 120, 0.2);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: var(--bg); color: var(--text); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; line-height: 1.6; }
+        body.no-scroll { overflow: hidden; } /* 解決畫面凍結的關鍵 */
         h1, h2, h3, h4, .serif-text { font-family: var(--font-serif); }
 
         /* Notification Banner */
@@ -128,7 +132,7 @@
         .delete-btn { background: none; border: none; cursor: pointer; padding: 8px; color: #cbd5e1; border-radius: 50%; transition: all 0.2s; margin-left: 15px;}
         .delete-btn:hover { color: #ef4444; background: #fee2e2; transform: scale(1.1); } .delete-btn.locked-btn { opacity: 0.5; cursor: not-allowed; }
 
-        /* Reading Log Section Updates */
+        /* Reading Log */
         .log-header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
         .toggle-add-btn { background: var(--paper); border: 1px solid var(--border); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-log); transition: all 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .toggle-add-btn:hover { background: var(--color-log); color: white; transform: rotate(90deg); }
@@ -139,70 +143,75 @@
         .log-card .date { font-size: 0.8rem; color: #94a3b8; margin-top: 12px; } .log-card .delete-btn { position: absolute; top: 16px; right: 16px; }
 
         /* ====================================================
-           MODAL UI & 高級信箋排版 (取自 8:15AM 版本，不像對話視窗)
+           MODAL UI (對話視窗) & 區分雙方的信箋排版
            ==================================================== */
-        #modal { position: fixed; inset: 0; background: rgba(20, 18, 16, 0.85); z-index: 2000; display: none; justify-content: center; overflow-y: auto; padding: 40px 20px; backdrop-filter: blur(5px); }
+        #modal { position: fixed; inset: 0; background: rgba(245,242,235,0.85); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(8px); }
+        .modal-box { background: var(--paper); border-radius: 16px; width: 100%; max-width: 800px; height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.1); }
+        .modal-header { padding: 20px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; background: #ffffff; z-index: 10;}
+        .close-btn { background: none; border: none; font-size: 2rem; cursor: pointer; color: #94a3b8; transition: 0.2s; }
+        .close-btn:hover { color: #1e293b; }
         
-        .letter-desk { width: 100%; max-width: 700px; margin: auto; display: flex; flex-direction: column; gap: 40px; position: relative;}
+        /* 對話滾動區塊 */
+        .chat-flow { padding: 30px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 30px; background: #fafaf9; }
         
-        .modal-close-btn { position: fixed; top: 30px; right: 40px; background: transparent; border: none; font-size: 2.5rem; font-weight: 200; color: #e6dfd1; cursor: pointer; transition: 0.3s; z-index: 2100;}
-        .modal-close-btn:hover { transform: scale(1.1); color: #fff; }
-
-        /* 優雅的高級信箋本體 */
+        /* 高級信箋本體 (分為 is-me 與 is-other) */
         .letter-sheet {
-            background-color: #fbf9f4; /* 象牙白 */
-            background-image: linear-gradient(to right, transparent 49.8%, rgba(0,0,0,0.02) 50%, transparent 50.2%);
-            box-shadow: 0 30px 60px rgba(0,0,0,0.4), inset 0 0 50px rgba(180, 160, 130, 0.05);
-            padding: 80px 10%;
+            width: 85%; /* 像對話氣泡一樣不佔滿全寬 */
+            background-image: linear-gradient(to right, transparent 49.5%, rgba(0,0,0,0.015) 50%, transparent 50.5%);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.04), inset 0 0 20px rgba(180, 160, 130, 0.02);
+            border-radius: 6px;
+            padding: 50px 7%;
             position: relative;
-            transform-origin: top center;
-            animation: unfold 0.8s cubic-bezier(0.2, 0, 0.2, 1) forwards;
-            opacity: 0;
-            transform: translateY(30px);
-            border-radius: 2px;
         }
 
-        @keyframes unfold { to { opacity: 1; transform: translateY(0); } }
+        /* 我的信件：靠右、象牙白底色、右側小裝飾線 */
+        .letter-sheet.is-me {
+            margin-left: auto;
+            background-color: #fcfbf9;
+            border-right: 4px solid #b48e72;
+        }
 
-        /* 優雅的橫紋線條 */
+        /* 別人的信件：靠左、羊皮紙底色、左側小裝飾線 */
+        .letter-sheet.is-other {
+            margin-right: auto;
+            background-color: #f5f2eb;
+            border-left: 4px solid #6c7a89;
+        }
+
+        /* 淺色、一致且不干擾文字的橫紋 */
         .letter-sheet::after {
             content: '';
             position: absolute;
-            top: 12%; bottom: 8%; left: 8%; right: 8%;
-            border-top: 1px solid rgba(160, 140, 120, 0.3);
-            background-image: repeating-linear-gradient(to bottom, transparent, transparent 44px, rgba(160, 140, 120, 0.25) 44px, rgba(160, 140, 120, 0.25) 45px);
+            top: 75px; bottom: 40px; left: 6%; right: 6%;
+            border-top: 1px solid var(--letter-line);
+            background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--letter-line) 39px, var(--letter-line) 40px);
             pointer-events: none;
             z-index: 1;
         }
 
-        .letter-header-meta {
-            text-align: right; font-family: var(--font-serif); font-size: 0.9rem; color: #a48c76; letter-spacing: 2px; margin-bottom: 50px; position: relative; z-index: 2; border-bottom: 1px solid rgba(160, 140, 120, 0.2); padding-bottom: 15px;
-        }
+        .letter-meta { font-size: 0.85rem; font-family: var(--font-sans); color: #94a3b8; margin-bottom: 30px; position: relative; z-index: 2; border-bottom: 1px dashed #e2e8f0; padding-bottom: 15px; }
+        .letter-sheet.is-me .letter-meta { text-align: right; }
+        .letter-sheet.is-other .letter-meta { text-align: left; }
+        
+        /* 文字高度完美吻合橫紋 (40px) */
+        .letter-text { position: relative; z-index: 2; font-family: var(--font-serif); font-size: 1.1rem; color: var(--letter-ink); line-height: 40px; white-space: pre-wrap; text-align: justify; }
 
-        .letter-text {
-            position: relative; z-index: 2; font-family: var(--font-serif); font-size: 1.15rem; color: #4a4238; line-height: 45px; letter-spacing: 2px; white-space: pre-wrap; text-align: justify;
-        }
-
-        /* 充滿文學感的置中隔斷線 (取代原本的標籤) */
-        .letter-section-divider {
-            display: block; text-align: center; font-size: 0.95rem; color: #9c8a75; letter-spacing: 0.8em; margin: 2em 0 1em 0; position: relative; font-weight: 300;
-        }
-        .letter-section-divider::before, .letter-section-divider::after {
-            content: ''; position: absolute; top: 50%; width: 25%; height: 1px; background: rgba(160, 140, 120, 0.3);
-        }
+        /* 文學感的置中隔斷線 */
+        .letter-section-divider { display: block; text-align: center; font-size: 0.95rem; color: #9c8a75; letter-spacing: 0.6em; margin: 1.5em 0 0.5em 0; position: relative; font-weight: 400; }
+        .letter-section-divider::before, .letter-section-divider::after { content: ''; position: absolute; top: 50%; width: 20%; height: 1px; background: rgba(160, 140, 120, 0.3); }
         .letter-section-divider::before { left: 5%; }
         .letter-section-divider::after { right: 5%; }
 
-        .letter-img-wrap { display: block; margin: 40px auto; text-align: center; position: relative; z-index: 2; }
-        .letter-img { max-width: 90%; max-height: 400px; border: 8px solid #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.08); object-fit: contain; filter: sepia(10%) contrast(95%); transition: 0.4s;}
-        .letter-img:hover { transform: scale(1.02); filter: none; }
+        .msg-img-container { display: block; margin: 30px auto 10px; cursor: pointer; transition: transform 0.2s; text-align: center; position: relative; z-index: 2; }
+        .msg-img-container:hover { transform: scale(1.02); }
+        .msg-img { max-width: 90%; max-height: 350px; display: inline-block; box-shadow: 0 4px 15px rgba(0,0,0,0.06); object-fit: contain; border: 6px solid #fff; background: #f1f5f9; }
 
-        /* 回信區塊也是一張紙 */
-        .reply-sheet { padding: 50px 10%; margin-top: 20px;}
-        #reply-text { width: 100%; min-height: 200px; border: none; background: transparent; padding: 0; line-height: 45px; margin-bottom: 30px; font-size: 1.15rem; font-family: var(--font-serif); outline: none; resize: vertical; color: #4a4238;}
-        #reply-text:focus { box-shadow: none; background: transparent; }
+        /* 固定在底部的回覆區塊 */
+        .reply-area { padding: 16px 24px; border-top: 1px solid var(--border); background: var(--paper); flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; z-index: 10;}
+        #reply-text { min-height: 80px; padding: 12px 16px; font-size: 1rem; border-radius: 8px; margin: 0; }
+        #btn-send-reply { padding: 10px 20px; font-size: 0.95rem; }
 
-        /* Envelope Anim (取自 8:14AM 的 3D 折紙動畫) */
+        /* Envelope Anim */
         #anim-overlay { display: none; position: fixed; inset: 0; background: rgba(250, 247, 242, 0.95); z-index: 9999; align-items: center; justify-content: center; perspective: 1200px; }
         .env-wrapper { position: relative; width: 340px; height: 230px; }
         .env-back { position: absolute; inset: 0; background: #e3d3bd; border-radius: 4px; z-index: 1; }
@@ -308,11 +317,24 @@
         </section>
     </main>
 
-    <!-- Modal (信箋桌面展示區) -->
+    <!-- Modal (固定對話視窗) -->
     <div id="modal">
-        <button class="modal-close-btn" onclick="closeModal()">×</button>
-        <div class="letter-desk" id="chat-flow">
-            <!-- 信紙與回覆區會在這裡動態生成 -->
+        <div class="modal-box" id="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title" class="serif-text">討論內容</h3>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            
+            <!-- 信紙將動態生成於此滾動區 -->
+            <div class="chat-flow" id="chat-flow"></div>
+            
+            <!-- 固定的底部回覆區塊 (已徹底修正多出空白區塊的錯誤) -->
+            <div class="reply-area">
+                <textarea id="reply-text" class="textarea" placeholder="寫下您的回音與共鳴...（最少 100 字）"></textarea>
+                <div style="text-align: right;">
+                    <button class="btn" style="width: auto; background: var(--color-replies); margin-left: auto;" id="btn-send-reply">發送回覆</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -565,70 +587,75 @@
             db.ref(`letters/${id}`).once('value', lSnap => {
                 const l = lSnap.val(); if (!l) return;
                 
+                document.getElementById('modal-title').innerText = `《${l.bookTitle}》閱讀對談`;
                 const flow = document.getElementById('chat-flow'); 
                 const partnerUid = currentUser.uid === l.senderUid ? l.recipientUid : l.senderUid;
                 
+                // 綁定固定在底部的發送按鈕
+                const btnSend = document.getElementById('btn-send-reply');
+                // 確保先移除舊的監聽器再綁定新的，避免重複觸發
+                btnSend.replaceWith(btnSend.cloneNode(true));
+                document.getElementById('btn-send-reply').onclick = () => {
+                    const txt = document.getElementById('reply-text').value.trim();
+                    if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
+                    playAnim('reply', id, partnerUid, txt);
+                };
+
                 if (currentChatRef) currentChatRef.off(); currentChatRef = db.ref(`conversations/${id}`);
                 currentChatRef.on('value', cSnap => {
                     flow.innerHTML = '';
-                    Object.values(cSnap.val()||{}).forEach((m, index) => {
+                    Object.values(cSnap.val()||{}).forEach(m => {
                         const isMe = m.senderUid === currentUser.uid; 
                         const d = new Date(m.timestamp);
-                        const tStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+                        const tStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
                         
-                        // 將文字轉為高級排版（使用置中隔斷線）
+                        // 轉換標籤為文學感的置中隔斷線 (若沒有標籤，則正常顯示純文字)
                         let formattedText = escapeHtml(m.text);
-                        formattedText = formattedText.replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀段落</span>');
-                        formattedText = formattedText.replace(/【思考問題】/g, '<span class="letter-section-divider">文字衍生的提問</span>');
-                        formattedText = formattedText.replace(/【閱讀心得】/g, '<span class="letter-section-divider">閱讀感悟</span>');
+                        formattedText = formattedText.replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀進度</span>');
+                        formattedText = formattedText.replace(/【思考問題】/g, '<span class="letter-section-divider">思考問題</span>');
+                        formattedText = formattedText.replace(/【閱讀心得】/g, '<span class="letter-section-divider">閱讀心得</span>');
 
                         let imgTag = '';
                         if (m.imageUrl) {
                             imgTag = `
-                            <a href="${m.imageUrl}" target="_blank" class="letter-img-wrap">
-                                <img src="${m.imageUrl}" class="letter-img" alt="隨信相片" referrerpolicy="no-referrer" loading="lazy">
+                            <a href="${m.imageUrl}" target="_blank" class="msg-img-container" title="點擊在新分頁放大">
+                                <img src="${m.imageUrl}" class="msg-img" alt="書本照片" referrerpolicy="no-referrer" loading="lazy">
                             </a>`;
                         }
 
-                        // 每一封信都是一張獨立的紙
-                        const animationDelay = index * 0.2;
+                        // 判斷是誰發送的，賦予不同的信紙 class (靠右/靠左)
+                        const alignmentClass = isMe ? 'is-me' : 'is-other';
+                        const senderName = isMe ? '我的文字' : '筆友的來信';
+
+                        // 以信紙樣式輸出到滾動對話框中
                         flow.innerHTML += `
-                        <div class="letter-sheet" style="animation-delay: ${animationDelay}s;">
-                            <div class="letter-header-meta">${isMe ? '我的筆跡' : '遠方的來信'} ── ${tStr}</div>
+                        <div class="letter-sheet ${alignmentClass}">
+                            <div class="letter-meta">${senderName} · ${tStr}</div>
                             <div class="letter-text">${formattedText}</div>
                             ${imgTag}
                         </div>`;
                     });
-
-                    // 附加回覆紙張
-                    flow.innerHTML += `
-                    <div class="letter-sheet reply-sheet" style="animation-delay: ${Object.values(cSnap.val()||{}).length * 0.2}s;">
-                        <textarea id="reply-text" class="textarea" placeholder="在此處提筆，寫下您的回音與共鳴...（最少 100 字）"></textarea>
-                        <div style="text-align: center;">
-                            <button class="btn" style="margin: 0 auto; width: auto; background: var(--color-replies);" id="btn-send-reply">寄出回信</button>
-                        </div>
-                    </div>`;
-
-                    document.getElementById('btn-send-reply').onclick = () => {
-                        const txt = document.getElementById('reply-text').value.trim();
-                        if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
-                        playAnim('reply', id, partnerUid, txt);
-                    };
+                    
+                    setTimeout(() => flow.scrollTop = flow.scrollHeight, 50);
                 });
                 
-                // 鎖定背景並顯示 Modal
+                // 顯示對話視窗並鎖定背景滾動 (使用 CSS class 徹底根除凍結 bug)
                 document.getElementById('modal').style.display = 'flex'; 
-                document.body.style.overflow = 'hidden';
+                document.body.classList.add('no-scroll');
+                gsap.fromTo("#modal-content", {y: 40, opacity: 0}, {y: 0, opacity: 1, duration: 0.4});
             });
         }
         
         function closeModal() { 
             if (currentChatRef) currentChatRef.off(); 
-            document.getElementById('modal').style.display = 'none'; 
-            document.body.style.overflow = 'auto'; 
+            // 強制終止 GSAP 動畫，避免快速點擊導致卡死
+            gsap.killTweensOf("#modal-content");
+            gsap.to("#modal-content", {y: 30, opacity: 0, duration: 0.2, onComplete: () => {
+                document.getElementById('modal').style.display = 'none';
+                document.body.classList.remove('no-scroll'); // 解除背景滾動鎖定
+            }}); 
         }
 
-        // 使用 8:14AM 的 3D 摺紙信封動畫
         function playAnim(type, letterId, partnerUid, ObjectData) {
             const overlay = document.getElementById('anim-overlay'); overlay.style.display = 'flex';
             gsap.set(".env-wrapper", {y: 0, scale: 1, opacity: 1}); gsap.set("#anim-paper", {y: -120, zIndex: 5}); gsap.set("#anim-ptop", {rotateX: 0}); gsap.set("#anim-pbot", {rotateX: 0}); gsap.set("#anim-flap", {rotateX: 180, zIndex: 4}); gsap.set("#anim-seal", {scale: 0});
@@ -661,6 +688,9 @@
             db.ref(`conversations/${id}`).push({ senderUid: currentUser.uid, text, timestamp: ts }).then(() => {
                 if (pUid) db.ref(`user_threads/${pUid}/${id}`).update({ hasUnread: true, lastUpdated: ts, hasBeenRepliedTo: true });
                 db.ref(`user_threads/${currentUser.uid}/${id}`).update({ hasUnread: false, hasReplied: true, lastUpdated: ts });
+                
+                // 送出後清空下方固定回覆框
+                document.getElementById('reply-text').value = ''; 
                 closeModal();
             });
         }
