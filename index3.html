@@ -472,7 +472,7 @@ let hasUnrepliedLetters = false; let currentChatRef = null; let isInitialLoad = 
 let selectedFileBase64 = null; let selectedFileName = null;
 let isSubmittingLog = false; let isSubmittingReply = false;
 let userPlantData = null; let timeForced = false;
-let currentDrawnState = null; let randomSubmissions = []; let drawnTasksData = {};
+
 
         let activeHwInput = null; let hwCanvas, hwCtx; let isDrawing = false; let strokes = []; let currentStroke = [[], [], []]; let hwTimeout = null; let originalBodyOverflow = '';
         let holdTimer = null; let isHoldScrolling = false; let startY = 0; let startScrollTop = 0; let movedTooFarToHold = false;
@@ -1032,8 +1032,7 @@ async function submitRandomTask() {
 /* =========================================
  * 隨機任務：3D 籤筒動畫 (THREE.js)
  * ========================================= */
-let drawScene, drawCam, drawRen, potGroup, sticks = [], chosenStickMesh;
-let isDrawAnimInit = false;
+
 
 let drawScene, drawCam, drawRen, potGroup, sticks = [], chosenStickGrp;
 let isDrawAnimInit = false;
