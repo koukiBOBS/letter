@@ -19,7 +19,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <style>
-        /* 修復的 CSS 變數區塊 */
         :root {
             --bg: #faf7f2; 
             --paper: #ffffff; 
@@ -32,6 +31,11 @@
             --color-inbox: #d98a6c; 
             --color-tasks: #6b8e73; 
             --color-log: #8b7355;
+            
+            /* Letter Aesthetic Variables */
+            --letter-paper: #fbf9f4;
+            --letter-ink: #4a4238;
+            --letter-line: rgba(160, 140, 120, 0.25);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -139,68 +143,191 @@
         .log-card .date { font-size: 0.8rem; color: #94a3b8; margin-top: 12px; } .log-card .delete-btn { position: absolute; top: 16px; right: 16px; }
 
         /* ====================================================
-           MODAL UI & BEAUTIFUL LETTER FORMATTING (信紙排版更新)
+           MODAL UI & 高級信箋排版 (THE LETTER AESTHETIC - MERGED)
            ==================================================== */
-        #modal { position: fixed; inset: 0; background: rgba(245,242,235,0.85); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(8px); }
-        .modal-box { background: var(--paper); border-radius: 16px; width: 100%; max-width: 800px; height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.1); }
-        .modal-header { padding: 20px 30px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; background: #ffffff; z-index: 10;}
-        .close-btn { background: none; border: none; font-size: 2rem; cursor: pointer; color: #94a3b8; transition: 0.2s; }
-        .close-btn:hover { color: #1e293b; }
+        #modal { 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(20, 18, 16, 0.88); 
+            z-index: 2000; 
+            display: none; 
+            justify-content: center; 
+            overflow-y: auto; 
+            padding: 40px 20px; 
+            backdrop-filter: blur(8px); 
+        }
         
-        .chat-flow { padding: 40px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 40px; background: #fafaf9; }
-        
-        /* 替換原本的氣泡，改為信紙樣式 */
-        .letter-sheet {
-            background-color: #fbf9f4; /* 象牙白 */
-            background-image: linear-gradient(to right, transparent 49.5%, rgba(0,0,0,0.015) 50%, transparent 50.5%);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05), inset 0 0 20px rgba(180, 160, 130, 0.03);
-            border-radius: 2px;
-            padding: 60px 8%;
+        .letter-desk { 
+            width: 100%; 
+            max-width: 720px; 
+            margin: auto; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 40px; 
             position: relative;
-            width: 100%;
-            margin: 0 auto;
+        }
+        
+        .modal-close-btn { 
+            position: fixed; 
+            top: 30px; 
+            right: 40px; 
+            background: transparent; 
+            border: none; 
+            font-size: 2.5rem; 
+            font-weight: 200; 
+            color: #e6dfd1; 
+            cursor: pointer; 
+            transition: 0.3s; 
+            z-index: 2100;
+        }
+        .modal-close-btn:hover { 
+            transform: scale(1.1); 
+            color: #fff; 
         }
 
-        /* 淺色、一致且不干擾文字的橫紋 */
+        /* Elegant Letter Sheets */
+        .letter-sheet {
+            background-color: var(--letter-paper);
+            background-image: linear-gradient(to right, transparent 49.8%, rgba(0,0,0,0.02) 50%, transparent 50.2%);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.35), inset 0 0 50px rgba(180, 160, 130, 0.05);
+            padding: 60px 8% 80px 8%;
+            position: relative;
+            transform-origin: top center;
+            animation: unfold 0.6s cubic-bezier(0.2, 0, 0.2, 1) forwards;
+            opacity: 0;
+            transform: translateY(20px);
+            border-radius: 4px;
+            transition: border 0.3s, background-color 0.3s;
+        }
+
+        @keyframes unfold { 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+
+        /* Distinction of Sent vs Received Letters */
+        .letter-sheet.my-letter {
+            background-color: #faf6eb; /* ✍️ 我的手札 */
+            border-left: 4px solid var(--color-replies);
+        }
+        .letter-sheet.partner-letter {
+            background-color: #fcfbfa; /* 📬 筆友的來信 */
+            border-left: 4px solid var(--color-inbox);
+        }
+
+        /* Elegant horizontal lines */
         .letter-sheet::after {
             content: '';
             position: absolute;
-            top: 80px; bottom: 60px; left: 6%; right: 6%;
+            top: 100px; 
+            bottom: 80px; 
+            left: 8%; 
+            right: 8%;
             border-top: 1px solid rgba(160, 140, 120, 0.2);
-            /* 每 40px 一條橫線，顏色統一且淺淡 */
-            background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, rgba(160, 140, 120, 0.2) 39px, rgba(160, 140, 120, 0.2) 40px);
+            background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--letter-line) 39px, var(--letter-line) 40px);
             pointer-events: none;
             z-index: 1;
         }
 
-        .letter-meta { font-size: 0.85rem; font-family: var(--font-sans); color: #94a3b8; text-align: right; margin-bottom: 30px; position: relative; z-index: 2; border-bottom: 1px dashed #e2e8f0; padding-bottom: 15px; }
-        
-        /* 文字高度完美吻合橫紋 (40px) */
-        .letter-text { position: relative; z-index: 2; font-family: var(--font-serif); font-size: 1.1rem; color: #4a4238; line-height: 40px; white-space: pre-wrap; text-align: justify; }
+        .letter-header-meta {
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--font-serif); 
+            font-size: 0.9rem; 
+            color: #a48c76; 
+            letter-spacing: 1px; 
+            margin-bottom: 40px; 
+            position: relative; 
+            z-index: 2; 
+            border-bottom: 1px dashed rgba(160, 140, 120, 0.3); 
+            padding-bottom: 15px;
+        }
 
-        /* 小標題：乾淨置中，無額外橫線 */
-        .letter-h { display: block; text-align: center; font-weight: 600; color: #8b7355; letter-spacing: 2px; margin: 1em 0 0.5em 0; font-size: 1.05rem; }
+        .letter-text {
+            position: relative; 
+            z-index: 2; 
+            font-family: var(--font-serif); 
+            font-size: 1.12rem; 
+            color: var(--letter-ink); 
+            line-height: 40px; /* Fits horizontal line spacing */ 
+            letter-spacing: 1.5px; 
+            white-space: pre-wrap; 
+            text-align: justify;
+        }
 
-        .msg-img-container { display: block; margin: 30px auto 10px; cursor: pointer; transition: transform 0.2s; text-align: center; position: relative; z-index: 2; }
-        .msg-img-container:hover { transform: scale(1.02); }
-        .msg-img { max-width: 90%; max-height: 350px; display: inline-block; box-shadow: 0 4px 15px rgba(0,0,0,0.06); object-fit: contain; border: 6px solid #fff; background: #f1f5f9; }
+        /* Literary Elegant Divider */
+        .letter-section-divider {
+            display: block; 
+            text-align: center; 
+            font-size: 0.95rem; 
+            color: #9c8a75; 
+            letter-spacing: 0.6em; 
+            margin: 2.5em 0 1.5em 0; 
+            position: relative; 
+            font-weight: 400;
+            font-family: var(--font-serif);
+        }
+        .letter-section-divider::before, .letter-section-divider::after {
+            content: ''; 
+            position: absolute; 
+            top: 50%; 
+            width: 20%; 
+            height: 1px; 
+            background: rgba(160, 140, 120, 0.25);
+        }
+        .letter-section-divider::before { left: 5%; }
+        .letter-section-divider::after { right: 5%; }
 
-        .reply-area { padding: 16px 24px; border-top: 1px solid var(--border); background: var(--paper); flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; z-index: 10;}
-        #reply-text { min-height: 80px; padding: 12px 16px; font-size: 1rem; border-radius: 8px; margin: 0; }
-        #btn-send-reply { padding: 10px 20px; font-size: 0.95rem; }
+        .letter-img-wrap { 
+            display: block; 
+            margin: 40px auto; 
+            text-align: center; 
+            position: relative; 
+            z-index: 2; 
+        }
+        .letter-img { 
+            max-width: 90%; 
+            max-height: 380px; 
+            border: 8px solid #fff; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
+            object-fit: contain; 
+            filter: sepia(10%) contrast(95%); 
+            transition: 0.4s;
+        }
+        .letter-img:hover { 
+            transform: scale(1.02); 
+            filter: none; 
+        }
 
-        /* Envelope Anim */
-        #anim-overlay { display: none; position: fixed; inset: 0; background: rgba(250, 247, 242, 0.95); z-index: 9999; align-items: center; justify-content: center; perspective: 1200px; }
-        .env-wrapper { position: relative; width: 340px; height: 230px; }
-        .env-back { position: absolute; inset: 0; background: #e3d3bd; border-radius: 4px; z-index: 1; }
-        .paper-anim { position: absolute; bottom: 0; left: 15px; right: 15px; height: 380px; z-index: 5; transform-style: preserve-3d; }
-        .panel-anim { position: absolute; left: 0; right: 0; height: 126px; background: #fffdfa; border: 1px solid #eee; backface-visibility: hidden; }
-        .p-top { top: 0; transform-origin: bottom; } .p-mid { top: 126px; } .p-bot { top: 252px; transform-origin: top; }
-        .env-front-left { position: absolute; inset: 0; background: #ebdcc5; clip-path: polygon(0 0, 50% 50%, 0 100%); z-index: 11; }
-        .env-front-right { position: absolute; inset: 0; background: #e6d7c0; clip-path: polygon(100% 0, 100% 100%, 50% 50%); z-index: 12; }
-        .env-front-bottom { position: absolute; inset: 0; background: #dfd0b9; clip-path: polygon(0 100%, 50% 50%, 100% 100%); z-index: 13; }
-        .env-flap { position: absolute; top: 0; left: 0; right: 0; height: 140px; background: #d8c8b0; clip-path: polygon(0 0, 100% 0, 50% 100%); transform-origin: top; z-index: 15; }
-        .env-seal { position: absolute; top: 110px; left: 50%; transform: translate(-50%, -50%) scale(0); width: 45px; height: 45px; background: #c25953; border-radius: 50%; z-index: 20; }
+        /* Reply block is styled as a letter sheet as well */
+        .reply-sheet { 
+            padding: 50px 8%; 
+            margin-top: 20px;
+        }
+        #reply-text { 
+            min-height: 160px; 
+            border: none; 
+            background: transparent; 
+            padding: 0; 
+            line-height: 40px; 
+            margin-bottom: 25px; 
+            font-size: 1.12rem; 
+        }
+        #reply-text:focus { 
+            box-shadow: none; 
+            background: transparent; 
+        }
+
+        /* Envelope Anim (From 9:08 version for compatibility with paper animation) */
+        #anim-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 15, 17, 0.95); z-index: 9999; align-items: center; justify-content: center; perspective: 1500px; }
+        .env-wrapper { position: relative; width: 340px; height: 220px; animation: float 4s infinite ease-in-out; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .env-back { position: absolute; inset: 0; background: #8e6c51; z-index: 1; box-shadow: inset 0 0 50px rgba(0,0,0,0.5); }
+        .paper-anim { position: absolute; bottom: 15px; left: 20px; right: 20px; height: 380px; background: #fbf9f4; z-index: 5; background-image: repeating-linear-gradient(to bottom, transparent, transparent 15px, rgba(160, 140, 120, 0.15) 15px, rgba(160, 140, 120, 0.15) 16px); }
+        .env-front-left { position: absolute; top: 0; left: 0; border-top: 110px solid transparent; border-bottom: 110px solid transparent; border-left: 170px solid #b68e68; z-index: 11; }
+        .env-front-right { position: absolute; top: 0; right: 0; border-top: 110px solid transparent; border-bottom: 110px solid transparent; border-right: 170px solid #a9835d; z-index: 12; }
+        .env-front-bottom { position: absolute; bottom: 0; left: 0; border-left: 170px solid transparent; border-right: 170px solid transparent; border-bottom: 125px solid #c59c75; z-index: 13; }
+        .env-flap { position: absolute; top: 0; left: 0; border-left: 170px solid transparent; border-right: 170px solid transparent; border-top: 130px solid #ceaa83; transform-origin: top center; z-index: 15; }
+        .env-seal { position: absolute; top: 110px; left: 50%; transform: translate(-50%, -50%) scale(0); width: 45px; height: 45px; background: #8e2b26; border-radius: 50%; z-index: 20; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body>
@@ -231,7 +358,7 @@
     <div id="anim-overlay">
         <div class="env-wrapper">
             <div class="env-back"></div>
-            <div class="paper-anim" id="anim-paper"><div class="panel-anim p-top" id="anim-ptop"></div><div class="panel-anim p-mid"></div><div class="panel-anim p-bot" id="anim-pbot"></div></div>
+            <div class="paper-anim" id="anim-paper"></div>
             <div class="env-front-left"></div><div class="env-front-right"></div><div class="env-front-bottom"></div>
             <div class="env-flap" id="anim-flap"></div><div class="env-seal" id="anim-seal"></div>
         </div>
@@ -295,18 +422,11 @@
         </section>
     </main>
 
-    <!-- Modal -->
+    <!-- Modal (高級信箋展示案頭) -->
     <div id="modal">
-        <div class="modal-box" id="modal-content">
-            <div class="modal-header">
-                <h3 id="modal-title" class="serif-text">討論內容</h3>
-                <button class="close-btn" onclick="closeModal()">×</button>
-            </div>
-            <div class="chat-flow" id="chat-flow"></div>
-            <div class="reply-area">
-                <textarea id="reply-text" class="textarea" placeholder="寫下您的回音與共鳴...（最少 100 字）"></textarea>
-                <div style="text-align: right;"><button class="btn" style="width: auto; background: var(--color-replies); margin-left: auto;" id="btn-send-reply">發送回覆</button></div>
-            </div>
+        <button class="modal-close-btn" onclick="closeModal()">×</button>
+        <div class="letter-desk" id="chat-flow">
+            <!-- 動態生成 .letter-sheet 信紙與回信信箋 -->
         </div>
     </div>
 
@@ -350,6 +470,19 @@
         let currentUser = null; let config = null; let selectedTaskIndex = null; let hasUnrepliedLetters = false; let currentChatRef = null; let isInitialLoad = true;
         let selectedFileBase64 = null; let selectedFileName = null;
         const ITEMS_PER_PAGE = 10; let repliesData = []; let inboxData = []; let currentPageReplies = 1; let currentPageInbox = 1;
+
+        // Prevent double submission flags
+        let isSubmittingLog = false;
+        let isSubmittingReply = false;
+
+        // Force explicit Local Authentication Persistence to guarantee auto-login
+        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+            .then(() => {
+                // Persistence set successfully. Start checking state.
+            })
+            .catch(err => {
+                console.warn("Auth persistence failed to configure:", err);
+            });
 
         auth.onAuthStateChanged(user => {
             if (user) {
@@ -504,6 +637,9 @@
             if (!selectedFileBase64) return alert("請務必上傳書籍畫面圖片。");
             if (text.length < 150) return alert("心得最少需要 150 字。");
             
+            if (isSubmittingLog) return;
+            isSubmittingLog = true;
+            
             const btn = document.getElementById('btn-submit-task'); btn.innerText = "圖片上傳中，請稍候..."; btn.disabled = true;
 
             try {
@@ -520,6 +656,7 @@
                 playAnim('log', null, null, {title: title, text: combinedText, imageUrl: result.url});
             } catch (error) {
                 alert("圖片上傳發生異常。\n詳細錯誤：" + error.message);
+                isSubmittingLog = false;
                 btn.innerText = "封裝寄出心得"; btn.disabled = false;
             }
         }
@@ -532,7 +669,6 @@
                 for (let i=0; i<total; i++) {
                     const d = new Date(start.getTime() + i*config.intervalDays*86400000); 
                     
-                    // 時間歸零判定修復，確保當天 00:00 即刻開放
                     const today = new Date(); today.setHours(0, 0, 0, 0);
                     const unlockDate = new Date(d); unlockDate.setHours(0, 0, 0, 0);
                     const unlocked = today >= unlockDate; 
@@ -559,59 +695,156 @@
             db.ref(`user_threads/${currentUser.uid}/${id}`).update({hasUnread: false});
             db.ref(`letters/${id}`).once('value', lSnap => {
                 const l = lSnap.val(); if (!l) return;
-                document.getElementById('modal-title').innerText = `《${l.bookTitle}》閱讀對談`;
-                const flow = document.getElementById('chat-flow'); const partnerUid = currentUser.uid === l.senderUid ? l.recipientUid : l.senderUid;
                 
-                document.getElementById('btn-send-reply').onclick = () => {
-                    const txt = document.getElementById('reply-text').value.trim();
-                    if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
-                    playAnim('reply', id, partnerUid, txt);
-                };
+                const flow = document.getElementById('chat-flow'); 
+                const partnerUid = currentUser.uid === l.senderUid ? l.recipientUid : l.senderUid;
                 
-                if (currentChatRef) currentChatRef.off(); currentChatRef = db.ref(`conversations/${id}`);
+                // Unload previous listener safely to prevent duplicated triggers
+                if (currentChatRef) currentChatRef.off(); 
+                
+                currentChatRef = db.ref(`conversations/${id}`);
                 currentChatRef.on('value', cSnap => {
                     flow.innerHTML = '';
-                    Object.values(cSnap.val()||{}).forEach(m => {
-                        const isMe = m.senderUid === currentUser.uid; const d = new Date(m.timestamp);
-                        const tStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+                    
+                    const messages = cSnap.val() || {};
+                    const msgKeys = Object.keys(messages);
+                    
+                    msgKeys.forEach((key, index) => {
+                        const m = messages[key];
+                        const isMe = m.senderUid === currentUser.uid; 
+                        const d = new Date(m.timestamp);
+                        const tStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
                         
-                        // 文字轉化為優雅的置中標題 (無橫線)
+                        // Parse thoughts formatting elegantly
                         let formattedText = escapeHtml(m.text);
-                        formattedText = formattedText.replace(/【目前進度】/g, '<span class="letter-h">目前閱讀進度</span>');
-                        formattedText = formattedText.replace(/【思考問題】/g, '<span class="letter-h">思考問題</span>');
-                        formattedText = formattedText.replace(/【閱讀心得】/g, '<span class="letter-h">閱讀心得</span>');
+                        formattedText = formattedText.replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀段落</span>');
+                        formattedText = formattedText.replace(/【思考問題】/g, '<span class="letter-section-divider">文字衍生的提問</span>');
+                        formattedText = formattedText.replace(/【閱讀心得】/g, '<span class="letter-section-divider">閱讀感悟</span>');
 
                         let imgTag = '';
                         if (m.imageUrl) {
                             imgTag = `
-                            <a href="${m.imageUrl}" target="_blank" class="msg-img-container" title="點擊在新分頁放大">
-                                <img src="${m.imageUrl}" class="msg-img" alt="書本照片" referrerpolicy="no-referrer" loading="lazy">
+                            <a href="${m.imageUrl}" target="_blank" class="letter-img-wrap" title="點擊檢視相片">
+                                <img src="${m.imageUrl}" class="letter-img" alt="隨信相片" referrerpolicy="no-referrer" loading="lazy">
                             </a>`;
                         }
 
-                        // 以信紙樣式輸出
+                        const animationDelay = index * 0.15;
+                        const letterClass = isMe ? 'my-letter' : 'partner-letter';
+                        const letterHeaderLabel = isMe ? '✍️ 我的手札' : '📬 筆友的來信';
+
                         flow.innerHTML += `
-                        <div class="letter-sheet">
-                            <div class="letter-meta">${isMe ? '我的文字' : '筆友的來信'} · ${tStr}</div>
+                        <div class="letter-sheet ${letterClass}" style="animation-delay: ${animationDelay}s;">
+                            <div class="letter-header-meta">
+                                <span>${letterHeaderLabel}</span>
+                                <span>${tStr}</span>
+                            </div>
                             <div class="letter-text">${formattedText}</div>
                             ${imgTag}
                         </div>`;
                     });
-                    setTimeout(() => flow.scrollTop = flow.scrollHeight, 50);
+
+                    // Append reply section as a designated letter-sheet at the end of the letter list
+                    const replyDelay = msgKeys.length * 0.15;
+                    flow.innerHTML += `
+                    <div class="letter-sheet reply-sheet my-letter" style="animation-delay: ${replyDelay}s;">
+                        <div class="letter-header-meta">
+                            <span>✍️ 提筆回信</span>
+                            <span>紙短情長</span>
+                        </div>
+                        <textarea id="reply-text" class="textarea" placeholder="在此處提筆，寫下你的回音...（最少 100 字）"></textarea>
+                        <div style="text-align: center;">
+                            <button class="btn" style="margin: 0 auto; padding: 12px 40px; background: var(--color-replies);" id="btn-send-reply">寄出回信</button>
+                        </div>
+                    </div>`;
+
+                    document.getElementById('btn-send-reply').onclick = () => {
+                        const txt = document.getElementById('reply-text').value.trim();
+                        if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
+                        
+                        if (isSubmittingReply) return;
+                        isSubmittingReply = true;
+                        
+                        const sendBtn = document.getElementById('btn-send-reply');
+                        sendBtn.disabled = true;
+                        sendBtn.innerText = "寄送中...";
+                        
+                        playAnim('reply', id, partnerUid, txt);
+                    };
                 });
-                document.getElementById('modal').style.display = 'flex'; gsap.fromTo("#modal-content", {y: 40, opacity: 0}, {y: 0, opacity: 1, duration: 0.4});
+                
+                document.getElementById('modal').style.display = 'flex'; 
+                lockScroll();
             });
         }
         
-        function closeModal() { if (currentChatRef) currentChatRef.off(); gsap.to("#modal-content", {y: 30, opacity: 0, duration: 0.2, onComplete: () => document.getElementById('modal').style.display = 'none'}); }
+        // --- Lock / Unlock Scroll Helpers ---
+        let scrollPosition = 0;
+        function lockScroll() {
+            scrollPosition = window.pageYOffset;
+            document.body.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${scrollPosition}px`;
+            document.body.style.width = '100%';
+        }
+        function unlockScroll() {
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('position');
+            document.body.style.removeProperty('top');
+            document.body.style.removeProperty('width');
+            window.scrollTo(0, scrollPosition);
+        }
+
+        // Global Safety Net to prevent scrolling locks when tab re-opens
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                const modal = document.getElementById('modal');
+                if (modal && modal.style.display === 'none') {
+                    unlockScroll();
+                }
+            }
+        });
+
+        function closeModal() { 
+            if (currentChatRef) currentChatRef.off(); 
+            document.getElementById('modal').style.display = 'none'; 
+            unlockScroll();
+        }
 
         function playAnim(type, letterId, partnerUid, ObjectData) {
             const overlay = document.getElementById('anim-overlay'); overlay.style.display = 'flex';
-            gsap.set(".env-wrapper", {y: 0, scale: 1, opacity: 1}); gsap.set("#anim-paper", {y: -120, zIndex: 5}); gsap.set("#anim-ptop", {rotateX: 0}); gsap.set("#anim-pbot", {rotateX: 0}); gsap.set("#anim-flap", {rotateX: 180, zIndex: 4}); gsap.set("#anim-seal", {scale: 0});
-            gsap.timeline().to("#anim-pbot", {rotateX: 179, duration: 0.4}).to("#anim-ptop", {rotateX: -179, duration: 0.4}, "-=0.2").to("#anim-paper", {y: 70, duration: 0.5}).set("#anim-flap", {zIndex: 15}).to("#anim-flap", {rotateX: 0, duration: 0.4}).to("#anim-seal", {scale: 1, duration: 0.3, ease: "back.out(1.5)"}).to(".env-wrapper", {y: -400, scale: 0.6, opacity: 0, duration: 0.6, delay: 0.4, onComplete: () => {
-                  overlay.style.display = 'none';
-                  if (type === 'log') processLog(ObjectData); else processReply(letterId, partnerUid, ObjectData);
-            }});
+            
+            // Failsafe backup timeout: in case document is hidden or requestAnimationFrame is paused
+            let animCompleted = false;
+            const forceComplete = () => {
+                if (animCompleted) return;
+                animCompleted = true;
+                overlay.style.display = 'none';
+                if (type === 'log') processLog(ObjectData); else processReply(letterId, partnerUid, ObjectData);
+            };
+            const failsafeTimeout = setTimeout(forceComplete, 4000);
+
+            gsap.set(".env-wrapper", {y: 0, scale: 1, opacity: 1}); 
+            gsap.set("#anim-paper", {y: 0, zIndex: 5}); 
+            gsap.set("#anim-flap", {rotateX: 180, zIndex: 4}); 
+            gsap.set("#anim-seal", {scale: 0});
+            
+            // Envelope close and fold timelines
+            gsap.timeline({
+                onComplete: () => {
+                    clearTimeout(failsafeTimeout);
+                    if (!animCompleted) {
+                        animCompleted = true;
+                        overlay.style.display = 'none';
+                        if (type === 'log') processLog(ObjectData); else processReply(letterId, partnerUid, ObjectData);
+                    }
+                }
+            })
+            .to("#anim-paper", {y: 200, duration: 0.8, ease: "power2.in"})
+            .set("#anim-flap", {zIndex: 15})
+            .to("#anim-flap", {rotateX: 0, duration: 0.6})
+            .to("#anim-seal", {scale: 1, duration: 0.4, ease: "back.out(1.5)"})
+            .to(".env-wrapper", {y: -500, scale: 0.8, opacity: 0, duration: 0.8, delay: 0.5, ease: "power2.in"});
         }
 
         function processLog(data) {
@@ -622,12 +855,22 @@
                     db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: ts });
                     if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
                     else db.ref(`unassigned_letters/${ref.key}`).set({ senderUid: currentUser.uid });
-                    db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, timestamp: ts });
                     
-                    document.getElementById('book-title').value = ''; document.getElementById('book-page').value = ''; document.getElementById('log-question').value = ''; document.getElementById('log-content').value = ''; 
-                    document.getElementById('book-image').value=''; selectedFileBase64=null; document.getElementById('file-name-display').innerText="尚未選擇圖片"; document.getElementById('image-preview').style.display = 'none';
-                    document.getElementById('write-editor').style.display = 'none'; document.getElementById('btn-submit-task').disabled=false; document.getElementById('btn-submit-task').innerText="封裝寄出心得";
-                    renderTasks(); alert('心得已寄出！'); switchTab('tab-tasks', document.querySelector('.tab-tasks'));
+                    db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
+                        isSubmittingLog = false;
+                        document.getElementById('book-title').value = ''; document.getElementById('book-page').value = ''; document.getElementById('log-question').value = ''; document.getElementById('log-content').value = ''; 
+                        document.getElementById('book-image').value=''; selectedFileBase64=null; document.getElementById('file-name-display').innerText="尚未選擇圖片"; document.getElementById('image-preview').style.display = 'none';
+                        document.getElementById('write-editor').style.display = 'none'; 
+                        renderTasks(); alert('心得已寄出！'); switchTab('tab-tasks', document.querySelector('.tab-tasks'));
+                    });
+                }).catch(err => {
+                    isSubmittingLog = false;
+                    const btn = document.getElementById('btn-submit-task');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerText = "封裝寄出心得";
+                    }
+                    alert("發送失敗，請重試：" + err.message);
                 });
             });
         }
@@ -636,8 +879,18 @@
             const ts = firebase.database.ServerValue.TIMESTAMP;
             db.ref(`conversations/${id}`).push({ senderUid: currentUser.uid, text, timestamp: ts }).then(() => {
                 if (pUid) db.ref(`user_threads/${pUid}/${id}`).update({ hasUnread: true, lastUpdated: ts, hasBeenRepliedTo: true });
-                db.ref(`user_threads/${currentUser.uid}/${id}`).update({ hasUnread: false, hasReplied: true, lastUpdated: ts });
-                document.getElementById('reply-text').value = ''; closeModal();
+                db.ref(`user_threads/${currentUser.uid}/${id}`).update({ hasUnread: false, hasReplied: true, lastUpdated: ts }).then(() => {
+                    isSubmittingReply = false;
+                    closeModal();
+                });
+            }).catch(err => {
+                isSubmittingReply = false;
+                const sendBtn = document.getElementById('btn-send-reply');
+                if (sendBtn) {
+                    sendBtn.disabled = false;
+                    sendBtn.innerText = "寄出回信";
+                }
+                alert("回信失敗，請重試：" + err.message);
             });
         }
 
