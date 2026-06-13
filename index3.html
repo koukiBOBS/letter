@@ -467,11 +467,12 @@ const RANDOM_TASKS = [
 
 
         
-      let currentUser = null; let config = null; let selectedTaskIndex = null; let selectedTaskDate = null;
-        let selectedFileBase64 = null; let selectedFileName = null;
-        let isSubmittingLog = false; let isSubmittingReply = false;
-        let userPlantData = null; 
-        let timeForced = false;
+ let currentUser = null; let config = null; let selectedTaskIndex = null; let selectedTaskDate = null;
+let hasUnrepliedLetters = false; let currentChatRef = null; let isInitialLoad = true;
+let selectedFileBase64 = null; let selectedFileName = null;
+let isSubmittingLog = false; let isSubmittingReply = false;
+let userPlantData = null; let timeForced = false;
+let currentDrawnState = null; let randomSubmissions = []; let drawnTasksData = {};
 
         let activeHwInput = null; let hwCanvas, hwCtx; let isDrawing = false; let strokes = []; let currentStroke = [[], [], []]; let hwTimeout = null; let originalBodyOverflow = '';
         let holdTimer = null; let isHoldScrolling = false; let startY = 0; let startScrollTop = 0; let movedTooFarToHold = false;
@@ -1034,41 +1035,82 @@ async function submitRandomTask() {
 let drawScene, drawCam, drawRen, potGroup, sticks = [], chosenStickMesh;
 let isDrawAnimInit = false;
 
+let drawScene, drawCam, drawRen, potGroup, sticks = [], chosenStickGrp;
+let isDrawAnimInit = false;
+
 function initDraw3D() {
     if(isDrawAnimInit) return;
     const container = document.getElementById('draw-canvas-container');
-    drawScene = new THREE.Scene(); drawScene.fog = new THREE.FogExp2(0x141210, 0.02);
-    drawCam = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 100);
-    drawCam.position.set(0, 10, 25); drawCam.lookAt(0, 3, 0);
+    drawScene = new THREE.Scene(); 
+    drawScene.fog = new THREE.FogExp2(0x141210, 0.015);
+    
+    drawCam = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+    drawCam.position.set(0, 15, 38); 
+    drawCam.lookAt(0, 5, 0);
     
     drawRen = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     drawRen.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(drawRen.domElement);
     
-    const dLight = new THREE.DirectionalLight(0xffeedd, 1.5); dLight.position.set(10, 20, 10); drawScene.add(dLight);
-    drawScene.add(new THREE.AmbientLight(0x404040, 2.0));
-    const pLight = new THREE.PointLight(0xd4a373, 2, 50); pLight.position.set(0, 5, 5); drawScene.add(pLight);
+    // 燈光佈置 (營造溫暖、神秘的光影)
+    const dLight = new THREE.DirectionalLight(0xffeedd, 1.2); 
+    dLight.position.set(10, 25, 15); 
+    drawScene.add(dLight);
+    drawScene.add(new THREE.AmbientLight(0x605040, 1.5));
+    const pLight = new THREE.PointLight(0xd4a373, 2, 50); 
+    pLight.position.set(0, 15, 10); 
+    drawScene.add(pLight);
 
-    potGroup = new THREE.Group(); drawScene.add(potGroup);
+    potGroup = new THREE.Group(); 
+    drawScene.add(potGroup);
     
-    // 籤筒 (中空圓柱)
-    const potGeo = new THREE.CylinderGeometry(2.5, 2.0, 8, 32, 1, true);
-    const potMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9, side: THREE.DoubleSide });
-    const potMesh = new THREE.Mesh(potGeo, potMat); potMesh.position.y = 4; potGroup.add(potMesh);
-    const potBot = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.0, 0.5, 32), potMat); potGroup.add(potBot);
+    // 1. 製作精緻籤筒 (深色厚壁竹筒)
+    const potMat = new THREE.MeshStandardMaterial({ color: 0x4a3219, roughness: 0.8, side: THREE.DoubleSide });
+    const potInnerMat = new THREE.MeshStandardMaterial({ color: 0x2b1d0e, roughness: 0.9, side: THREE.BackSide });
+    
+    // 外壁
+    const potOuter = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 2.5, 12, 32, 1, true), potMat);
+    potOuter.position.y = 6; potGroup.add(potOuter);
+    // 內壁 (稍微小一點，營造厚度)
+    const potInner = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.3, 12, 32, 1, true), potInnerMat);
+    potInner.position.y = 6; potGroup.add(potInner);
+    // 頂部邊緣封口
+    const potRim = new THREE.Mesh(new THREE.TorusGeometry(2.7, 0.1, 8, 32), potMat);
+    potRim.position.y = 12; potRim.rotation.x = Math.PI/2; potGroup.add(potRim);
+    // 底部
+    const potBot = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 0.5, 32), potMat);
+    potBot.position.y = 0.25; potGroup.add(potBot);
 
-    // 裡面的籤 (竹籤)
-    const stickMat = new THREE.MeshStandardMaterial({ color: 0xe6c280, roughness: 0.8 });
-    for(let i=0; i<15; i++) {
-        const s = new THREE.Mesh(new THREE.BoxGeometry(0.3, 10, 0.1), stickMat);
-        s.position.set((Math.random()-0.5)*2, 4 + Math.random(), (Math.random()-0.5)*2);
-        s.rotation.set((Math.random()-0.5)*0.2, Math.random()*Math.PI, (Math.random()-0.5)*0.2);
-        potGroup.add(s); sticks.push(s);
+    // 2. 製作精緻竹籤 (圓柱竹身 + 紅色籤頭)
+    const stickMat = new THREE.MeshStandardMaterial({ color: 0xe8c396, roughness: 0.7 });
+    const tipMat = new THREE.MeshStandardMaterial({ color: 0xc23b22, roughness: 0.6 });
+
+    function createStick() {
+        const grp = new THREE.Group();
+        // 竹身
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 14, 8), stickMat);
+        body.position.y = 7; grp.add(body);
+        // 紅頭
+        const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.8, 8), tipMat);
+        tip.position.y = 13.6; grp.add(tip);
+        return grp;
+    }
+
+    // 放入 25 支干擾籤，限制在半徑內防穿模
+    for(let i=0; i<25; i++) {
+        const s = createStick();
+        const r = Math.random() * 1.5; // 控制在內徑 2.6 之內
+        const theta = Math.random() * Math.PI * 2;
+        s.position.set(Math.cos(theta)*r, 0.5, Math.sin(theta)*r);
+        // 給予微小的隨機傾斜
+        s.rotation.x = (Math.random() - 0.5) * 0.15;
+        s.rotation.z = (Math.random() - 0.5) * 0.15;
+        potGroup.add(s); 
+        sticks.push(s);
     }
     
-    // 決定要飛出來的那支籤
-    chosenStickMesh = new THREE.Mesh(new THREE.BoxGeometry(0.4, 12, 0.15), new THREE.MeshStandardMaterial({ color: 0xf5deb3, roughness: 0.7 }));
-    chosenStickMesh.position.set(0, 4, 0); drawScene.add(chosenStickMesh);
+    // 命中注定的那支籤
+    chosenStickGrp = createStick();
     
     isDrawAnimInit = true;
     requestAnimationFrame(animateDrawScene);
@@ -1086,29 +1128,41 @@ function playDrawAnimation(isRedraw) {
     document.getElementById('draw-result-text').style.opacity = 0;
     initDraw3D();
     
-    // 重置位置
-    potGroup.rotation.set(0,0,0); potGroup.position.set(0,0,0);
-    chosenStickMesh.position.set(0, 4, 0); chosenStickMesh.rotation.set(0, 0, 0);
+    // 每次抽籤重置位置
+    potGroup.rotation.set(0,0,0); 
+    potGroup.position.set(0, -2, 0); // 放在畫面偏下方
     
-    // 隨機選一個任務
+    // 將主角籤混入筒中
+    potGroup.add(chosenStickGrp);
+    chosenStickGrp.position.set(0, 0.5, 0); 
+    chosenStickGrp.rotation.set((Math.random() - 0.5) * 0.1, 0, (Math.random() - 0.5) * 0.1);
+    
+    // 抽出隨機文字
     const taskStr = RANDOM_TASKS[Math.floor(Math.random() * RANDOM_TASKS.length)];
-    
-    // 動畫時間軸 (GSAP)
     const tl = gsap.timeline();
-    // 1. 搖晃籤筒
-    tl.to(potGroup.rotation, { z: 0.3, duration: 0.08, yoyo: true, repeat: 15, ease: "sine.inOut" })
-      .to(potGroup.position, { x: 0.2, duration: 0.08, yoyo: true, repeat: 15 }, "<")
-    // 2. 籤飛出來並放大
-      .to(chosenStickMesh.position, { y: 15, z: 12, duration: 1.2, ease: "power2.out" })
-      .to(chosenStickMesh.rotation, { x: -Math.PI/6, y: Math.PI*2, duration: 1.2 }, "<")
-    // 3. 顯示文字結果
+    
+    // 1. 求籤：傾斜籤筒
+    tl.to(potGroup.rotation, { x: 0.6, z: 0.2, duration: 0.6, ease: "power2.out" })
+    // 2. 求籤：劇烈搖晃
+      .to(potGroup.rotation, { z: 0.4, duration: 0.08, yoyo: true, repeat: 15, ease: "sine.inOut" })
+      .to(potGroup.position, { y: -1.5, duration: 0.08, yoyo: true, repeat: 15, ease: "sine.inOut" }, "<")
+    // 3. 籤現：主角籤緩緩滑出
+      .to(chosenStickGrp.position, { y: 7, duration: 0.8, ease: "power1.out" }, "-=0.2")
+    // 4. 定局：脫離籤筒，飛向鏡頭，籤筒退場
+      .call(() => {
+          // 讓籤脫離籤筒，固定在世界座標中飛向鏡頭
+          drawScene.attach(chosenStickGrp); 
+      })
+      .to(chosenStickGrp.position, { y: 15, z: 25, x: 0, duration: 1.2, ease: "power2.out" })
+      .to(chosenStickGrp.rotation, { x: -Math.PI/6, y: 0, z: 0, duration: 1.2 }, "<")
+      .to(potGroup.position, { y: -20, duration: 1.0, ease: "power2.in" }, "<")
+    // 5. 揭曉文字
       .call(() => {
           document.getElementById('draw-result-h2').innerText = taskStr;
           gsap.to('#draw-result-text', { opacity: 1, y: 0, duration: 0.8 });
           
-          // 儲存狀態至 Firebase
           currentDrawnState = { drawnTask: taskStr, redrawsLeft: isRedraw ? 0 : 1 };
-          drawnTasksData[selectedTaskDate] = currentDrawnState; // 更新本地暫存
+          drawnTasksData[selectedTaskDate] = currentDrawnState; 
           db.ref(`users/${currentUser.uid}/drawn_tasks/${selectedTaskDate}`).set(currentDrawnState);
       });
 }
@@ -1116,12 +1170,10 @@ function playDrawAnimation(isRedraw) {
 function closeDrawAnim() {
     gsap.to('#draw-anim-overlay', { opacity: 0, duration: 0.5, onComplete: () => {
         document.getElementById('draw-anim-overlay').style.display = 'none';
-        document.getElementById('draw-anim-overlay').style.opacity = 1; // 復原供下次使用
-        // 打開編輯器
+        document.getElementById('draw-anim-overlay').style.opacity = 1;
         openRandomEditor();
     }});
 }
-
 
 
         
