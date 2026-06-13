@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>閱讀交流與書房 - 全螢幕手寫信箋</title>
+    <title>閱讀交流與書房 - 自動辨識手寫信箋</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -89,9 +89,8 @@
         .section.active { display: block; animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Empty State & Tasks */
+        /* Tasks & List */
         .empty-state { text-align: center; padding: 80px 20px; color: var(--text-muted); }
-        .empty-state p { font-size: 1.05rem; margin-top: 16px; }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; margin-bottom: 40px; }
         .task-card { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 24px 16px; text-align: center; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
         .task-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.06); }
@@ -108,7 +107,6 @@
         .textarea:focus { border-color: var(--color-tasks); box-shadow: 0 0 0 3px rgba(107, 142, 115, 0.1); }
         .flex-row { display: flex; gap: 20px; } .flex-row > div { flex: 1; }
         
-        /* 針對只能手寫的輸入框特別樣式 */
         .handwrite-only { cursor: pointer; background-color: #fcfbf9; transition: background 0.3s;}
         .handwrite-only:hover { background-color: #f5f3ec; border-color: #b4a08c;}
         .handwrite-only:focus { border-color: #b4a08c; box-shadow: 0 0 0 3px rgba(180, 160, 140, 0.2); }
@@ -137,28 +135,19 @@
         .delete-btn { background: none; border: none; cursor: pointer; padding: 8px; color: #cbd5e1; border-radius: 50%; transition: all 0.2s; margin-left: 5px; font-size: 0.9rem;}
         .delete-btn:hover { color: #ef4444; transform: scale(1.1); } .delete-btn.locked-btn { opacity: 0.5; cursor: not-allowed; }
 
-        /* Reading Log */
+        /* Log Card */
         .log-header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
         .toggle-add-btn { background: var(--paper); border: 1px solid var(--border); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--color-log); transition: all 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .toggle-add-btn:hover { background: var(--color-log); color: white; transform: rotate(90deg); }
-        
         .log-card { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 16px; position: relative; }
         .log-card h4 { font-family: var(--font-serif); font-size: 1.2rem; color: #1e293b; margin-bottom: 8px; padding-right: 40px;}
         .log-card p { color: #475569; font-size: 1rem; line-height: 1.6; white-space: pre-wrap; }
         .log-card .date { font-size: 0.8rem; color: #94a3b8; margin-top: 12px; } .log-card .delete-btn { position: absolute; top: 16px; right: 16px; }
 
         /* MODAL UI & THE LETTER AESTHETIC */
-        #modal { 
-            position: fixed; inset: 0; background: rgba(20, 18, 16, 0.88); z-index: 2000; 
-            display: none; justify-content: center; overflow-y: auto; padding: 40px 20px; backdrop-filter: blur(8px); 
-        }
-        
+        #modal { position: fixed; inset: 0; background: rgba(20, 18, 16, 0.88); z-index: 2000; display: none; justify-content: center; overflow-y: auto; padding: 40px 20px; backdrop-filter: blur(8px); }
         .letter-desk { width: 100%; max-width: 720px; margin: auto; display: flex; flex-direction: column; gap: 40px; position: relative; }
-        
-        .modal-close-btn { 
-            position: fixed; top: 30px; right: 40px; background: transparent; border: none; 
-            font-size: 2.5rem; font-weight: 200; color: #e6dfd1; cursor: pointer; transition: 0.3s; z-index: 2100;
-        }
+        .modal-close-btn { position: fixed; top: 30px; right: 40px; background: transparent; border: none; font-size: 2.5rem; font-weight: 200; color: #e6dfd1; cursor: pointer; transition: 0.3s; z-index: 2100; }
         .modal-close-btn:hover { transform: scale(1.1); color: #fff; }
 
         .letter-sheet {
@@ -166,110 +155,95 @@
             background-image: linear-gradient(to right, transparent 49.8%, rgba(0,0,0,0.02) 50%, transparent 50.2%);
             box-shadow: 0 30px 60px rgba(0,0,0,0.35), inset 0 0 50px rgba(180, 160, 130, 0.05);
             padding: 60px 8% 80px 8%; position: relative; transform-origin: top center;
-            animation: unfold 0.6s cubic-bezier(0.2, 0, 0.2, 1) forwards;
-            opacity: 0; transform: translateY(20px); border-radius: 4px; transition: border 0.3s, background-color 0.3s;
+            animation: unfold 0.6s cubic-bezier(0.2, 0, 0.2, 1) forwards; opacity: 0; transform: translateY(20px); border-radius: 4px;
         }
         @keyframes unfold { to { opacity: 1; transform: translateY(0); } }
-
         .letter-sheet.my-letter { background-color: #faf6eb; border-left: 4px solid var(--color-replies); }
         .letter-sheet.partner-letter { background-color: #fcfbfa; border-left: 4px solid var(--color-inbox); }
 
-        .letter-header-meta {
-            display: flex; justify-content: space-between; font-family: var(--font-serif); font-size: 0.9rem; color: #a48c76; 
-            letter-spacing: 1px; margin-bottom: 40px; position: relative; z-index: 2; border-bottom: 1px dashed rgba(160, 140, 120, 0.3); padding-bottom: 15px;
-        }
+        .letter-header-meta { display: flex; justify-content: space-between; font-family: var(--font-serif); font-size: 0.9rem; color: #a48c76; letter-spacing: 1px; margin-bottom: 40px; position: relative; z-index: 2; border-bottom: 1px dashed rgba(160, 140, 120, 0.3); padding-bottom: 15px; }
 
         .letter-text {
             position: relative; z-index: 2; font-family: var(--font-serif); font-size: 1.12rem; color: var(--letter-ink); 
             line-height: 40px; background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--letter-line) 39px, var(--letter-line) 40px);
-            background-position: top 0 left 0; letter-spacing: 1.5px; white-space: pre-wrap; text-align: justify;
-            word-break: break-word; overflow-wrap: break-word; 
+            background-position: top 0 left 0; letter-spacing: 1.5px; white-space: pre-wrap; text-align: justify; word-break: break-word; overflow-wrap: break-word; 
         }
 
         #reply-text { 
             min-height: 160px; border: none; padding: 0; font-size: 1.12rem; 
             line-height: 40px; background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--letter-line) 39px, var(--letter-line) 40px);
-            background-position: top 0 left 0; background-color: transparent;
-            background-attachment: local; margin-bottom: 25px; 
+            background-position: top 0 left 0; background-color: transparent; background-attachment: local; margin-bottom: 25px; 
         }
 
-        .letter-img-wrap { 
-            display: block; width: fit-content; margin: 40px auto; text-align: center; position: relative; z-index: 2; 
-            transform: rotate(-2deg); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
+        .letter-section-divider { display: inline-block; width: 100%; text-align: center; font-size: 0.95rem; color: #9c8a75; letter-spacing: 0.6em; margin: 0; line-height: 40px; position: relative; font-weight: 400; font-family: var(--font-serif); vertical-align: top; }
+        .letter-img-wrap { display: block; width: fit-content; margin: 40px auto; text-align: center; position: relative; z-index: 2; transform: rotate(-2deg); transition: transform 0.4s; }
         .letter-img-wrap:hover { transform: rotate(0deg) scale(1.02); }
-        .letter-img { 
-            max-width: 90%; max-height: 380px; object-fit: cover; background-color: #fff;
-            padding: 12px 12px 40px 12px; border: 1px solid #e6e1d6;
-            box-shadow: 0 8px 25px rgba(140, 120, 100, 0.15), inset 0 0 4px rgba(0,0,0,0.05); 
-            border-radius: 4px; filter: sepia(15%) contrast(90%) brightness(98%); transition: filter 0.4s; 
-        }
+        .letter-img { max-width: 90%; max-height: 380px; object-fit: cover; background-color: #fff; padding: 12px 12px 40px 12px; border: 1px solid #e6e1d6; box-shadow: 0 8px 25px rgba(140, 120, 100, 0.15), inset 0 0 4px rgba(0,0,0,0.05); border-radius: 4px; filter: sepia(15%) contrast(90%) brightness(98%); transition: filter 0.4s; }
         .letter-img:hover { filter: none; }
         .reply-sheet { padding: 50px 8%; margin-top: 20px; }
 
         /* ====================================================
-           🖋️ 全螢幕手寫板 (Full-Screen Handwriting Overlay)
+           🖋️ 全螢幕沉浸式手寫板 (50% 文字區 / 50% 手寫區)
            ==================================================== */
         #hw-overlay {
-            position: fixed; inset: 0; background: rgba(250, 247, 242, 0.98); 
-            backdrop-filter: blur(10px); z-index: 100000; /* 極高 z-index，蓋過所有元素 */
+            position: fixed; inset: 0; background: var(--bg); z-index: 100000; 
             display: none; flex-direction: column; overflow: hidden;
-            /* 加入一點信紙紋理的背景 */
-            background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, rgba(160, 140, 120, 0.1) 39px, rgba(160, 140, 120, 0.1) 40px);
         }
         #hw-overlay.active { display: flex; animation: fadeUpIn 0.3s cubic-bezier(0.2, 0, 0.2, 1); }
         @keyframes fadeUpIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* 頂部操作列與預覽區 */
-        .hw-top-container {
-            position: relative; z-index: 10; padding: 20px; background: rgba(255, 255, 255, 0.9);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05); border-bottom: 1px solid #e3dcd1;
-        }
-        .hw-header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .hw-title { font-family: var(--font-serif); font-size: 1.2rem; color: var(--text); font-weight: 600; }
-        .hw-btn-done { background: #1e293b; color: white; border: none; padding: 8px 20px; border-radius: 20px; font-size: 1rem; cursor: pointer; font-family: var(--font-sans); }
-        
-        /* 手寫內容即時預覽框 */
+        /* 上半部：信紙預覽區 (50%) */
+        .hw-top-half { flex: 1; display: flex; flex-direction: column; border-bottom: 2px solid #d1c8ba; background: var(--letter-paper); }
         #hw-preview {
-            width: 100%; min-height: 80px; max-height: 15vh; overflow-y: auto;
-            background: transparent; border: none; font-family: var(--font-serif); font-size: 1.15rem; 
-            line-height: 1.8; color: var(--letter-ink); outline: none; resize: none;
+            flex: 1; width: 100%; border: none; resize: none; outline: none;
+            padding: 8px 6%; /* 對齊信紙紋路 */
+            font-family: var(--font-serif); font-size: 1.15rem; color: var(--letter-ink); letter-spacing: 1.5px;
+            
+            /* 完美的信紙橫線對齊設定 */
+            line-height: 40px; 
+            background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, var(--letter-line) 39px, var(--letter-line) 40px);
+            background-attachment: local; /* 讓線條跟著文字捲動 */
         }
 
-        /* 選字與標點符號工具列 */
-        .hw-toolbar { display: flex; flex-direction: column; z-index: 10; background: rgba(250, 247, 242, 0.95); box-shadow: 0 4px 15px rgba(0,0,0,0.03);}
-        .hw-candidates-row {
-            display: flex; gap: 5px; padding: 12px 20px; border-bottom: 1px dashed #e3dcd1;
-            height: 60px; align-items: center; overflow-x: auto; white-space: nowrap;
-        }
-        .hw-candidate {
-            font-size: 1.6rem; font-family: var(--font-serif); padding: 0 18px; cursor: pointer; color: #2c3e50;
-            border-right: 1px dashed #d1c8ba; min-width: 50px; text-align: center;
-        }
-        .hw-candidate:last-child { border-right: none; }
-        .hw-candidate:active { color: var(--color-tasks); background: #f4f0ea; border-radius: 4px; }
-
-        .hw-punctuation-row {
-            display: flex; gap: 8px; padding: 10px 20px; overflow-x: auto; white-space: nowrap; align-items: center;
-            border-bottom: 1px solid #e3dcd1;
-        }
-        .hw-btn {
-            background: #fff; border: 1px solid #c8bdae; color: #4a4238; font-family: var(--font-serif);
-            font-size: 1.1rem; padding: 6px 14px; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 0 #d1c8ba;
-            display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
-        }
-        .hw-btn:active { transform: translateY(2px); box-shadow: 0 0 0 #d1c8ba; }
-        .hw-btn.action { background: #d98a6c; color: white; border-color: #bc6b4c; box-shadow: 0 2px 0 #a35538; font-family: var(--font-sans); font-size: 0.9rem; margin-left: auto;}
+        /* 下半部：手寫與工具區 (50%) */
+        .hw-bottom-half { flex: 1; display: flex; flex-direction: column; background: #faf9f7; position: relative;}
         
-        /* 畫布區域 */
+        /* 圖示功能列 (SVG) */
+        .hw-toolbar-actions {
+            display: flex; justify-content: flex-end; align-items: center; padding: 10px 15px; 
+            background: #ebe6df; border-bottom: 1px solid #dcd5c9; gap: 15px;
+        }
+        .svg-btn {
+            background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            width: 44px; height: 44px; border-radius: 8px; color: #5a5042; transition: all 0.2s;
+        }
+        .svg-btn:hover { background: rgba(0,0,0,0.05); color: #2c3e50; }
+        .svg-btn:active { transform: scale(0.92); }
+        .svg-btn svg { width: 24px; height: 24px; }
+        .svg-btn.done { background: #6b8e73; color: white; margin-left: 10px; }
+        .svg-btn.done:hover { background: #53735a; }
+
+        /* 標點符號列 */
+        .hw-toolbar-punctuations {
+            display: flex; gap: 10px; padding: 12px 15px; overflow-x: auto; white-space: nowrap; align-items: center;
+            border-bottom: 1px solid #e3dcd1; background: #f4f0ea;
+        }
+        .hw-toolbar-punctuations::-webkit-scrollbar { height: 0px; background: transparent; } /* 隱藏滾動條 */
+        .hw-punct-btn {
+            background: #fff; border: 1px solid #d1c8ba; color: #4a4238; font-family: var(--font-serif);
+            font-size: 1.2rem; padding: 8px 18px; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 0 #d1c8ba;
+            display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; transition: 0.1s;
+        }
+        .hw-punct-btn:active { transform: translateY(2px); box-shadow: 0 0 0 #d1c8ba; }
+        
+        /* 手寫畫布 */
         .hw-canvas-wrapper { flex: 1; position: relative; width: 100%; height: 100%; cursor: crosshair; }
-        #hw-canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; /* 徹底禁止預設滑動行為 */ }
+        #hw-canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
         
-        .hw-hint {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: rgba(156, 138, 117, 0.5); font-family: var(--font-serif); font-size: 1.5rem;
-            pointer-events: none; text-align: center; letter-spacing: 2px; transition: opacity 0.3s;
-        }
+        /* 載入/等待動畫 */
+        .hw-loader { position: absolute; top: 15px; left: 15px; width: 20px; height: 20px; border: 3px solid rgba(160, 140, 120, 0.2); border-top-color: var(--color-tasks); border-radius: 50%; animation: spin 0.8s linear infinite; opacity: 0; transition: opacity 0.2s;}
+        .hw-loader.active { opacity: 1; }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* Envelope Anim */
         #anim-overlay { position: fixed; inset: 0; background: rgba(250, 247, 242, 0.95); z-index: 100005; align-items: center; justify-content: center; perspective: 1200px; display: none;}
@@ -304,17 +278,12 @@
             .modal-close-btn { top: 15px; right: 15px; font-size: 2rem; background: rgba(0,0,0,0.6); width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; line-height: 1; padding-bottom: 4px;}
             .letter-sheet { padding: 40px 6% 50px 6%; }
             .letter-sheet::after { left: 6%; right: 6%; }
-            .letter-text { font-size: 1.05rem; }
             .log-header-container { flex-direction: column; align-items: flex-start; gap: 15px; }
             .toggle-add-btn { align-self: flex-end; margin-top: -45px; }
-            .env-wrapper { transform: scale(0.85); }
             
             /* 手寫板 RWD */
-            .hw-top-container { padding: 15px; }
-            .hw-candidates-row { padding: 8px 15px; height: 50px; }
-            .hw-candidate { font-size: 1.4rem; padding: 0 12px; }
-            .hw-punctuation-row { padding: 8px 15px; }
-            .hw-hint { font-size: 1.2rem; }
+            .svg-btn { width: 40px; height: 40px; }
+            .hw-punct-btn { padding: 6px 14px; font-size: 1.1rem;}
         }
     </style>
 </head>
@@ -356,36 +325,62 @@
         </div>
     </div>
 
-    <!-- 全螢幕沉浸式手寫板 (Full-Screen Handwriting Overlay) -->
+    <!-- ==============================================
+         🌟 全螢幕自動辨識手寫板 (50/50 分割)
+         ============================================== -->
     <div id="hw-overlay">
-        <div class="hw-top-container">
-            <div class="hw-header-actions">
-                <div class="hw-title">✍️ 案頭書寫模式</div>
-                <button class="hw-btn-done" onclick="closeHwKeyboard()">完成書寫</button>
-            </div>
-            <textarea id="hw-preview" readonly placeholder="您手寫的文字將會即時顯示於此..."></textarea>
+        <!-- 上半部 50%：信紙背景的預覽文字區 -->
+        <div class="hw-top-half">
+            <textarea id="hw-preview" readonly placeholder="在此信箋上，您手寫的文字將會即刻躍然紙上..."></textarea>
         </div>
         
-        <div class="hw-toolbar">
-            <div class="hw-candidates-row" id="hw-candidates">
-                <div style="color:#9c8a75; font-size:0.95rem;">請在下方畫布書寫文字，辨識結果將顯示於此...</div>
+        <!-- 下半部 50%：工具列與畫板 -->
+        <div class="hw-bottom-half">
+            <!-- 功能按鈕列 (純 SVG) -->
+            <div class="hw-toolbar-actions">
+                <div style="flex-grow: 1; color: #a48c76; font-size: 0.9rem; font-family: var(--font-serif); padding-left: 10px;">請在下方揮灑筆墨...</div>
+                
+                <!-- 清空畫布按鈕 (垃圾桶) -->
+                <button class="svg-btn" onclick="clearHwCanvas()" title="清空畫布">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
+                
+                <!-- 刪除文字按鈕 (Backspace) -->
+                <button class="svg-btn" onclick="hwBackspace()" title="刪除最後一個字">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line>
+                    </svg>
+                </button>
+                
+                <!-- 完成收起按鈕 (打勾) -->
+                <button class="svg-btn done" onclick="closeHwKeyboard()" title="完成書寫">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </button>
             </div>
-            <div class="hw-punctuation-row">
-                <button class="hw-btn" onclick="insertChar('，')">，</button>
-                <button class="hw-btn" onclick="insertChar('。')">。</button>
-                <button class="hw-btn" onclick="insertChar('？')">？</button>
-                <button class="hw-btn" onclick="insertChar('！')">！</button>
-                <button class="hw-btn" onclick="insertChar('、')">、</button>
-                <button class="hw-btn" onclick="insertChar('《')">《</button>
-                <button class="hw-btn" onclick="insertChar('》')">》</button>
-                <button class="hw-btn action" onclick="hwBackspace()">⌫ 刪除一字</button>
-                <button class="hw-btn action" style="background:#e2e8f0; color:#475569; border-color:#cbd5e1; box-shadow: 0 2px 0 #94a3b8; margin-left: 8px;" onclick="clearHwCanvas(true)">清除畫板</button>
-            </div>
-        </div>
 
-        <div class="hw-canvas-wrapper">
-            <div class="hw-hint" id="hw-hint">將筆尖落於此處...<br><span style="font-size:1rem; opacity:0.7">（支援連續多筆劃書寫）</span></div>
-            <canvas id="hw-canvas"></canvas>
+            <!-- 標點符號列 -->
+            <div class="hw-toolbar-punctuations">
+                <button class="hw-punct-btn" onclick="insertChar('，')">，</button>
+                <button class="hw-punct-btn" onclick="insertChar('。')">。</button>
+                <button class="hw-punct-btn" onclick="insertChar('？')">？</button>
+                <button class="hw-punct-btn" onclick="insertChar('！')">！</button>
+                <button class="hw-punct-btn" onclick="insertChar('、')">、</button>
+                <button class="hw-punct-btn" onclick="insertChar('：')">：</button>
+                <button class="hw-punct-btn" onclick="insertChar('「')">「</button>
+                <button class="hw-punct-btn" onclick="insertChar('」')">」</button>
+                <button class="hw-punct-btn" onclick="insertChar('《')">《</button>
+                <button class="hw-punct-btn" onclick="insertChar('》')">》</button>
+            </div>
+
+            <!-- 手寫畫布 -->
+            <div class="hw-canvas-wrapper">
+                <div class="hw-loader" id="hw-loader"></div> <!-- 辨識中動畫 -->
+                <canvas id="hw-canvas"></canvas>
+            </div>
         </div>
     </div>
 
@@ -412,12 +407,10 @@
                 <h3 id="task-title" class="serif-text" style="margin-bottom: 30px; font-size: 1.5rem;">撰寫任務</h3>
                 
                 <div class="field-group flex-row">
-                    <!-- 書名與頁數允許鍵盤輸入 -->
                     <div><label class="field-label">書籍名稱</label><input type="text" id="book-title" class="input-box" style="font-family:var(--font-serif);" placeholder="請輸入書名"></div>
                     <div><label class="field-label">目前閱讀頁數</label><input type="number" id="book-page" class="input-box" placeholder="例如：120" min="1"></div>
                 </div>
 
-                <!-- 思考問題與閱讀心得強制手寫 -->
                 <div class="field-group">
                     <label class="field-label">思考問題</label>
                     <textarea id="log-question" class="textarea handwrite-only" style="min-height:100px;" readonly placeholder="點此喚出全螢幕書寫板..."></textarea>
@@ -460,9 +453,7 @@
     <!-- Modal (高級信箋展示案頭) -->
     <div id="modal">
         <button class="modal-close-btn" onclick="closeModal()">×</button>
-        <div class="letter-desk" id="chat-flow">
-            <!-- 動態生成 -->
-        </div>
+        <div class="letter-desk" id="chat-flow"></div>
     </div>
 
     <!-- Three.js Background -->
@@ -504,7 +495,7 @@
         const ITEMS_PER_PAGE = 10; let repliesData = []; let inboxData = []; let currentPageReplies = 1; let currentPageInbox = 1;
         let isSubmittingLog = false; let isSubmittingReply = false;
 
-        // 全螢幕手寫板相關變數
+        // 手寫板變數
         let activeHwInput = null;
         let hwCanvas, hwCtx;
         let isDrawing = false;
@@ -518,22 +509,13 @@
                 currentUser = user;
                 db.ref(`users/${user.uid}`).once('value').then(snap => {
                     if (snap.val() && snap.val().name) { 
-                        document.getElementById('user-name').innerText = snap.val().name; 
-                        hideAuthOverlay(); 
-                        initApp(); 
+                        document.getElementById('user-name').innerText = snap.val().name; hideAuthOverlay(); initApp(); 
                     } else { 
-                        document.getElementById('login-container').style.display = 'none'; 
-                        document.getElementById('name-setup-container').style.display = 'flex'; 
+                        document.getElementById('login-container').style.display = 'none'; document.getElementById('name-setup-container').style.display = 'flex'; 
                     }
-                }).catch(err => {
-                    console.error("讀取使用者資料失敗:", err);
-                    alert("連線異常，請重新整理網頁再試一次。");
                 });
             } else { 
-                document.getElementById('auth-overlay').style.display = 'flex'; 
-                document.getElementById('login-container').style.display = 'flex'; 
-                document.getElementById('name-setup-container').style.display = 'none'; 
-                run3D = true; animateThreeJS(); 
+                document.getElementById('auth-overlay').style.display = 'flex'; document.getElementById('login-container').style.display = 'flex'; document.getElementById('name-setup-container').style.display = 'none'; run3D = true; animateThreeJS(); 
             }
         });
 
@@ -546,78 +528,39 @@
             if (!name) return alert("請輸入姓名"); 
             const btn = document.getElementById('btn-setup-name');
             btn.disabled = true; btn.innerText = "設定中...";
-            
             db.ref(`users/${currentUser.uid}`).set({ name, email: currentUser.email, receivedCount: 0 }).then(() => { 
-                document.getElementById('user-name').innerText = name; 
-                hideAuthOverlay(); 
-                initApp(); 
-            }).catch(err => {
-                alert("設定失敗，請確認網路連線或規則設定: " + err.message);
-                btn.disabled = false; btn.innerText = "確認進入";
+                document.getElementById('user-name').innerText = name; hideAuthOverlay(); initApp(); 
             }); 
         }
 
-        function initApp() { 
-            healPool(); 
-            db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }, err => console.error(err)); 
-            setupNotifications(); loadMailbox(); loadReadingLogs(); 
-            initHandwriting();
-        }
+        function initApp() { healPool(); db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); setupNotifications(); loadMailbox(); loadReadingLogs(); initHandwriting(); }
 
         function setupNotifications() {
             const threadRef = db.ref(`user_threads/${currentUser.uid}`);
-            threadRef.once('value').then(() => { isInitialLoad = false; }).catch(e => console.error(e));
-            
-            threadRef.on('child_changed', snap => { 
-                if (!isInitialLoad && snap.val().hasUnread) {
-                    triggerNotification("您收到了一則新的回覆！", snap.val().letterId); 
-                }
-            });
-            threadRef.on('child_added', snap => { 
-                if (!isInitialLoad && !snap.val().isSender) {
-                    triggerNotification("一封未知的來信抵達了您的信箱！", snap.val().letterId); 
-                }
-            });
+            threadRef.once('value').then(() => { isInitialLoad = false; });
+            threadRef.on('child_changed', snap => { if (!isInitialLoad && snap.val().hasUnread) triggerNotification("您收到了一則新的回覆！", snap.val().letterId); });
+            threadRef.on('child_added', snap => { if (!isInitialLoad && !snap.val().isSender) triggerNotification("一封未知的來信抵達了您的信箱！", snap.val().letterId); });
         }
 
         function triggerNotification(msg, id) {
-            const b = document.getElementById('notification-banner'); 
-            document.getElementById('notification-text').innerText = msg; 
-            gsap.killTweensOf(b); 
-            gsap.fromTo(b, {y:0, opacity:0}, {y:120, opacity:1, duration:0.6, ease:"back.out(1.5)"});
-            b.onclick = () => { openChat(id); gsap.to(b, {y:0, opacity:0, duration:0.4}); };
-            setTimeout(() => gsap.to(b, {y:0, opacity:0, duration:0.4}), 8000);
+            const b = document.getElementById('notification-banner'); document.getElementById('notification-text').innerText = msg; 
+            gsap.killTweensOf(b); gsap.fromTo(b, {y:0, opacity:0}, {y:120, opacity:1, duration:0.6, ease:"back.out(1.5)"});
+            b.onclick = () => { openChat(id); gsap.to(b, {y:0, opacity:0, duration:0.4}); }; setTimeout(() => gsap.to(b, {y:0, opacity:0, duration:0.4}), 8000);
         }
 
         function loadMailbox() {
             db.ref(`user_threads/${currentUser.uid}`).on('value', snap => {
                 let all = Object.values(snap.val() || {}).sort((a, b) => b.lastUpdated - a.lastUpdated);
-                repliesData = []; inboxData = []; hasUnrepliedLetters = false;
-                let unreadInReplies = false; let unreadInInbox = false;
-
+                repliesData = []; inboxData = []; hasUnrepliedLetters = false; let unreadInReplies = false; let unreadInInbox = false;
                 all.forEach(t => {
-                    if (t.isSender) { 
-                        if (t.hasBeenRepliedTo) { 
-                            repliesData.push(t); 
-                            if(!t.hasReplied) hasUnrepliedLetters = true; 
-                            if(t.hasUnread) unreadInReplies = true;
-                        } 
-                    } else { 
-                        inboxData.push(t); 
-                        if(!t.hasReplied) hasUnrepliedLetters = true; 
-                        if(t.hasUnread) unreadInInbox = true;
-                    }
+                    if (t.isSender) { if (t.hasBeenRepliedTo) { repliesData.push(t); if(!t.hasReplied) hasUnrepliedLetters = true; if(t.hasUnread) unreadInReplies = true; } } 
+                    else { inboxData.push(t); if(!t.hasReplied) hasUnrepliedLetters = true; if(t.hasUnread) unreadInInbox = true; }
                 });
-
-                document.querySelector('.tab-replies').classList.toggle('has-unread', unreadInReplies);
-                document.querySelector('.tab-inbox').classList.toggle('has-unread', unreadInInbox);
-
+                document.querySelector('.tab-replies').classList.toggle('has-unread', unreadInReplies); document.querySelector('.tab-inbox').classList.toggle('has-unread', unreadInInbox);
                 if (currentPageReplies > Math.ceil(repliesData.length / ITEMS_PER_PAGE) || 1) currentPageReplies = Math.ceil(repliesData.length / ITEMS_PER_PAGE) || 1;
                 if (currentPageInbox > Math.ceil(inboxData.length / ITEMS_PER_PAGE) || 1) currentPageInbox = Math.ceil(inboxData.length / ITEMS_PER_PAGE) || 1;
-
-                renderPaginatedList('replies', repliesData, currentPageReplies);
-                renderPaginatedList('inbox', inboxData, currentPageInbox);
-            }, err => console.error("Mailbox Error:", err));
+                renderPaginatedList('replies', repliesData, currentPageReplies); renderPaginatedList('inbox', inboxData, currentPageInbox);
+            });
         }
 
         function healPool() {
@@ -631,24 +574,17 @@
                             const now = firebase.database.ServerValue.TIMESTAMP;
                             db.ref(`user_threads/${currentUser.uid}/${rId}`).set({ letterId: rId, bookTitle: lData.bookTitle, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: now });
                             db.ref(`user_threads/${lData.senderUid}/${rId}`).set({ letterId: rId, bookTitle: lData.bookTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: now });
-                            
                             db.ref(`users/${currentUser.uid}/receivedCount`).transaction(count => (count || 0) + 1);
                         }
-                    }).catch(err => console.error("配對讀取異常:", err));
+                    });
                 }
-            }).catch(err => console.error("池子讀取異常:", err));
+            });
         }
 
         function renderPaginatedList(type, data, currentPage) {
-            const listEl = document.getElementById(`${type}-list`);
-            const pageEl = document.getElementById(`${type}-pagination`);
-            listEl.innerHTML = ''; pageEl.innerHTML = '';
-
+            const listEl = document.getElementById(`${type}-list`); const pageEl = document.getElementById(`${type}-pagination`); listEl.innerHTML = ''; pageEl.innerHTML = '';
             if (data.length === 0) { listEl.innerHTML = `<div class="empty-state"><p>信箱空空如也，靜候佳音。</p></div>`; return; }
-
-            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-            const pageData = data.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-
+            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE; const pageData = data.slice(startIndex, startIndex + ITEMS_PER_PAGE);
             pageData.forEach(t => {
                 const timeStr = new Date(t.lastUpdated).toLocaleString([], {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
                 const el = document.createElement('div'); el.className = 'list-item';
@@ -658,35 +594,28 @@
                 el.innerHTML = `${badge}<div class="item-title">${type==='replies'?'關於':'筆友寄來'}《${escapeHtml(t.bookTitle)}》的${type==='replies'?'回音':'心得'}</div><div class="item-time">${timeStr}</div>${deleteHTML}`;
                 listEl.appendChild(el);
             });
-
             const totalPages = Math.ceil(data.length / ITEMS_PER_PAGE);
             if (totalPages > 1) {
                 for (let i = 1; i <= totalPages; i++) {
-                    const btn = document.createElement('button');
-                    btn.className = `page-btn ${i === currentPage ? 'active' : ''}`; btn.innerText = i;
+                    const btn = document.createElement('button'); btn.className = `page-btn ${i === currentPage ? 'active' : ''}`; btn.innerText = i;
                     btn.onclick = () => { if (type === 'replies') currentPageReplies = i; else currentPageInbox = i; renderPaginatedList(type, type === 'replies' ? repliesData : inboxData, i); };
                     pageEl.appendChild(btn);
                 }
             }
         }
-
-        window.deleteThread = function(id, e) { e.stopPropagation(); if(confirm("確認刪除此信件？")) db.ref(`user_threads/${currentUser.uid}/${id}`).remove().catch(err => alert("刪除失敗: " + err.message)); };
+        window.deleteThread = function(id, e) { e.stopPropagation(); if(confirm("確認刪除此信件？")) db.ref(`user_threads/${currentUser.uid}/${id}`).remove(); };
 
         function handleFileSelect(event) {
-            const file = event.target.files[0]; if (!file) return;
-            selectedFileName = file.name; document.getElementById('file-name-display').innerText = selectedFileName;
-            
+            const file = event.target.files[0]; if (!file) return; selectedFileName = file.name; document.getElementById('file-name-display').innerText = selectedFileName;
             const reader = new FileReader();
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1200; const scaleSize = MAX_WIDTH / img.width;
+                    const canvas = document.createElement('canvas'); const MAX_WIDTH = 1200; const scaleSize = MAX_WIDTH / img.width;
                     canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize;
                     const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-                    selectedFileBase64 = dataUrl.split(',')[1];
-                    const preview = document.getElementById('image-preview'); preview.src = dataUrl; preview.style.display = 'block';
+                    selectedFileBase64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
+                    const preview = document.getElementById('image-preview'); preview.src = canvas.toDataURL('image/jpeg', 0.6); preview.style.display = 'block';
                 }
                 img.src = e.target.result;
             };
@@ -696,33 +625,19 @@
         async function submitLog() {
             const title = document.getElementById('book-title').value.trim(); const page = document.getElementById('book-page').value.trim();
             const question = document.getElementById('log-question').value.trim(); const text = document.getElementById('log-content').value.trim();
-            
             if (!title || !page || !question || !text) return alert("請填寫完整資訊 (書名、頁數、思考問題與心得)。");
             if (!selectedFileBase64) return alert("請務必上傳書籍畫面圖片。");
             if (text.length < 150) return alert("心得最少需要 150 字。");
-            
-            if (isSubmittingLog) return;
-            isSubmittingLog = true;
-            
+            if (isSubmittingLog) return; isSubmittingLog = true;
             const btn = document.getElementById('btn-submit-task'); btn.innerText = "圖片上傳中，請稍候..."; btn.disabled = true;
 
             try {
-                const response = await fetch(GAS_URL, { 
-                    method: 'POST', 
-                    body: JSON.stringify({ fileName: selectedFileName, mimeType: 'image/jpeg', base64: selectedFileBase64 }) 
-                });
-                
+                const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ fileName: selectedFileName, mimeType: 'image/jpeg', base64: selectedFileBase64 }) });
                 const responseText = await response.text();
-                let result; try { result = JSON.parse(responseText); } catch (e) { throw new Error("伺服器未能回傳正確格式。"); }
-                if (!result.success) throw new Error(result.error || "上傳未成功");
-
+                let result = JSON.parse(responseText); if (!result.success) throw new Error(result.error || "上傳未成功");
                 const combinedText = `【目前進度】\n第 ${page} 頁\n\n【思考問題】\n${question}\n\n【閱讀心得】\n${text}`;
                 playAnim('log', null, null, {title: title, text: combinedText, imageUrl: result.url});
-            } catch (error) {
-                alert("圖片上傳發生異常。\n詳細錯誤：" + error.message);
-                isSubmittingLog = false;
-                btn.innerText = "封裝寄出心得"; btn.disabled = false;
-            }
+            } catch (error) { alert("圖片上傳發生異常：" + error.message); isSubmittingLog = false; btn.innerText = "封裝寄出心得"; btn.disabled = false; }
         }
 
         function renderTasks() {
@@ -731,12 +646,8 @@
             db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value').then(snap => {
                 const submitted = Object.values(snap.val()||{}).map(l=>l.taskIndex); const map = {}; Object.values(snap.val()||{}).forEach(l=>map[l.taskIndex]=l.id);
                 for (let i=0; i<total; i++) {
-                    const d = new Date(start.getTime() + i*config.intervalDays*86400000); 
-                    const today = new Date(); today.setHours(0, 0, 0, 0);
-                    const unlockDate = new Date(d); unlockDate.setHours(0, 0, 0, 0);
-                    const unlocked = today >= unlockDate; 
-
-                    const done = submitted.includes(i);
+                    const d = new Date(start.getTime() + i*config.intervalDays*86400000); const today = new Date(); today.setHours(0, 0, 0, 0); const unlockDate = new Date(d); unlockDate.setHours(0, 0, 0, 0);
+                    const unlocked = today >= unlockDate; const done = submitted.includes(i);
                     const el = document.createElement('div'); el.className = `task-card ${done?'completed':''} ${!unlocked&&!done?'locked':''}`;
                     el.innerHTML = `<span class="task-num">第 ${i+1} 回任務</span><span class="task-date">${d.getMonth()+1}/${d.getDate()} 開放</span>`;
                     el.onclick = () => {
@@ -746,150 +657,74 @@
                             selectedTaskIndex = i; document.getElementById('task-title').innerText = `撰寫任務：第 ${i+1} 回心得`;
                             document.getElementById('write-editor').style.display = 'block'; document.getElementById('write-editor').scrollIntoView({behavior:'smooth'});
                             document.getElementById('btn-submit-task').innerText = "封裝寄出心得"; document.getElementById('btn-submit-task').disabled = false;
-                            document.getElementById('file-name-display').innerText = "尚未選擇圖片"; document.getElementById('image-preview').style.display = 'none';
-                            selectedFileBase64 = null; document.getElementById('book-image').value = '';
+                            document.getElementById('file-name-display').innerText = "尚未選擇圖片"; document.getElementById('image-preview').style.display = 'none'; selectedFileBase64 = null; document.getElementById('book-image').value = '';
                         } else alert("時空未到，尚未開放。");
                     }; grid.appendChild(el);
                 }
-            }).catch(err => console.error("讀取任務狀態異常:", err));
+            });
         }
 
         function openChat(id) {
             db.ref(`user_threads/${currentUser.uid}/${id}`).update({hasUnread: false});
             db.ref(`letters/${id}`).once('value').then(lSnap => {
                 const l = lSnap.val(); if (!l) return;
-                
-                const flow = document.getElementById('chat-flow'); 
-                const partnerUid = currentUser.uid === l.senderUid ? l.recipientUid : l.senderUid;
-                
-                if (currentChatRef) currentChatRef.off(); 
-                currentChatRef = db.ref(`conversations/${id}`);
+                const flow = document.getElementById('chat-flow'); const partnerUid = currentUser.uid === l.senderUid ? l.recipientUid : l.senderUid;
+                if (currentChatRef) currentChatRef.off(); currentChatRef = db.ref(`conversations/${id}`);
                 
                 currentChatRef.once('value').then(cSnap => {
-                    const messages = cSnap.val() || {};
-                    const msgKeys = Object.keys(messages);
-                    let contentHTML = '';
-                    
+                    const messages = cSnap.val() || {}; const msgKeys = Object.keys(messages); let contentHTML = '';
                     msgKeys.forEach((key, index) => {
-                        const m = messages[key];
-                        const isMe = m.senderUid === currentUser.uid; 
-                        const d = new Date(m.timestamp);
+                        const m = messages[key]; const isMe = m.senderUid === currentUser.uid; const d = new Date(m.timestamp);
                         const tStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-                        
-                        let formattedText = escapeHtml(m.text);
-                        formattedText = formattedText.replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀頁數</span>');
-                        formattedText = formattedText.replace(/【思考問題】/g, '<span class="letter-section-divider">思考問題</span>');
-                        formattedText = formattedText.replace(/【閱讀心得】/g, '<span class="letter-section-divider">閱讀感悟</span>');
-
-                        let imgTag = m.imageUrl ? `<a href="${m.imageUrl}" target="_blank" class="letter-img-wrap" title="點擊檢視相片"><img src="${m.imageUrl}" class="letter-img" alt="隨信相片" referrerpolicy="no-referrer" loading="lazy"></a>` : '';
-                        const letterClass = isMe ? 'my-letter' : 'partner-letter';
-                        const letterHeaderLabel = isMe ? '✍️ 我的手札' : '📬 筆友的來信';
-
-                        contentHTML += `
-                        <div class="letter-sheet ${letterClass}" style="animation-delay: ${index * 0.15}s;">
-                            <div class="letter-header-meta"><span>${letterHeaderLabel}</span><span>${tStr}</span></div>
-                            <div class="letter-text">${formattedText}</div>
-                            ${imgTag}
-                        </div>`;
+                        let formattedText = escapeHtml(m.text).replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀頁數</span>').replace(/【思考問題】/g, '<span class="letter-section-divider">思考問題</span>').replace(/【閱讀心得】/g, '<span class="letter-section-divider">閱讀感悟</span>');
+                        let imgTag = m.imageUrl ? `<a href="${m.imageUrl}" target="_blank" class="letter-img-wrap"><img src="${m.imageUrl}" class="letter-img" loading="lazy"></a>` : '';
+                        contentHTML += `<div class="letter-sheet ${isMe ? 'my-letter' : 'partner-letter'}" style="animation-delay: ${index * 0.15}s;"><div class="letter-header-meta"><span>${isMe ? '✍️ 我的手札' : '📬 筆友的來信'}</span><span>${tStr}</span></div><div class="letter-text">${formattedText}</div>${imgTag}</div>`;
                     });
 
-                    // 綁定手寫專用的 Reply Textarea
-                    contentHTML += `
-                    <div class="letter-sheet reply-sheet my-letter" style="animation-delay: ${msgKeys.length * 0.15}s;">
-                        <div class="letter-header-meta"><span>✍️ 提筆回信</span><span>紙短情長</span></div>
-                        <textarea id="reply-text" class="textarea handwrite-only" readonly placeholder="點此喚出全螢幕書寫板，一筆一劃寫下您的回音...（最少 100 字）"></textarea>
-                        <div style="text-align: center;"><button class="btn" style="margin: 20px auto 0; padding: 12px 40px; background: var(--color-replies);" id="btn-send-reply">寄出回信</button></div>
-                    </div>`;
-
+                    contentHTML += `<div class="letter-sheet reply-sheet my-letter" style="animation-delay: ${msgKeys.length * 0.15}s;"><div class="letter-header-meta"><span>✍️ 提筆回信</span><span>紙短情長</span></div><textarea id="reply-text" class="textarea handwrite-only" readonly placeholder="點此喚出全螢幕書寫板，一筆一劃寫下您的回音...（最少 100 字）"></textarea><div style="text-align: center;"><button class="btn" style="margin: 20px auto 0; padding: 12px 40px; background: var(--color-replies);" id="btn-send-reply">寄出回信</button></div></div>`;
                     flow.innerHTML = contentHTML;
 
-                    // 綁定手寫喚醒事件
                     document.getElementById('reply-text').addEventListener('click', function() { openHwKeyboard(this); });
-
                     document.getElementById('btn-send-reply').onclick = () => {
-                        const txt = document.getElementById('reply-text').value.trim();
-                        if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
-                        if (isSubmittingReply) return;
-                        isSubmittingReply = true;
-                        
-                        const sendBtn = document.getElementById('btn-send-reply');
-                        sendBtn.disabled = true; sendBtn.innerText = "寄送中...";
+                        const txt = document.getElementById('reply-text').value.trim(); if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
+                        if (isSubmittingReply) return; isSubmittingReply = true; document.getElementById('btn-send-reply').disabled = true; document.getElementById('btn-send-reply').innerText = "寄送中...";
                         playAnim('reply', id, partnerUid, txt);
                     };
-
-                    document.getElementById('modal').style.display = 'flex'; 
-                    lockScroll();
+                    document.getElementById('modal').style.display = 'flex'; lockScroll();
                 });
-            }).catch(err => { alert("讀取信件失敗: " + err.message); unlockScroll(); });
+            });
         }
         
-        function lockScroll() { 
-            if(document.body.style.overflow !== 'hidden') {
-                originalBodyOverflow = document.body.style.overflow; 
-                document.body.style.overflow = 'hidden'; 
-            }
-        }
-        function unlockScroll() { 
-            // 如果 modal 和 hw-overlay 都不在顯示狀態，才解鎖滾動
-            const modalOpen = document.getElementById('modal').style.display === 'flex';
-            const hwOpen = document.getElementById('hw-overlay').classList.contains('active');
-            if(!modalOpen && !hwOpen) document.body.style.overflow = originalBodyOverflow; 
-        }
-
-        function closeModal() { 
-            if (currentChatRef) currentChatRef.off(); 
-            document.getElementById('modal').style.display = 'none'; 
-            closeHwKeyboard();
-            unlockScroll();
-        }
+        function lockScroll() { if(document.body.style.overflow !== 'hidden') { originalBodyOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden'; } }
+        function unlockScroll() { const modalOpen = document.getElementById('modal').style.display === 'flex'; const hwOpen = document.getElementById('hw-overlay').classList.contains('active'); if(!modalOpen && !hwOpen) document.body.style.overflow = originalBodyOverflow; }
+        function closeModal() { if (currentChatRef) currentChatRef.off(); document.getElementById('modal').style.display = 'none'; closeHwKeyboard(); unlockScroll(); }
 
         function playAnim(type, letterId, partnerUid, ObjectData) {
             const overlay = document.getElementById('anim-overlay'); overlay.style.display = 'flex';
             gsap.set(".env-wrapper", {y: 0, scale: 1, opacity: 1}); gsap.set("#anim-paper", {y: -120, zIndex: 5}); gsap.set("#anim-ptop", {rotateX: 0}); gsap.set("#anim-pbot", {rotateX: 0}); gsap.set("#anim-flap", {rotateX: 180, zIndex: 4}); gsap.set("#anim-seal", {scale: 0});
             gsap.timeline().to("#anim-pbot", {rotateX: 179, duration: 0.4}).to("#anim-ptop", {rotateX: -179, duration: 0.4}, "-=0.2").to("#anim-paper", {y: 70, duration: 0.5}).set("#anim-flap", {zIndex: 15}).to("#anim-flap", {rotateX: 0, duration: 0.4}).to("#anim-seal", {scale: 1, duration: 0.3, ease: "back.out(1.5)"}).to(".env-wrapper", {y: -400, scale: 0.6, opacity: 0, duration: 0.6, delay: 0.4, onComplete: () => {
-                  overlay.style.display = 'none';
-                  if (type === 'log') processLog(ObjectData); else processReply(letterId, partnerUid, ObjectData);
+                  overlay.style.display = 'none'; if (type === 'log') processLog(ObjectData); else processReply(letterId, partnerUid, ObjectData);
             }});
         }
 
         function processLog(data) {
             const ts = firebase.database.ServerValue.TIMESTAMP; const ref = db.ref('letters').push();
-            
             db.ref('users').once('value').then(snap => {
-                const users = snap.val() || {};
-                let eligibleUids = Object.keys(users).filter(u => u !== currentUser.uid);
-                let rec = "";
-
+                const users = snap.val() || {}; let eligibleUids = Object.keys(users).filter(u => u !== currentUser.uid); let rec = "";
                 if (eligibleUids.length > 0) {
-                    let minCount = Infinity;
-                    eligibleUids.forEach(uid => {
-                        let count = users[uid].receivedCount || 0;
-                        if (count < minCount) minCount = count;
-                    });
-                    
-                    let candidates = eligibleUids.filter(uid => (users[uid].receivedCount || 0) === minCount);
-                    rec = candidates[Math.floor(Math.random() * candidates.length)];
-                    
+                    let minCount = Infinity; eligibleUids.forEach(uid => { let count = users[uid].receivedCount || 0; if (count < minCount) minCount = count; });
+                    let candidates = eligibleUids.filter(uid => (users[uid].receivedCount || 0) === minCount); rec = candidates[Math.floor(Math.random() * candidates.length)];
                     db.ref(`users/${rec}/receivedCount`).set(minCount + 1);
                 }
-
                 ref.set({ id: ref.key, senderUid: currentUser.uid, bookTitle: data.title, timestamp: ts, taskIndex: selectedTaskIndex, recipientUid: rec }).then(() => {
                     db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: ts });
                     if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
                     else db.ref(`unassigned_letters/${ref.key}`).set({ senderUid: currentUser.uid });
-                    
                     db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
-                        isSubmittingLog = false;
-                        document.getElementById('book-title').value = ''; document.getElementById('book-page').value = ''; document.getElementById('log-question').value = ''; document.getElementById('log-content').value = ''; 
-                        document.getElementById('book-image').value=''; selectedFileBase64=null; document.getElementById('file-name-display').innerText="尚未選擇圖片"; document.getElementById('image-preview').style.display = 'none';
-                        document.getElementById('write-editor').style.display = 'none'; 
-                        renderTasks(); alert('心得已寄出！'); switchTab('tab-tasks', document.querySelector('.tab-tasks'));
+                        isSubmittingLog = false; document.getElementById('book-title').value = ''; document.getElementById('book-page').value = ''; document.getElementById('log-question').value = ''; document.getElementById('log-content').value = ''; 
+                        document.getElementById('book-image').value=''; selectedFileBase64=null; document.getElementById('file-name-display').innerText="尚未選擇圖片"; document.getElementById('image-preview').style.display = 'none'; document.getElementById('write-editor').style.display = 'none'; renderTasks(); alert('心得已寄出！'); switchTab('tab-tasks', document.querySelector('.tab-tasks'));
                     });
-                }).catch(err => {
-                    isSubmittingLog = false; const btn = document.getElementById('btn-submit-task'); if (btn) { btn.disabled = false; btn.innerText = "封裝寄出心得"; } alert("發送失敗：" + err.message);
                 });
-            }).catch(err => {
-                isSubmittingLog = false; const btn = document.getElementById('btn-submit-task'); if (btn) { btn.disabled = false; btn.innerText = "封裝寄出心得"; } alert("配對異常：" + err.message);
             });
         }
         
@@ -897,205 +732,114 @@
             const ts = firebase.database.ServerValue.TIMESTAMP;
             db.ref(`conversations/${id}`).push({ senderUid: currentUser.uid, text, timestamp: ts }).then(() => {
                 if (pUid) db.ref(`user_threads/${pUid}/${id}`).update({ hasUnread: true, lastUpdated: ts, hasBeenRepliedTo: true });
-                db.ref(`user_threads/${currentUser.uid}/${id}`).update({ hasUnread: false, hasReplied: true, lastUpdated: ts }).then(() => {
-                    isSubmittingReply = false; closeModal();
-                });
-            }).catch(err => {
-                isSubmittingReply = false; const sendBtn = document.getElementById('btn-send-reply'); if (sendBtn) { sendBtn.disabled = false; sendBtn.innerText = "寄出回信"; } alert("回信失敗，請重試：" + err.message);
+                db.ref(`user_threads/${currentUser.uid}/${id}`).update({ hasUnread: false, hasReplied: true, lastUpdated: ts }).then(() => { isSubmittingReply = false; closeModal(); });
             });
         }
 
-        function toggleReadingLog() {
-            const editor = document.getElementById('mylog-editor');
-            if (editor.style.display === 'none') {
-                editor.style.display = 'block'; gsap.fromTo(editor, {height: 0, opacity: 0}, {height: 'auto', opacity: 1, duration: 0.4});
-            } else gsap.to(editor, {opacity: 0, duration: 0.3, onComplete: () => editor.style.display = 'none'});
-        }
-
+        function toggleReadingLog() { const editor = document.getElementById('mylog-editor'); if (editor.style.display === 'none') { editor.style.display = 'block'; gsap.fromTo(editor, {height: 0, opacity: 0}, {height: 'auto', opacity: 1, duration: 0.4}); } else gsap.to(editor, {opacity: 0, duration: 0.3, onComplete: () => editor.style.display = 'none'}); }
         function submitReadingLog() {
-            const title = document.getElementById('mylog-title').value.trim(); const notes = document.getElementById('mylog-notes').value.trim();
-            if(!title) return alert("請輸入書籍名稱。");
+            const title = document.getElementById('mylog-title').value.trim(); const notes = document.getElementById('mylog-notes').value.trim(); if(!title) return alert("請輸入書籍名稱。");
             const btn = document.getElementById('btn-save-log'); btn.disabled = true; btn.innerText = "保存中...";
-            db.ref(`reading_logs/${currentUser.uid}`).push({ bookTitle: title, notes: notes, timestamp: firebase.database.ServerValue.TIMESTAMP }).then(() => {
-                document.getElementById('mylog-title').value = ''; document.getElementById('mylog-notes').value = ''; alert("已成功保存紀錄！"); toggleReadingLog();
-                btn.disabled = false; btn.innerText = "保存紀錄";
-            }).catch(err => { alert("保存失敗：" + err.message); btn.disabled = false; btn.innerText = "保存紀錄"; });
+            db.ref(`reading_logs/${currentUser.uid}`).push({ bookTitle: title, notes: notes, timestamp: firebase.database.ServerValue.TIMESTAMP }).then(() => { document.getElementById('mylog-title').value = ''; document.getElementById('mylog-notes').value = ''; alert("已成功保存紀錄！"); toggleReadingLog(); btn.disabled = false; btn.innerText = "保存紀錄"; });
         }
-
         function loadReadingLogs() {
             db.ref(`reading_logs/${currentUser.uid}`).on('value', snap => {
-                const list = document.getElementById('mylog-list'); list.innerHTML = '';
-                const logsArray = Object.keys(snap.val() || {}).map(k => ({id: k, ...snap.val()[k]})).sort((a,b) => b.timestamp - a.timestamp);
+                const list = document.getElementById('mylog-list'); list.innerHTML = ''; const logsArray = Object.keys(snap.val() || {}).map(k => ({id: k, ...snap.val()[k]})).sort((a,b) => b.timestamp - a.timestamp);
                 if(logsArray.length === 0) { list.innerHTML = `<div class="empty-state"><p>閱讀紀錄空空如也，點擊上方按鈕添加第一本書吧！</p></div>`; return; }
                 logsArray.forEach(log => {
                     const d = new Date(log.timestamp); const el = document.createElement('div'); el.className = 'log-card';
-                    el.innerHTML = `<h4>《${escapeHtml(log.bookTitle)}》</h4>${log.notes ? `<p>${escapeHtml(log.notes)}</p>` : ''}<div class="date">建立於 ${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}</div><button class="delete-btn" onclick="deleteReadingLog('${log.id}')">刪除</button>`;
-                    list.appendChild(el);
+                    el.innerHTML = `<h4>《${escapeHtml(log.bookTitle)}》</h4>${log.notes ? `<p>${escapeHtml(log.notes)}</p>` : ''}<div class="date">建立於 ${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}</div><button class="delete-btn" onclick="deleteReadingLog('${log.id}')">刪除</button>`; list.appendChild(el);
                 });
             });
         }
-        window.deleteReadingLog = function(id) { if(confirm("確定要將這本書從紀錄中移除嗎？")) db.ref(`reading_logs/${currentUser.uid}/${id}`).remove().catch(e=>alert("刪除失敗")); };
+        window.deleteReadingLog = function(id) { if(confirm("確定要將這本書從紀錄中移除嗎？")) db.ref(`reading_logs/${currentUser.uid}/${id}`).remove(); };
         function switchTab(id, btn) { document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.querySelectorAll('.section').forEach(s => s.classList.remove('active')); btn.classList.add('active'); document.getElementById(id).classList.add('active'); }
         function escapeHtml(s) { return s?s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):s; }
 
         /* ====================================================
-           🖋️ 全螢幕手寫核心邏輯 (Immersive Handwriting)
+           🖋️ 自動辨識手寫邏輯核心 (Auto-Select & Quick Clear)
            ==================================================== */
         
         document.addEventListener("DOMContentLoaded", () => {
-            const q = document.getElementById('log-question');
-            const c = document.getElementById('log-content');
+            const q = document.getElementById('log-question'); const c = document.getElementById('log-content');
             if(q) q.addEventListener('click', function() { openHwKeyboard(this); });
             if(c) c.addEventListener('click', function() { openHwKeyboard(this); });
-            
-            // 防禦實體鍵盤
-            document.querySelectorAll('.handwrite-only').forEach(el => {
-                el.addEventListener('keydown', e => { if(e.key !== 'Backspace') e.preventDefault(); });
-                el.addEventListener('paste', e => e.preventDefault());
-            });
+            document.querySelectorAll('.handwrite-only').forEach(el => { el.addEventListener('keydown', e => { if(e.key !== 'Backspace') e.preventDefault(); }); el.addEventListener('paste', e => e.preventDefault()); });
         });
 
         function initHandwriting() {
-            hwCanvas = document.getElementById('hw-canvas');
-            hwCtx = hwCanvas.getContext('2d');
-            
-            function resizeCanvas() {
-                const rect = hwCanvas.parentElement.getBoundingClientRect();
-                hwCanvas.width = rect.width; hwCanvas.height = rect.height;
-                hwCtx.lineCap = "round"; hwCtx.lineJoin = "round";
-            }
-            window.addEventListener('resize', () => {
-                if(document.getElementById('hw-overlay').classList.contains('active')) resizeCanvas();
-            });
-            // 初始綁定
+            hwCanvas = document.getElementById('hw-canvas'); hwCtx = hwCanvas.getContext('2d');
+            function resizeCanvas() { const rect = hwCanvas.parentElement.getBoundingClientRect(); hwCanvas.width = rect.width; hwCanvas.height = rect.height; hwCtx.lineCap = "round"; hwCtx.lineJoin = "round"; }
+            window.addEventListener('resize', () => { if(document.getElementById('hw-overlay').classList.contains('active')) resizeCanvas(); });
             setTimeout(resizeCanvas, 500);
-
-            hwCanvas.addEventListener('pointerdown', startStroke);
-            hwCanvas.addEventListener('pointermove', drawStroke);
-            hwCanvas.addEventListener('pointerup', endStroke);
-            hwCanvas.addEventListener('pointercancel', endStroke);
+            hwCanvas.addEventListener('pointerdown', startStroke); hwCanvas.addEventListener('pointermove', drawStroke); hwCanvas.addEventListener('pointerup', endStroke); hwCanvas.addEventListener('pointercancel', endStroke);
         }
 
-        function getPointerPos(e) {
-            const rect = hwCanvas.getBoundingClientRect();
-            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-        }
+        function getPointerPos(e) { const rect = hwCanvas.getBoundingClientRect(); return { x: e.clientX - rect.left, y: e.clientY - rect.top }; }
 
         function startStroke(e) {
             e.preventDefault(); isDrawing = true;
-            document.getElementById('hw-hint').style.opacity = '0'; // 隱藏提示字
-            const pos = getPointerPos(e);
-            currentStroke = [[pos.x], [pos.y], [Date.now()]];
-            hwCtx.beginPath(); hwCtx.moveTo(pos.x, pos.y);
-            hwCtx.lineWidth = 5; hwCtx.strokeStyle = "rgba(74, 66, 56, 0.85)";
-            clearTimeout(hwTimeout);
+            const pos = getPointerPos(e); currentStroke = [[pos.x], [pos.y], [Date.now()]];
+            hwCtx.beginPath(); hwCtx.moveTo(pos.x, pos.y); hwCtx.lineWidth = 5; hwCtx.strokeStyle = "rgba(74, 66, 56, 0.85)"; clearTimeout(hwTimeout);
         }
 
         function drawStroke(e) {
-            if (!isDrawing) return; e.preventDefault();
-            const pos = getPointerPos(e);
-            currentStroke[0].push(pos.x); currentStroke[1].push(pos.y); currentStroke[2].push(Date.now());
-            hwCtx.lineTo(pos.x, pos.y); hwCtx.stroke();
+            if (!isDrawing) return; e.preventDefault(); const pos = getPointerPos(e);
+            currentStroke[0].push(pos.x); currentStroke[1].push(pos.y); currentStroke[2].push(Date.now()); hwCtx.lineTo(pos.x, pos.y); hwCtx.stroke();
         }
 
         function endStroke(e) {
             if (!isDrawing) return; isDrawing = false; e.preventDefault();
             if (currentStroke[0].length > 0) strokes.push(currentStroke);
             
-            // 延長等待時間，允許連續寫複雜中文字 (800毫秒)
-            hwTimeout = setTimeout(recognizeHandwriting, 800); 
+            // 🌟 極速辨識：停筆 400 毫秒後即送出辨識請求
+            hwTimeout = setTimeout(recognizeHandwriting, 400); 
         }
 
         function recognizeHandwriting() {
             if (strokes.length === 0) return;
-            const data = {
-                "options": "enable_pre_space",
-                "requests": [{
-                    "writing_guide": { "width": hwCanvas.width, "height": hwCanvas.height },
-                    "ink": strokes, "language": "zh-TW"
-                }]
-            };
-
+            document.getElementById('hw-loader').classList.add('active'); // 顯示轉圈動畫
+            
+            const data = { "options": "enable_pre_space", "requests": [{ "writing_guide": { "width": hwCanvas.width, "height": hwCanvas.height }, "ink": strokes, "language": "zh-TW" }] };
             fetch("https://inputtools.google.com/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8", {
                 method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data)
-            })
-            .then(res => res.json())
-            .then(res => {
+            }).then(res => res.json()).then(res => {
+                document.getElementById('hw-loader').classList.remove('active');
                 if (res[0] === "SUCCESS" && res[1][0]) {
                     const results = res[1][0][1];
-                    renderHwCandidates(results);
-                }
-            }).catch(e => console.error("辨識失敗", e));
+                    // 🌟 自動選取：直接拿第一個最相似的字插入，然後瞬間清空畫布
+                    if (results && results.length > 0) {
+                        insertChar(results[0]);
+                        clearHwCanvas();
+                    }
+                } else clearHwCanvas(); // 辨識失敗也清空讓他重寫
+            }).catch(e => { console.error("辨識失敗", e); document.getElementById('hw-loader').classList.remove('active'); clearHwCanvas(); });
         }
 
-        function renderHwCandidates(words) {
-            const container = document.getElementById('hw-candidates');
-            container.innerHTML = '';
-            if (!words || words.length === 0) {
-                container.innerHTML = '<div style="color:#ef4444; font-size:0.95rem;">無法辨識，請按清除畫板重寫。</div>';
-                return;
-            }
-            words.forEach(word => {
-                const span = document.createElement('div');
-                span.className = 'hw-candidate'; span.innerText = word;
-                span.onclick = () => { insertChar(word); clearHwCanvas(false); };
-                container.appendChild(span);
-            });
-        }
-
-        function clearHwCanvas(resetHint = false) {
-            strokes = []; hwCtx.clearRect(0, 0, hwCanvas.width, hwCanvas.height);
-            document.getElementById('hw-candidates').innerHTML = '<div style="color:#9c8a75; font-size:0.95rem;">請在下方畫布書寫文字，辨識結果將顯示於此...</div>';
-            if(resetHint) document.getElementById('hw-hint').style.opacity = '1';
-        }
+        function clearHwCanvas() { strokes = []; hwCtx.clearRect(0, 0, hwCanvas.width, hwCanvas.height); }
 
         function openHwKeyboard(targetInput) {
             activeHwInput = targetInput;
-            const overlay = document.getElementById('hw-overlay');
-            const preview = document.getElementById('hw-preview');
-            
-            overlay.classList.add('active');
-            preview.value = activeHwInput.value; // 同步現有文字到預覽區
-            preview.scrollTop = preview.scrollHeight;
-
-            lockScroll(); // 鎖定底層網頁
-            clearHwCanvas(true);
-            
-            // 觸發視窗重算畫布大小
-            setTimeout(() => {
-                const rect = hwCanvas.parentElement.getBoundingClientRect();
-                if(hwCanvas.width !== rect.width) { 
-                    hwCanvas.width = rect.width; hwCanvas.height = rect.height; 
-                    hwCtx.lineCap = "round"; hwCtx.lineJoin = "round";
-                }
-            }, 100);
+            document.getElementById('hw-overlay').classList.add('active');
+            document.getElementById('hw-preview').value = activeHwInput.value;
+            document.getElementById('hw-preview').scrollTop = document.getElementById('hw-preview').scrollHeight;
+            lockScroll(); clearHwCanvas();
+            setTimeout(() => { const rect = hwCanvas.parentElement.getBoundingClientRect(); if(hwCanvas.width !== rect.width) { hwCanvas.width = rect.width; hwCanvas.height = rect.height; hwCtx.lineCap = "round"; hwCtx.lineJoin = "round";} }, 100);
         }
 
-        function closeHwKeyboard() { 
-            document.getElementById('hw-overlay').classList.remove('active'); 
-            clearHwCanvas();
-            unlockScroll(); 
-        }
+        function closeHwKeyboard() { document.getElementById('hw-overlay').classList.remove('active'); clearHwCanvas(); unlockScroll(); }
 
-        // 插入字元/標點符號 (同時更新底層 Input 與 頂層 Preview)
         function insertChar(char) {
             if (!activeHwInput) return;
             const preview = document.getElementById('hw-preview');
-            
-            activeHwInput.value += char;
-            preview.value += char;
-            
-            activeHwInput.scrollTop = activeHwInput.scrollHeight; 
-            preview.scrollTop = preview.scrollHeight; 
+            activeHwInput.value += char; preview.value += char;
+            activeHwInput.scrollTop = activeHwInput.scrollHeight; preview.scrollTop = preview.scrollHeight; 
         }
 
-        // 退格刪除鍵
         function hwBackspace() {
             if (!activeHwInput || activeHwInput.value.length === 0) return;
             const preview = document.getElementById('hw-preview');
-            
-            activeHwInput.value = activeHwInput.value.slice(0, -1);
-            preview.value = preview.value.slice(0, -1);
+            activeHwInput.value = activeHwInput.value.slice(0, -1); preview.value = preview.value.slice(0, -1);
         }
     </script>
 </body>
