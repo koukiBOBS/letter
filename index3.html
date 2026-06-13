@@ -18,7 +18,6 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <style>
-        /* CSS 保留與您原本完全一致，以確保 UI 不變 */
         :root {
             --bg: #faf7f2; --paper: #ffffff; --text: #2c3e50; --text-muted: #8391a2; --border: #e6e1d6;
             --font-serif: 'Noto Serif TC', serif; --font-sans: 'Inter', sans-serif;
@@ -144,7 +143,7 @@
 </head>
 <body>
 
-    <!-- 開發者測試面板 (TEST PANEL START) -->
+    <!-- 開發者測試面板 -->
     <div id="dev-test-panel" style="position:fixed; top:10px; right:10px; z-index:99999; background:rgba(255,255,255,0.95); padding:15px; border-radius:8px; border: 1px solid #ccc; font-size: 0.85rem; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display:none; max-width: 200px;">
         <h4 style="margin-bottom:8px; color:red;">🛠 測試面板 (閱後可刪)</h4>
         <b>天色變換</b><br>
@@ -160,7 +159,6 @@
         <button onclick="testNotifications()" style="width:100%;">🔴 觸發新信件紅點</button>
         <button onclick="document.getElementById('dev-test-panel').style.display='none'" style="width:100%; margin-top:10px; background:#ddd; border:none; padding:4px;">關閉面板</button>
     </div>
-    <!-- TEST PANEL END -->
 
     <div id="notification-banner"><span id="notification-text">您有新訊息。</span></div>
 
@@ -203,10 +201,11 @@
     </div>
 
     <!-- 模態視窗群 (UI 面板) -->
-    <div id="modal-replies" class="room-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal('modal-replies')">×</button><h2 class="modal-title" style="color: var(--color-replies);">對我的回覆</h2><div class="list-container" id="replies-list"></div><div class="pagination" id="replies-pagination"></div></div></div>
-    <div id="modal-inbox" class="room-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal('modal-inbox')">×</button><h2 class="modal-title" style="color: var(--color-inbox);">寄來的心得</h2><div class="list-container" id="inbox-list"></div><div class="pagination" id="inbox-pagination"></div></div></div>
-    <div id="modal-tasks" class="room-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal('modal-tasks')">×</button><h2 class="modal-title" style="color: var(--color-tasks);">我的任務</h2><div class="grid" id="task-grid"></div><div class="editor" id="write-editor" style="display: none;"><h3 id="task-title" class="serif-text" style="margin-bottom: 30px; font-size: 1.5rem;">撰寫任務</h3><div class="field-group flex-row"><div><label class="field-label">書籍名稱</label><input type="text" id="book-title" class="input-box" placeholder="請輸入書名"></div><div><label class="field-label">目前閱讀頁數</label><input type="number" id="book-page" class="input-box" placeholder="例如：120"></div></div><div class="field-group"><label class="field-label">思考問題</label><textarea id="log-question" class="textarea handwrite-only" style="min-height:100px;" readonly placeholder="點此喚出全螢幕書寫板..."></textarea></div><div class="field-group"><label class="field-label">閱讀感悟</label><textarea id="log-content" class="textarea handwrite-only" style="min-height:220px;" readonly placeholder="點此喚出全螢幕書寫板...（最少 150 字）"></textarea></div><div class="field-group upload-container"><label class="field-label" style="margin-bottom: 0;">書頁留影／感悟配圖</label><label class="btn" style="background:#fff; color:#333; border:1px solid #ccc; width:max-content; margin-top:10px;">點擊選擇圖片 <input type="file" id="book-image" accept="image/*" style="display:none;" onchange="handleFileSelect(event)"></label><span id="file-name-display" style="display:block; margin-top:5px; font-size:0.9rem; color:var(--color-tasks);">尚未選擇圖片</span><img id="image-preview" class="img-preview" src=""></div><div style="text-align: right;"><button id="btn-submit-task" class="btn" style="background: var(--color-tasks); display:inline-flex;" onclick="submitLog()">封裝寄出心得</button></div></div></div></div>
-    <div id="modal-log" class="room-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal('modal-log')">×</button><h2 class="modal-title" style="color: var(--color-log); display:flex; justify-content:space-between; align-items:center;">我的閱讀紀錄 <button class="btn" style="font-size:1rem; padding:8px 16px; background:var(--color-log);" onclick="toggleReadingLog()">✚ 新增紀錄</button></h2><div class="editor" id="mylog-editor" style="display: none; margin-bottom: 30px;"><div class="field-group"><label class="field-label">書籍名稱</label><input type="text" id="mylog-title" class="input-box" placeholder="請輸入書名"></div><div class="field-group"><label class="field-label">私密筆記</label><textarea id="mylog-notes" class="textarea" style="min-height:100px;" placeholder="允許自由打字..."></textarea></div><button class="btn" id="btn-save-log" style="background: var(--color-log); width: auto;" onclick="submitReadingLog()">保存紀錄</button></div><div id="mylog-list" style="display:grid; gap:15px;"></div></div></div>
+    <!-- 注意：這裡都在 onclick 加入了 event 傳遞，以防止穿透點擊 -->
+    <div id="modal-replies" class="room-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal(event, 'modal-replies')">×</button><h2 class="modal-title" style="color: var(--color-replies);">對我的回覆</h2><div class="list-container" id="replies-list"></div><div class="pagination" id="replies-pagination"></div></div></div>
+    <div id="modal-inbox" class="room-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal(event, 'modal-inbox')">×</button><h2 class="modal-title" style="color: var(--color-inbox);">寄來的心得</h2><div class="list-container" id="inbox-list"></div><div class="pagination" id="inbox-pagination"></div></div></div>
+    <div id="modal-tasks" class="room-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal(event, 'modal-tasks')">×</button><h2 class="modal-title" style="color: var(--color-tasks);">我的任務</h2><div class="grid" id="task-grid"></div><div class="editor" id="write-editor" style="display: none;"><h3 id="task-title" class="serif-text" style="margin-bottom: 30px; font-size: 1.5rem;">撰寫任務</h3><div class="field-group flex-row"><div><label class="field-label">書籍名稱</label><input type="text" id="book-title" class="input-box" placeholder="請輸入書名"></div><div><label class="field-label">目前閱讀頁數</label><input type="number" id="book-page" class="input-box" placeholder="例如：120"></div></div><div class="field-group"><label class="field-label">思考問題</label><textarea id="log-question" class="textarea handwrite-only" style="min-height:100px;" readonly placeholder="點此喚出全螢幕書寫板..."></textarea></div><div class="field-group"><label class="field-label">閱讀感悟</label><textarea id="log-content" class="textarea handwrite-only" style="min-height:220px;" readonly placeholder="點此喚出全螢幕書寫板...（最少 150 字）"></textarea></div><div class="field-group upload-container"><label class="field-label" style="margin-bottom: 0;">書頁留影／感悟配圖</label><label class="btn" style="background:#fff; color:#333; border:1px solid #ccc; width:max-content; margin-top:10px;">點擊選擇圖片 <input type="file" id="book-image" accept="image/*" style="display:none;" onchange="handleFileSelect(event)"></label><span id="file-name-display" style="display:block; margin-top:5px; font-size:0.9rem; color:var(--color-tasks);">尚未選擇圖片</span><img id="image-preview" class="img-preview" src=""></div><div style="text-align: right;"><button id="btn-submit-task" class="btn" style="background: var(--color-tasks); display:inline-flex;" onclick="submitLog()">封裝寄出心得</button></div></div></div></div>
+    <div id="modal-log" class="room-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal(event, 'modal-log')">×</button><h2 class="modal-title" style="color: var(--color-log); display:flex; justify-content:space-between; align-items:center;">我的閱讀紀錄 <button class="btn" style="font-size:1rem; padding:8px 16px; background:var(--color-log);" onclick="toggleReadingLog()">✚ 新增紀錄</button></h2><div class="editor" id="mylog-editor" style="display: none; margin-bottom: 30px;"><div class="field-group"><label class="field-label">書籍名稱</label><input type="text" id="mylog-title" class="input-box" placeholder="請輸入書名"></div><div class="field-group"><label class="field-label">私密筆記</label><textarea id="mylog-notes" class="textarea" style="min-height:100px;" placeholder="允許自由打字..."></textarea></div><button class="btn" id="btn-save-log" style="background: var(--color-log); width: auto;" onclick="submitReadingLog()">保存紀錄</button></div><div id="mylog-list" style="display:grid; gap:15px;"></div></div></div>
 
     <div id="modal"><button class="modal-close-btn" onclick="closeChatModal()">×</button><div class="letter-desk" id="chat-flow"></div></div>
 
@@ -217,7 +216,6 @@
     <!-- Scripts -->
     <script>
         // === Firebase Initialization & App Logic ===
-        // (此區塊邏輯保留原樣，與 UI 資料載入相關)
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzcangpOrf05ZRhxzoMUN-C9T57CS3_G80to1lLWv4opXuHbYMMMuKXzap7kkcou3BPsQ/exec"; 
         const firebaseConfig = { apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms", authDomain: "letter-a74d1.firebaseapp.com", databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com", projectId: "letter-a74d1" };
         firebase.initializeApp(firebaseConfig); const auth = firebase.auth(); const db = firebase.database();
@@ -261,10 +259,10 @@
         function loadMailbox() { db.ref(`user_threads/${currentUser.uid}`).on('value', snap => { let all = Object.values(snap.val() || {}).sort((a, b) => b.lastUpdated - a.lastUpdated); repliesData = []; inboxData = []; hasUnrepliedLetters = false; let uRep = false, uIn = false; all.forEach(t => { if (t.isSender) { if (t.hasBeenRepliedTo) { repliesData.push(t); if(!t.hasReplied) hasUnrepliedLetters = true; if(t.hasUnread) uRep = true; } } else { inboxData.push(t); if(!t.hasReplied) hasUnrepliedLetters = true; if(t.hasUnread) uIn = true; } }); renderPaginatedList('replies', repliesData, currentPageReplies); renderPaginatedList('inbox', inboxData, currentPageInbox); updateDrawerIndicators(uRep, uIn); }); }
         
         function healPool() { db.ref('unassigned_letters').once('value').then(snap => { const pool = snap.val() || {}; const ids = Object.keys(pool).filter(id => pool[id].senderUid !== currentUser.uid); if (ids.length > 0) { const rId = ids[Math.floor(Math.random() * ids.length)]; db.ref(`letters/${rId}`).once('value').then(lSnap => { const lData = lSnap.val(); if(lData) { db.ref(`letters/${rId}/recipientUid`).set(currentUser.uid); db.ref(`unassigned_letters/${rId}`).remove(); const now = firebase.database.ServerValue.TIMESTAMP; db.ref(`user_threads/${currentUser.uid}/${rId}`).set({ letterId: rId, bookTitle: lData.bookTitle, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: now }); db.ref(`user_threads/${lData.senderUid}/${rId}`).set({ letterId: rId, bookTitle: lData.bookTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: now }); db.ref(`users/${currentUser.uid}/receivedCount`).transaction(count => (count || 0) + 1); } }); } }); }
-        function renderPaginatedList(type, data, currentPage) { const listEl = document.getElementById(`${type}-list`); const pageEl = document.getElementById(`${type}-pagination`); listEl.innerHTML = ''; pageEl.innerHTML = ''; if (data.length === 0) { listEl.innerHTML = `<div class="empty-state"><p>信箱空空如也，靜候佳音。</p></div>`; return; } const startIndex = (currentPage - 1) * ITEMS_PER_PAGE; const pageData = data.slice(startIndex, startIndex + ITEMS_PER_PAGE); pageData.forEach(t => { const timeStr = new Date(t.lastUpdated).toLocaleString([], {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}); const el = document.createElement('div'); el.className = 'list-item'; let badge = !t.hasReplied ? `<span class="badge wait">待回覆</span>` : (t.hasUnread ? `<span class="badge unread">新回覆</span>` : (type==='replies' ? `<span class="badge replied">已讀</span>` : `<span class="badge replied">已回覆</span>`)); el.onclick = () => { closeRoomModal(`modal-${type}`); openChatModal(t.letterId); }; el.innerHTML = `${badge}<div class="item-title">${type==='replies'?'關於':'筆友寄來'}《${escapeHtml(t.bookTitle)}》的${type==='replies'?'回音':'心得'}</div><div class="item-time">${timeStr}</div>`; listEl.appendChild(el); }); }
-        function renderTasks() { const grid = document.getElementById('task-grid'); grid.innerHTML = ''; if (!config) return; const start = new Date(config.startDate); const total = Math.floor(((new Date(config.endDate) - start) / 86400000) / config.intervalDays); db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value').then(snap => { const submitted = Object.values(snap.val()||{}).map(l=>l.taskIndex); const map = {}; Object.values(snap.val()||{}).forEach(l=>map[l.taskIndex]=l.id); for (let i=0; i<total; i++) { const d = new Date(start.getTime() + i*config.intervalDays*86400000); const today = new Date(); today.setHours(0, 0, 0, 0); const unlockDate = new Date(d); unlockDate.setHours(0, 0, 0, 0); const unlocked = today >= unlockDate; const done = submitted.includes(i); const el = document.createElement('div'); el.className = `task-card ${done?'completed':''} ${!unlocked&&!done?'locked':''}`; el.innerHTML = `<span class="task-num">第 ${i+1} 回任務</span><span class="task-date">${d.getMonth()+1}/${d.getDate()} 開放</span>`; el.onclick = () => { if (done) { closeRoomModal('modal-tasks'); openChatModal(map[i]); } else if (unlocked) { if (hasUnrepliedLetters) return alert("您有尚未回覆的信件，必須先完成回應後方可開啟新任務。"); selectedTaskIndex = i; document.getElementById('task-title').innerText = `撰寫任務：第 ${i+1} 回心得`; document.getElementById('write-editor').style.display = 'block'; document.getElementById('write-editor').scrollIntoView({behavior:'smooth'}); } else alert("時空未到，尚未開放。"); }; grid.appendChild(el); } }); }
+        function renderPaginatedList(type, data, currentPage) { const listEl = document.getElementById(`${type}-list`); const pageEl = document.getElementById(`${type}-pagination`); listEl.innerHTML = ''; pageEl.innerHTML = ''; if (data.length === 0) { listEl.innerHTML = `<div class="empty-state"><p>信箱空空如也，靜候佳音。</p></div>`; return; } const startIndex = (currentPage - 1) * ITEMS_PER_PAGE; const pageData = data.slice(startIndex, startIndex + ITEMS_PER_PAGE); pageData.forEach(t => { const timeStr = new Date(t.lastUpdated).toLocaleString([], {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}); const el = document.createElement('div'); el.className = 'list-item'; let badge = !t.hasReplied ? `<span class="badge wait">待回覆</span>` : (t.hasUnread ? `<span class="badge unread">新回覆</span>` : (type==='replies' ? `<span class="badge replied">已讀</span>` : `<span class="badge replied">已回覆</span>`)); el.onclick = () => { closeRoomModal(null, `modal-${type}`); openChatModal(t.letterId); }; el.innerHTML = `${badge}<div class="item-title">${type==='replies'?'關於':'筆友寄來'}《${escapeHtml(t.bookTitle)}》的${type==='replies'?'回音':'心得'}</div><div class="item-time">${timeStr}</div>`; listEl.appendChild(el); }); }
+        function renderTasks() { const grid = document.getElementById('task-grid'); grid.innerHTML = ''; if (!config) return; const start = new Date(config.startDate); const total = Math.floor(((new Date(config.endDate) - start) / 86400000) / config.intervalDays); db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value').then(snap => { const submitted = Object.values(snap.val()||{}).map(l=>l.taskIndex); const map = {}; Object.values(snap.val()||{}).forEach(l=>map[l.taskIndex]=l.id); for (let i=0; i<total; i++) { const d = new Date(start.getTime() + i*config.intervalDays*86400000); const today = new Date(); today.setHours(0, 0, 0, 0); const unlockDate = new Date(d); unlockDate.setHours(0, 0, 0, 0); const unlocked = today >= unlockDate; const done = submitted.includes(i); const el = document.createElement('div'); el.className = `task-card ${done?'completed':''} ${!unlocked&&!done?'locked':''}`; el.innerHTML = `<span class="task-num">第 ${i+1} 回任務</span><span class="task-date">${d.getMonth()+1}/${d.getDate()} 開放</span>`; el.onclick = () => { if (done) { closeRoomModal(null, 'modal-tasks'); openChatModal(map[i]); } else if (unlocked) { if (hasUnrepliedLetters) return alert("您有尚未回覆的信件，必須先完成回應後方可開啟新任務。"); selectedTaskIndex = i; document.getElementById('task-title').innerText = `撰寫任務：第 ${i+1} 回心得`; document.getElementById('write-editor').style.display = 'block'; document.getElementById('write-editor').scrollIntoView({behavior:'smooth'}); } else alert("時空未到，尚未開放。"); }; grid.appendChild(el); } }); }
         function handleFileSelect(e) { const file = e.target.files[0]; if (!file) return; selectedFileName = file.name; document.getElementById('file-name-display').innerText = selectedFileName; const reader = new FileReader(); reader.onload = function(evt) { const img = new Image(); img.onload = function() { const canvas = document.createElement('canvas'); const scaleSize = 1200 / img.width; canvas.width = 1200; canvas.height = img.height * scaleSize; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); selectedFileBase64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1]; const preview = document.getElementById('image-preview'); preview.src = canvas.toDataURL('image/jpeg', 0.6); preview.style.display = 'block'; }; img.src = evt.target.result; }; reader.readAsDataURL(file); }
-        async function submitLog() { if(isSubmittingLog) return; const t = document.getElementById('book-title').value.trim(); const p = document.getElementById('book-page').value.trim(); const q = document.getElementById('log-question').value.trim(); const txt = document.getElementById('log-content').value.trim(); if (!t || !p || !q || !txt || !selectedFileBase64) return alert("請填寫完整資訊並上傳圖片。"); if (txt.length < 150) return alert("心得最少需要 150 字。"); isSubmittingLog = true; document.getElementById('btn-submit-task').innerText = "上傳中..."; try { const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ fileName: selectedFileName, mimeType: 'image/jpeg', base64: selectedFileBase64 }) }); const res = await response.json(); if (!res.success) throw new Error(); closeRoomModal('modal-tasks'); playAnim('log', null, null, {title: t, text: `【目前進度】\n第 ${p} 頁\n\n【思考問題】\n${q}\n\n【閱讀心得】\n${txt}`, imageUrl: res.url}); } catch (e) { alert("上傳失敗"); isSubmittingLog = false; document.getElementById('btn-submit-task').innerText = "封裝寄出心得"; } }
+        async function submitLog() { if(isSubmittingLog) return; const t = document.getElementById('book-title').value.trim(); const p = document.getElementById('book-page').value.trim(); const q = document.getElementById('log-question').value.trim(); const txt = document.getElementById('log-content').value.trim(); if (!t || !p || !q || !txt || !selectedFileBase64) return alert("請填寫完整資訊並上傳圖片。"); if (txt.length < 150) return alert("心得最少需要 150 字。"); isSubmittingLog = true; document.getElementById('btn-submit-task').innerText = "上傳中..."; try { const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ fileName: selectedFileName, mimeType: 'image/jpeg', base64: selectedFileBase64 }) }); const res = await response.json(); if (!res.success) throw new Error(); closeRoomModal(null, 'modal-tasks'); playAnim('log', null, null, {title: t, text: `【目前進度】\n第 ${p} 頁\n\n【思考問題】\n${q}\n\n【閱讀心得】\n${txt}`, imageUrl: res.url}); } catch (e) { alert("上傳失敗"); isSubmittingLog = false; document.getElementById('btn-submit-task').innerText = "封裝寄出心得"; } }
         function openChatModal(id) { db.ref(`user_threads/${currentUser.uid}/${id}`).update({hasUnread: false}); db.ref(`letters/${id}`).once('value').then(lSnap => { const l = lSnap.val(); if (!l) return; const flow = document.getElementById('chat-flow'); const pUid = currentUser.uid === l.senderUid ? l.recipientUid : l.senderUid; if (currentChatRef) currentChatRef.off(); currentChatRef = db.ref(`conversations/${id}`); currentChatRef.once('value').then(cSnap => { let msgs = cSnap.val() || {}; let html = ''; Object.keys(msgs).forEach((key, i) => { const m = msgs[key]; const isMe = m.senderUid === currentUser.uid; let text = escapeHtml(m.text).replace(/【目前進度】/g, '<br><br>目前閱讀頁數').replace(/【思考問題】/g, '<br><br>思考問題').replace(/【閱讀心得】/g, '<br><br>閱讀感悟'); let img = m.imageUrl ? `<img src="${m.imageUrl}" class="letter-img">` : ''; html += `<div class="letter-sheet ${isMe?'my-letter':'partner-letter'}"><div class="letter-header-meta"><span>${isMe?'我的手札':'筆友來信'}</span></div><div class="letter-text">${text}</div>${img}</div>`; }); html += `<div class="letter-sheet my-letter"><div class="letter-header-meta"><span>提筆回信</span></div><textarea id="reply-text" class="handwrite-only" readonly placeholder="點此喚出全螢幕書寫板...（最少 100 字）"></textarea><button class="btn" id="btn-send-reply" style="margin:20px auto 0; background:var(--color-replies);">寄出回信</button></div>`; flow.innerHTML = html; document.getElementById('modal').style.display = 'flex'; document.getElementById('reply-text').addEventListener('click', function() { openHwKeyboard(this); }); document.getElementById('btn-send-reply').onclick = () => { const t = document.getElementById('reply-text').value.trim(); if(t.length<100) return alert("最少100字"); if(isSubmittingReply) return; isSubmittingReply=true; closeChatModal(); playAnim('reply', id, pUid, t); }; }); }); }
         function closeChatModal() { document.getElementById('modal').style.display = 'none'; }
         function playAnim(type, id, pUid, data) { const overlay = document.getElementById('anim-overlay'); overlay.style.display = 'flex'; gsap.set(".env-wrapper", {y: 0, scale: 1, opacity: 1}); gsap.set("#anim-paper", {y: -120, zIndex: 5}); gsap.set("#anim-ptop", {rotateX: 0}); gsap.set("#anim-pbot", {rotateX: 0}); gsap.set("#anim-flap", {rotateX: 180, zIndex: 4}); gsap.set("#anim-seal", {scale: 0}); gsap.timeline().to("#anim-pbot", {rotateX: 179, duration: 0.4}).to("#anim-ptop", {rotateX: -179, duration: 0.4}, "-=0.2").to("#anim-paper", {y: 70, duration: 0.5}).set("#anim-flap", {zIndex: 15}).to("#anim-flap", {rotateX: 0, duration: 0.4}).to("#anim-seal", {scale: 1, duration: 0.3, ease: "back.out(1.5)"}).to(".env-wrapper", {y: -400, scale: 0.6, opacity: 0, duration: 0.6, delay: 0.4, onComplete: () => { overlay.style.display = 'none'; if (type === 'log') { const ts = firebase.database.ServerValue.TIMESTAMP; const ref = db.ref('letters').push(); db.ref('users').once('value').then(s => { const users=s.val()||{}; let uids=Object.keys(users).filter(u=>u!==currentUser.uid); let rec=""; if(uids.length>0) rec=uids[Math.floor(Math.random()*uids.length)]; ref.set({id:ref.key, senderUid:currentUser.uid, bookTitle:data.title, timestamp:ts, taskIndex:selectedTaskIndex, recipientUid:rec}).then(()=>{ db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({letterId:ref.key, bookTitle:data.title, isSender:true, hasUnread:false, hasReplied:false, lastUpdated:ts}); if(rec) db.ref(`user_threads/${rec}/${ref.key}`).set({letterId:ref.key, bookTitle:data.title, isSender:false, hasUnread:true, hasReplied:false, lastUpdated:ts}); db.ref(`conversations/${ref.key}`).push({senderUid:currentUser.uid, text:data.text, imageUrl:data.imageUrl, timestamp:ts}).then(()=>{ isSubmittingLog=false; alert('寄出成功'); document.getElementById('write-editor').style.display='none';});});}); } else { const ts = firebase.database.ServerValue.TIMESTAMP; db.ref(`conversations/${id}`).push({senderUid:currentUser.uid, text:data, timestamp:ts}).then(()=>{ if(pUid) db.ref(`user_threads/${pUid}/${id}`).update({hasUnread:true, lastUpdated:ts, hasBeenRepliedTo:true}); db.ref(`user_threads/${currentUser.uid}/${id}`).update({hasUnread:false, hasReplied:true, lastUpdated:ts}).then(()=>{ isSubmittingReply=false; });}); } }}); }
@@ -284,7 +282,7 @@
 
 
         // ==========================================
-        // 🌟 THREE.JS 沉浸式 3D 書房 (全面升級版)
+        // 🌟 THREE.JS 沉浸式 3D 書房 (物理、特效全面升級版)
         // ==========================================
         let scene, camera, renderer, controls, raycaster, mouse;
         let desk, leftDrawer, rightDrawer, book, clipboard, wateringCan, plantGroup, windowGroup, sceneryGroup;
@@ -292,6 +290,7 @@
         let interactables = [];
         let timePhase = 'noon'; 
         let animScenery = { clouds: [], cars: [], trees: [], buildings: [] };
+        let celestialBody; // 太陽或月亮
 
         // --- Auth Particles ---
         let runAuth3D = true; let authScene, authCam, authRen, authParts;
@@ -321,12 +320,25 @@
             ctx.fillStyle = '#fff'; ctx.font = 'bold 36px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(text, 128, 140);
             return new THREE.CanvasTexture(canvas);
         }
+        function createBuildingTexture() {
+            const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 256; const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#445'; ctx.fillRect(0, 0, 128, 256); // 大廈基底顏色
+            ctx.fillStyle = '#ffea99'; // 窗戶光
+            for(let y=10; y<250; y+=15) {
+                for(let x=10; x<120; x+=15) {
+                    if(Math.random() > 0.4) ctx.fillRect(x, y, 8, 10);
+                }
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
 
         // --- Init Scene ---
         function initRoomScene() {
             const container = document.getElementById('room-canvas-container');
             scene = new THREE.Scene(); 
-            scene.fog = new THREE.FogExp2(0xc5c1bc, 0.015); // 加入霧氣增加空間深度
+            scene.fog = new THREE.FogExp2(0xc5c1bc, 0.015);
             
             camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
             camera.position.set(0, 15, 28);
@@ -354,22 +366,28 @@
 
         let dirLight, hemiLight, pointLight;
         function buildRoomEnvironment() {
-            // 三點打光法：豐富光影層次
-            hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); // 天地漫反射
+            // 三點打光法：嚴格控制影子，解決重影與物理錯位問題
+            hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); 
+            hemiLight.castShadow = false; // 絕對禁止半球光投射陰影
             scene.add(hemiLight);
             
-            dirLight = new THREE.DirectionalLight(0xffeedd, 1.2); // 主光源 (模擬太陽從窗戶照入)
-            dirLight.position.set(15, 25, -5); 
-            dirLight.castShadow = true; 
+            // 主光源（太陽光）：移至窗戶外圍（Z = -40），射向室內桌子（Z = 0）
+            dirLight = new THREE.DirectionalLight(0xffeedd, 1.2); 
+            dirLight.position.set(10, 25, -40); 
+            dirLight.target.position.set(0, 0, 0); // 朝向桌子
+            dirLight.castShadow = true; // 這是唯一會產生影子的光源
             dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048;
             dirLight.shadow.camera.near = 0.5; dirLight.shadow.camera.far = 100;
             dirLight.shadow.camera.left = -25; dirLight.shadow.camera.right = 25;
             dirLight.shadow.camera.top = 25; dirLight.shadow.camera.bottom = -25;
             dirLight.shadow.bias = -0.001;
             scene.add(dirLight);
+            scene.add(dirLight.target);
 
-            pointLight = new THREE.PointLight(0xffe8c4, 0.4, 50); // 補光 (室內小燈，增強立體感)
-            pointLight.position.set(-5, 15, 5);
+            // 室內補光：僅補強正面材質細節，不產生陰影
+            pointLight = new THREE.PointLight(0xffe8c4, 0.4, 50); 
+            pointLight.position.set(-5, 15, 10);
+            pointLight.castShadow = false;
             scene.add(pointLight);
 
             // 地板
@@ -378,7 +396,7 @@
             floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; 
             scene.add(floor);
 
-            // 實體帶洞牆壁 (使用 Shape 真正挖空，顏色一致且沒有黑塊)
+            // 帶洞牆壁 
             const wallMat = new THREE.MeshStandardMaterial({ color: 0xdbd4cc, roughness: 1.0 });
             const wallShape = new THREE.Shape();
             wallShape.moveTo(-60, 0); wallShape.lineTo(60, 0); wallShape.lineTo(60, 40); wallShape.lineTo(-60, 40);
@@ -390,17 +408,17 @@
             wall.position.set(0, 0, -18); wall.receiveShadow = true;
             scene.add(wall);
 
-            // 桌子 (解決陰影與桌腳問題)
+            // 桌子 
             const woodMat = new THREE.MeshStandardMaterial({ map: createWoodTexture(), roughness: 0.6 });
             desk = new THREE.Group(); scene.add(desk);
             
-            // 桌面 (不投射陰影，避免下方死黑)
+            // 桌面 (開啟陰影承接即可)
             const top = new THREE.Mesh(new THREE.BoxGeometry(28, 0.8, 14), woodMat); 
-            top.position.y = 8; top.receiveShadow = true; top.castShadow = false; 
+            top.position.y = 8; top.receiveShadow = true; top.castShadow = true; 
             desk.add(top);
             
-            // 4 根立體桌腳
-            const legGeo = new THREE.CylinderGeometry(0.4, 0.3, 8, 16); // 更圓潤立體
+            // 立體桌腳
+            const legGeo = new THREE.CylinderGeometry(0.4, 0.3, 8, 16);
             [[-12,-5],[12,-5],[-12,5],[12,5]].forEach(pos => { 
                 const leg = new THREE.Mesh(legGeo, woodMat); 
                 leg.position.set(pos[0], 4, pos[1]); 
@@ -413,7 +431,6 @@
             leftDrawer = new THREE.Mesh(drawerGeo, woodMat); leftDrawer.position.set(-7, 6, 0); leftDrawer.castShadow=true; leftDrawer.userData = {type: 'replies'}; desk.add(leftDrawer);
             rightDrawer = new THREE.Mesh(drawerGeo, woodMat); rightDrawer.position.set(7, 6, 0); rightDrawer.castShadow=true; rightDrawer.userData = {type: 'inbox'}; desk.add(rightDrawer);
             
-            // 抽屜把手與提示燈
             const knobGeo = new THREE.SphereGeometry(0.5, 32, 32); 
             const knobMat = new THREE.MeshStandardMaterial({color:0x555555, metalness:0.8, roughness:0.2});
             const knobL = new THREE.Mesh(knobGeo, knobMat); knobL.position.set(0, 0, 6.2); leftDrawer.add(knobL);
@@ -440,7 +457,7 @@
             const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, 2.5), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})); spout.position.set(1.2, 0.8, 0); spout.rotation.z = -Math.PI/3; wateringCan.add(spout);
             const handle = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.1, 8, 16), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})); handle.position.set(-0.8, 0.9, 0); handle.rotation.y = Math.PI/2; wateringCan.add(handle);
 
-            // 窗框與玻璃
+            // 窗框與玻璃 (禁止產生陰影確保室內影子乾淨)
             windowGroup = new THREE.Group(); windowGroup.position.set(0, 16, -17.5); scene.add(windowGroup);
             const frameMat = new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.8});
             const frameT = new THREE.Mesh(new THREE.BoxGeometry(19, 0.5, 1.5), frameMat); frameT.position.y = 6.25; windowGroup.add(frameT);
@@ -453,19 +470,22 @@
             // --- 豐富動態窗外風景 ---
             sceneryGroup = new THREE.Group(); sceneryGroup.position.set(0, 5, -50); scene.add(sceneryGroup);
             
-            // 山巒背景
+            // 天體 (太陽或月亮)
+            celestialBody = new THREE.Mesh(new THREE.SphereGeometry(6, 32, 32), new THREE.MeshBasicMaterial({color: 0xffffff}));
+            sceneryGroup.add(celestialBody);
+
             const hillMat = new THREE.MeshStandardMaterial({color: 0x4a6b53, roughness: 1.0});
             for(let i=0; i<3; i++){ const hill = new THREE.Mesh(new THREE.SphereGeometry(30, 32, 16), hillMat); hill.position.set((i-1)*40, -10, -30); hill.scale.y=0.4; sceneryGroup.add(hill); }
 
-            // 城市建築群
-            const bMat = new THREE.MeshStandardMaterial({color:0x8899aa, roughness:0.8}); 
+            // 帶有窗戶紋理的城市建築群
+            const buildingTex = createBuildingTexture();
+            const bMat = new THREE.MeshStandardMaterial({color:0x778899, roughness:0.8, map: buildingTex, emissiveMap: buildingTex, emissive: 0xffffee, emissiveIntensity: 0.0}); 
             for(let i=0; i<12; i++) {
-                const h = Math.random()*25+15; const b = new THREE.Mesh(new THREE.BoxGeometry(5, h, 5), bMat);
+                const h = Math.random()*25+15; const b = new THREE.Mesh(new THREE.BoxGeometry(6, h, 6), bMat);
                 b.position.set((Math.random()-0.5)*80, h/2-5, -15 + (Math.random()-0.5)*10); b.userData = {isBuilding:true}; 
                 sceneryGroup.add(b); animScenery.buildings.push(b);
             }
 
-            // 路與移動車輛
             const road = new THREE.Mesh(new THREE.PlaneGeometry(120, 8), new THREE.MeshStandardMaterial({color:0x333333})); road.rotation.x = -Math.PI/2; road.position.set(0, -4.9, 0); sceneryGroup.add(road);
             for(let i=0; i<6; i++) { 
                 const c = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 2.5), new THREE.MeshStandardMaterial({color: Math.random()>0.5?0xff3333:0xeeeeee, roughness:0.4})); 
@@ -474,7 +494,6 @@
                 sceneryGroup.add(c); animScenery.cars.push(c); 
             }
 
-            // 綠樹
             const trunkMat = new THREE.MeshStandardMaterial({color:0x5c4033}); const leafMat = new THREE.MeshStandardMaterial({color:0x3a5f0b});
             for(let i=0; i<15; i++) {
                 const tree = new THREE.Group();
@@ -484,8 +503,8 @@
                 sceneryGroup.add(tree); animScenery.trees.push(leaves);
             }
 
-            // 白雲
-            const cloudMat = new THREE.MeshStandardMaterial({color:0xffffff, transparent:true, opacity:0.8, roughness:1.0});
+            // 白雲 (修正材質，確保一直保持白色)
+            const cloudMat = new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.85});
             for(let i=0; i<5; i++) {
                 const cGrp = new THREE.Group();
                 for(let j=0; j<3; j++) { const s=new THREE.Mesh(new THREE.SphereGeometry(2+Math.random()*2), cloudMat); s.position.set(j*2, Math.random(), Math.random()); cGrp.add(s); }
@@ -497,26 +516,23 @@
             interactables = [leftDrawer, rightDrawer, book, clipboard, wateringCan];
         }
 
-        // --- Plant Generation (優化版：體積縮小、特徵更逼真) ---
+        // --- Plant Generation ---
         function buildPlantIn3D(type, growth, wilt) {
             if (plantGroup) { desk.remove(plantGroup); }
             plantGroup = new THREE.Group(); plantGroup.position.set(0, 8.5, -3); desk.add(plantGroup);
             
-            // 盆子 (標準大小)
             const pot = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.9, 1.6, 32), new THREE.MeshStandardMaterial({color: 0xd4a373, roughness: 0.9})); pot.position.y=0.8; pot.castShadow=true; pot.receiveShadow=true; plantGroup.add(pot);
             const dirt = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.1, 32), new THREE.MeshStandardMaterial({color: 0x4a3728})); dirt.position.y=1.55; plantGroup.add(dirt);
             
-            if(wilt >= 7) return; // 死亡
+            if(wilt >= 7) return; 
 
-            // 基礎比例大幅縮小
             const scale = 0.1 + (growth / 100) * 0.15; 
             const wiltFactor = wilt / 7;
             const leafColor = new THREE.Color(0x4c7c2b).lerp(new THREE.Color(0x8d6e63), wiltFactor);
             const mat = new THREE.MeshStandardMaterial({color: leafColor, roughness: 0.8, side: THREE.DoubleSide});
-
             const plantBody = new THREE.Group(); plantBody.position.y = 1.6; plantGroup.add(plantBody);
 
-            if (type === 1) { // 龜背芋 (圓形扁平葉面)
+            if (type === 1) { 
                 const count = Math.floor(growth / 8) + 3;
                 const leafGeo = new THREE.CylinderGeometry(1, 1, 0.05, 16);
                 for(let i=0; i<count; i++) {
@@ -526,17 +542,17 @@
                     leaf.position.x = Math.sin(leaf.rotation.y) * 2 * scale; leaf.position.z = Math.cos(leaf.rotation.y) * 2 * scale;
                     leaf.scale.set(scale, scale, scale*(0.5+i/(count*2))); leaf.castShadow=true; plantBody.add(leaf);
                 }
-            } else if (type === 2) { // 多肉蓮座 (緊湊球/錐狀層疊)
+            } else if (type === 2) { 
                 const count = Math.floor(growth / 5) + 6;
                 const leafGeo = new THREE.SphereGeometry(1, 16, 8);
                 for(let i=0; i<count; i++) {
                     const leaf = new THREE.Mesh(leafGeo, mat);
-                    leaf.rotation.y = i * 2.399; // 黃金比例角
+                    leaf.rotation.y = i * 2.399; 
                     leaf.rotation.x = 0.2 + (i/count)*0.8 + wiltFactor*0.3;
                     leaf.position.x = Math.sin(leaf.rotation.y) * (i*0.1) * scale; leaf.position.z = Math.cos(leaf.rotation.y) * (i*0.1) * scale;
                     leaf.scale.set(scale*0.8, scale*0.3, scale*1.2); leaf.castShadow=true; plantBody.add(leaf);
                 }
-            } else if (type === 3) { // 綠幽盆景 (圓滑樹幹與樹冠)
+            } else if (type === 3) { 
                 const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 4, 16), new THREE.MeshStandardMaterial({color:0x5d4037, roughness:1}));
                 trunk.position.y = 2 * scale; trunk.rotation.z = 0.2; trunk.scale.setScalar(scale); trunk.castShadow=true; plantBody.add(trunk);
                 const count = Math.floor(growth / 20) + 2;
@@ -545,7 +561,7 @@
                     puff.position.set(Math.sin(i*2)*2*scale, (4+i*1.5)*scale - wiltFactor, Math.cos(i*2)*2*scale);
                     puff.scale.setScalar(scale); puff.castShadow=true; plantBody.add(puff);
                 }
-            } else if (type === 4) { // 紫韻薰衣 (細莖小花)
+            } else if (type === 4) { 
                 const count = Math.floor(growth / 10) + 3;
                 for(let i=0; i<count; i++) {
                     const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 6), new THREE.MeshStandardMaterial({color:0x689f38}));
@@ -557,7 +573,7 @@
                         bud.position.y = 2.5; stem.add(bud);
                     }
                 }
-            } else if (type === 5) { // 仙人掌 (膠囊體)
+            } else if (type === 5) { 
                 const cacMat = new THREE.MeshStandardMaterial({color: leafColor, roughness: 0.9});
                 const main = new THREE.Mesh(new THREE.CapsuleGeometry(1, 3, 16, 16), cacMat);
                 main.position.y = 2.5*scale; main.scale.setScalar(scale); main.castShadow=true; plantBody.add(main);
@@ -579,13 +595,13 @@
 
         // --- Time Phase & Scenery Color ---
         const envPhases = {
-            dawn: { sky: 0xdca896, fog:0xdca896, dir: 0xffd1b3, int: 0.8, windowLight: false, leaf: 0x3a5f0b },
+            dawn: { sky: 0xffb7b2, fog:0xffb7b2, dir: 0xffe4cc, int: 0.8, windowLight: false, leaf: 0x3a5f0b },
             noon: { sky: 0x87ceeb, fog:0xc5c1bc, dir: 0xffffff, int: 1.2, windowLight: false, leaf: 0x4a7c2b },
-            dusk: { sky: 0x6e4c7c, fog:0x6e4c7c, dir: 0xffaa88, int: 0.6, windowLight: true, leaf: 0x2a3f0b },
-            night: { sky: 0x050515, fog:0x050515, dir: 0x404055, int: 0.1, windowLight: true, leaf: 0x112211 }
+            dusk: { sky: 0xff8c42, fog:0xff8c42, dir: 0xffaa66, int: 0.9, windowLight: true,  leaf: 0x2a3f0b }, // 改為金黃橙色
+            night:{ sky: 0x050515, fog:0x050515, dir: 0x404055, int: 0.1, windowLight: true,  leaf: 0x112211 }
         };
         function syncEnvironmentTime() {
-            const h = (new Date().getUTCHours() + 8) % 24; // HK Time
+            const h = (new Date().getUTCHours() + 8) % 24; 
             if (h >= 5 && h < 9) setEnvironmentPhase('dawn');
             else if (h >= 9 && h < 16) setEnvironmentPhase('noon');
             else if (h >= 16 && h < 19) setEnvironmentPhase('dusk');
@@ -597,10 +613,26 @@
             scene.fog.color = new THREE.Color(p.fog);
             dirLight.color = new THREE.Color(p.dir); dirLight.intensity = p.int;
             
-            // Update scenery materials based on time
+            // 天體位置更新 (太陽/月亮)
+            if(celestialBody) {
+                if (phaseStr === 'dawn') {
+                    celestialBody.position.set(-30, 0, -60);
+                    celestialBody.material.color.setHex(0xffddbb);
+                } else if (phaseStr === 'noon') {
+                    celestialBody.position.set(10, 40, -60);
+                    celestialBody.material.color.setHex(0xffffee);
+                } else if (phaseStr === 'dusk') {
+                    celestialBody.position.set(30, -5, -60);
+                    celestialBody.material.color.setHex(0xff7733);
+                } else {
+                    celestialBody.position.set(20, 30, -60);
+                    celestialBody.material.color.setHex(0xddddff);
+                }
+            }
+
+            // 大廈窗戶夜晚亮燈
             animScenery.buildings.forEach(b => {
-                if(p.windowLight) { b.material.emissive = new THREE.Color(Math.random()>0.5?0xffffaa:0x000000); b.material.emissiveIntensity = 0.8; }
-                else { b.material.emissive.setHex(0x000000); }
+                b.material.emissiveIntensity = p.windowLight ? 0.8 : 0.0;
             });
             animScenery.trees.forEach(t => t.material.color.setHex(p.leaf));
         }
@@ -614,21 +646,35 @@
             const intersects = raycaster.intersectObjects(interactables, true);
             document.body.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
         }
+        
+        let isDrawerAnimating = false; // 嚴格控制防誤觸 BUG
         function on3DClick(e) {
-            if(document.querySelector('.room-modal[style*="flex"]')) return;
+            if(document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(interactables, true);
             if(intersects.length > 0) {
                 let obj = intersects[0].object; while(obj.parent && !obj.userData.type) obj = obj.parent;
                 const type = obj.userData.type;
-                if(type === 'replies') gsap.to(leftDrawer.position, {z: 3, duration: 0.5, onComplete: () => { document.getElementById('modal-replies').style.display = 'flex'; }});
-                else if(type === 'inbox') gsap.to(rightDrawer.position, {z: 3, duration: 0.5, onComplete: () => { document.getElementById('modal-inbox').style.display = 'flex'; }});
-                else if(type === 'log') gsap.to(book.position, {y: 9, rotationY: 0, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-log').style.display = 'flex'; }});
-                else if(type === 'tasks') gsap.to(clipboard.position, {y: 9, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-tasks').style.display = 'flex'; }});
-                else if(type === 'water') performWateringAnimation();
+                
+                // 檢查是否已打開，防止點擊穿透或關閉後馬上重新打開的問題
+                if(type === 'replies' && leftDrawer.position.z <= 0) {
+                    isDrawerAnimating = true;
+                    gsap.to(leftDrawer.position, {z: 3, duration: 0.5, onComplete: () => { document.getElementById('modal-replies').style.display = 'flex'; isDrawerAnimating = false; }});
+                } else if(type === 'inbox' && rightDrawer.position.z <= 0) {
+                    isDrawerAnimating = true;
+                    gsap.to(rightDrawer.position, {z: 3, duration: 0.5, onComplete: () => { document.getElementById('modal-inbox').style.display = 'flex'; isDrawerAnimating = false; }});
+                } else if(type === 'log') {
+                    gsap.to(book.position, {y: 9, rotationY: 0, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-log').style.display = 'flex'; }});
+                } else if(type === 'tasks') {
+                    gsap.to(clipboard.position, {y: 9, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-tasks').style.display = 'flex'; }});
+                } else if(type === 'water') {
+                    performWateringAnimation();
+                }
             }
         }
-        window.closeRoomModal = function(id) {
+        
+        window.closeRoomModal = function(event, id) {
+            if(event) event.stopPropagation(); // 阻止事件冒泡到 Canvas 上
             document.getElementById(id).style.display = 'none';
             if(id === 'modal-replies') gsap.to(leftDrawer.position, {z: 0, duration: 0.5});
             if(id === 'modal-inbox') gsap.to(rightDrawer.position, {z: 0, duration: 0.5});
@@ -637,22 +683,31 @@
         function performWateringAnimation() {
             if (!userPlantData || userPlantData.isDead) return alert("植物已枯萎或尚未選擇，無法澆水。");
             
-            // 完美對準的動畫座標
             const startPos = {x: -11, y: 8.5, z: -3};
-            const waterPos = {x: -3, y: 11, z: -3}; // 移至盆栽左上方
+            const waterPos = {x: -3, y: 11, z: -3}; 
             
             gsap.timeline()
                 .to(wateringCan.position, {x: waterPos.x, y: waterPos.y, z: waterPos.z, duration: 0.8, ease: "power2.out"})
-                // 澆水壺 Z 軸旋轉 -30度 (-Math.PI/6)，完美讓長嘴指向下方盆栽中心
                 .to(wateringCan.rotation, {z: -Math.PI/6, duration: 0.4}) 
                 .call(() => {
-                    // 水滴粒子特效
-                    for(let i=0; i<30; i++) {
-                        const p = new THREE.Mesh(new THREE.SphereGeometry(0.08), new THREE.MeshBasicMaterial({color:0x87cefa, transparent:true, opacity:0.8}));
-                        p.position.set(-0.5 + Math.random()*0.2, 10, -3 + Math.random()*0.2);
+                    // 加入可視化的水滴特效
+                    let dropCount = 0;
+                    let waterInterval = setInterval(() => {
+                        if (dropCount++ > 15) { clearInterval(waterInterval); return; }
+                        // 產生顯眼的藍色水珠
+                        const p = new THREE.Mesh(new THREE.SphereGeometry(0.15), new THREE.MeshBasicMaterial({color:0x44aaff, transparent:true, opacity:0.8}));
+                        // 對齊壺口座標並帶點隨機性散落
+                        p.position.set(-1.8 + Math.random()*0.2, 10, -3 + Math.random()*0.2);
                         scene.add(p);
-                        gsap.to(p.position, {y: 8.5, x: p.position.x + (Math.random()-0.5)*0.2, duration: 0.4 + Math.random()*0.3, ease: "power1.in", onComplete: () => scene.remove(p)});
-                    }
+                        gsap.to(p.position, {
+                            x: -0.2 + (Math.random()-0.5)*0.5, 
+                            y: 8.5, 
+                            duration: 0.4, 
+                            ease: "power1.in", 
+                            onComplete: () => scene.remove(p)
+                        });
+                    }, 50);
+
                     // 更新植物數據
                     let pData = Object.assign({}, userPlantData);
                     let today = new Date().toDateString(); let lastW = new Date(pData.lastWatered).toDateString();
@@ -669,7 +724,6 @@
             requestAnimationFrame(animateRoom);
             if(controls) controls.update();
             
-            // Scenery Animations
             animScenery.cars.forEach(c => { c.position.x += c.userData.speed; if(c.position.x > 60) c.position.x = -60; else if(c.position.x < -60) c.position.x = 60; });
             animScenery.clouds.forEach(c => { c.position.x += c.userData.speed; if(c.position.x > 60) c.position.x = -60; });
             
