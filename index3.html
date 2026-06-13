@@ -743,19 +743,41 @@
         }
 
         // 重新設計懸浮信件外觀
-        function createFloatingLetter() {
-            const group = new THREE.Group();
-            const envGeo = new THREE.BoxGeometry(1.6, 1.0, 0.05);
-            const envMat = new THREE.MeshStandardMaterial({color: 0xfaf5eb, roughness: 0.5, emissive: 0x222222});
-            const envMesh = new THREE.Mesh(envGeo, envMat); group.add(envMesh);
-            
-            const sealGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.08, 16);
-            const sealMat = new THREE.MeshStandardMaterial({color: 0xb23a3a, roughness: 0.4, emissive: 0x330000});
-            const sealMesh = new THREE.Mesh(sealGeo, sealMat); sealMesh.rotation.x = Math.PI / 2; sealMesh.position.set(0, 0, 0.03); group.add(sealMesh);
-            
-            const pointLight = new THREE.PointLight(0xffeeba, 0.5, 5); group.add(pointLight);
-            return group;
-        }
+        // 重新設計懸浮信件外觀（加上 V 型封口與深色蠟印）
+function createFloatingLetter() {
+    const group = new THREE.Group();
+    
+    // 1. 信封本體（稍微調暖一點的米黃色）
+    const envGeo = new THREE.BoxGeometry(1.6, 1.0, 0.04);
+    const envMat = new THREE.MeshStandardMaterial({color: 0xede0c8, roughness: 0.7, emissive: 0x111111});
+    const envMesh = new THREE.Mesh(envGeo, envMat); 
+    group.add(envMesh);
+    
+    // 2. 加上信封背面的 V 型封口摺片（用稍微深一點的顏色做出紙張交疊的層次感）
+    const flapShape = new THREE.Shape();
+    flapShape.moveTo(-0.8, 0.5);  // 左上角
+    flapShape.lineTo(0.8, 0.5);   // 右上角
+    flapShape.lineTo(0, -0.1);    // 中間 V 字往下尖端
+    const flapGeo = new THREE.ShapeGeometry(flapShape);
+    const flapMat = new THREE.MeshStandardMaterial({color: 0xe0d2b8, roughness: 0.8});
+    const flapMesh = new THREE.Mesh(flapGeo, flapMat);
+    flapMesh.position.z = 0.021;  // 稍微浮在信封表面上一點點，避免 z-fighting (閃爍)
+    group.add(flapMesh);
+
+    // 3. 復古封蠟（改為深酒紅色、壓扁一點，並往下移到 V 型封口處）
+    const sealGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.02, 16);
+    const sealMat = new THREE.MeshStandardMaterial({color: 0x6b1c1c, roughness: 0.6, emissive: 0x220000});
+    const sealMesh = new THREE.Mesh(sealGeo, sealMat); 
+    sealMesh.rotation.x = Math.PI / 2; 
+    sealMesh.position.set(0, -0.05, 0.03); // 不放在正中央，而是放在 V 型尖端的扣合處
+    group.add(sealMesh);
+    
+    // 4. 懸浮微光
+    const pointLight = new THREE.PointLight(0xffeeba, 0.4, 4); 
+    group.add(pointLight);
+    
+    return group;
+}
 
         function initRoomScene() {
             const container = document.getElementById('room-canvas-container');
