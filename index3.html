@@ -360,58 +360,62 @@
         }
 
         // --- 核心任務生成 ---
-        function renderTasks() {
+       function renderTasks() {
             const grid = document.getElementById('task-grid');
-            if(!grid) return; grid.innerHTML = '';
+            if(!grid) return; 
+            grid.innerHTML = '';
             
-            if(!config || !config.tasks) {
+            // 改為判斷 config 是否存在，不再限制必須要有 config.tasks
+            if(!config) {
                 grid.innerHTML = '<div class="empty-state"><p>目前尚未設定任務。</p></div>';
                 return;
             }
+            
+            // 依照起訖日期與間隔天數，推算總任務數
+            const start = new Date(config.startDate); 
+            const total = Math.floor(((new Date(config.endDate) - start) / 86400000) / config.intervalDays);
             
             db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value').then(snap => {
                 const submitted = Object.values(snap.val()||{}).map(l=>l.taskIndex); 
                 const map = {}; Object.values(snap.val()||{}).forEach(l=>map[l.taskIndex]=l.id);
                 
-                config.tasks.forEach((t, i) => {
-                    let unlocked = true;
-                    let dateStr = "";
-                    if (config.startDate && config.intervalDays) {
-                        const start = new Date(config.startDate);
-                        const d = new Date(start.getTime() + i * config.intervalDays * 86400000);
-                        const today = new Date(); today.setHours(0,0,0,0);
-                        const unlockDate = new Date(d); unlockDate.setHours(0,0,0,0);
-                        unlocked = today >= unlockDate;
-                        dateStr = `<span class="task-date">${d.getMonth()+1}/${d.getDate()} 開放</span>`;
-                    }
-                    
+                for (let i = 0; i < total; i++) {
+                    const d = new Date(start.getTime() + i * config.intervalDays * 86400000); 
+                    const today = new Date(); today.setHours(0, 0, 0, 0); 
+                    const unlockDate = new Date(d); unlockDate.setHours(0, 0, 0, 0);
+                    const unlocked = today >= unlockDate; 
                     const done = submitted.includes(i);
+                    
                     const el = document.createElement('div');
                     el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
-                    
-                    el.innerHTML = `<span class="task-num">任務 ${i+1}</span><span class="task-date" style="font-weight:600; color:#1e293b; display:block; margin-bottom:5px; font-size:1rem;">${t.title}</span>${dateStr}`;
+                    el.innerHTML = `<span class="task-num">第 ${i+1} 回任務</span><span class="task-date">${d.getMonth()+1}/${d.getDate()} 開放</span>`;
                     
                     el.onclick = () => {
-                        if (done) openChatModal(map[i]);
-                        else if (unlocked) {
+                        if (done) {
+                            openChatModal(map[i]); // 3D 版專用的對話窗開啟函數
+                        } else if (unlocked) {
                             if (hasUnrepliedLetters) return alert("您有尚未回覆的信件，必須先完成回應後方可開啟新任務。");
                             selectedTaskIndex = i; 
                             
+                            // 隱藏任務網格，顯示撰寫編輯器
                             document.getElementById('task-grid').style.display = 'none';
                             document.getElementById('write-editor').style.display = 'block';
                             
-                            document.getElementById('task-title').innerText = `撰寫任務：${t.title}`;
-                            document.getElementById('log-question').value = t.question;
+                            document.getElementById('task-title').innerText = `撰寫任務：第 ${i+1} 回心得`;
+                            document.getElementById('log-question').value = ''; // 留白交由使用者手寫問題
                             
                             document.getElementById('btn-submit-task').innerText = "封裝寄出心得"; 
                             document.getElementById('btn-submit-task').disabled = false;
                             document.getElementById('file-name-display').innerText = "尚未選擇圖片"; 
                             document.getElementById('image-preview').style.display = 'none'; 
-                            selectedFileBase64 = null; document.getElementById('book-image').value = '';
-                        } else alert("時空未到，尚未開放。");
+                            selectedFileBase64 = null; 
+                            document.getElementById('book-image').value = '';
+                        } else {
+                            alert("時空未到，尚未開放。");
+                        }
                     };
                     grid.appendChild(el);
-                });
+                }
             });
         }
 
