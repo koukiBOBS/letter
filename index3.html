@@ -1636,7 +1636,7 @@ function applyCurtainRatio() {
     });
 }
 
-
+let sea; // 用來控制海浪動畫
         
   let ferrisWheelGrp; // 摩天輪轉動的主體
 let fwCabins = []; 
@@ -2531,12 +2531,20 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     sceneryGroup.position.set(0, -15, -50); 
     scene.add(sceneryGroup);
 
-    // 🌊 【新增】廣闊的大海 (墊在最底層)
-    const seaMat = new THREE.MeshStandardMaterial({color: 0x1a3b5c, roughness: 0.1, metalness: 0.8});
-    const sea = new THREE.Mesh(new THREE.PlaneGeometry(800, 400), seaMat);
+   const seaMat = new THREE.MeshStandardMaterial({color: 0x1a3b5c, roughness: 0.1, metalness: 0.8, flatShading: true});
+    
+    // 將平面切分成 80x40 的網格，產生足夠多的「頂點」來製造波浪
+    sea = new THREE.Mesh(new THREE.PlaneGeometry(800, 400, 80, 40), seaMat);
     sea.rotation.x = -Math.PI/2; 
     sea.position.set(0, -12, -20); // 放在馬路與地基下方
     sceneryGroup.add(sea);
+
+    // 儲存海面原始的頂點高度，方便稍後做波浪運算
+    sea.userData.originalZ = [];
+    const posAttr = sea.geometry.attributes.position;
+    for(let i=0; i<posAttr.count; i++) {
+        sea.userData.originalZ.push(posAttr.getZ(i));
+    }
 
     // 🌉 【新增 左側】青馬大橋 (延伸至左方極遠處)
     const bridgeGroup = new THREE.Group();
@@ -3491,6 +3499,26 @@ function isCatColliding(x, z) {
                 cabin.rotation.z = -ferrisWheelGrp.rotation.z; 
             });
         }
+    }
+
+
+       // 3. 🌊 讓海水產生起伏波浪動態
+    if (typeof sea !== 'undefined') {
+        const time = Date.now() * 0.0015; // 波浪流動的速度
+        const posAttr = sea.geometry.attributes.position;
+        
+        for(let i=0; i<posAttr.count; i++) {
+            const x = posAttr.getX(i);
+            const y = posAttr.getY(i);
+            
+            // 利用三角函數 (sin, cos) 交錯，產生自然的潮汐起伏感
+            const wave1 = Math.sin(x * 0.04 + time) * 1.5;
+            const wave2 = Math.cos(y * 0.03 + time * 0.8) * 1.5;
+            
+            // 更新頂點高度 (因為平面轉了 -90 度，這裡的 Z 其實是畫面中的上下)
+            posAttr.setZ(i, sea.userData.originalZ[i] + wave1 + wave2);
+        }
+        posAttr.needsUpdate = true; // 告訴 Three.js 頂點改變了，需要重新渲染
     }
 
 
