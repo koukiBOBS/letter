@@ -2688,11 +2688,11 @@ const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.a
     [[-3, 2.25, -1], [3, 2.25, -1], [-3, 2.25, 1], [3, 2.25, 1]].forEach(pos => { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 4.5), pianoGlossy); l.position.set(...pos); l.castShadow=true; benchGrp.add(l); });
 
     // 加入隱形 HitBox 以便點擊
-  const pianoHitBox = new THREE.Mesh(new THREE.BoxGeometry(20, 16, 12), new THREE.MeshBasicMaterial({visible: true, color: 0xff0000, wireframe: true}));
+    const pianoHitBox = new THREE.Mesh(new THREE.BoxGeometry(20, 16, 12), new THREE.MeshBasicMaterial({visible: false}));
     pianoHitBox.position.set(0, 8, 0);
     pianoHitBox.userData = { type: 'piano' };
     pianoGrp.add(pianoHitBox);
-    interactables.push(pianoHitBox);
+    interactables.push(pianoHitBox); // 直接註冊到點擊陣列
 
     // 放置於右邊牆壁
     pianoGrp.position.set(58.5, 0, 22); 
@@ -3444,8 +3444,8 @@ function onPointerUp(e) {
             isDrawerAnimating = true; gsap.to(rightDrawer.position, {z: 3.5, duration: 0.5, onComplete: () => { document.getElementById('modal-inbox').style.display = 'flex'; isDrawerAnimating = false; }});
         } else if(type === 'log') { gsap.to(book.position, {y: 9, rotationY: 0, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-log').style.display = 'flex'; }});
         } else if(type === 'tasks') { gsap.to(clipboard.position, {y: 9, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-tasks').style.display = 'flex'; }});
-      } else if(type === 'water') { performWateringAnimation();
-        } else if(type === 'plant') { 
+        } else if(type === 'water') { performWateringAnimation();
+       } else if(type === 'plant') { 
             if (userPlantData && userPlantData.isDead) { 
                 showToast("🥀 這盆植物已經枯萎了，請重新挑選一盆吧。"); 
                 setTimeout(() => document.getElementById('modal-plant-selector').style.display = 'flex', 1500); 
@@ -3455,9 +3455,10 @@ function onPointerUp(e) {
         // 👇 新增這三行，讓窗戶可以直接點擊
         } else if(type === 'window') {
             goToBalcony();
-        } else if(type === 'piano') {
+       } else if(type === 'piano') {
             openPianoUI();
         }
+        
     }
 }
 
