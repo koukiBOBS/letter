@@ -810,6 +810,22 @@
     </div>
 
 
+    <!-- 🍂 破產懲罰視窗 -->
+<div id="modal-bankruptcy" class="room-modal" style="z-index: 100005;">
+    <div class="room-modal-content" style="max-width: 480px; text-align: center; background: #2a2421; border: 2px solid #5a4a42; box-shadow: 0 30px 60px rgba(0,0,0,0.6);">
+        <h2 style="color: #d98a6c; font-size: 2.2rem; margin-bottom: 15px; font-family: var(--font-serif); border-bottom: 1px dashed #5a4a42; padding-bottom: 20px;">🍂 遺忘的代價</h2>
+        <p style="font-size: 1.15rem; color: #dcd5c9; margin-bottom: 25px; line-height: 1.8; font-family: var(--font-serif);">
+            光陰似箭，筆墨荒蕪。<br>
+            您有任務逾期未交已達四日，<br>辜負了這段文字的約定。
+        </p>
+        <div style="background: rgba(0,0,0,0.4); padding: 18px; border-radius: 8px; margin-bottom: 30px; color: #a48c76; font-size: 0.95rem; line-height: 1.6; text-align: left;">
+            <span style="color: #ef4444;">【系統宣告破產】</span><br>
+            已沒收您所有的積分與房間佈置。<br>但請放心，您過往寫下的文字仍會被珍藏，希望您能重拾紀律，重新出發。
+        </div>
+        <button class="btn" style="background: #8b7355; color: #fff; width: 100%; border: none; font-size: 1.2rem; padding: 15px;" onclick="acceptBankruptcy()">默默承受</button>
+    </div>
+</div>
+
 
 <!-- 抽獎前緩衝提示 -->
     <div id="modal-gacha-buffer" class="room-modal">
@@ -1479,8 +1495,13 @@ function renderTasks() {
             
 
            // 2. 渲染隨機任務
+            // 2. 渲染隨機任務
              const submittedRandomDates = randSubs.map(s => s.taskDate);
             
+            // 👇 【新增】：在這裡呼叫破產檢查系統 👇
+            checkAndTriggerBankruptcy(readingTasks, randomTasks, submittedReadingDates, submittedRandomDates);
+            // 👆 【新增結束】 👆
+
             // 【新增】建立一個 Map 方便透過日期找到對應的繳交紀錄與 letterId
             const randMap = {};
             randSubs.forEach(s => {
@@ -5028,6 +5049,64 @@ window.devSimulateReceiveReply = function() {
     });
 };
 
+
+// 🍂 檢查並執行破產清算
+function checkAndTriggerBankruptcy(readingTasks, randomTasks, submittedReading, submittedRandom) {
+    // 1. 開發者與老師享有豁免權
+    if (typeof isDevUser === 'function' && isDevUser(currentUser.email)) return;
+
+    let isBankrupt = false;
+    const todayReset = new Date().setHours(0,0,0,0);
+
+    // 2. 檢查閱讀任務是否逾期超過 3 天 (即 >= 4 天)
+    for (let dateStr of readingTasks) {
+        if (!submittedReading.includes(dateStr)) {
+            let deadline = new Date(dateStr).setHours(0,0,0,0);
+            if (Math.floor((todayReset - deadline) / 86400000) >= 4) {
+                isBankrupt = true; break;
+            }
+        }
+    }
+
+    // 3. 如果閱讀沒事，繼續檢查探索任務
+    if (!isBankrupt) {
+        for (let dateStr of randomTasks) {
+            if (!submittedRandom.includes(dateStr)) {
+                let deadline = new Date(dateStr).setHours(0,0,0,0);
+                if (Math.floor((todayReset - deadline) / 86400000) >= 4) {
+                    isBankrupt = true; break;
+                }
+            }
+        }
+    }
+
+    // 4. 如果確認破產，執行懲罰
+    if (isBankrupt) {
+        // 先檢查他是否還有財產，如果已經被扣到 0 分且沒道具，就不重複彈窗干擾
+        db.ref(`users/${currentUser.uid}`).once('value').then(snap => {
+            let data = snap.val() || {};
+            let pts = data.points || 0;
+            let inv = data.inventory || {};
+            
+            if (pts > 0 || Object.keys(inv).length > 0) {
+                // 💥 執行清算：積分歸零、道具全砍
+                db.ref(`users/${currentUser.uid}/points`).set(0);
+                db.ref(`users/${currentUser.uid}/inventory`).remove();
+                
+                // 彈出破產宣告視窗
+                document.getElementById('modal-bankruptcy').style.display = 'flex';
+            }
+        });
+    }
+}
+
+// 點擊「默默承受」後重新整理畫面
+function acceptBankruptcy() {
+    document.getElementById('modal-bankruptcy').style.display = 'none';
+    window.location.reload(); // 重新載入，讓房間的道具在眼前消失
+}
+
+        
         
     </script>
 </body>
