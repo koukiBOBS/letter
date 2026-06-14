@@ -2281,14 +2281,46 @@ function createCloudTexture() {
             }
             const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
         }
-        function createPaintingTexture(type) {
-            const c = document.createElement('canvas'); c.width = 256; c.height = 256; const ctx = c.getContext('2d');
-            if(type === 1) { ctx.fillStyle = '#A3C6C4'; ctx.fillRect(0,0,256,128); ctx.fillStyle = '#6B8E73'; ctx.fillRect(0,128,256,128); ctx.fillStyle = '#4A4238'; ctx.beginPath(); ctx.moveTo(50,128); ctx.lineTo(100,60); ctx.lineTo(150,128); ctx.fill(); ctx.fillStyle = '#F4A261'; ctx.beginPath(); ctx.arc(200, 60, 20, 0, Math.PI*2); ctx.fill(); 
-            } else if (type === 2) { ctx.fillStyle = '#F5E6CC'; ctx.fillRect(0,0,256,256); ctx.fillStyle = '#E76F51'; ctx.beginPath(); ctx.arc(128, 128, 70, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#2A9D8F'; ctx.fillRect(60,100,136,80);
-            } else if (type === 3) { ctx.fillStyle = '#264653'; ctx.fillRect(0,0,256,256); ctx.fillStyle = '#e9c46a'; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(256,256); ctx.lineTo(0,256); ctx.fill(); ctx.fillStyle = '#f4a261'; ctx.beginPath(); ctx.arc(128, 128, 50, 0, Math.PI*2); ctx.fill();
-            } else if (type === 4) { ctx.fillStyle = '#14213d'; ctx.fillRect(0,0,256,256); ctx.fillStyle = '#fca311'; ctx.beginPath(); ctx.arc(200, 50, 25, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#ffffff'; for(let i=0; i<30; i++) { ctx.fillRect(Math.random()*256, Math.random()*256, 3, 3); } }
-            return new THREE.CanvasTexture(c);
+        function createPainting(x, y, z, url, aspect, itemId) {
+        const frameGroup = new THREE.Group(); 
+        frameGroup.position.set(x, y, z); 
+        
+        // 【修正】直接在這裡貼上 ID 並預設隱藏
+        if(itemId) {
+            frameGroup.userData = { itemId: itemId };
+            frameGroup.visible = false;
         }
+
+        const canvasHeight = 10.5;
+        const canvasWidth = canvasHeight * aspect;
+        const frameHeight = canvasHeight + 1.5;
+        const frameWidth = canvasWidth + 1.5;
+
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(frameWidth, frameHeight, 0.6), new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.8})); 
+        frameGroup.add(frame); 
+        
+        const canvasMat = new THREE.MeshStandardMaterial({color: 0xdddddd, roughness: 0.9});
+        const canvasMesh = new THREE.Mesh(new THREE.PlaneGeometry(canvasWidth, canvasHeight), canvasMat); 
+        canvasMesh.position.z = 0.31; 
+        frameGroup.add(canvasMesh); 
+        scene.add(frameGroup); 
+        
+        const loader = new THREE.TextureLoader();
+        loader.setCrossOrigin('anonymous'); 
+        loader.load(url, (texture) => {
+            texture.encoding = THREE.sRGBEncoding;
+            texture.minFilter = THREE.LinearMipmapLinearFilter; 
+            canvasMat.map = texture;
+            canvasMat.color.setHex(0xffffff); 
+            canvasMat.needsUpdate = true;
+        });
+    }
+
+    // 直接傳入 ID 標籤
+    createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0, 'painting_1'); 
+    createPainting(-26, 17, -16.7, '畫二.jpeg', 2048 / 1365, 'painting_2'); 
+    createPainting(26, 17, -16.7, '畫三.jpeg', 1.0, 'painting_3'); 
+    createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224, 'painting_4');
         function createFloorTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 1024; const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#f7f6f2'; ctx.fillRect(0, 0, 1024, 1024);
@@ -2770,8 +2802,19 @@ const p4 = createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224); if(p4) p4.
     const acBody = new THREE.Mesh(new THREE.BoxGeometry(2, 6, 16), new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.3})); acGroup.add(acBody);
     const acVent = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1, 14), new THREE.MeshStandardMaterial({color: 0x111111})); acVent.position.set(-0.1, -2, 0); acGroup.add(acVent);
 
-    function createBookcase(x, z) {
-        const shelfGroup = new THREE.Group(); shelfGroup.position.set(x, 15, z); scene.add(shelfGroup); const shelfMat = new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.8});
+// 替換原本的 createBookcase 與底下的呼叫
+    function createBookcase(x, z, itemId) {
+        const shelfGroup = new THREE.Group(); 
+        shelfGroup.position.set(x, 15, z); 
+        
+        // 【修正】直接在這裡貼上 ID 並預設隱藏
+        if(itemId) {
+            shelfGroup.userData = { itemId: itemId };
+            shelfGroup.visible = false; 
+        }
+        
+        scene.add(shelfGroup); 
+        const shelfMat = new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.8});
         const shelfBack = new THREE.Mesh(new THREE.BoxGeometry(22, 30, 0.5), shelfMat); shelfGroup.add(shelfBack); const sideGeo = new THREE.BoxGeometry(0.5, 30, 6);
         const leftSide = new THREE.Mesh(sideGeo, shelfMat); leftSide.position.set(-11, 0, -2.5); leftSide.castShadow = true; shelfGroup.add(leftSide); const rightSide = new THREE.Mesh(sideGeo, shelfMat); rightSide.position.set(11, 0, -2.5); rightSide.castShadow = true; shelfGroup.add(rightSide);
         const topBotGeo = new THREE.BoxGeometry(22, 0.5, 6); const topBoard = new THREE.Mesh(topBotGeo, shelfMat); topBoard.position.set(0, 15, -2.5); topBoard.castShadow = true; shelfGroup.add(topBoard); const botBoard = new THREE.Mesh(topBotGeo, shelfMat); botBoard.position.set(0, -15, -2.5); botBoard.castShadow = true; shelfGroup.add(botBoard);
@@ -2781,10 +2824,11 @@ const p4 = createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224); if(p4) p4.
             while(bx < 10) { let bw = Math.random() * 0.8 + 0.3; let bh = Math.random() * 2.5 + 3; if(bx + bw > 10) break; const b = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.05, bh, 4), new THREE.MeshStandardMaterial({color: bookColors[Math.floor(Math.random()*bookColors.length)], roughness: 0.7})); if(Math.random() > 0.7) { b.rotation.z = (Math.random() - 0.5) * 0.3; bx += 0.4; } b.position.set(bx + bw/2, sy + bh/2 + 0.25, -2.5); b.castShadow = true; shelfGroup.add(b); bx += bw; }
         }
     }
-// 替換原本的這三行
-const bc1 = createBookcase(-25, 59); if(bc1) bc1.userData.itemId = 'bookcase_1';
-const bc2 = createBookcase(0, 59); if(bc2) bc2.userData.itemId = 'bookcase_2';
-const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
+    
+    // 直接傳入 ID 標籤
+    createBookcase(-25, 59, 'bookcase_1'); 
+    createBookcase(0, 59, 'bookcase_2'); 
+    createBookcase(25, 59, 'bookcase_3');
 
 
 
@@ -4445,19 +4489,19 @@ function renderWalletGrid() {
         const isUnlocked = !!userInventory[id];
         
         let imgSrc = '';
+        let imgSrc = '';
+     let imgSrc = '';
         if (item.type === 'privilege') {
-            // 權限卡片給個預設圖片或 Emoji 即可
-            imgSrc = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><text x="50%" y="50%" font-size="50" text-anchor="middle" dy=".3em">✨</text></svg>';
+            // 【修正 1】必須將 SVG 進行 URL 編碼，否則引號會破壞 HTML 的 img 標籤結構！
+            const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="#4a3219" rx="15"/><text x="50%" y="50%" font-size="80" text-anchor="middle" dy=".3em" fill="#d4af37">✨</text></svg>`;
+            imgSrc = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svgString);
         } else {
-            // 實體道具拍 3D 快照
-          // 實體道具拍 3D 快照 (高保真版)
+            // 實體道具拍 3D 快照 (高保真版)
             if (!itemSnapshots[id]) {
-                // 1. 確保離線渲染器的色彩編碼與主畫面完全一致！這是質感的關鍵
                 offscreenRenderer.outputEncoding = THREE.sRGBEncoding;
                 offscreenRenderer.shadowMap.enabled = true;
                 
                 const snapScene = new THREE.Scene();
-                // 2. 複製主房間的溫暖光源設定
                 snapScene.add(new THREE.AmbientLight(0xaa9988, 1.2));
                 const dirL = new THREE.DirectionalLight(0xfff6ea, 1.0); 
                 dirL.position.set(5, 10, 5); 
@@ -4467,24 +4511,24 @@ function renderWalletGrid() {
                 scene.traverse(child => { if (child.userData && child.userData.itemId === id) cloneObj = child.clone(); });
                 
                 if (cloneObj) {
-                    // 3. 完美取景演算法：讓物件精準置中並填滿鏡頭
                     const box = new THREE.Box3().setFromObject(cloneObj);
                     const center = box.getCenter(new THREE.Vector3());
                     const sphere = box.getBoundingSphere(new THREE.Sphere());
                     
-                    cloneObj.position.sub(center); // 絕對置中
+                    cloneObj.position.sub(center);
                     snapScene.add(cloneObj);
                     
-                    // 利用三角函數計算相機應該退後多少，才能剛剛好拍下整個圓的半徑
                     const fov = cam.fov * (Math.PI / 180);
                     let distance = Math.abs(sphere.radius / Math.sin(fov / 2));
                     
-                    // 調整拍攝角度，微微俯視會更好看
                     cam.position.set(distance * 0.5, distance * 0.4, distance);
                     cam.lookAt(0, 0, 0);
                     
                     offscreenRenderer.render(snapScene, cam);
                     itemSnapshots[id] = offscreenRenderer.domElement.toDataURL("image/png");
+                } else {
+                    // 【修正 2】如果找不到模型，給予一個透明佔位圖，避免出現破圖圖示
+                    itemSnapshots[id] = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
                 }
             }
             imgSrc = itemSnapshots[id];
