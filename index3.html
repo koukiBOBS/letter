@@ -2558,20 +2558,23 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     const walkFar = new THREE.Mesh(new THREE.BoxGeometry(160, 0.4, 12), walkMat); walkFar.position.set(0, -4.7, -roadWidth/2 - 2); walkFar.receiveShadow = true; sceneryGroup.add(walkFar);
 
     // 【修訂二：修正汽車車頭朝向】
-    const vehicleTypes = ['taxi', 'taxi', 'car', 'car', 'car', 'minibus', 'bus'];
+   const vehicleTypes = ['taxi', 'taxi', 'car', 'car', 'car', 'minibus', 'bus'];
     for(let i=0; i<8; i++) { 
         const vType = vehicleTypes[Math.floor(Math.random()*vehicleTypes.length)];
-        const direction = Math.random() > 0.5 ? 1 : -1; 
+        // i為偶數向右(1)，奇數向左(-1)
+        const direction = i % 2 === 0 ? 1 : -1; 
         const laneZ = direction > 0 ? 8 : 0; 
         const carGroup = createHKVehicle(vType, direction);
         
-        carGroup.position.set((Math.random()-0.5)*120, -4.6, laneZ + (Math.random()-0.5)*2); 
-        
-        // 關鍵：將車輛沿 Y 軸旋轉 90 度，讓車頭與馬路平齊
+        // 核心修正：均勻分配起點，確保前後車距完美固定 (每台車相距 45 單位)
+        const slotIndex = Math.floor(i / 2); 
+        const startX = direction > 0 ? -90 + (slotIndex * 45) : 90 - (slotIndex * 45);
+
+        carGroup.position.set(startX, -4.6, laneZ); 
         carGroup.rotation.y = Math.PI / 2; 
         
-        let speedBase = (vType === 'bus' || vType === 'minibus') ? 0.25 : 0.4;
-        carGroup.userData = { speed: speedBase * direction, type: 'vehicle' }; 
+        // 核心修正：強制所有車輛速度一致 (0.3)，放棄不同車速，換取絕對不會穿模交疊
+        carGroup.userData = { speed: 0.3 * direction, type: 'vehicle' }; 
         sceneryGroup.add(carGroup); 
         animScenery.cars.push(carGroup); 
     }
@@ -2603,13 +2606,22 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
         }); 
     }
 
-    // 【修訂四：建立玩家居住大樓的基座，拒絕空中樓閣】
-    const myBuildingBaseMat = new THREE.MeshStandardMaterial({color: 0xdbd4cc, roughness: 1.0}); // 與室內外牆同色
-    // 填滿房間地板 (Y=0) 到馬路地面 (Y=-4.9) 之間的空間
-    const myBuildingBase = new THREE.Mesh(new THREE.BoxGeometry(160, 5.5, 40), myBuildingBaseMat);
-    myBuildingBase.position.set(0, -2.5, 0); // 中心點下降，完美支撐整個房間到地面
+  const myBuildingBaseMat = new THREE.MeshStandardMaterial({color: 0xdbd4cc, roughness: 1.0}); 
+    
+    // 1. 主房間基座：從 Y=0 往下延伸到 Y=-20 (直達馬路地底)，深度對齊室內
+    const myBuildingBase = new THREE.Mesh(new THREE.BoxGeometry(120, 20.5, 78), myBuildingBaseMat);
+    myBuildingBase.position.set(0, -10, 21); // 高度20.5，中心點降至 -10
     myBuildingBase.receiveShadow = true;
     scene.add(myBuildingBase);
+
+    // 2. 露台專用基座：填滿露台下方的懸空處
+    const balconyBase = new THREE.Mesh(new THREE.BoxGeometry(30, 20.5, 8), myBuildingBaseMat);
+    balconyBase.position.set(0, -10, -22); // 對齊露台的 Z 軸
+    balconyBase.receiveShadow = true;
+    scene.add(balconyBase);
+
+
+    
  interactables = [leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitBox, chairHitBox, hitL, hitR, glassPane];
     
    function createFurTexture(baseColor, highlight, shadow) {
