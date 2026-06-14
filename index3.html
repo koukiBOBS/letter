@@ -4525,13 +4525,29 @@ function renderWalletGrid() {
 
                     // 針對特殊物品給予專屬的完美視角
                     if (id === 'carpet') {
-                        snapCam.position.set(center.x, center.y + dist, center.z + 0.1); // 地氈由正上方往下拍
-                    } else if (id.includes('bookcase') || id.includes('painting') || id === 'clock' || id === 'rack') {
-                        snapCam.position.set(center.x, center.y, center.z + dist); // 書櫃/畫作/時鐘由正前方拍
+                        // 地氈：由正上方往下拍
+                        snapCam.position.set(center.x, center.y + dist, center.z); 
+                    } else if (id.includes('bookcase')) {
+                        // 書櫃：因為貼著背牆，相機要從房間中央往牆壁拍 (-Z 方向)
+                        snapCam.position.set(center.x, center.y, center.z - dist); 
+                    } else if (id === 'piano_model' || id === 'piano_bench') {
+                        // 鋼琴與琴椅：靠著右牆，相機要從房間中央往右牆拍 (-X 方向，帶點斜角)
+                        snapCam.position.set(center.x - dist*0.8, center.y + dist*0.3, center.z + dist*0.6); 
+                    } else if (id === 'clock') {
+                        // 時鐘：掛在右牆上，相機要從正左方往右拍 (-X 方向)
+                        snapCam.position.set(center.x - dist, center.y, center.z); 
+                    } else if (id.includes('painting') || id === 'rack') {
+                        // 畫作與掛衣架：面向正前方 (+Z 方向)
+                        snapCam.position.set(center.x, center.y, center.z + dist); 
+                    } else if (id === 'umbrella') {
+                        // 雨傘：降低視角避免看進筒子裡穿模
+                        snapCam.position.set(center.x + dist*0.5, center.y + dist*0.1, center.z + dist*0.8);
                     } else if (id === 'cat') {
-                        snapCam.position.set(center.x + maxDim, center.y + maxDim*0.5, center.z + maxDim); // 貓咪稍微側拍
+                        // 貓咪側拍
+                        snapCam.position.set(center.x + maxDim, center.y + maxDim*0.5, center.z + maxDim); 
                     } else {
-                        snapCam.position.set(center.x + dist*0.6, center.y + dist*0.4, center.z + dist*0.8); // 其他立體物斜角拍
+                        // 其他立體物 (垃圾筒、桌椅等)：斜角俯拍
+                        snapCam.position.set(center.x + dist*0.6, center.y + dist*0.4, center.z + dist*0.8); 
                     }
                     
                     snapCam.lookAt(center);
