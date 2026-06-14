@@ -2332,7 +2332,9 @@ function closeDrawAnim() {
         // 建立一個代表桌面的隱形平面 (高度約為 y=8.5)
         let deskPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -8.5); 
 
-       function onPointerDown(e) {
+      let isDrawerAnimating = false; // <--- 加入這一行
+
+function onPointerDown(e) {
     if(document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
     pointerDownPos.x = e.clientX; pointerDownPos.y = e.clientY;
 
@@ -2672,83 +2674,83 @@ function onPointerUp(e) {
         let lastHwPoint = null;
         let lastHwWidth = 4;
 
-        function startStroke(e) {
-            e.preventDefault(); 
-            let touch = e.touches ? e.touches[0] : e; 
-            startY = touch.clientY; 
-            startScrollTop = document.getElementById('hw-preview').scrollTop; 
-            isHoldScrolling = false; 
-            movedTooFarToHold = false;
-            
-            holdTimer = setTimeout(() => { 
-                if (!movedTooFarToHold) { 
-                    isHoldScrolling = true; isDrawing = false; 
-                    clearHwCanvas(); hwCanvas.style.background = "rgba(0,0,0,0.02)"; 
-                } 
-            }, 400);
-            
-            isDrawing = true; 
-            const pos = getPointerPos(touch); 
-            const now = Date.now();
-            currentStroke = [[pos.x], [pos.y], [now]]; 
-            
-            // 筆觸初始化：起筆稍微重一點 (較粗)
-            lastHwPoint = { x: pos.x, y: pos.y, time: now };
-            lastHwWidth = 5.5; 
-            
-            clearTimeout(hwTimeout);
-        }
+      function startStroke(e) {
+    if (e.cancelable) e.preventDefault(); // <--- 加上 cancelable 判斷
+    let touch = e.touches ? e.touches[0] : e; 
+    startY = touch.clientY; 
+    startScrollTop = document.getElementById('hw-preview').scrollTop; 
+    isHoldScrolling = false; 
+    movedTooFarToHold = false;
+    
+    holdTimer = setTimeout(() => { 
+        if (!movedTooFarToHold) { 
+            isHoldScrolling = true; isDrawing = false; 
+            clearHwCanvas(); hwCanvas.style.background = "rgba(0,0,0,0.02)"; 
+        } 
+    }, 400);
+    
+    isDrawing = true; 
+    const pos = getPointerPos(touch); 
+    const now = Date.now();
+    currentStroke = [[pos.x], [pos.y], [now]]; 
+    
+    // 筆觸初始化：起筆稍微重一點 (較粗)
+    lastHwPoint = { x: pos.x, y: pos.y, time: now };
+    lastHwWidth = 5.5; 
+    
+    clearTimeout(hwTimeout);
+}
 
-        function drawStroke(e) { 
-            e.preventDefault(); 
-            let touch = e.touches ? e.touches[0] : e; 
-            
-            // 處理長按滑動
-            if (isHoldScrolling) { 
-                let deltaY = startY - touch.clientY; 
-                document.getElementById('hw-preview').scrollTop = startScrollTop + deltaY; 
-                return; 
-            } 
-            if (!isDrawing) return; 
-            if (!movedTooFarToHold && Math.abs(touch.clientY - startY) > 10) { 
-                movedTooFarToHold = true; clearTimeout(holdTimer); 
-            } 
-            
-            const pos = getPointerPos(touch); 
-            const now = Date.now();
-            
-            // 收集給 Google 辨識 API 的資料 (不可改動)
-            currentStroke[0].push(pos.x); 
-            currentStroke[1].push(pos.y); 
-            currentStroke[2].push(now); 
+function drawStroke(e) { 
+    if (e.cancelable) e.preventDefault(); // <--- 加上 cancelable 判斷
+    let touch = e.touches ? e.touches[0] : e; 
+    
+    // 處理長按滑動
+    if (isHoldScrolling) { 
+        let deltaY = startY - touch.clientY; 
+        document.getElementById('hw-preview').scrollTop = startScrollTop + deltaY; 
+        return; 
+    } 
+    if (!isDrawing) return; 
+    if (!movedTooFarToHold && Math.abs(touch.clientY - startY) > 10) { 
+        movedTooFarToHold = true; clearTimeout(holdTimer); 
+    } 
+    
+    const pos = getPointerPos(touch); 
+    const now = Date.now();
+    
+    // 收集給 Google 辨識 API 的資料 (不可改動)
+    currentStroke[0].push(pos.x); 
+    currentStroke[1].push(pos.y); 
+    currentStroke[2].push(now); 
 
-            // === 筆觸粗幼運算開始 ===
-            const dx = pos.x - lastHwPoint.x;
-            const dy = pos.y - lastHwPoint.y;
-            const dt = Math.max(1, now - lastHwPoint.time); // 避免除以 0
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            const velocity = distance / dt; // 計算移動速度
-            
-            // 根據速度計算目標線寬 (速度快 -> 最細 1.5px；速度慢 -> 最粗 6.5px)
-            const targetWidth = Math.max(1.5, Math.min(6.5, 6.5 - velocity * 3.5));
-            
-            // 平滑過渡：讓線條粗細漸變，不要突然變粗變細
-            lastHwWidth = lastHwWidth * 0.7 + targetWidth * 0.3;
+    // === 筆觸粗幼運算開始 ===
+    const dx = pos.x - lastHwPoint.x;
+    const dy = pos.y - lastHwPoint.y;
+    const dt = Math.max(1, now - lastHwPoint.time); // 避免除以 0
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    const velocity = distance / dt; // 計算移動速度
+    
+    // 根據速度計算目標線寬 (速度快 -> 最細 1.5px；速度慢 -> 最粗 6.5px)
+    const targetWidth = Math.max(1.5, Math.min(6.5, 6.5 - velocity * 3.5));
+    
+    // 平滑過渡：讓線條粗細漸變，不要突然變粗變細
+    lastHwWidth = lastHwWidth * 0.7 + targetWidth * 0.3;
 
-            // 畫出這一段線條
-            hwCtx.beginPath();
-            hwCtx.moveTo(lastHwPoint.x, lastHwPoint.y);
-            hwCtx.lineTo(pos.x, pos.y);
-            hwCtx.lineCap = "round";
-            hwCtx.lineJoin = "round";
-            hwCtx.lineWidth = lastHwWidth;
-            hwCtx.strokeStyle = "rgba(74, 66, 56, 0.88)"; // 微微透墨的深茶色
-            hwCtx.stroke();
-            
-            // 記錄當前狀態，給下一次繪製使用
-            lastHwPoint = { x: pos.x, y: pos.y, time: now };
-        }
+    // 畫出這一段線條
+    hwCtx.beginPath();
+    hwCtx.moveTo(lastHwPoint.x, lastHwPoint.y);
+    hwCtx.lineTo(pos.x, pos.y);
+    hwCtx.lineCap = "round";
+    hwCtx.lineJoin = "round";
+    hwCtx.lineWidth = lastHwWidth;
+    hwCtx.strokeStyle = "rgba(74, 66, 56, 0.88)"; // 微微透墨的深茶色
+    hwCtx.stroke();
+    
+    // 記錄當前狀態，給下一次繪製使用
+    lastHwPoint = { x: pos.x, y: pos.y, time: now };
+}
         function endStroke(e) { clearTimeout(holdTimer); hwCanvas.style.background = "transparent"; if (isHoldScrolling) { isHoldScrolling = false; return; } if (!isDrawing) return; isDrawing = false; if (currentStroke[0].length > 0) strokes.push(currentStroke); hwTimeout = setTimeout(recognizeHandwriting, 400); }
 
         function recognizeHandwriting() {
