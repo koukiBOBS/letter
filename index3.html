@@ -1382,14 +1382,16 @@ const glassPane = new THREE.Mesh(new THREE.BoxGeometry(29.5, 26.5, 0.05), glassM
             const cLegGeo = new THREE.CylinderGeometry(0.2, 0.1, 4.0); const legMat = new THREE.MeshStandardMaterial({color: 0xdaa520, metalness: 0.8, roughness: 0.3});
             [[-1.5, 2.0, -1.5], [1.5, 2.0, -1.5], [-1.5, 2.0, 1.5], [1.5, 2.0, 1.5]].forEach(pos => { const leg = new THREE.Mesh(cLegGeo, legMat); leg.position.set(...pos); leg.castShadow = true; chairGroup.add(leg); });
 
-         leftDrawer = createHollowDrawer({type: 'replies'}); leftDrawer.position.set(-5.5, 6, 0); desk.add(leftDrawer);
+        leftDrawer = createHollowDrawer({type: 'replies'}); leftDrawer.position.set(-5.5, 6, 0); desk.add(leftDrawer);
             rightDrawer = createHollowDrawer({type: 'inbox'}); rightDrawer.position.set(5.5, 6, 0); desk.add(rightDrawer);
-            const knobGeo = new THREE.SphereGeometry(0.5, 32, 32); const knobMat = new THREE.MeshStandardMaterial({color:0x555555, metalness:0.8, roughness:0.2});
-            const knobL = new THREE.Mesh(knobGeo, knobMat); knobL.position.z = 6.05; leftDrawer.add(knobL); const knobR = new THREE.Mesh(knobGeo, knobMat); knobR.position.z = 6.05; rightDrawer.add(knobR);
-            const knobGeo = new THREE.SphereGeometry(0.5, 32, 32); const knobMat = new THREE.MeshStandardMaterial({color:0x555555, metalness:0.8, roughness:0.2});
-            const knobL = new THREE.Mesh(knobGeo, knobMat); knobL.position.z = 6.05; leftDrawer.add(knobL); const knobR = new THREE.Mesh(knobGeo, knobMat); knobR.position.z = 6.05; rightDrawer.add(knobR);
             
- indicatorLeft = createFloatingLetter(); indicatorLeft.position.set(-5.5, 6.5, 10); indicatorLeft.rotation.set(-0.1, 0, 0.05); indicatorLeft.visible = false; desk.add(indicatorLeft);
+            // 把手只宣告一次
+            const knobGeo = new THREE.SphereGeometry(0.5, 32, 32); 
+            const knobMat = new THREE.MeshStandardMaterial({color:0x555555, metalness:0.8, roughness:0.2});
+            const knobL = new THREE.Mesh(knobGeo, knobMat); knobL.position.z = 6.05; leftDrawer.add(knobL); 
+            const knobR = new THREE.Mesh(knobGeo, knobMat); knobR.position.z = 6.05; rightDrawer.add(knobR);
+            
+indicatorLeft = createFloatingLetter(); indicatorLeft.position.set(-5.5, 6.5, 10); indicatorLeft.rotation.set(-0.1, 0, 0.05); indicatorLeft.visible = false; desk.add(indicatorLeft);
             indicatorRight = createFloatingLetter(); indicatorRight.position.set(5.5, 6.5, 10); indicatorRight.rotation.set(-0.1, 0, -0.05); indicatorRight.visible = false; desk.add(indicatorRight);
             book = new THREE.Group(); book.position.set(8, 8.6, 2); book.rotation.y = -0.2; book.userData = {type: 'log'}; desk.add(book);
             const bookPages = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.6, 5.2), new THREE.MeshStandardMaterial({color:0xffffff})); bookPages.castShadow = true; book.add(bookPages);
