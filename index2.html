@@ -93,7 +93,7 @@
         .s-ok { background: #dcfce7; color: var(--green); }
         .s-late { background: #fef3c7; color: var(--yellow); }
         .s-miss { background: #fee2e2; color: var(--red); }
-        .s-free { background: #e0f2fe; color: #0284c7; } /* 自由撰寫的專屬顏色 */
+        .s-free { background: #e0f2fe; color: #0284c7; }
 
         /* --- Reading Modals --- */
         .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -112,7 +112,7 @@
         .letter-img-wrap { display: block; width: fit-content; margin: 40px auto; text-align: center; transform: rotate(-2deg); }
         .letter-img { max-width: 90%; max-height: 380px; object-fit: cover; background-color: #fff; padding: 12px 12px 40px 12px; border: 1px solid #e6e1d6; box-shadow: 0 8px 25px rgba(140, 120, 100, 0.15); display: block; border-radius: 4px; }
 
-        /* Random Task Style (Polaroid Look) */
+        /* Random Task Style */
         .polaroid-card { background: #fff; padding: 20px 20px 40px 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.4); border-radius: 4px; width: 100%; max-width: 500px; margin: auto; transform: rotate(1deg); }
         .polaroid-img { width: 100%; height: auto; max-height: 500px; object-fit: cover; background: #f0f0f0; border: 1px solid #eee; margin-bottom: 25px; }
         .polaroid-title { font-family: var(--font-serif); font-size: 1.4rem; color: #333; text-align: center; margin-bottom: 15px; font-weight: 600;}
@@ -148,7 +148,6 @@
             <div class="nav-item active" onclick="switchPage('page-classes')">班級管理</div>
             <div class="nav-item" onclick="switchPage('page-tasks')">任務派發</div>
             <div class="nav-item" onclick="switchPage('page-records')">作業批閱</div>
-            <!-- 新增：系統設定頁面 -->
             <div class="nav-item" onclick="switchPage('page-settings')">系統設定</div>
         </div>
         <div class="user-info">
@@ -243,7 +242,6 @@
                     <button class="tab-btn" id="tab-task" onclick="switchRecordTab('task')">依任務查看</button>
                 </div>
                 
-                <!-- 任務類型篩選器 -->
                 <div style="margin-bottom: 20px; display: flex; gap: 10px;">
                     <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: var(--text-main);">
                         <input type="radio" name="recordType" value="reading" checked onchange="renderRecords()"> 📖 常規閱讀
@@ -251,7 +249,6 @@
                     <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: var(--text-main); margin-left: 15px;">
                         <input type="radio" name="recordType" value="random" onchange="renderRecords()"> 📸 隨機探索
                     </label>
-                    <!-- 新增：自由撰寫 -->
                     <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: var(--text-main); margin-left: 15px;">
                         <input type="radio" name="recordType" value="free" onchange="renderRecords()"> ✨ 自由撰寫
                     </label>
@@ -261,7 +258,7 @@
             </div>
         </section>
 
-        <!-- 新增：系統設定頁面 -->
+        <!-- 系統設定頁面 -->
         <section id="page-settings" class="section-container">
             <div class="page-header"><h1 class="page-title">系統設定</h1></div>
             
@@ -287,26 +284,25 @@
 
     </main>
 
-    <!-- 信件閱讀器 Modal (閱讀任務 & 自由撰寫 共用) -->
+    <!-- 信件閱讀器 Modal -->
     <div id="modal-reader">
         <button class="modal-close-btn" onclick="closeReaderModal('modal-reader')">×</button>
         <div class="letter-desk" id="chat-flow"></div>
     </div>
 
-    <!-- 拍立得閱讀器 Modal (隨機任務) -->
+    <!-- 拍立得閱讀器 Modal -->
     <div id="modal-random-reader">
         <button class="modal-close-btn" onclick="closeReaderModal('modal-random-reader')">×</button>
         <div id="polaroid-flow" style="width: 100%; display: flex; justify-content: center; align-items: center; min-height: 100%;"></div>
     </div>
 
     <script>
-        // 導師後台管理員限定 Email
         const ALLOWED_EMAILS = ["kenchan20151@gmail.com"];
         const firebaseConfig = { apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms", authDomain: "letter-a74d1.firebaseapp.com", databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com", projectId: "letter-a74d1" };
         firebase.initializeApp(firebaseConfig); const auth = firebase.auth(); const db = firebase.database();
 
         let dbClasses = {}; let dbUsers = {}; let dbLetters = {}; let dbRandomSubs = {}; 
-        let dbSpecialUsers = {}; // 儲存特許名單資料
+        let dbSpecialUsers = {}; 
 
         let currentRecordTab = 'student';
         let currentAssignType = 'reading';
@@ -336,7 +332,6 @@
             db.ref('letters').on('value', snap => { dbLetters = snap.val() || {}; if(document.getElementById('page-records').classList.contains('active') && ['reading', 'free'].includes(getRecordType())) renderRecords(); });
             db.ref('random_task_submissions').on('value', snap => { dbRandomSubs = snap.val() || {}; if(document.getElementById('page-records').classList.contains('active') && getRecordType()==='random') renderRecords(); });
             
-            // 監聽特許名單
             db.ref('special_users').on('value', snap => {
                 dbSpecialUsers = snap.val() || {};
                 if(document.getElementById('page-settings').classList.contains('active')) renderSpecialUsers();
@@ -360,10 +355,7 @@
             const emailInput = document.getElementById('new-special-email');
             const email = emailInput.value.trim().toLowerCase();
             if (!email) return alert("請輸入 Email");
-            
-            // Firebase 的 Key 不能有 `.`，所以替換為 `,`
             const safeKey = email.replace(/\./g, ',');
-            
             db.ref(`special_users/${safeKey}`).set(true).then(() => {
                 emailInput.value = '';
                 alert("已成功放行該帳號！");
@@ -379,16 +371,14 @@
         function renderSpecialUsers() {
             const tbody = document.querySelector('#special-users-table tbody');
             tbody.innerHTML = '';
-            
             const keys = Object.keys(dbSpecialUsers);
             if (keys.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="2" style="color: var(--text-muted); text-align: center;">目前沒有特許名單。</td></tr>';
                 return;
             }
-
             keys.forEach(safeKey => {
                 if (dbSpecialUsers[safeKey] === true) {
-                    const originalEmail = safeKey.replace(/,/g, '.'); // 將 `,` 還原為 `.` 顯示
+                    const originalEmail = safeKey.replace(/,/g, '.');
                     tbody.innerHTML += `
                         <tr>
                             <td style="font-weight: 500;">${escapeHtml(originalEmail)}</td>
@@ -396,6 +386,59 @@
                         </tr>
                     `;
                 }
+            });
+        }
+
+        // ==========================================
+        // 註銷帳號功能
+        // ==========================================
+        function deleteUserAccount(uid, userName) {
+            const confirmMsg = `⚠️ 嚴重警告！\n您即將註銷學生「${userName}」的帳號。\n\n此操作將會：\n1. 刪除該學生的所有個人資料、積分與道具。\n2. 清空該學生的私人信箱。\n3. 刪除該學生繳交的所有作業、信件與相片。\n\n註銷後該學生需要重新註冊（重新設定筆名）。\n\n您確定要繼續嗎？`;
+
+            if (!confirm(confirmMsg)) return;
+
+            const promptText = prompt(`請輸入「確認註銷」四個字來執行操作：`);
+            if (promptText !== "確認註銷") {
+                alert("輸入不符，已取消註銷操作。");
+                return;
+            }
+
+            let updates = {};
+
+            // 1. 刪除使用者主資料與信箱
+            updates[`users/${uid}`] = null;
+            updates[`user_threads/${uid}`] = null;
+
+            // 2. 刪除隨機任務繳交紀錄
+            Object.values(dbRandomSubs).forEach(sub => {
+                if (sub.senderUid === uid) {
+                    updates[`random_task_submissions/${sub.id}`] = null;
+                }
+            });
+
+            // 3. 刪除信件與對話 (包含發件或收件)
+            Object.values(dbLetters).forEach(letter => {
+                if (letter.senderUid === uid || letter.recipientUid === uid) {
+                    const lid = letter.id;
+                    updates[`letters/${lid}`] = null;
+                    updates[`conversations/${lid}`] = null;
+                    updates[`unassigned_letters/${lid}`] = null;
+                    updates[`unassigned_random_letters/${lid}`] = null;
+
+                    // 同時從對方的信箱中移除這封信，避免死連結
+                    const otherUid = letter.senderUid === uid ? letter.recipientUid : letter.senderUid;
+                    if (otherUid) {
+                        updates[`user_threads/${otherUid}/${lid}`] = null;
+                    }
+                }
+            });
+
+            // 執行批量刪除
+            db.ref().update(updates).then(() => {
+                alert(`學生「${userName}」的帳號已成功註銷並清除所有資料。`);
+                // 畫面會因 Listener 自動更新
+            }).catch(err => {
+                alert("註銷失敗：" + err.message);
             });
         }
 
@@ -415,12 +458,25 @@
             if(cTask && dbClasses[cTask]) ts.value = cTask; if(cRec && dbClasses[cRec]) rs.value = cRec;
         }
 
+        // 渲染學生名單 (加入了註銷按鈕)
         function renderStudentsTable() {
             const tbody = document.querySelector('#students-table tbody'); tbody.innerHTML = '';
             let ops = ''; for(let cid in dbClasses) ops += `<option value="${cid}">${escapeHtml(dbClasses[cid].name)}</option>`;
             for(let uid in dbUsers) {
                 const u = dbUsers[uid]; const cId = u.classId || 'default';
-                tbody.innerHTML += `<tr><td style="font-weight: 500;">${escapeHtml(u.name)}</td><td style="color: var(--text-muted);">${escapeHtml(u.email)}</td><td>${dbClasses[cId] ? escapeHtml(dbClasses[cId].name) : '未知'}</td><td><select onchange="changeStudentClass('${uid}', this.value)" style="padding: 6px; font-size: 0.9rem;">${ops.replace(`value="${cId}"`, `value="${cId}" selected`)}</select></td></tr>`;
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="font-weight: 500;">${escapeHtml(u.name)}</td>
+                        <td style="color: var(--text-muted);">${escapeHtml(u.email)}</td>
+                        <td>${dbClasses[cId] ? escapeHtml(dbClasses[cId].name) : '未知'}</td>
+                        <td style="display: flex; gap: 10px; align-items: center;">
+                            <select onchange="changeStudentClass('${uid}', this.value)" style="padding: 6px; font-size: 0.9rem;">
+                                ${ops.replace(`value="${cId}"`, `value="${cId}" selected`)}
+                            </select>
+                            <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="deleteUserAccount('${uid}', '${escapeHtml(u.name)}')">註銷</button>
+                        </td>
+                    </tr>
+                `;
             }
         }
         function changeStudentClass(uid, newCid) { db.ref(`users/${uid}/classId`).set(newCid).then(() => alert("已更新學生班級")); }
@@ -534,7 +590,7 @@
             const recType = getRecordType();
             const studentsInClass = Object.keys(dbUsers).filter(uid => (dbUsers[uid].classId || 'default') === cid);
             
-            // 處理「自由撰寫」的特殊邏輯
+            // 自由撰寫邏輯
             if (recType === 'free') {
                 document.getElementById('tab-task').style.display = 'none';
                 if (currentRecordTab === 'task') {
@@ -544,7 +600,6 @@
 
                 studentsInClass.forEach(uid => {
                     const u = dbUsers[uid];
-                    // 篩出該學生的所有自由撰寫信件，並依照時間由新到舊排序
                     let freeLetters = Object.values(dbLetters)
                         .filter(l => l.senderUid === uid && l.taskIndex === 'free')
                         .sort((a, b) => b.timestamp - a.timestamp);
@@ -572,12 +627,10 @@
                 });
                 
                 if(studentsInClass.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級目前沒有學生。</p>`;
-                return; // 結束自由撰寫的渲染
+                return;
             }
 
-            // --- 以下為常規與隨機任務的渲染邏輯 ---
             document.getElementById('tab-task').style.display = 'inline-block';
-            
             const arrayName = recType === 'reading' ? 'tasks' : 'randomTasks';
             const tasks = dbClasses[cid][arrayName] || [];
             const dataArray = recType === 'reading' ? Object.values(dbLetters) : Object.values(dbRandomSubs);
@@ -625,7 +678,6 @@
             return `<div class="task-card"><div style="font-size:1.05rem; font-weight:600; margin-bottom:10px;">${title}</div><span class="status-badge ${statusClass}">${statusText}</span><div style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">期限: ${deadlineStr}</div>${btnHtml}</div>`;
         }
 
-        /* --- 閱讀器 Modals --- */
         function escapeHtml(str) { return str?str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):str; }
         
         function openReadingModal(letterId) {
