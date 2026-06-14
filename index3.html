@@ -2281,14 +2281,46 @@ function createCloudTexture() {
             }
             const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
         }
-        function createPaintingTexture(type) {
-            const c = document.createElement('canvas'); c.width = 256; c.height = 256; const ctx = c.getContext('2d');
-            if(type === 1) { ctx.fillStyle = '#A3C6C4'; ctx.fillRect(0,0,256,128); ctx.fillStyle = '#6B8E73'; ctx.fillRect(0,128,256,128); ctx.fillStyle = '#4A4238'; ctx.beginPath(); ctx.moveTo(50,128); ctx.lineTo(100,60); ctx.lineTo(150,128); ctx.fill(); ctx.fillStyle = '#F4A261'; ctx.beginPath(); ctx.arc(200, 60, 20, 0, Math.PI*2); ctx.fill(); 
-            } else if (type === 2) { ctx.fillStyle = '#F5E6CC'; ctx.fillRect(0,0,256,256); ctx.fillStyle = '#E76F51'; ctx.beginPath(); ctx.arc(128, 128, 70, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#2A9D8F'; ctx.fillRect(60,100,136,80);
-            } else if (type === 3) { ctx.fillStyle = '#264653'; ctx.fillRect(0,0,256,256); ctx.fillStyle = '#e9c46a'; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(256,256); ctx.lineTo(0,256); ctx.fill(); ctx.fillStyle = '#f4a261'; ctx.beginPath(); ctx.arc(128, 128, 50, 0, Math.PI*2); ctx.fill();
-            } else if (type === 4) { ctx.fillStyle = '#14213d'; ctx.fillRect(0,0,256,256); ctx.fillStyle = '#fca311'; ctx.beginPath(); ctx.arc(200, 50, 25, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#ffffff'; for(let i=0; i<30; i++) { ctx.fillRect(Math.random()*256, Math.random()*256, 3, 3); } }
-            return new THREE.CanvasTexture(c);
-        }
+     function createPainting(x, y, z, url, aspect) {
+        const frameGroup = new THREE.Group(); 
+        frameGroup.position.set(x, y, z); 
+        
+        const canvasHeight = 10.5;
+        const canvasWidth = canvasHeight * aspect;
+        const frameHeight = canvasHeight + 1.5;
+        const frameWidth = canvasWidth + 1.5;
+
+        const frame = new THREE.Mesh(
+            new THREE.BoxGeometry(frameWidth, frameHeight, 0.6), 
+            new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.8})
+        ); 
+        frameGroup.add(frame); 
+        
+        const canvasMat = new THREE.MeshStandardMaterial({color: 0xdddddd, roughness: 0.9});
+        const canvasMesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(canvasWidth, canvasHeight), 
+            canvasMat
+        ); 
+        canvasMesh.position.z = 0.31; 
+        frameGroup.add(canvasMesh); 
+        scene.add(frameGroup); 
+        
+        const loader = new THREE.TextureLoader();
+        loader.setCrossOrigin('anonymous');
+        loader.load(
+            url, 
+            (texture) => {
+                texture.encoding = THREE.sRGBEncoding;
+                texture.minFilter = THREE.LinearMipmapLinearFilter; 
+                canvasMat.map = texture;
+                canvasMat.color.setHex(0xffffff); 
+                canvasMat.needsUpdate = true;
+            },
+            undefined,
+            (err) => { console.warn('畫作圖片載入失敗:', url); }
+        );
+        return frameGroup; // 這一行是修復無法隱藏的關鍵
+    }
         function createFloorTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 1024; const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#f7f6f2'; ctx.fillRect(0, 0, 1024, 1024);
@@ -2774,7 +2806,7 @@ const p4 = createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224); if(p4) p4.
     const acBody = new THREE.Mesh(new THREE.BoxGeometry(2, 6, 16), new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.3})); acGroup.add(acBody);
     const acVent = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1, 14), new THREE.MeshStandardMaterial({color: 0x111111})); acVent.position.set(-0.1, -2, 0); acGroup.add(acVent);
 
-    function createBookcase(x, z) {
+   function createBookcase(x, z) {
         const shelfGroup = new THREE.Group(); shelfGroup.position.set(x, 15, z); scene.add(shelfGroup); const shelfMat = new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.8});
         const shelfBack = new THREE.Mesh(new THREE.BoxGeometry(22, 30, 0.5), shelfMat); shelfGroup.add(shelfBack); const sideGeo = new THREE.BoxGeometry(0.5, 30, 6);
         const leftSide = new THREE.Mesh(sideGeo, shelfMat); leftSide.position.set(-11, 0, -2.5); leftSide.castShadow = true; shelfGroup.add(leftSide); const rightSide = new THREE.Mesh(sideGeo, shelfMat); rightSide.position.set(11, 0, -2.5); rightSide.castShadow = true; shelfGroup.add(rightSide);
@@ -2784,8 +2816,7 @@ const p4 = createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224); if(p4) p4.
             const bookColors = [0x8b3a3a, 0x3a5f8b, 0x4f8b3a, 0x8b6b3a, 0x222222, 0xdddddd]; let bx = -10;
             while(bx < 10) { let bw = Math.random() * 0.8 + 0.3; let bh = Math.random() * 2.5 + 3; if(bx + bw > 10) break; const b = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.05, bh, 4), new THREE.MeshStandardMaterial({color: bookColors[Math.floor(Math.random()*bookColors.length)], roughness: 0.7})); if(Math.random() > 0.7) { b.rotation.z = (Math.random() - 0.5) * 0.3; bx += 0.4; } b.position.set(bx + bw/2, sy + bh/2 + 0.25, -2.5); b.castShadow = true; shelfGroup.add(b); bx += bw; }
         }
-return shelfGroup;
-        
+        return shelfGroup; // 這一行是修復無法隱藏的關鍵
     }
 // 替換原本的這三行
 const bc1 = createBookcase(-25, 59); if(bc1) bc1.userData.itemId = 'bookcase_1';
@@ -4436,8 +4467,7 @@ function renderWalletGrid() {
     const grid = document.getElementById('collection-grid');
     grid.innerHTML = '';
     
-    // 初始化離線渲染器 (用來拍 3D 道具快照)
-   // 初始化離線渲染器 (加入 preserveDrawingBuffer 確保可輸出圖片)
+    // 加入 preserveDrawingBuffer 確保可截圖成功
     if (!offscreenRenderer) {
         offscreenRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
         offscreenRenderer.setSize(256, 256);
@@ -4456,13 +4486,13 @@ function renderWalletGrid() {
         
         let imgSrc = '';
         if (item.type === 'privilege') {
-            // 使用 Base64 編碼，避免 SVG 符號破壞 HTML 結構
-            imgSrc = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><text x="50%" y="50%" font-size="50" text-anchor="middle" dy=".3em">✨</text></svg>');
+            // 改用 encodeURIComponent 處理 Emoji 避免 Unicode 報錯
+            imgSrc = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><text x="50%" y="50%" font-size="50" text-anchor="middle" dy=".3em">✨</text></svg>');
         } else {
             if (!itemSnapshots[id]) {
                 const snapScene = new THREE.Scene();
                 
-                // 100% 複製房間目前的真實光線，保證光影完全匹配
+                // 100% 複製房間目前的真實光線
                 if (typeof hemiLight !== 'undefined') snapScene.add(hemiLight.clone());
                 if (typeof dirLight !== 'undefined') snapScene.add(dirLight.clone());
                 if (typeof ceilingLight !== 'undefined') snapScene.add(ceilingLight.clone());
