@@ -2099,9 +2099,60 @@ function buildRoomEnvironment() {
     const sideWallGeo = new THREE.PlaneGeometry(78, 40); const leftWall = new THREE.Mesh(sideWallGeo, wallMat); leftWall.rotation.y = Math.PI/2; leftWall.position.set(-60, 20, 21); scene.add(leftWall); const rightWall = new THREE.Mesh(sideWallGeo, wallMat); rightWall.rotation.y = -Math.PI/2; rightWall.position.set(60, 20, 21); scene.add(rightWall);
     const backWall = new THREE.Mesh(new THREE.PlaneGeometry(120, 40), wallMat); backWall.position.set(0, 20, 60); scene.add(backWall);
 
-    function createPainting(x, y, z, type) { const frameGroup = new THREE.Group(); frameGroup.position.set(x, y, z); const frame = new THREE.Mesh(new THREE.BoxGeometry(10, 12, 0.6), new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.8})); frameGroup.add(frame); const canvas = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 10.5), new THREE.MeshStandardMaterial({map: createPaintingTexture(type), roughness: 0.9})); canvas.position.z = 0.31; frameGroup.add(canvas); scene.add(frameGroup); }
-    // 【修訂】：把畫作的 Z 軸從 -17.5 往外移到 -16.7，剛好貼緊室內的牆壁，不再卡在牆內
-    createPainting(-42, 22, -16.7, 1); createPainting(-27, 17, -16.7, 3); createPainting(27, 17, -16.7, 4); createPainting(42, 22, -16.7, 2);
+    // 【修改點】改寫 createPainting，支援傳入圖片 URL 以及寬高比例 (aspect)
+    function createPainting(x, y, z, url, aspect) {
+        const frameGroup = new THREE.Group(); 
+        frameGroup.position.set(x, y, z); 
+        
+        // 統一固定畫布高度，並依據比例動態推算畫布寬度與畫框寬高
+        const canvasHeight = 10.5;
+        const canvasWidth = canvasHeight * aspect;
+        const frameHeight = canvasHeight + 1.5;
+        const frameWidth = canvasWidth + 1.5;
+
+        // 建立畫框
+        const frame = new THREE.Mesh(
+            new THREE.BoxGeometry(frameWidth, frameHeight, 0.6), 
+            new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.8})
+        ); 
+        frameGroup.add(frame); 
+        
+        // 建立畫布 (圖片載入前預設為淺灰色)
+        const canvasMat = new THREE.MeshStandardMaterial({color: 0xdddddd, roughness: 0.9});
+        const canvasMesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(canvasWidth, canvasHeight), 
+            canvasMat
+        ); 
+        canvasMesh.position.z = 0.31; 
+        frameGroup.add(canvasMesh); 
+        scene.add(frameGroup); 
+        
+        // 動態非同步載入外部圖片
+        const loader = new THREE.TextureLoader();
+        loader.setCrossOrigin('anonymous'); // 允許跨域請求
+        loader.load(
+            url, 
+            (texture) => {
+                texture.encoding = THREE.sRGBEncoding;
+                texture.minFilter = THREE.LinearMipmapLinearFilter; // 確保縮小顯示時不模糊
+                canvasMat.map = texture;
+                canvasMat.color.setHex(0xffffff); // 載入完成後恢復純白以還原真實顏色
+                canvasMat.needsUpdate = true;
+            },
+            undefined,
+            (err) => { console.warn('畫作圖片載入失敗:', url); } // 若伺服器擋跨域，這裡會提示
+        );
+    }
+
+    // 依序掛上川內倫子的四幅作品 (設定 X, Y, Z, 網址, 寬/高比例)
+    // 1. Hanabi (600x600 -> 1:1)
+    createPainting(-42, 22, -16.7, 'https://rinkokawauchi.com/unit/wp-content/uploads/2017/12/Hanabi_01_L-600x600.jpg', 1.0); 
+    // 2. AILA cover (2000x2000 -> 1:1)
+    createPainting(-26, 17, -16.7, 'https://rinkokawauchi.com/unit/wp-content/uploads/2017/12/AILA_cover-2000x2000.jpg', 1.0); 
+    // 3. Utatane cover (2000x2000 -> 1:1)
+    createPainting(26, 17, -16.7, 'https://rinkokawauchi.com/unit/wp-content/uploads/2017/12/Utatane_cover-2000x2000.jpg', 1.0); 
+    // 4. The river embraced me (2000x1567 -> 1.276)
+    createPainting(43, 22, -16.7, 'https://rinkokawauchi.com/unit/wp-content/uploads/2017/09/The-river-embraced-me_04-2000x1567.jpg', 2000 / 1567);
 
     const windowFrameGroup = new THREE.Group(); 
     windowFrameGroup.position.set(0, 14.5, -17.5); 
