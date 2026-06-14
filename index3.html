@@ -1635,7 +1635,10 @@ function applyCurtainRatio() {
         b.material.emissive.setHex(p.windowLight ? 0xffea88 : 0x000000);
     });
 }
+
+
         
+        let ferrisWheelGrp; // 新增這行：用來控制摩天輪轉動
 let dummySpoutTip; let indicatorLeft, indicatorRight, indicatorTasks; let interactables = []; let timePhase = 'noon'; let animScenery = { cars: [], buildings: [] };
         let clockHourHand, clockMinHand, clockSecHand;
 
@@ -2527,23 +2530,78 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     sceneryGroup.position.set(0, -15, -50); 
     scene.add(sceneryGroup);
 
-    // 【修訂三：綠色且宏偉的遠景山脈】
-    const mountainMat = new THREE.MeshStandardMaterial({color: 0x365942, roughness: 1.0}); // 賦予實體深綠色
+    // 🌊 【新增】廣闊的大海 (墊在最底層)
+    const seaMat = new THREE.MeshStandardMaterial({color: 0x1a3b5c, roughness: 0.1, metalness: 0.8});
+    const sea = new THREE.Mesh(new THREE.PlaneGeometry(800, 400), seaMat);
+    sea.rotation.x = -Math.PI/2; 
+    sea.position.set(0, -12, -20); // 放在馬路與地基下方
+    sceneryGroup.add(sea);
+
+    // 🌉 【新增 左側】青馬大橋 (延伸至左方極遠處)
+    const bridgeGroup = new THREE.Group();
+    bridgeGroup.position.set(-140, 0, 4); // 與馬路對齊，放在極左側
+    sceneryGroup.add(bridgeGroup);
+
+    const towerMat = new THREE.MeshStandardMaterial({color: 0xd0d4d9, roughness: 0.6});
+    const cableMat = new THREE.MeshStandardMaterial({color: 0x333333, roughness: 0.5});
+
+    // 建造大橋 H型 橋塔
+    [-30, -130].forEach(towerX => {
+        const t1 = new THREE.Mesh(new THREE.BoxGeometry(8, 90, 6), towerMat); t1.position.set(towerX, 25, -12); bridgeGroup.add(t1);
+        const t2 = new THREE.Mesh(new THREE.BoxGeometry(8, 90, 6), towerMat); t2.position.set(towerX, 25, 12); bridgeGroup.add(t2);
+        const cross1 = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 24), towerMat); cross1.position.set(towerX, 45, 0); bridgeGroup.add(cross1);
+        const cross2 = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 24), towerMat); cross2.position.set(towerX, -2, 0); bridgeGroup.add(cross2);
+    });
+
+    // 建造大橋懸索
+    [-12, 12].forEach(zPos => {
+        const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(20, 45, zPos), new THREE.Vector3(-80, -5, zPos), new THREE.Vector3(-180, 45, zPos));
+        const tubeGeo = new THREE.TubeGeometry(curve, 64, 1.2, 8, false);
+        const cable = new THREE.Mesh(tubeGeo, cableMat); bridgeGroup.add(cable);
+        for(let i=0; i<=1; i+=0.05) {
+            let pt = curve.getPoint(i);
+            if(pt.y > -4) {
+                let suspender = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, pt.y + 5), cableMat);
+                suspender.position.set(pt.x, (pt.y - 5)/2 - 5, pt.z); bridgeGroup.add(suspender);
+            }
+        }
+    });
+
+    // 🎡 【新增 右側】海濱摩天輪
+    ferrisWheelGrp = new THREE.Group();
+    ferrisWheelGrp.position.set(120, 15, -15); // 放在右側海濱
+    sceneryGroup.add(ferrisWheelGrp);
+    
+    const fwStructureMat = new THREE.MeshStandardMaterial({color: 0xeeeeee, metalness: 0.5});
+    const fwRim = new THREE.Mesh(new THREE.TorusGeometry(30, 0.8, 16, 64), fwStructureMat);
+    ferrisWheelGrp.add(fwRim);
+    
+    for(let i=0; i<8; i++) {
+        const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 60), fwStructureMat);
+        spoke.rotation.z = (Math.PI / 4) * i; ferrisWheelGrp.add(spoke);
+    }
+    const fwBase1 = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 40), fwStructureMat); fwBase1.position.set(120, -5, -25); fwBase1.rotation.x = -0.3; fwBase1.rotation.z = -0.2; sceneryGroup.add(fwBase1);
+    const fwBase2 = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 40), fwStructureMat); fwBase2.position.set(120, -5, -5); fwBase2.rotation.x = 0.3; fwBase2.rotation.z = -0.2; sceneryGroup.add(fwBase2);
+
+    // ==========================================
+    // 以下完全保留你原本的設定 (大廈、山脈、房間底座)，
+    // 只有把馬路和樹木的長度從 160 延伸到 360，讓它們能連到大橋！
+    // ==========================================
+
+    // 【修訂三：綠色且宏偉的遠景山脈】 (保留原樣)
+    const mountainMat = new THREE.MeshStandardMaterial({color: 0x365942, roughness: 1.0});
     for(let i=0; i<6; i++) {
-        // 大幅拔高山脈 (高達 150~250)，確保超越大廈
         const mtn = new THREE.Mesh(new THREE.ConeGeometry(80 + Math.random()*50, 150 + Math.random()*100, 32), mountainMat);
-        // 將山脈推至極遠處 (Z = -130)
         mtn.position.set(-120 + i*50 + (Math.random()-0.5)*20, 60, -130 - Math.random()*20);
         sceneryGroup.add(mtn);
     }
 
-    // 【修訂一：解決大廈發光 BUG 與超出馬路問題】
+    // 【修訂一：解決大廈發光 BUG 與超出馬路問題】 (保留原樣)
     const buildingTex = createBuildingTexture();
-    const emissiveTex = createBuildingEmissiveTexture(); // 引入純黑底色的發光貼圖
+    const emissiveTex = createBuildingEmissiveTexture(); 
     const bMat = new THREE.MeshStandardMaterial({color:0x8895a5, roughness:0.8, map: buildingTex, emissiveMap: emissiveTex, emissive: 0xffffff, emissiveIntensity: 0.0}); 
     const bMatDark = new THREE.MeshStandardMaterial({color:0x556677, roughness:0.9, map: buildingTex, emissiveMap: emissiveTex, emissive: 0xffffff, emissiveIntensity: 0.0}); 
     
-    // 將大廈的 Z 軸往後退 (變得更負)，確保不會侵占前方馬路
     const buildingsData = [ 
         {x: -60, z: -55, h: 120, c: bMat}, {x: -30, z: -60, h: 140, c: bMatDark}, {x: 0, z: -65, h: 110, c: bMat}, {x: 40, z: -55, h: 150, c: bMatDark}, {x: 70, z: -45, h: 105, c: bMat},
         {x: -45, z: -25, h: 75, c: bMatDark}, {x: -28, z: -30, h: 65, c: bMat}, {x: -12, z: -22, h: 55, c: bMatDark}, 
@@ -2556,40 +2614,37 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
         sceneryGroup.add(b); animScenery.buildings.push(b); 
     });
 
-    // 馬路與行人路
+    // 馬路與行人路 (長度從 160 改為 360，連接大橋)
     const roadWidth = 26;
-    const road = new THREE.Mesh(new THREE.PlaneGeometry(160, roadWidth), new THREE.MeshStandardMaterial({map: createAsphaltTexture(), roughness: 0.9})); 
+    const road = new THREE.Mesh(new THREE.PlaneGeometry(360, roadWidth), new THREE.MeshStandardMaterial({map: createAsphaltTexture(), roughness: 0.9})); 
     road.rotation.x = -Math.PI/2; road.position.set(0, -4.9, 4); road.receiveShadow = true; sceneryGroup.add(road);
     
     const walkMat = new THREE.MeshStandardMaterial({color: 0x888888, roughness: 1.0});
-    const walkNear = new THREE.Mesh(new THREE.BoxGeometry(160, 0.4, 12), walkMat); walkNear.position.set(0, -4.7, roadWidth/2 + 10); walkNear.receiveShadow = true; sceneryGroup.add(walkNear);
-    const walkFar = new THREE.Mesh(new THREE.BoxGeometry(160, 0.4, 12), walkMat); walkFar.position.set(0, -4.7, -roadWidth/2 - 2); walkFar.receiveShadow = true; sceneryGroup.add(walkFar);
+    const walkNear = new THREE.Mesh(new THREE.BoxGeometry(360, 0.4, 12), walkMat); walkNear.position.set(0, -4.7, roadWidth/2 + 10); walkNear.receiveShadow = true; sceneryGroup.add(walkNear);
+    const walkFar = new THREE.Mesh(new THREE.BoxGeometry(360, 0.4, 12), walkMat); walkFar.position.set(0, -4.7, -roadWidth/2 - 2); walkFar.receiveShadow = true; sceneryGroup.add(walkFar);
 
-    // 【修訂二：修正汽車車頭朝向】
-   const vehicleTypes = ['taxi', 'taxi', 'car', 'car', 'car', 'minibus', 'bus'];
-    for(let i=0; i<8; i++) { 
+    // 【修訂二：修正汽車車頭朝向】 (車輛增加到12台，並在更長的馬路上分佈)
+    const vehicleTypes = ['taxi', 'taxi', 'car', 'car', 'car', 'minibus', 'bus'];
+    for(let i=0; i<12; i++) { 
         const vType = vehicleTypes[Math.floor(Math.random()*vehicleTypes.length)];
-        // i為偶數向右(1)，奇數向左(-1)
         const direction = i % 2 === 0 ? 1 : -1; 
         const laneZ = direction > 0 ? 8 : 0; 
         const carGroup = createHKVehicle(vType, direction);
         
-        // 核心修正：均勻分配起點，確保前後車距完美固定 (每台車相距 45 單位)
         const slotIndex = Math.floor(i / 2); 
-        const startX = direction > 0 ? -90 + (slotIndex * 45) : 90 - (slotIndex * 45);
+        // 配合加長的馬路，調整起點
+        const startX = direction > 0 ? -160 + (slotIndex * 50) : 160 - (slotIndex * 50);
 
         carGroup.position.set(startX, -4.6, laneZ); 
         carGroup.rotation.y = Math.PI / 2; 
-        
-        // 核心修正：強制所有車輛速度一致 (0.3)，放棄不同車速，換取絕對不會穿模交疊
         carGroup.userData = { speed: 0.3 * direction, type: 'vehicle' }; 
         sceneryGroup.add(carGroup); 
         animScenery.cars.push(carGroup); 
     }
 
-    // 路邊樹木
+    // 路邊樹木 (跟隨馬路延伸，種植範圍改為 -160 到 160)
     const trunkMat = new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 0.9});
-    for (let i = -70; i <= 70; i += 12) { 
+    for (let i = -160; i <= 160; i += 12) { 
         if (Math.abs(i) < 8) continue; 
         [roadWidth/2 + 8, -roadWidth/2 - 2].forEach(zPos => { 
             const hue = 0.25 + Math.random() * 0.1; 
@@ -2614,17 +2669,16 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
         }); 
     }
 
-  const myBuildingBaseMat = new THREE.MeshStandardMaterial({color: 0xdbd4cc, roughness: 1.0}); 
+    // 我的房間底座 (完全保留原樣)
+    const myBuildingBaseMat = new THREE.MeshStandardMaterial({color: 0xdbd4cc, roughness: 1.0}); 
     
-    // 1. 主房間基座：從 Y=0 往下延伸到 Y=-20 (直達馬路地底)，深度對齊室內
     const myBuildingBase = new THREE.Mesh(new THREE.BoxGeometry(120, 20.5, 78), myBuildingBaseMat);
-    myBuildingBase.position.set(0, -10, 21); // 高度20.5，中心點降至 -10
+    myBuildingBase.position.set(0, -10, 21); 
     myBuildingBase.receiveShadow = true;
     scene.add(myBuildingBase);
 
-    // 2. 露台專用基座：填滿露台下方的懸空處
     const balconyBase = new THREE.Mesh(new THREE.BoxGeometry(30, 20.5, 8), myBuildingBaseMat);
-    balconyBase.position.set(0, -10, -22); // 對齊露台的 Z 軸
+    balconyBase.position.set(0, -10, -22); 
     balconyBase.receiveShadow = true;
     scene.add(balconyBase);
 
@@ -3354,18 +3408,26 @@ function isCatColliding(x, z) {
     }
 }
         
-        function animateRoom() {
-    requestAnimationFrame(animateRoom); if(controls) controls.update();
-  animScenery.cars.forEach(c => { 
+   function animateRoom() {
+    requestAnimationFrame(animateRoom); 
+    if(controls) controls.update();
+    
+    // 1. 車輛邏輯：擴大行駛邊界到 180，讓車可以開上大橋再消失
+    animScenery.cars.forEach(c => { 
         c.position.x += c.userData.speed; 
-        // 放大邊界，讓車輛從遠處駛入、駛離
-        if(c.position.x > 90) c.position.x = -90; 
-        else if(c.position.x < -90) c.position.x = 90; 
+        if(c.position.x > 180) c.position.x = -180; 
+        else if(c.position.x < -180) c.position.x = 180; 
     });
+
+    // 2. 🎡 讓摩天輪緩慢轉動
+    if(typeof ferrisWheelGrp !== 'undefined') {
+        ferrisWheelGrp.rotation.z -= 0.001;
+    }
+
+
     if(indicatorLeft && indicatorLeft.visible) { indicatorLeft.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorLeft.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
     if(indicatorRight && indicatorRight.visible) { indicatorRight.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorRight.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
     
-    // 【修改點】讓任務板上方的懸浮信件隨時跟隨任務板移動
     if(indicatorTasks && indicatorTasks.visible && clipboard) { 
         indicatorTasks.position.x = clipboard.position.x;
         indicatorTasks.position.z = clipboard.position.z;
@@ -3387,6 +3449,9 @@ function isCatColliding(x, z) {
     if(renderer && scene && camera) renderer.render(scene, camera);
 }
 
+
+
+        
         document.addEventListener("DOMContentLoaded", () => {
             const q = document.getElementById('log-question'); const c = document.getElementById('log-content');
             if(q) q.addEventListener('click', function() { openHwKeyboard(this); }); if(c) c.addEventListener('click', function() { openHwKeyboard(this); });
