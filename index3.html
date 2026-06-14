@@ -988,21 +988,22 @@ let userPlantData = null; let timeForced = false;
             setTimeout(() => gsap.to(toast, {y: 100, opacity: 0, duration: 0.5}), 3500);
         }
 
-  auth.onAuthStateChanged(user => {
+ auth.onAuthStateChanged(user => {
     if (user) {
-        // 1. 登入成功後，第一時間去 Firebase 讀取「特許名單」
-        db.ref('settings/allowed_emails').once('value').then(whitelistSnap => {
-            let whitelistData = whitelistSnap.val() || {};
-            // 將資料轉為陣列方便比對
-            allowedEmailsWhitelist = Array.isArray(whitelistData) ? whitelistData : Object.values(whitelistData);
+        const email = user.email.toLowerCase();
+        
+        // 【關鍵】：將 email 中的 . 替換成 , 以符合 Firebase 的 Key 規則
+        const encodedEmail = email.replace(/\./g, ',');
 
-            const email = user.email.toLowerCase();
+        // 1. 直接去 special_users 節點尋找這個人的信箱是不是 true
+        db.ref(`special_users/${encodedEmail}`).once('value').then(snap => {
+            const isSpecialUser = snap.val() === true; // 如果是 true 代表在特許名單內
+            
             const isCCCKYC = email.endsWith('@ccckyc.edu.hk');
             const isKenchan = email.includes('kenchan');
-            const isInWhitelist = allowedEmailsWhitelist.includes(email);
 
-            // 2. 核心過濾機制：如果不符合任何一項條件，強制踢出！
-            if (!isCCCKYC && !isKenchan && !isInWhitelist) {
+            // 2. 核心過濾機制：不符合任何一項條件，強制踢出！
+            if (!isCCCKYC && !isKenchan && !isSpecialUser) {
                 alert("很抱歉，您的電郵不符合註冊與登入資格。");
                 auth.signOut();
                 return; // 終止後續載入
@@ -1010,8 +1011,8 @@ let userPlantData = null; let timeForced = false;
 
             // 3. 通過審查，繼續進入房間
             currentUser = user;
-            db.ref(`users/${user.uid}`).once('value').then(snap => {
-                let data = snap.val();
+            db.ref(`users/${user.uid}`).once('value').then(userSnap => {
+                let data = userSnap.val();
                 if (data && data.name) { 
                     document.getElementById('user-name').innerText = data.name; 
                     
