@@ -2409,8 +2409,16 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     const botF = new THREE.Mesh(new THREE.BoxGeometry(30, frameThickness, frameDepth), frameMat); botF.position.set(0, -13.5 + frameThickness/2, 0); botF.castShadow = true; windowFrameGroup.add(botF);
     const midV = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 27, frameDepth - 0.2), frameMat); midV.castShadow = true; windowFrameGroup.add(midV);
 
-    const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, roughness: 0.1, transmission: 0.8 }); 
-   const glassPane = new THREE.Mesh(new THREE.BoxGeometry(29.5, 26.5, 0.05), glassMat); 
+    const glassMat = new THREE.MeshPhysicalMaterial({ 
+        color: 0xddeeff,        // 微微的玻璃冷藍色調
+        transparent: true, 
+        opacity: 0.25,          // 稍微提高不透明度，讓玻璃更有實體感
+        roughness: 0.05,        // 表面非常平滑
+        metalness: 0.2,         // 增加一點金屬感來捕捉室內的燈光反射
+        clearcoat: 1.0,         // 【關鍵】加入清漆塗層，產生強烈的高光反射
+        clearcoatRoughness: 0.1 // 塗層的平滑度
+    }); 
+    const glassPane = new THREE.Mesh(new THREE.BoxGeometry(29.5, 26.5, 0.05), glassMat);
     windowFrameGroup.add(glassPane);
     // 👇 加入這兩行
     glassPane.userData = { type: 'window' };
