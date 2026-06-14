@@ -434,18 +434,7 @@
     box-shadow: inset 0 5px 10px rgba(0,0,0,0.15); /* 取消底部外陰影，加深頂部內陰影模擬按壓深度 */
     border-top: 1px solid #bbb; 
 }
-      .key-black { 
-    width: 4.5%; 
-    height: 60%; 
-    background: linear-gradient(to bottom, #222 0%, #000 100%); 
-    border-radius: 0 0 4px 4px; 
-    position: absolute; 
-    cursor: pointer; 
-    z-index: 2; 
-    transform: translateX(-50%); 
-    box-shadow: inset 0 -3px 4px rgba(255,255,255,0.2), 2px 2px 5px rgba(0,0,0,0.5); 
-    transition: height 0.1s, box-shadow 0.1s, background 0.1s; /* 加入這行平滑過渡 */
-}
+      .key-black { width: 4.5%; height: 60%; background: linear-gradient(to bottom, #222 0%, #000 100%); border-radius: 0 0 4px 4px; position: absolute; cursor: pointer; z-index: 2; transform: translateX(-50%); box-shadow: inset 0 -3px 4px rgba(255,255,255,0.2), 2px 2px 5px rgba(0,0,0,0.5); }
         .key-black.active { background: #000; height: 59%; box-shadow: none; }
         
         #landscape-prompt { display: none; color: #dcd5c9; font-size: 1.5rem; text-align: center; padding: 40px; font-family: var(--font-serif); line-height: 1.5; }
