@@ -1574,6 +1574,7 @@ function renderList(type, data) {
 
         let scene, camera, renderer, controls, raycaster, mouse;
        let desk, leftDrawer, rightDrawer, book, clipboard, wateringCan, plantGroup, windowGroup, sceneryGroup;
+        let glassDoorL, glassDoorR; // 新增這兩個變數來控制玻璃門
 
 
 let leftCurtainGrp, rightCurtainGrp; 
@@ -1676,6 +1677,11 @@ function goToBalcony() {
     // 【修訂三】：將相機推進至 z:-19.5 (完全站到露臺外)，這樣中間的窗框就會在背後而看不見
     gsap.to(camera.position, { x: 0, y: 15, z: -19.5, duration: 1.8, ease: "power2.inOut" });
   gsap.to(controls.target, { x: 0, y: 15, z: -20, duration: 1.8, ease: "power2.inOut", onUpdate: () => controls.update() });
+
+// 開門動畫：左側玻璃門向右滑動，與右側玻璃重疊
+    if (glassDoorL) {
+        gsap.to(glassDoorL.position, { x: 7.3, duration: 1.2, ease: "power2.inOut" });
+    }
     
     // 【修訂二】：動態擴大鏡頭廣角 (FOV 50 -> 75)，減輕景物放大的壓迫感，讓露臺空間更開闊
     gsap.to(camera, { fov: 75, duration: 1.8, ease: "power2.inOut", onUpdate: () => camera.updateProjectionMatrix() });
@@ -1698,6 +1704,11 @@ function returnToRoom() {
     // 動畫：退回室內原本的位置
     gsap.to(camera.position, { x: roomCameraBackup.cp.x, y: roomCameraBackup.cp.y, z: roomCameraBackup.cp.z, duration: 1.8, ease: "power2.inOut" });
     gsap.to(controls.target, { x: roomCameraBackup.ct.x, y: roomCameraBackup.ct.y, z: roomCameraBackup.ct.z, duration: 1.8, ease: "power2.inOut", onUpdate: () => controls.update() });
+
+// 關門動畫：左側玻璃門滑回原位 (加入 delay 讓鏡頭退回室內時才開始關門)
+    if (glassDoorL) {
+        gsap.to(glassDoorL.position, { x: -7.3, duration: 1.2, ease: "power2.inOut", delay: 0.5 });
+    }
     
     // 【修訂二】：動態恢復室內原本的視野廣角 (FOV 75 -> 50)，確保室內景觀不變形
     gsap.to(camera, { fov: 50, duration: 1.8, ease: "power2.inOut", onUpdate: () => camera.updateProjectionMatrix() });
@@ -2422,11 +2433,18 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
         clearcoat: 1.0,         // 最強表面清漆反光
         clearcoatRoughness: 0.02 
     }); 
-    const glassPane = new THREE.Mesh(new THREE.BoxGeometry(29.5, 26.5, 0.05), glassMat);
-    windowFrameGroup.add(glassPane);
-    // 👇 加入這兩行
-    glassPane.userData = { type: 'window' };
-    interactables.push(glassPane);
+   // 改為左右兩片玻璃，左邊負責滑動，右邊固定
+    glassDoorL = new THREE.Mesh(new THREE.BoxGeometry(15, 26.5, 0.05), glassMat);
+    glassDoorL.position.set(-7.3, 0, 0.08); // 稍微靠前，模擬滑軌
+    windowFrameGroup.add(glassDoorL);
+    glassDoorL.userData = { type: 'window' };
+    interactables.push(glassDoorL);
+
+    glassDoorR = new THREE.Mesh(new THREE.BoxGeometry(15, 26.5, 0.05), glassMat);
+    glassDoorR.position.set(7.3, 0, -0.08); // 稍微靠後
+    windowFrameGroup.add(glassDoorR);
+    glassDoorR.userData = { type: 'window' };
+    interactables.push(glassDoorR);
     const doorGroup = new THREE.Group(); doorGroup.position.set(-59.5, 14, 0); doorGroup.rotation.y = Math.PI/2; scene.add(doorGroup);
     const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(16, 28, 1), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.8})); doorGroup.add(doorFrame);
     const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(14, 26, 1.2), new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.7})); doorGroup.add(doorPanel);
