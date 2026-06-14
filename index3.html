@@ -2080,12 +2080,27 @@ function buildRoomEnvironment() {
     dirLight.shadow.normalBias = 0.05;     
     dirLight.shadow.radius = 2.5;          
 
+// --- 替換從 dirLight.shadow.bias 開始，到 scene.add(ceilingLight) 結束的段落 ---
+    
+    dirLight.shadow.bias = -0.001;        
+    dirLight.shadow.normalBias = 0.08;     // 增加陽光法線偏移，消除波紋
+    dirLight.shadow.radius = 3;          
+
     scene.add(dirLight); 
     scene.add(dirLight.target);
     const lampGroup = new THREE.Group(); lampGroup.position.set(0, 39, 21); scene.add(lampGroup);
     const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 1, 32), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.5})); lampGroup.add(lampBase);
     lampBulb = new THREE.Mesh(new THREE.SphereGeometry(2.5, 32, 16), new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0x000000})); lampBulb.position.y = -1; lampGroup.add(lampBulb);
-    ceilingLight = new THREE.PointLight(0xfff0dd, 0, 150); ceilingLight.position.set(0, 36, 21); ceilingLight.castShadow = false; ceilingLight.shadow.mapSize.width = 1024; ceilingLight.shadow.mapSize.height = 1024; ceilingLight.shadow.bias = -0.001; ceilingLight.shadow.radius = 4; scene.add(ceilingLight);
+    
+    ceilingLight = new THREE.PointLight(0xfff0dd, 0, 150); 
+    ceilingLight.position.set(0, 36, 21); 
+    ceilingLight.castShadow = false; 
+    ceilingLight.shadow.mapSize.width = 1024; 
+    ceilingLight.shadow.mapSize.height = 1024; 
+    ceilingLight.shadow.bias = -0.002;           // 微調室內燈陰影偏移
+    ceilingLight.shadow.normalBias = 0.08;       // 【關鍵修復】增加室內燈法線偏移，讓牆壁恢復平整
+    ceilingLight.shadow.radius = 4; 
+    scene.add(ceilingLight);
 
     const wallMat = new THREE.MeshStandardMaterial({ color: 0xdbd4cc, roughness: 1.0, side: THREE.DoubleSide }); const floorMat = new THREE.MeshStandardMaterial({ map: createFloorTexture(), roughness: 0.3, metalness: 0.05 });
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 78), floorMat); floor.rotation.x = -Math.PI/2; floor.position.set(0, 0, 21); floor.receiveShadow = true; scene.add(floor);
