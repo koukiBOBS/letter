@@ -646,51 +646,69 @@ let userPlantData = null; let timeForced = false;
             setTimeout(() => gsap.to(toast, {y: 100, opacity: 0, duration: 0.5}), 3500);
         }
 
-     auth.onAuthStateChanged(user => {
-            if (user) {
-                currentUser = user;
-                db.ref(`users/${user.uid}`).once('value').then(snap => {
-                    let data = snap.val();
-                    if (data && data.name) { 
-                        document.getElementById('user-name').innerText = data.name; 
-                        
-                        // 【新增】如果老師是舊帳號，自動更新他的班級為老師班
-                        if (isTeacherEmail(user.email) && data.classId !== 'teacher_class') {
-                            db.ref(`users/${user.uid}`).update({ classId: 'teacher_class' });
-                            db.ref('classes/teacher_class').update({ name: "老師" });
-                        }
-                        
-                        hideAuthOverlay(); initApp(); 
-                    } 
-                    else { 
-                        document.getElementById('login-container').style.display = 'none'; 
-                        document.getElementById('name-setup-container').style.display = 'flex'; 
-                    }
-                });
-            } else { 
-                document.getElementById('auth-overlay').style.display = 'flex'; document.getElementById('login-container').style.display = 'flex'; document.getElementById('name-setup-container').style.display = 'none'; 
-                document.getElementById('room-canvas-container').style.display = 'none'; initAuthThreeJS(); 
+   auth.onAuthStateChanged(user => {
+    if (user) {
+        currentUser = user;
+        db.ref(`users/${user.uid}`).once('value').then(snap => {
+            let data = snap.val();
+            if (data && data.name) { 
+                document.getElementById('user-name').innerText = data.name; 
+                
+                // 【修訂】判斷身份，並明確將 classId 寫入 currentUser 記憶體中
+                if (isTeacherEmail(user.email) && data.classId !== 'teacher_class') {
+                    db.ref(`users/${user.uid}`).update({ classId: 'teacher_class' });
+                    db.ref('classes/teacher_class').update({ name: "老師" });
+                    currentUser.classId = 'teacher_class'; // 強制賦予老師班級
+                } else {
+                    currentUser.classId = data.classId || 'default'; // 寫入學生所在班級
+                }
+                
+                hideAuthOverlay(); initApp(); 
+            } 
+            else { 
+                document.getElementById('login-container').style.display = 'none'; 
+                document.getElementById('name-setup-container').style.display = 'flex'; 
             }
         });
+    } else { 
+        document.getElementById('auth-overlay').style.display = 'flex'; 
+        document.getElementById('login-container').style.display = 'flex'; 
+        document.getElementById('name-setup-container').style.display = 'none'; 
+        document.getElementById('room-canvas-container').style.display = 'none'; 
+        initAuthThreeJS(); 
+    }
+});
 
 
         function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert("登入失敗")); }
         function signOut() { auth.signOut().then(() => window.location.reload()); }
-       function saveName() { 
-            const name = document.getElementById('setup-name').value.trim(); if (!name) return alert("請輸入姓名"); 
-            document.getElementById('btn-setup-name').disabled = true; document.getElementById('btn-setup-name').innerText = "設定中...";
-            
-            // 【新增】註冊時判斷身份並分班
-            let classId = 'default';
-            if (isTeacherEmail(currentUser.email)) {
-                classId = 'teacher_class';
-                db.ref('classes/teacher_class').update({ name: "老師" }); // 確保導師中心有這個班級
-            }
+     function saveName() { 
+    const name = document.getElementById('setup-name').value.trim(); 
+    if (!name) return alert("請輸入姓名"); 
+    document.getElementById('btn-setup-name').disabled = true; 
+    document.getElementById('btn-setup-name').innerText = "設定中...";
+    
+    // 註冊時判斷身份並分班
+    let classId = 'default';
+    if (isTeacherEmail(currentUser.email)) {
+        classId = 'teacher_class';
+        db.ref('classes/teacher_class').update({ name: "老師" }); 
+    }
 
-            db.ref(`users/${currentUser.uid}`).set({ name, email: currentUser.email, classId: classId, receivedCount: 0, receivedRandomCount: 0 }).then(() => { 
-                document.getElementById('user-name').innerText = name; hideAuthOverlay(); initApp(); 
-            }); 
-        }
+    db.ref(`users/${currentUser.uid}`).set({ 
+        name, 
+        email: currentUser.email, 
+        classId: classId, 
+        receivedCount: 0, 
+        receivedRandomCount: 0 
+    }).then(() => { 
+        // 【修訂】註冊完成後，也將 classId 記錄到本地變數
+        currentUser.classId = classId; 
+        document.getElementById('user-name').innerText = name; 
+        hideAuthOverlay(); 
+        initApp(); 
+    }); 
+}
         function hideAuthOverlay() { gsap.to("#auth-overlay", { opacity: 0, duration: 0.6, onComplete: () => { document.getElementById('auth-overlay').style.display = 'none'; }}); }
 
        function initApp() { 
