@@ -4587,7 +4587,7 @@ function showGachaAnim(itemId) {
         gachaScene.add(dlClone.target);
     }
     
-    if (item.type === 'model') {
+   if (item.type === 'model') {
         let originalObj = null;
         scene.traverse(child => { if (child.userData && child.userData.itemId === itemId) originalObj = child; });
         
@@ -4596,7 +4596,12 @@ function showGachaAnim(itemId) {
             const wrapper = new THREE.Group();
             const cloneObj = originalObj.clone();
             
-            const box = new THREE.Box3().setFromObject(originalObj); 
+            // 👇 1. 加入這一行，強制讓複製出來的模型及其所有零件現形！
+            cloneObj.traverse(node => { node.visible = true; });
+            
+            // 👇 2. 將下面這行裡的 originalObj 改成 cloneObj，計算大小才會準確
+            const box = new THREE.Box3().setFromObject(cloneObj); 
+            
             const center = box.getCenter(new THREE.Vector3());
             const size = box.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z);
