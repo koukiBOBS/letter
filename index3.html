@@ -888,9 +888,9 @@ const ITEM_REGISTRY = {
     'painting_4': { name: '畫作四', desc: '為牆面增添藝術氣息', type: 'model', minPts: 0 },
     'piano_model': { name: '直立式鋼琴', desc: '黑色的典雅樂器實體', type: 'model', minPts: 0 },
     'piano_bench': { name: '鋼琴椅', desc: '搭配鋼琴的皮革長凳', type: 'model', minPts: 0 },
-    'piano_use': { name: '🎵 鋼琴彈奏權', desc: '解鎖點擊鋼琴彈奏的功能', type: 'privilege', minPts: 10000 },
-    'curtain_use': { name: '🌤️ 窗簾開關權', desc: '解鎖拖曳窗簾控制光線', type: 'privilege', minPts: 10000 },
-    'door_use': { name: '🚪 露台通行權', desc: '修繕趟門，解鎖出外看海', type: 'privilege', minPts: 10000 }
+'curtain': { name: '雙層遮光窗簾', desc: '調節室內光線的質感窗簾', type: 'model', minPts: 0 },
+    'piano_use': { name: '🎵 學習鋼琴', desc: '掌握指法，解鎖彈奏鋼琴的技能', type: 'privilege', minPts: 10000 },
+    'door_use': { name: '🚪 修繕趟門', desc: '修好卡住的趟門，解鎖出外看海', type: 'privilege', minPts: 10000 }
 };
 
 
@@ -3010,9 +3010,12 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     }
 
     // 琴椅
-const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.add(benchGrp);
-    const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(7, 0.8, 3), new THREE.MeshStandardMaterial({color: 0x3a1f11, roughness: 0.8})); benchSeat.position.y = 4.5; benchSeat.castShadow=true; benchGrp.add(benchSeat);
-    [[-3, 2.25, -1], [3, 2.25, -1], [-3, 2.25, 1], [3, 2.25, 1]].forEach(pos => { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 4.5), pianoGlossy); l.position.set(...pos); l.castShadow=true; benchGrp.add(l); });
+// 琴椅 (獨立於鋼琴)
+    const benchGrp = new THREE.Group(); 
+    benchGrp.position.set(54, 0, 22); 
+    benchGrp.rotation.y = -Math.PI / 2;
+    scene.add(benchGrp);
+    const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(7, 0.8, 3), new THREE.MeshStandardMaterial({color: 0x3a1f11, roughness:
 
     // 加入隱形 HitBox 以便點擊
     const pianoHitBox = new THREE.Mesh(new THREE.BoxGeometry(20, 16, 12), new THREE.MeshBasicMaterial({visible: false}));
