@@ -1663,9 +1663,9 @@ function goToBalcony() {
     controls.minDistance = 5;
     controls.maxDistance = 100;
 
-    controls.minAzimuthAngle = -Math.PI / 3; 
-    controls.maxAzimuthAngle = Math.PI / 3;
-    controls.minPolarAngle = Math.PI / 3;    
+  controls.minAzimuthAngle = -Math.PI / 2.5; // 稍微放寬左右轉頭的視角
+    controls.maxAzimuthAngle = Math.PI / 2.5;
+    controls.minPolarAngle = 0.05;           // 【關鍵修改】改為接近 0，允許完全仰起頭看正上方天空！
     controls.maxPolarAngle = Math.PI / 2;
 
     // 【修訂三】：將相機推進至 z:-19.5 (完全站到露臺外)，這樣中間的窗框就會在背後而看不見
