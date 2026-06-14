@@ -1652,16 +1652,44 @@ function goToBalcony() {
     roomCameraBackup.cp.copy(camera.position);
     roomCameraBackup.ct.copy(controls.target);
 
-    // 動畫：將相機推進至露台，視線看向遠方大樓
-    gsap.to(camera.position, { x: 0, y: 16, z: -15, duration: 1.8, ease: "power2.inOut" });
-    gsap.to(controls.target, { x: 0, y: 14, z: -50, duration: 1.8, ease: "power2.inOut", onUpdate: () => controls.update() });
-    
-    // 限制在露台時的縮放範圍，避免穿牆
+    // 【修訂二】：放寬距離限制，不要強行改變物理視距
     controls.minDistance = 5;
-    controls.maxDistance = 25;
+    controls.maxDistance = 100;
+
+    // 【修訂三】：限制水平與垂直旋轉視角，防止回頭看到室內
+    controls.minAzimuthAngle = -Math.PI / 3; // 左右最多各轉 60 度
+    controls.maxAzimuthAngle = Math.PI / 3;
+    controls.minPolarAngle = Math.PI / 3;    // 限制上下仰角
+    controls.maxPolarAngle = Math.PI / 2;
+
+    // 動畫：將相機推進至露台，視線看向遠方大樓 (Z軸定在 -65，避免拉扯感)
+    gsap.to(camera.position, { x: 0, y: 16, z: -15, duration: 1.8, ease: "power2.inOut" });
+    gsap.to(controls.target, { x: 0, y: 16, z: -65, duration: 1.8, ease: "power2.inOut", onUpdate: () => controls.update() });
 
     // 顯示返回按鈕
     document.getElementById('btn-return-room').style.display = 'flex';
+}
+
+function returnToRoom() {
+    if (!isAtBalcony) return;
+    isAtBalcony = false;
+
+    // 【修訂三】：解除旋轉視角限制
+    controls.minAzimuthAngle = -Infinity;
+    controls.maxAzimuthAngle = Infinity;
+    controls.minPolarAngle = 0;
+    controls.maxPolarAngle = Math.PI / 2 - 0.05;
+
+    // 動畫：退回室內原本的位置
+    gsap.to(camera.position, { x: roomCameraBackup.cp.x, y: roomCameraBackup.cp.y, z: roomCameraBackup.cp.z, duration: 1.8, ease: "power2.inOut" });
+    gsap.to(controls.target, { x: roomCameraBackup.ct.x, y: roomCameraBackup.ct.y, z: roomCameraBackup.ct.z, duration: 1.8, ease: "power2.inOut", onUpdate: () => controls.update() });
+
+    // 恢復室內的縮放限制
+    controls.minDistance = 10;
+    controls.maxDistance = 60;
+
+    // 隱藏返回按鈕
+    document.getElementById('btn-return-room').style.display = 'none';
 }
 
 function returnToRoom() {
@@ -2097,7 +2125,12 @@ function closeDrawAnim() {
     
     const savedState = localStorage.getItem('roomCameraState');
     if (savedState) { try { const s = JSON.parse(savedState); camera.position.set(s.cp.x, s.cp.y, s.cp.z); controls.target.set(s.ct.x, s.ct.y, s.ct.z); } catch(e) { setDefaultCamera(); } } else { setDefaultCamera(); }
-    controls.update(); controls.addEventListener('change', () => { if(!camera || !controls) return; const state = { cp: {x: camera.position.x, y: camera.position.y, z: camera.position.z}, ct: {x: controls.target.x, y: controls.target.y, z: controls.target.z} }; localStorage.setItem('roomCameraState', JSON.stringify(state)); });
+    controls.update(); controls.addEventListener('change', () => { 
+        // 加上 isAtBalcony 判斷，若在露臺則不儲存視角
+        if(!camera || !controls || isAtBalcony) return; 
+        const state = { cp: {x: camera.position.x, y: camera.position.y, z: camera.position.z}, ct: {x: controls.target.x, y: controls.target.y, z: controls.target.z} }; 
+        localStorage.setItem('roomCameraState', JSON.stringify(state)); 
+    });
     raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2();
     
     window.addEventListener('pointerdown', onPointerDown); window.addEventListener('pointerup', onPointerUp); window.addEventListener('pointermove', onPointerMove); window.addEventListener('resize', onWinResize);
@@ -2488,11 +2521,20 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     sideRailR.position.set(14.8, 8.5, 0); balconyGrp.add(sideRailR);
     
     // 欄杆立柱
+   // 欄杆立柱 (正面)
     for(let i = -14.5; i <= 14.5; i += 2.9) {
         const post = new THREE.Mesh(new THREE.BoxGeometry(0.2, 8.5, 0.2), ironMat);
         post.position.set(i, 4.25, -3.8); post.castShadow = true; balconyGrp.add(post);
     }
 
+    // 👇 加入這段：側邊欄杆立柱
+    for(let z = -1.9; z <= 3.8; z += 1.9) {
+        const postL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 8.5, 0.2), ironMat);
+        postL.position.set(-14.8, 4.25, z); postL.castShadow = true; balconyGrp.add(postL);
+        
+        const postR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 8.5, 0.2), ironMat);
+        postR.position.set(14.8, 4.25, z); postR.castShadow = true; balconyGrp.add(postR);
+    }
     // 露台休閒小圓桌與盆栽
     const bTable = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.15, 32), new THREE.MeshStandardMaterial({color: 0xeeeeee}));
     bTable.position.set(8, 4.5, -1.5); bTable.castShadow = true; balconyGrp.add(bTable);
@@ -2679,14 +2721,7 @@ function onPointerDown(e) {
             }, 150);
         }
 
-// 👇 加入這段長按窗戶的邏輯
-        else if (type === 'window') {
-            dragTimer = setTimeout(() => {
-                goToBalcony();
-                clearTimeout(dragTimer);
-                dragTimer = null;
-            }, 500); // 500毫秒視為長按
-        }
+
 
         
     }
@@ -2842,7 +2877,17 @@ function onPointerUp(e) {
         } else if(type === 'log') { gsap.to(book.position, {y: 9, rotationY: 0, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-log').style.display = 'flex'; }});
         } else if(type === 'tasks') { gsap.to(clipboard.position, {y: 9, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-tasks').style.display = 'flex'; }});
         } else if(type === 'water') { performWateringAnimation();
-        } else if(type === 'plant') { if (userPlantData && userPlantData.isDead) { showToast("🥀 這盆植物已經枯萎了，請重新挑選一盆吧。"); setTimeout(() => document.getElementById('modal-plant-selector').style.display = 'flex', 1500); } else { showPlantStatus(); } }
+       } else if(type === 'plant') { 
+            if (userPlantData && userPlantData.isDead) { 
+                showToast("🥀 這盆植物已經枯萎了，請重新挑選一盆吧。"); 
+                setTimeout(() => document.getElementById('modal-plant-selector').style.display = 'flex', 1500); 
+            } else { 
+                showPlantStatus(); 
+            } 
+        // 👇 新增這三行，讓窗戶可以直接點擊
+        } else if(type === 'window') {
+            goToBalcony();
+        }
     }
 }
 
