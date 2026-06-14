@@ -2708,11 +2708,11 @@ function buildRoomEnvironment() {
 
     const wallMat = new THREE.MeshStandardMaterial({ color: 0xdbd4cc, roughness: 1.0, side: THREE.DoubleSide }); const floorMat = new THREE.MeshStandardMaterial({ map: createFloorTexture(), roughness: 0.3, metalness: 0.05 });
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 78), floorMat); floor.rotation.x = -Math.PI/2; floor.position.set(0, 0, 21); floor.receiveShadow = true; scene.add(floor);
-   // 將天花板改為有厚度的屋頂實體，徹底阻擋室內光線外洩
-    const roofMat = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.9 });
+ // 將天花板改為有厚度的屋頂實體，徹底阻擋室內光線外洩
+    const roomRoofMat = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.9 });
     const ceiling = new THREE.Mesh(
         new THREE.BoxGeometry(130, 4, 90), 
-        [wallMat, wallMat, roofMat, wallMat, wallMat, wallMat]
+        [wallMat, wallMat, roomRoofMat, wallMat, wallMat, wallMat]
     ); 
     ceiling.position.set(0, 42, 21); // 高度上調，確保室內天花板維持在 Y=40
     ceiling.castShadow = true;
