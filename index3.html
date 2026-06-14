@@ -4488,11 +4488,10 @@ function renderWalletGrid() {
         const item = ITEM_REGISTRY[id];
         const isUnlocked = !!userInventory[id];
         
-        let imgSrc = '';
-        let imgSrc = '';
-     let imgSrc = '';
+        let imgSrc = ''; // 確保這裡只宣告一次
+        
         if (item.type === 'privilege') {
-            // 【修正 1】必須將 SVG 進行 URL 編碼，否則引號會破壞 HTML 的 img 標籤結構！
+            // 權限卡片給個預設圖片或 Emoji 即可，必須進行 URL 編碼
             const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="#4a3219" rx="15"/><text x="50%" y="50%" font-size="80" text-anchor="middle" dy=".3em" fill="#d4af37">✨</text></svg>`;
             imgSrc = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svgString);
         } else {
@@ -4515,9 +4514,10 @@ function renderWalletGrid() {
                     const center = box.getCenter(new THREE.Vector3());
                     const sphere = box.getBoundingSphere(new THREE.Sphere());
                     
-                    cloneObj.position.sub(center);
+                    cloneObj.position.sub(center); // 絕對置中
                     snapScene.add(cloneObj);
                     
+                    // 計算完美取景距離
                     const fov = cam.fov * (Math.PI / 180);
                     let distance = Math.abs(sphere.radius / Math.sin(fov / 2));
                     
@@ -4527,7 +4527,7 @@ function renderWalletGrid() {
                     offscreenRenderer.render(snapScene, cam);
                     itemSnapshots[id] = offscreenRenderer.domElement.toDataURL("image/png");
                 } else {
-                    // 【修正 2】如果找不到模型，給予一個透明佔位圖，避免出現破圖圖示
+                    // 如果找不到模型，給予一個透明佔位圖避免破圖
                     itemSnapshots[id] = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
                 }
             }
