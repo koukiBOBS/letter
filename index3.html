@@ -491,30 +491,27 @@
 
         
 /* 👇 新增：視角旋鈕樣式 👇 */
+/* 👇 新增：實時視角旋鈕樣式 (右下角) 👇 */
 #mobile-cam-knob {
-    position: fixed; bottom: 30px; left: 20px; z-index: 3000;
-    width: 80px; height: 80px; background: rgba(250, 247, 242, 0.4);
+    position: fixed; bottom: 30px; right: 20px; z-index: 3000;
+    width: 70px; height: 70px; background: rgba(250, 247, 242, 0.4);
     border-radius: 50%; backdrop-filter: blur(8px); border: 2px solid rgba(255,255,255,0.4);
     box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column;
     align-items: center; justify-content: center; touch-action: none; pointer-events: auto;
 }
 .knob-center {
-    width: 50px; height: 50px; background: #fff; border-radius: 50%;
+    width: 44px; height: 44px; background: #fff; border-radius: 50%;
     box-shadow: inset 0 2px 5px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.1);
-    position: relative; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative; /* 移除 transition，讓實時同步更跟手 */
 }
 .knob-indicator {
     position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
-    width: 6px; height: 12px; background: var(--color-replies); border-radius: 3px;
+    width: 6px; height: 14px; background: var(--color-replies); border-radius: 4px;
 }
-.knob-label {
-    position: absolute; bottom: -25px; font-size: 0.8rem; font-weight: bold;
-    color: var(--text); font-family: var(--font-serif); white-space: nowrap;
-    text-shadow: 0 1px 2px rgba(255,255,255,0.8);
-}
-/* 僅在手機/平板尺寸顯示旋鈕 */
+/* 僅在手機/平板尺寸顯示旋鈕，並自動把開發面板往左擠 */
 @media (max-width: 900px) {
     #mobile-cam-knob { display: flex !important; }
+    #dev-panel-wrapper { right: 100px !important; }
 }
         
     </style>
@@ -634,12 +631,11 @@
     <div id="room-ui-layer">
 
 
-<!-- 👇 新增：移動端專屬 360 度視角旋鈕 👇 -->
+<!-- 👇 新增：移動端專屬 360 度實時視角旋鈕 👇 -->
     <div id="mobile-cam-knob" style="display:none;">
         <div class="knob-center" id="knob-dial">
             <div class="knob-indicator"></div>
         </div>
-        <div class="knob-label" id="knob-label">南 (書桌)</div>
     </div>
 
         
@@ -4509,6 +4505,19 @@ function isCatColliding(x, z) {
         
    function animateRoom() {
     requestAnimationFrame(animateRoom); 
+
+
+// 🔄 實時指南針：讓旋鈕指針永遠精準指向相機看出去的方向
+    const knobDial = document.getElementById('knob-dial');
+    if (knobDial && camera && controls) {
+        const dx = controls.target.x - camera.position.x;
+        const dz = controls.target.z - camera.position.z;
+        // 計算相機的方位角 (North = 0度, East = 90度)
+        const angleDeg = Math.atan2(dx, -dz) * (180 / Math.PI);
+        knobDial.style.transform = `rotate(${angleDeg}deg)`;
+    }
+
+       
     if(controls) controls.update();
     
     // 1. 車輛邏輯：擴大行駛邊界到 180，讓車可以開上大橋再消失
@@ -5345,25 +5354,25 @@ function acceptBankruptcy() {
 
 
 // 👇 新增：移動端 360 度視角旋鈕核心邏輯 👇
+// 👇 移動端 360 度實時視角旋鈕與攝影機控制 👇
 (function initCameraKnob() {
-    const knob = document.getElementById('knob-dial');
-    const label = document.getElementById('knob-label');
+    const knob = document.getElementById('mobile-cam-knob');
     if(!knob) return;
  
-    // 定義 8 個室內安全視角 (確保不會穿出牆外)
+    // 重新校準的 8 個絕佳室內視角
     const camPresets = [
-        { angle: 0,   name: "南 (書桌)", cp: {x:0, y:26, z:48}, ct: {x:0, y:7, z:0} },
-        { angle: 45,  name: "西南 (露台)", cp: {x:15, y:24, z:35}, ct: {x:-30, y:10, z:0} },
-        { angle: 90,  name: "西 (畫作)", cp: {x:25, y:22, z:21}, ct: {x:-30, y:15, z:21} },
-        { angle: 135, name: "西北 (衣架)", cp: {x:15, y:24, z:5}, ct: {x:-30, y:10, z:40} },
-        { angle: 180, name: "北 (書櫃)", cp: {x:0, y:24, z:-5}, ct: {x:0, y:15, z:50} },
-        { angle: 225, name: "東北 (角落)", cp: {x:-15, y:24, z:5}, ct: {x:25, y:15, z:45} },
-        { angle: 270, name: "東 (時鐘)", cp: {x:-25, y:22, z:21}, ct: {x:35, y:15, z:21} },
-        { angle: 315, name: "東南 (鋼琴)", cp: {x:-15, y:24, z:35}, ct: {x:35, y:10, z:10} }
+        { angle: 0,   cp: {x:0, y:26, z:35}, ct: {x:0, y:7, z:0} },     // 北 (正看窗戶與書桌)
+        { angle: 45,  cp: {x:-20, y:22, z:35}, ct: {x:40, y:10, z:10} },// 東北 (看鋼琴與時鐘)
+        { angle: 90,  cp: {x:-25, y:22, z:20}, ct: {x:40, y:15, z:20} },// 東 (正看趟門與鋼琴側)
+        { angle: 135, cp: {x:-20, y:24, z:0}, ct: {x:30, y:15, z:45} }, // 東南 (看右側書櫃)
+        { angle: 180, cp: {x:0, y:24, z:-10}, ct: {x:0, y:15, z:45} },  // 南 (正看滿版書櫃)
+        { angle: 225, cp: {x:20, y:24, z:0}, ct: {x:-30, y:10, z:45} }, // 西南 (看掛衣架與雨傘)
+        { angle: 270, cp: {x:25, y:22, z:20}, ct: {x:-40, y:15, z:20} },// 西 (正看畫作牆面)
+        { angle: 315, cp: {x:20, y:22, z:35}, ct: {x:-40, y:10, z:10} } // 西北 (看左側露台外景)
     ];
  
     let isKnobDragging = false;
-    let currentAngle = 0;
+    let currentSnappedAngle = -1;
  
     function handleKnobMove(e) {
         if(!isKnobDragging || isAtBalcony) return;
@@ -5373,32 +5382,28 @@ function acceptBankruptcy() {
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
  
-        // 計算角度 (上方為 0 度，順時針增加)
+        // 計算拖曳手勢的角度
         let rad = Math.atan2(clientY - centerY, clientX - centerX);
         let deg = (rad * 180 / Math.PI) + 90;
         if(deg < 0) deg += 360;
  
-        // 磁吸效果：吸附到最近的 45 度角
+        // 磁吸至最近的 45 度角
         let snappedDeg = Math.round(deg / 45) * 45;
         if(snappedDeg === 360) snappedDeg = 0;
  
-        if (currentAngle !== snappedDeg) {
-            currentAngle = snappedDeg;
-            knob.style.transform = `rotate(${currentAngle}deg)`;
-            
-            const preset = camPresets.find(p => p.angle === currentAngle);
+        // 如果角度改變了，觸發相機平滑轉場
+        if (currentSnappedAngle !== snappedDeg) {
+            currentSnappedAngle = snappedDeg;
+            const preset = camPresets.find(p => p.angle === snappedDeg);
             if (preset) {
-                label.innerText = preset.name;
-                
-                // 暫時解鎖 OrbitControls 的限制，允許我們將鏡頭轉向後方
+                // 暫時解鎖保護限制，讓鏡頭能360度環繞
                 if (controls) {
                     controls.minAzimuthAngle = -Infinity;
                     controls.maxAzimuthAngle = Infinity;
                     controls.minPolarAngle = 0;
-                    controls.maxDistance = 100;
                 }
- 
-                // 使用 GSAP 平滑過渡視角
+                
+                // 動畫過程中，第三步加的 animateRoom 邏輯會自動讓指針跟著平滑旋轉！
                 gsap.to(camera.position, { x: preset.cp.x, y: preset.cp.y, z: preset.cp.z, duration: 1.2, ease: "power2.inOut" });
                 gsap.to(controls.target, {
                     x: preset.ct.x, y: preset.ct.y, z: preset.ct.z,
@@ -5410,13 +5415,12 @@ function acceptBankruptcy() {
     }
  
     knob.addEventListener('mousedown', (e) => { isKnobDragging = true; handleKnobMove(e); });
-    knob.addEventListener('touchstart', (e) => { isKnobDragging = true; handleKnobMove(e); });
+    knob.addEventListener('touchstart', (e) => { isKnobDragging = true; handleKnobMove(e); }, {passive: false});
     window.addEventListener('mousemove', handleKnobMove);
-    window.addEventListener('touchmove', handleKnobMove, {passive: false});
-    window.addEventListener('mouseup', () => isKnobDragging = false);
-    window.addEventListener('touchend', () => isKnobDragging = false);
+    window.addEventListener('touchmove', (e) => { if(isKnobDragging) e.preventDefault(); handleKnobMove(e); }, {passive: false});
+    window.addEventListener('mouseup', () => { isKnobDragging = false; currentSnappedAngle = -1; });
+    window.addEventListener('touchend', () => { isKnobDragging = false; currentSnappedAngle = -1; });
 })();
-// 👆 新增結束 👆
 
         
         
