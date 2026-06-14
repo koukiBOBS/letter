@@ -407,6 +407,29 @@
 .stamp-pending { color: #548ca8; border-color: #548ca8; background: rgba(84, 140, 168, 0.1); }
 
 .calendar-legend { display: flex; gap: 15px; justify-content: center; margin-top: 20px; flex-wrap: wrap; font-size: 0.85rem; color: var(--text-muted); }
+
+/* --- 鋼琴功能介面樣式 --- */
+        #piano-overlay { position: fixed; inset: 0; background: rgba(10, 8, 5, 0.95); z-index: 100000; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); touch-action: none; }
+        .piano-close { position: absolute; top: 20px; right: 30px; color: #dcd5c9; font-size: 3rem; cursor: pointer; background: transparent; border: none; transition: 0.3s; font-family: sans-serif; }
+        .piano-close:hover { color: #fff; transform: scale(1.1); }
+        .piano-wrapper { background: #1a110a; padding: 30px 15px 15px 15px; border-radius: 12px; border-top: 15px solid #0d0805; box-shadow: 0 20px 50px rgba(0,0,0,0.8); position: relative; }
+        .piano-brand { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); color: #d4af37; font-family: var(--font-serif); font-size: 0.8rem; letter-spacing: 3px; }
+        #piano-keyboard { display: flex; position: relative; height: 50vh; max-height: 350px; }
+        
+        .key-white { width: 5.5vw; max-width: 60px; min-width: 40px; height: 100%; background: linear-gradient(to bottom, #ffffff 0%, #f0f0f0 100%); border: 1px solid #ccc; border-top: none; border-radius: 0 0 6px 6px; cursor: pointer; position: relative; box-shadow: inset 0 -4px 5px rgba(0,0,0,0.1), 2px 2px 5px rgba(0,0,0,0.2); }
+        .key-white.active { background: #e0e0e0; transform: translateY(2px); box-shadow: inset 0 -2px 2px rgba(0,0,0,0.1); }
+        .key-black { width: 3vw; max-width: 32px; min-width: 22px; height: 60%; background: linear-gradient(to bottom, #222 0%, #000 100%); border-radius: 0 0 4px 4px; position: absolute; cursor: pointer; z-index: 2; transform: translateX(-50%); box-shadow: inset 0 -3px 4px rgba(255,255,255,0.2), 2px 2px 5px rgba(0,0,0,0.5); }
+        .key-black.active { background: #000; height: 59%; box-shadow: none; }
+        
+        #landscape-prompt { display: none; color: #dcd5c9; font-size: 1.5rem; text-align: center; padding: 40px; font-family: var(--font-serif); line-height: 1.5; }
+        
+        /* 響應式：手機直立時隱藏琴鍵，提示旋轉螢幕 */
+        @media (max-width: 900px) and (orientation: portrait) {
+            .piano-wrapper { display: none !important; }
+            #landscape-prompt { display: block !important; }
+        }
+
+
         
     </style>
 </head>
@@ -431,6 +454,28 @@
         <button class="dev-btn" onclick="devDisableHandwriting()">一鍵解鎖純手寫限制</button>
     </div>
 
+
+<!-- 鋼琴全螢幕介面 -->
+    <div id="piano-overlay">
+        <button class="piano-close" onclick="closePianoUI()">×</button>
+        <div id="landscape-prompt">
+            <svg viewBox="0 0 24 24" width="60" height="60" stroke="currentColor" stroke-width="1.5" fill="none" style="margin-bottom:20px;">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                <path d="M12 18h.01"></path>
+                <path d="M16 4h-8"></path>
+            </svg>
+            <br>請將手機轉為橫向<br><span style="font-size:1rem; color:#8b7355;">以獲得完整的彈奏體驗</span>
+        </div>
+        <div class="piano-wrapper">
+            <div class="piano-brand">CLASSIC</div>
+            <div id="piano-keyboard">
+                <!-- 琴鍵將由 JavaScript 動態生成 -->
+            </div>
+        </div>
+    </div>
+
+
+    
     <!-- Auth -->
     <div id="auth-overlay">
         <div id="canvas-container"></div>
@@ -2598,7 +2643,64 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
 
 
 
+// ==========================================
+    // 🎹 建造典雅直立式鋼琴與琴椅
+    // ==========================================
+    const pianoGrp = new THREE.Group();
+    const pianoGlossy = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.1, metalness: 0.3 }); 
+    const pianoMatte = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 }); 
+    const brassMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.2 }); 
 
+    // 主體與底座
+    const lowerBody = new THREE.Mesh(new THREE.BoxGeometry(16, 7, 3), pianoGlossy);
+    lowerBody.position.set(0, 3.5, -1.5); lowerBody.castShadow = true; pianoGrp.add(lowerBody);
+    const keyBed = new THREE.Mesh(new THREE.BoxGeometry(16.4, 0.8, 6), pianoGlossy);
+    keyBed.position.set(0, 7.4, 0); keyBed.castShadow = true; pianoGrp.add(keyBed);
+    
+    // 左右支柱與踏板
+    const pLegL = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.2, 7.4, 16), pianoGlossy); pLegL.position.set(-7.5, 3.7, 2.5); pLegL.castShadow=true; pianoGrp.add(pLegL);
+    const pLegR = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.2, 7.4, 16), pianoGlossy); pLegR.position.set(7.5, 3.7, 2.5); pLegR.castShadow=true; pianoGrp.add(pLegR);
+    const pedalBox = new THREE.Mesh(new THREE.BoxGeometry(4, 0.8, 1), pianoGlossy); pedalBox.position.set(0, 0.4, -0.5); pianoGrp.add(pedalBox);
+    for(let i = -1; i <= 1; i++) { const pdl = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1), brassMat); pdl.rotation.x = Math.PI/2; pdl.position.set(i*1.0, 0.4, 0.5); pianoGrp.add(pdl); }
+
+    // 上半部與半開琴蓋
+    const upperBody = new THREE.Mesh(new THREE.BoxGeometry(16, 7, 3.5), pianoGlossy); upperBody.position.set(0, 11.3, -1.25); upperBody.castShadow=true; pianoGrp.add(upperBody);
+    const topLid = new THREE.Mesh(new THREE.BoxGeometry(16.4, 0.5, 4), pianoGlossy); topLid.position.set(0, 14.8, -1.0); topLid.castShadow=true; pianoGrp.add(topLid);
+    const fallboard = new THREE.Mesh(new THREE.BoxGeometry(15.2, 2.5, 0.3), pianoGlossy); fallboard.position.set(0, 8.8, -0.5); fallboard.rotation.x = -0.2; pianoGrp.add(fallboard);
+    
+    // 譜架
+    const stand = new THREE.Mesh(new THREE.BoxGeometry(8, 2.5, 0.2), pianoGlossy); stand.position.set(0, 10.5, -0.2); stand.rotation.x = -0.2; pianoGrp.add(stand);
+    const sheet = new THREE.Mesh(new THREE.BoxGeometry(5, 2.2, 0.05), new THREE.MeshStandardMaterial({color:0xffffff})); sheet.position.set(0, 10.5, -0.05); sheet.rotation.x = -0.2; pianoGrp.add(sheet);
+
+    // 實體 3D 琴鍵
+    const keysGrp = new THREE.Group(); keysGrp.position.set(0, 7.8, 0.5); pianoGrp.add(keysGrp);
+    const wGeo = new THREE.BoxGeometry(0.26, 0.4, 2.2); const bGeo = new THREE.BoxGeometry(0.14, 0.45, 1.4);
+    const wMat = new THREE.MeshStandardMaterial({color: 0xffffff}); const startX = -(52 * 0.28)/2 + 0.14;
+    for(let i=0; i<52; i++) {
+        const wk = new THREE.Mesh(wGeo, wMat); wk.position.set(startX + i*0.28, 0, 0); keysGrp.add(wk);
+        const note = i % 7; 
+        if(note !== 2 && note !== 6 && i !== 51) { const bk = new THREE.Mesh(bGeo, pianoMatte); bk.position.set(startX + i*0.28 + 0.14, 0.2, -0.4); keysGrp.add(bk); }
+    }
+
+    // 琴椅
+    const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.add(benchGrp);
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(7, 0.8, 3), new THREE.MeshStandardMaterial({color: 0x3a1f11, roughness: 0.8})); seat.position.y = 4.5; seat.castShadow=true; benchGrp.add(seat);
+    [[-3, 2.25, -1], [3, 2.25, -1], [-3, 2.25, 1], [3, 2.25, 1]].forEach(pos => { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 4.5), pianoGlossy); l.position.set(...pos); l.castShadow=true; benchGrp.add(l); });
+
+    // 加入隱形 HitBox 以便點擊
+    const pianoHitBox = new THREE.Mesh(new THREE.BoxGeometry(20, 16, 12), new THREE.MeshBasicMaterial({visible: false}));
+    pianoHitBox.position.set(0, 8, 0);
+    pianoHitBox.userData = { type: 'piano' };
+    pianoGrp.add(pianoHitBox);
+    interactables.push(pianoHitBox); // 直接註冊到點擊陣列
+
+    // 放置於右邊牆壁
+    pianoGrp.position.set(58.5, 0, 22); 
+    pianoGrp.rotation.y = -Math.PI / 2;
+    scene.add(pianoGrp);
+
+
+    
 // === 建造 360 度環繞高空雲層 ===
     cloudGroup = new THREE.Group();
     cloudGroup.position.set(0, 0, 0); // 這次把雲層群組的中心點放在整個世界的中心
@@ -3353,7 +3455,10 @@ function onPointerUp(e) {
         // 👇 新增這三行，讓窗戶可以直接點擊
         } else if(type === 'window') {
             goToBalcony();
+       } else if(type === 'piano') {
+            openPianoUI();
         }
+        
     }
 }
 
@@ -3871,6 +3976,102 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
+
+        // ==========================================
+// 🎹 鋼琴音效引擎與介面邏輯
+// ==========================================
+let audioCtx;
+const pianoNotes = [
+    { note: 'C4', freq: 261.63, isBlack: false }, { note: 'C#4', freq: 277.18, isBlack: true },
+    { note: 'D4', freq: 293.66, isBlack: false }, { note: 'D#4', freq: 311.13, isBlack: true },
+    { note: 'E4', freq: 329.63, isBlack: false },
+    { note: 'F4', freq: 349.23, isBlack: false }, { note: 'F#4', freq: 369.99, isBlack: true },
+    { note: 'G4', freq: 392.00, isBlack: false }, { note: 'G#4', freq: 415.30, isBlack: true },
+    { note: 'A4', freq: 440.00, isBlack: false }, { note: 'A#4', freq: 466.16, isBlack: true },
+    { note: 'B4', freq: 493.88, isBlack: false },
+    { note: 'C5', freq: 523.25, isBlack: false }, { note: 'C#5', freq: 554.37, isBlack: true },
+    { note: 'D5', freq: 587.33, isBlack: false }, { note: 'D#5', freq: 622.25, isBlack: true },
+    { note: 'E5', freq: 659.25, isBlack: false },
+    { note: 'F5', freq: 698.46, isBlack: false }, { note: 'F#5', freq: 739.99, isBlack: true },
+    { note: 'G5', freq: 783.99, isBlack: false }, { note: 'G#5', freq: 830.61, isBlack: true },
+    { note: 'A5', freq: 880.00, isBlack: false }, { note: 'A#5', freq: 932.33, isBlack: true },
+    { note: 'B5', freq: 987.77, isBlack: false },
+    { note: 'C6', freq: 1046.50, isBlack: false }
+];
+
+function initPianoUI() {
+    const kb = document.getElementById('piano-keyboard');
+    kb.innerHTML = '';
+    let currentLeft = 0;
+    
+    pianoNotes.forEach(keyData => {
+        const keyEl = document.createElement('div');
+        if (keyData.isBlack) {
+            keyEl.className = 'key-black';
+            keyEl.style.left = `${currentLeft}px`;
+        } else {
+            keyEl.className = 'key-white';
+            // 每畫完一個白鍵，才推進 left 的計算位置供黑鍵使用
+            setTimeout(() => { currentLeft += keyEl.offsetWidth; }, 0); 
+        }
+        
+        // 綁定音效與視覺回饋 (支援多點觸控)
+        const triggerNote = (e) => {
+            e.preventDefault();
+            if(!keyEl.classList.contains('active')) {
+                keyEl.classList.add('active');
+                playSynthTone(keyData.freq);
+            }
+        };
+        const releaseNote = (e) => {
+            e.preventDefault();
+            keyEl.classList.remove('active');
+        };
+
+        keyEl.addEventListener('mousedown', triggerNote);
+        keyEl.addEventListener('touchstart', triggerNote);
+        keyEl.addEventListener('mouseup', releaseNote);
+        keyEl.addEventListener('mouseleave', releaseNote);
+        keyEl.addEventListener('touchend', releaseNote);
+        
+        kb.appendChild(keyEl);
+    });
+}
+
+function playSynthTone(freq) {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    
+    // 鋼琴的合成波形 (結合三角波與正弦波的柔和感)
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    
+    // ADSR 包絡線 (模擬鋼琴敲擊後衰減)
+    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.02); // Attack
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5); // Decay & Release
+    
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    osc.start();
+    osc.stop(audioCtx.currentTime + 1.5);
+}
+
+function openPianoUI() {
+    document.getElementById('piano-overlay').style.display = 'flex';
+    // 動態計算寬度並渲染琴鍵
+    initPianoUI();
+    // 給予渲染時間後再對齊一次黑鍵
+    setTimeout(initPianoUI, 100); 
+}
+
+function closePianoUI() {
+    document.getElementById('piano-overlay').style.display = 'none';
+}
 
 
         
