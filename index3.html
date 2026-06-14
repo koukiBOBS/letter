@@ -3582,14 +3582,6 @@ function setEnvironmentPhase(phaseStr) {
         
         function onWinResize() { if(!camera) return; camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
         
-      // --- 拖曳與點擊系統全域變數 ---
-        let pointerDownPos = { x: 0, y: 0 };
-     var dragTimer = null;
-var isDrawerAnimating = false;
-        let dragTarget = null;      // 正在拖曳的目標
-        let dragOffset = new THREE.Vector3(); // 滑鼠與物件中心的偏移量
-        // 建立一個代表桌面的隱形平面 (高度約為 y=8.5)
-        let deskPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -8.5); 
 
 
 
