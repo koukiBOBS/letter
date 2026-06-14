@@ -400,80 +400,59 @@
 
     <div id="modal-replies" class="room-modal fullscreen-modal"><div class="room-modal-content"><button class="room-modal-close" onclick="closeRoomModal(event, 'modal-replies')">×</button><h2 class="modal-title" style="color: var(--color-replies);">對我的回覆</h2><div class="list-container" id="replies-list"></div></div></div>
    <!-- 收件箱 (寄來的心得/探索) 包含雙頁籤 -->
-<!-- 收件箱 (寄來的心得/探索) 包含雙頁籤 -->
-<div id="modal-inbox" class="room-modal fullscreen-modal">
-    <div class="room-modal-content">
-        <button class="room-modal-close" onclick="closeRoomModal(event, 'modal-inbox')">×</button>
-        <h2 class="modal-title" style="color: var(--color-inbox);">寄來的信箋</h2>
-        
-        <!-- 頁籤按鈕 (恢復為原本的收件箱按鈕) -->
-        <div style="display:flex; justify-content:center; gap:20px; margin-bottom:40px; border-bottom:1px solid var(--border); padding-bottom:20px;">
-            <button id="tab-inbox-reading" class="tab-btn-custom active" onclick="switchInboxTab('reading')">📖 閱讀心得</button>
-            <button id="tab-inbox-random" class="tab-btn-custom" onclick="switchInboxTab('random')">📸 生活探索</button>
-        </div>
-        
-        <!-- 兩個不同的列表容器 -->
-        <div class="list-container" id="inbox-reading-list"></div>
-        <div class="list-container" id="inbox-random-list" style="display:none;"></div>
-    </div>
-</div>
-
-<!-- 我的任務板 (加入日曆) -->
-<div id="modal-tasks" class="room-modal fullscreen-modal">
-    <div class="room-modal-content">
-        <button class="room-modal-close" onclick="closeRoomModal(event, 'modal-tasks')">×</button>
-        
-        <!-- 任務板頁籤按鈕 (這裡才是正確加入日曆按鈕的地方) -->
-        <div style="display:flex; justify-content:center; gap:20px; margin-bottom:40px; border-bottom:1px solid var(--border); padding-bottom:20px;">
-            <button id="tab-btn-calendar" class="tab-btn-custom active" onclick="switchTaskTab('calendar')">📅 任務日曆</button>
-            <button id="tab-btn-reading" class="tab-btn-custom" onclick="switchTaskTab('reading')">📖 閱讀任務</button>
-            <button id="tab-btn-random" class="tab-btn-custom" onclick="switchTaskTab('random')">📸 生活隨機探索</button>
-        </div>
-        
-        <!-- 日曆區塊 -->
-        <div id="calendar-section">
-            <div class="calendar-wrapper">
-                <div class="calendar-header">
-                    <button onclick="changeCalMonth(-1)">&#8592;</button>
-                    <h3 id="calendar-month-year">2024年 5月</h3>
-                    <button onclick="changeCalMonth(1)">&#8594;</button>
-                </div>
-                <div class="calendar-grid">
-                    <div class="cal-day-name">日</div><div class="cal-day-name">一</div><div class="cal-day-name">二</div>
-                    <div class="cal-day-name">三</div><div class="cal-day-name">四</div><div class="cal-day-name">五</div><div class="cal-day-name">六</div>
-                </div>
-                <div class="calendar-grid" id="calendar-cells"></div>
+ <div id="modal-inbox" class="room-modal fullscreen-modal">
+        <div class="room-modal-content">
+            <button class="room-modal-close" onclick="closeRoomModal(event, 'modal-inbox')">×</button>
+            <h2 class="modal-title" style="color: var(--color-inbox);">寄來的信箋</h2>
+            
+            <div style="display:flex; justify-content:center; gap:20px; margin-bottom:40px; border-bottom:1px solid var(--border); padding-bottom:20px;">
+                <button id="tab-inbox-reading" class="tab-btn-custom active" onclick="switchInboxTab('reading')">📖 閱讀心得</button>
+                <button id="tab-inbox-random" class="tab-btn-custom" onclick="switchInboxTab('random')">📸 生活探索</button>
             </div>
-            <div class="calendar-legend">
-                <span class="task-stamp stamp-ontime">準時完成</span>
-                <span class="task-stamp stamp-late">補交完成</span>
-                <span class="task-stamp stamp-pending">尚未到期</span>
-                <span class="task-stamp stamp-overdue">逾期未交</span>
-            </div>
+            
+            <div class="list-container" id="inbox-reading-list"></div>
+            <div class="list-container" id="inbox-random-list" style="display:none;"></div>
         </div>
-        
-        <!-- 原本的閱讀任務區塊 (加入 style="display:none;" 預設隱藏，讓出空間給日曆) -->
-        <div id="reading-section" style="display: none;">
-        
-        <!-- 兩個不同的列表容器 -->
-        <div class="list-container" id="inbox-reading-list"></div>
-        <div class="list-container" id="inbox-random-list" style="display:none;"></div>
     </div>
-</div>
 
-    
-   <div id="modal-tasks" class="room-modal fullscreen-modal">
+    <!-- 我的任務板 (包含日曆、閱讀、探索) -->
+    <div id="modal-tasks" class="room-modal fullscreen-modal">
         <div class="room-modal-content">
             <button class="room-modal-close" onclick="closeRoomModal(event, 'modal-tasks')">×</button>
+            
+            <!-- 任務板頁籤按鈕 -->
             <div style="display:flex; justify-content:center; gap:20px; margin-bottom:40px; border-bottom:1px solid var(--border); padding-bottom:20px;">
-                <button id="tab-btn-reading" class="tab-btn-custom active" onclick="switchTaskTab('reading')">📖 閱讀任務</button>
+                <button id="tab-btn-calendar" class="tab-btn-custom active" onclick="switchTaskTab('calendar')">📅 任務日曆</button>
+                <button id="tab-btn-reading" class="tab-btn-custom" onclick="switchTaskTab('reading')">📖 閱讀任務</button>
                 <button id="tab-btn-random" class="tab-btn-custom" onclick="switchTaskTab('random')">📸 生活隨機探索</button>
             </div>
             
-            <div id="reading-section">
+            <!-- 1. 日曆區塊 -->
+            <div id="calendar-section">
+                <div class="calendar-wrapper">
+                    <div class="calendar-header">
+                        <button onclick="changeCalMonth(-1)">&#8592;</button>
+                        <h3 id="calendar-month-year">2024年 5月</h3>
+                        <button onclick="changeCalMonth(1)">&#8594;</button>
+                    </div>
+                    <div class="calendar-grid">
+                        <div class="cal-day-name">日</div><div class="cal-day-name">一</div><div class="cal-day-name">二</div>
+                        <div class="cal-day-name">三</div><div class="cal-day-name">四</div><div class="cal-day-name">五</div><div class="cal-day-name">六</div>
+                    </div>
+                    <div class="calendar-grid" id="calendar-cells"></div>
+                </div>
+                <div class="calendar-legend">
+                    <span class="task-stamp stamp-ontime">準時完成</span>
+                    <span class="task-stamp stamp-late">補交完成</span>
+                    <span class="task-stamp stamp-pending">尚未到期</span>
+                    <span class="task-stamp stamp-overdue">逾期未交</span>
+                </div>
+            </div>
+            
+            <!-- 2. 閱讀任務區塊 -->
+            <div id="reading-section" style="display: none;">
                 <div class="grid" id="task-grid"></div>
                 <div class="editor" id="write-editor" style="display: none; max-width: 900px; margin: 0 auto;">
-                    <!-- 這是你原本的閱讀任務編輯器表單，保留原本內容即可 -->
                     <h3 id="task-title" class="serif-text" style="margin-bottom: 30px; font-size: 1.5rem;">撰寫任務</h3>
                     <div class="field-group flex-row">
                         <div><label class="field-label">書籍名稱</label><input type="text" id="book-title" class="input-box" placeholder="請輸入書名"></div>
@@ -490,6 +469,7 @@
                 </div>
             </div>
 
+            <!-- 3. 隨機探索任務區塊 -->
             <div id="random-section" style="display: none;">
                 <div class="grid" id="random-task-grid"></div>
                 <div class="editor" id="random-editor" style="display: none; max-width: 900px; margin: 0 auto; background: #fdfaf6; border-color: #e6dfd1;">
@@ -508,17 +488,17 @@
                         <img id="random-image-preview" class="img-preview" src="">
                     </div>
                     
-                  <div class="field-group">
-    <label class="field-label" style="color: #6b4423;">📝 備註文字</label>
-    <textarea id="random-note" class="textarea" style="min-height:120px; background:#fff; border-color:#e6dfd1;" placeholder="寫下完成這個任務時的心情或感觸..."></textarea>
-</div>
+                    <div class="field-group">
+                        <label class="field-label" style="color: #6b4423;">📝 備註文字</label>
+                        <textarea id="random-note" class="textarea" style="min-height:120px; background:#fff; border-color:#e6dfd1;" placeholder="寫下完成這個任務時的心情或感觸..."></textarea>
+                    </div>
                     
                     <div style="text-align: right; margin-top: 30px;"><button id="btn-submit-random" class="btn" style="background: #8b7355;" onclick="submitRandomTask()">封裝完成任務</button></div>
                 </div>
             </div>
         </div>
     </div>
-
+    
     <!-- 抽籤 3D 動畫 Overlay -->
     <div id="draw-anim-overlay" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(20, 18, 16, 0.95); flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(10px);">
         <div id="draw-canvas-container" style="width:100%; height:60vh; position:relative;"></div>
