@@ -1015,22 +1015,13 @@ db.ref(`users/${currentUser.uid}`).on('value', snap => {
     document.getElementById('user-points-text').innerText = userPoints;
     
    // 👇 【修改】根據趟門維修狀態，同時限制左右與上下的旋轉角度
-      if (typeof controls !== 'undefined' && !isAtBalcony) {
-        controls.enablePan = false; // 關鍵：禁用滑鼠右鍵平移，防止用家把相機拖拽出房間外
-        
-        if (hasDoorPrivilege) {
-            // 趟門已修復：解除限制
-            controls.minAzimuthAngle = -Infinity;
-            controls.maxAzimuthAngle = Infinity;
-            controls.minPolarAngle = 0.1; 
-            controls.maxDistance = 59; // 解鎖後允許拉遠一點看風景
-        } else {
-            // 趟門未修復：嚴格限制在室內
-            controls.minAzimuthAngle = -Math.PI / 2;
-            controls.maxAzimuthAngle = Math.PI / 2;
-            controls.minPolarAngle = 1.15; // 角度加大至 65 度，徹底阻止相機升高越過天花板
-      
-        }
+     // 👇 【修改】無論趟門是否維修，只要人在室內，一律嚴格鎖死視角避免穿破房間
+    if (typeof controls !== 'undefined' && !isAtBalcony) {
+        controls.enablePan = false;            // 禁用滑鼠右鍵平移
+        controls.minAzimuthAngle = -Math.PI / 2; // 限制左旋轉 90 度
+        controls.maxAzimuthAngle = Math.PI / 2;  // 限制右旋轉 90 度
+        controls.minPolarAngle = 1.15;         // 限制抬頭角度，防止看到天花板破綻
+        controls.maxDistance = 59;             // 限制最大後退距離，防止穿透背後的牆
     }
     
     // 遍歷整個場景，隱藏未解鎖的實體模型
@@ -2027,30 +2018,33 @@ function returnToRoom() {
     if (!isAtBalcony) return;
     isAtBalcony = false;
 
-    // 👇 【修改】根據權限決定退回室內後的視角限制
-    if (hasDoorPrivilege) {
-        controls.minAzimuthAngle = -Infinity;
-        controls.maxAzimuthAngle = Infinity;
-    } else {
-        controls.minAzimuthAngle = -Math.PI / 2;
-        controls.maxAzimuthAngle = Math.PI / 2;
-    }
-    controls.minPolarAngle = 0;
+    // 退回室內時，立刻限制左右旋轉角度
+    controls.minAzimuthAngle = -Math.PI / 2;
+    controls.maxAzimuthAngle = Math.PI / 2;
+    controls.minPolarAngle = 0; // 動畫期間先暫時放寬抬頭限制，確保退回過程順滑
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
     // 退回室內的鏡頭動畫
     gsap.to(camera.position, { x: roomCameraBackup.cp.x, y: roomCameraBackup.cp.y, z: roomCameraBackup.cp.z, duration: 1.8, ease: "power2.inOut" });
-    gsap.to(controls.target, { x: roomCameraBackup.ct.x, y: roomCameraBackup.ct.y, z: roomCameraBackup.ct.z, duration: 1.8, ease: "power2.inOut", onUpdate: () => controls.update() });
     gsap.to(camera, { fov: 50, duration: 1.8, ease: "power2.inOut", onUpdate: () => camera.updateProjectionMatrix() });
+    gsap.to(controls.target, { 
+        x: roomCameraBackup.ct.x, y: roomCameraBackup.ct.y, z: roomCameraBackup.ct.z, 
+        duration: 1.8, 
+        ease: "power2.inOut", 
+        onUpdate: () => controls.update(),
+        onComplete: () => {
+            // 👇 動畫結束完全進入室內後，才重新鎖死抬頭角度
+            controls.minPolarAngle = 1.15; 
+        }
+    });
 
-    // 關門動畫 (加上 delay: 0.8，等鏡頭退回室內再拉上門)
+    // 關門動畫 (等鏡頭退回室內再拉上門)
     if (typeof glassDoorL !== 'undefined' && glassDoorL) {
         gsap.to(glassDoorL.position, { x: -7.3, duration: 1.3, delay: 0.8, ease: "power2.inOut" });
     }
 
     controls.minDistance = 10;
-    // 👇 【修改】退回室內時，最大距離恢復為 48 避免穿透書架
-    controls.maxDistance = 59; 
+    controls.maxDistance = 59; // 統一使用 45 確保不會穿透後方書櫃
     document.getElementById('btn-return-room').style.display = 'none';
 }
         
