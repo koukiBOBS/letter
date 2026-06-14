@@ -4592,16 +4592,16 @@ function showGachaAnim(itemId) {
         scene.traverse(child => { if (child.userData && child.userData.itemId === itemId) originalObj = child; });
         
         if (originalObj) {
-            // 【修復貓咪爆裂與雨傘變形】創建一個安全包裝盒，確保內部相對位置不變
+            // 創建一個安全包裝盒，確保內部相對位置不變
             const wrapper = new THREE.Group();
             const cloneObj = originalObj.clone();
             
-            const box = new THREE.Box3().setFromObject(originalObj); // 測量原始物件
+            const box = new THREE.Box3().setFromObject(originalObj); 
             const center = box.getCenter(new THREE.Vector3());
             const size = box.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z);
             
-            // 安全地將複製體居中，不破壞自身形狀
+            // 安全地將複製體居中
             cloneObj.position.set(-center.x, -center.y, -center.z);
             wrapper.add(cloneObj);
             gachaGroup.add(wrapper);
@@ -4624,27 +4624,20 @@ function showGachaAnim(itemId) {
         gachaCam.lookAt(0,0,0);
     }
 
-    // 播放動畫
+    // 移除所有縮放、位移與旋轉動畫，讓物品一出場就靜態完美呈現
+    gachaGroup.scale.set(1, 1, 1);
+    gachaGroup.position.set(0, 0, 0);
+    gachaGroup.rotation.set(0, 0, 0);
+
+    // 只保留閃光燈效和文字的淡入
     gsap.fromTo('#gacha-flash', {opacity: 1}, {opacity: 0, duration: 1.5, ease: "power2.out"});
-    gachaGroup.scale.set(0.1, 0.1, 0.1);
-    gachaGroup.position.y = -5;
-    gsap.to(gachaGroup.scale, {x: 1, y: 1, z: 1, duration: 1.2, ease: "back.out(1.2)"});
-    gsap.to(gachaGroup.position, {y: 0, duration: 1.2, ease: "back.out(1.2)"});
-    
-    // 只讓非壁掛或非地墊的物品旋轉，地氈和書櫃旋轉會很怪
-    if (!itemId.includes('bookcase') && !itemId.includes('painting') && itemId !== 'carpet') {
-        gsap.to(gachaGroup.rotation, {y: Math.PI * 2, duration: 5, repeat: -1, ease: "linear"});
-    } else {
-        gachaGroup.rotation.y = 0; // 壁掛物保持正面
-    }
     
     document.getElementById('gacha-item-name').innerText = item.name;
     document.getElementById('gacha-item-desc').innerText = item.desc;
-    setTimeout(() => { gsap.to('#gacha-result-ui', {opacity: 1, y: 0, duration: 0.8}); }, 1000);
+    setTimeout(() => { gsap.to('#gacha-result-ui', {opacity: 1, y: 0, duration: 0.8}); }, 500); // 加快文字顯示
     
     animateGacha();
 }
-
         
 function animateGacha() {
     if (document.getElementById('gacha-overlay').style.display !== 'none') {
