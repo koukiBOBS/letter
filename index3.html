@@ -2466,18 +2466,19 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
             if (h >= 5 && h < 9) setEnvironmentPhase('dawn'); else if (h >= 9 && h < 16) setEnvironmentPhase('noon'); else if (h >= 16 && h < 19) setEnvironmentPhase('dusk'); else setEnvironmentPhase('night');
         }
         
- function setEnvironmentPhase(phaseStr) {
+// --- 修訂：降低早中窗外過曝感，並設定黃昏開窗簾時不開燈 ---
+function setEnvironmentPhase(phaseStr) {
     const envPhases = {
-        // 晨：陽光從右側（東）低角度照射，拉長影子
-        dawn: { skyTop: 0x8a9ba8, skyBot: 0xe8d0c0, fog: 0xe8d0c0, dir: 0xffe4cc, int: 0.7, windowLight: false, shadow: true, ceilingOn: false, lightPos: {x: 45, y: 15, z: -50} },
+        // 晨：降低天空底部與霧氣亮度，避免窗外白茫茫過曝
+        dawn: { skyTop: 0x7a8b98, skyBot: 0xd0b8a8, fog: 0xd0b8a8, dir: 0xffe4cc, int: 0.65, windowLight: false, shadow: true, ceilingOn: false, lightPos: {x: 45, y: 15, z: -50} },
         
-        // 午：陽光跟隨早晨的方向（從右方打入），但高度提高，讓影子變短、變斜
-        noon: { skyTop: 0x4aaee6, skyBot: 0xddf3ff, fog: 0xddf3ff, dir: 0xffffff, int: 1.1, windowLight: false, shadow: true, ceilingOn: false, lightPos: {x: 35, y: 28, z: -45} }, 
+        // 午：將原本偏白的天空底部加深為蔚藍色，微微調降太陽光直射強度
+        noon: { skyTop: 0x40a0d0, skyBot: 0xbae0ff, fog: 0xbae0ff, dir: 0xffffff, int: 0.95, windowLight: false, shadow: true, ceilingOn: false, lightPos: {x: 35, y: 28, z: -45} }, 
         
-        // 暮：陽光從左側（西）低角度斜射，帶著暖橘色
-        dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, dir: 0xffaa66, int: 0.8, windowLight: true, shadow: true, ceilingOn: true, lightPos: {x: -45, y: 12, z: -50} }, 
+        // 暮：【關鍵修改】ceilingOn 改為 false。打開窗簾時不開燈，享受純粹夕陽
+        dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, dir: 0xffaa66, int: 0.8, windowLight: true, shadow: true, ceilingOn: false, lightPos: {x: -45, y: 12, z: -50} }, 
         
-        // 夜：微弱偏藍的月光
+        // 夜：微弱偏藍的月光，夜晚必須強制開燈
         night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x1a2235, dir: 0x404055, int: 0.1, windowLight: true, shadow: false, ceilingOn: true, lightPos: {x: -20, y: 30, z: -40} }
     };
     currentEnvParams = envPhases[phaseStr];
