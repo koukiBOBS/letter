@@ -1895,12 +1895,13 @@ function createHKVehicle(type, direction) {
         addWheels(2.6, 0.5, 2.2); addWheels(2.6, 0.5, -2.2);
         addLights(2.6, 1.0, direction > 0 ? 3.76 : -3.76, direction > 0 ? -3.76 : 3.76);
     } 
-    else if(type === 'bus') { // 雙層巴士
+   else if(type === 'bus') { // 雙層巴士
         const busColors = [0xddb822, 0xeeeeee, 0xcc2222]; // 九巴黃/城巴白/龍運紅
         const bodyMat = new THREE.MeshStandardMaterial({color: busColors[Math.floor(Math.random()*busColors.length)]});
         addBox(3.2, 4.8, 12, bodyMat, 2.8, 0); // 龐大車身
-        addBox(3.3, 1.2, 11.8, glassMat, 2.0, 0); // 下層窗
-        addBox(3.3, 1.2, 11.8, glassMat, 4.2, 0); // 上層窗
+        // 將玻璃深度(長度)從 11.8 加長到 12.1，讓它前後都凸出車身(12)一點點，形成前後車窗
+        addBox(3.3, 1.2, 12.1, glassMat, 2.0, 0); // 下層環繞窗
+        addBox(3.3, 1.2, 12.1, glassMat, 4.2, 0); // 上層環繞窗
         addWheels(3.2, 0.6, 3.5); addWheels(3.2, 0.6, -3.5); addWheels(3.2, 0.6, -4.8); // 三軸
         addLights(3.2, 1.2, direction > 0 ? 6.01 : -6.01, direction > 0 ? -6.01 : 6.01);
     }
