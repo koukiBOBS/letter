@@ -2498,14 +2498,37 @@ function onPointerUp(e) {
     }
 }
 
-        function performWateringAnimation() {
+       function performWateringAnimation() {
             if (!userPlantData) { document.getElementById('modal-plant-selector').style.display = 'flex'; return; }
             if (userPlantData.isDead) return showToast("🥀 植物已經枯萎，無法再澆水了...");
             let today = new Date().toDateString(); let lastW = new Date(userPlantData.lastWatered).toDateString();
             if (today === lastW) return showToast("💧 已經澆過水了，明天再來吧！");
 
-            const startPos = {x: -11, y: 8.5, z: -3}; const waterPos = {x: -2.0, y: 12.5, z: -3}; 
-            
+            // 1. 動態抓取水壺「現在」的位置 (如果玩家有拖曳過水壺，它就能回到拖曳後的地方，而不是預設起點)
+            const startPos = { 
+                x: wateringCan.position.x, 
+                y: wateringCan.position.y, 
+                z: wateringCan.position.z 
+            }; 
+
+            // 2. 動態抓取植物「現在」的位置
+            let pX = 0, pY = 8.5, pZ = -3;
+            if (plantGroup) {
+                pX = plantGroup.position.x;
+                pY = plantGroup.position.y;
+                pZ = plantGroup.position.z;
+            }
+
+            // 3. 計算澆水壺要飛過去的目標位置 (盆栽目前的左上方)
+            const waterPos = { 
+                x: pX - 2.0, 
+                y: pY + 4.0, 
+                z: pZ 
+            }; 
+
+            // 4. 計算水滴落下的目標高度 (大約是盆栽泥土的位置)
+            const dropTargetY = pY + 0.5;
+
             gsap.timeline().to(wateringCan.position, {x: waterPos.x, y: waterPos.y, z: waterPos.z, duration: 0.8, ease: "power2.out"})
                 .to(wateringCan.rotation, {z: -Math.PI/4, duration: 0.4}) 
                 .call(() => {
@@ -2513,15 +2536,26 @@ function onPointerUp(e) {
                     let waterInterval = setInterval(() => {
                         if (dropCount++ > 15) { clearInterval(waterInterval); return; }
                         dummySpoutTip.getWorldPosition(targetPos);
-                        const p = new THREE.Mesh(new THREE.SphereGeometry(0.12), new THREE.MeshBasicMaterial({color:0x66ccff, transparent:true, opacity:0.8})); p.position.copy(targetPos); scene.add(p);
-                        gsap.to(p.position, { x: targetPos.x + (Math.random()-0.5)*0.2, y: 9.0, z: targetPos.z + (Math.random()-0.5)*0.2, duration: 0.4, ease: "power1.in", onComplete: () => scene.remove(p) });
+                        const p = new THREE.Mesh(new THREE.SphereGeometry(0.12), new THREE.MeshBasicMaterial({color:0x66ccff, transparent:true, opacity:0.8})); 
+                        p.position.copy(targetPos); 
+                        scene.add(p);
+                        
+                        // 讓水滴準確掉落在植物目前的位置與高度
+                        gsap.to(p.position, { 
+                            x: targetPos.x + (Math.random()-0.5)*0.2, 
+                            y: dropTargetY, 
+                            z: targetPos.z + (Math.random()-0.5)*0.2, 
+                            duration: 0.4, 
+                            ease: "power1.in", 
+                            onComplete: () => scene.remove(p) 
+                        });
                     }, 50);
                     let pData = Object.assign({}, userPlantData);
                     if (pData.wilt > 0) pData.wilt -= 1; else if (pData.growth < 100) pData.growth += 1;
                     pData.lastWatered = Date.now(); pData.daysAccompanied = Math.floor((Date.now() - pData.plantedAt) / 86400000); db.ref(`users/${currentUser.uid}/plant`).update(pData); showToast("💧 澆水完成！植物正茁壯成長。");
-                }).to(wateringCan.rotation, {z: 0, duration: 0.4, delay: 0.8}).to(wateringCan.position, {x: startPos.x, y: startPos.y, z: startPos.z, duration: 0.8});
+                }).to(wateringCan.rotation, {z: 0, duration: 0.4, delay: 0.8})
+                .to(wateringCan.position, {x: startPos.x, y: startPos.y, z: startPos.z, duration: 0.8});
         }
-
     // 🐾 設定貓咪狀態的函數
        function setCatState(newState) {
     catState = newState;
