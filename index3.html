@@ -4568,7 +4568,7 @@ function showGachaAnim(itemId) {
         
         gachaRen = new THREE.WebGLRenderer({ alpha: true, antialias: true });
         gachaRen.setSize(window.innerWidth, window.innerHeight * 0.6);
-        gachaRen.outputEncoding = THREE.sRGBEncoding; 
+        gachaRen.outputEncoding = THREE.sRGBEncoding; // 修復色調古怪問題
         document.getElementById('gacha-canvas-container').appendChild(gachaRen.domElement);
         
         gachaGroup = new THREE.Group();
@@ -4578,11 +4578,14 @@ function showGachaAnim(itemId) {
     gachaScene.children = gachaScene.children.filter(c => c === gachaGroup);
     gachaGroup.clear();
     
-    // 【關鍵修復】放棄複製房間的黑夜光源！改用專屬的「攝影棚明亮燈光」，確保物品 100% 清晰可見
-    gachaScene.add(new THREE.AmbientLight(0xffffff, 0.8)); // 明亮的基礎環境光
-    const dirLight = new THREE.DirectionalLight(0xfff5e6, 1.2); // 微微暖色的主光源
-    dirLight.position.set(10, 20, 15);
-    gachaScene.add(dirLight);
+    // 複製真實房間的光源，確保色彩一模一樣
+    if (typeof hemiLight !== 'undefined') gachaScene.add(hemiLight.clone());
+    if (typeof ceilingLight !== 'undefined') gachaScene.add(ceilingLight.clone());
+    if (typeof dirLight !== 'undefined') {
+        const dlClone = dirLight.clone();
+        gachaScene.add(dlClone);
+        gachaScene.add(dlClone.target);
+    }
     
     if (item.type === 'model') {
         let originalObj = null;
@@ -4603,7 +4606,7 @@ function showGachaAnim(itemId) {
             wrapper.add(cloneObj);
             gachaGroup.add(wrapper);
             
-            // 智慧相機：根據物品真實大小拉遠相機
+            // 智慧相機：根據物品真實大小拉遠相機，不再粗暴縮小物品
             let dist = Math.max(maxDim * 1.5, 5);
             if (itemId === 'carpet') {
                 gachaCam.position.set(0, dist, 0.1); // 地氈由上方往下看
@@ -4621,17 +4624,17 @@ function showGachaAnim(itemId) {
         gachaCam.lookAt(0,0,0);
     }
 
-    // 物品完全靜態、置中、不旋轉
+    // 移除所有縮放、位移與旋轉動畫，讓物品一出場就靜態完美呈現
     gachaGroup.scale.set(1, 1, 1);
     gachaGroup.position.set(0, 0, 0);
     gachaGroup.rotation.set(0, 0, 0);
 
+    // 只保留閃光燈效和文字的淡入
     gsap.fromTo('#gacha-flash', {opacity: 1}, {opacity: 0, duration: 1.5, ease: "power2.out"});
     
     document.getElementById('gacha-item-name').innerText = item.name;
     document.getElementById('gacha-item-desc').innerText = item.desc;
-    // 加快文字淡入速度，避免等待
-    setTimeout(() => { gsap.to('#gacha-result-ui', {opacity: 1, y: 0, duration: 0.8}); }, 300); 
+    setTimeout(() => { gsap.to('#gacha-result-ui', {opacity: 1, y: 0, duration: 0.8}); }, 500); // 加快文字顯示
     
     animateGacha();
 }
