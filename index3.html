@@ -226,7 +226,7 @@
         .letter-img { max-width: 90%; max-height: 380px; object-fit: cover; background-color: #fff; padding: 12px 12px 40px 12px; border: 1px solid #e6e1d6; box-shadow: 0 8px 25px rgba(140, 120, 100, 0.15); display: block; border-radius: 4px; }
         .reply-sheet { padding: 50px 8%; margin-top: 20px; }
 
-        #hw-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 100000; display: none; flex-direction: column; overflow: hidden; pointer-events: auto;}
+      #hw-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 100000; display: none; flex-direction: column; overflow: hidden; pointer-events: auto;}
         #hw-overlay.active { display: flex; animation: fadeUpIn 0.3s cubic-bezier(0.2, 0, 0.2, 1) forwards; }
         @keyframes fadeUpIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .hw-letter-area { flex: 1; position: relative; background-color: var(--letter-paper); box-shadow: inset 0 0 40px rgba(180, 160, 130, 0.05); }
@@ -235,18 +235,20 @@
         .hw-loader { position: absolute; top: 20px; right: 20px; width: 20px; height: 20px; border: 3px solid rgba(160, 140, 120, 0.2); border-top-color: var(--color-tasks); border-radius: 50%; animation: spin 0.8s linear infinite; opacity: 0; transition: opacity 0.2s; z-index: 15;}
         .hw-loader.active { opacity: 1; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .hw-footer { background: #faf9f7; display: flex; flex-direction: column; z-index: 20; border-top: 1px solid #dcd5c9; box-shadow: 0 -4px 15px rgba(0,0,0,0.03);}
-        .hw-punctuations { display: flex; gap: 12px; padding: 15px 20px; overflow-x: auto; white-space: nowrap; align-items: center; border-bottom: 1px solid #ebe6df; background: #fdfcfb;}
+        
+        /* 以下為全新設計的 UI 樣式 */
+        .hw-footer { background: #fdfaf6; display: flex; flex-direction: column; z-index: 20; border-top: 1px dashed #dcd5c9; box-shadow: 0 -4px 20px rgba(160, 140, 120, 0.08); }
+        .hw-punctuations { display: flex; gap: 8px; padding: 15px 20px; overflow-x: auto; white-space: nowrap; align-items: center; border-bottom: 1px dashed #ebe6df; background: transparent; }
         .hw-punctuations::-webkit-scrollbar { height: 0px; background: transparent; }
-        .hw-punct-btn { background: #fff; border: 1px solid #e0e0e0; color: #444; font-family: var(--font-serif); font-size: 1.25rem; width: 45px; height: 45px; border-radius: 12px; cursor: pointer; box-shadow: 0 3px 8px rgba(0,0,0,0.03); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);}
-        .hw-punct-btn:hover { background: #fdfbf7; border-color: #c4b8aa; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.06); }
-        .hw-punct-btn:active { transform: translateY(1px); box-shadow: none; }
-        .hw-actions { display: flex; justify-content: center; align-items: center; padding: 12px 20px; background: #ebe6df; gap: 20px; }
-        .svg-btn { background: #fff; border: 1px solid #dcd5c9; border-radius: 14px; width: 55px; height: 50px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.05); color: #5a5042; transition: 0.2s;}
-        .svg-btn:hover { background: #f8f6f2; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+        .hw-punct-btn { background: transparent; border: 1px solid transparent; color: #5a5042; font-family: var(--font-serif); font-size: 1.4rem; width: 45px; height: 45px; border-radius: 8px; cursor: pointer; box-shadow: none; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.3s ease; }
+        .hw-punct-btn:hover { background: rgba(139, 115, 85, 0.08); border-color: rgba(139, 115, 85, 0.3); transform: translateY(-2px); }
+        .hw-punct-btn:active { transform: scale(0.95); }
+        .hw-actions { display: flex; justify-content: center; align-items: center; padding: 15px 20px; background: transparent; gap: 25px; }
+        .svg-btn { background: #fcfbf9; border: 1px solid #c4b8aa; border-radius: 50%; width: 55px; height: 55px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 10px rgba(139, 115, 85, 0.1); color: #8b7355; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .svg-btn:hover { background: #f0eadd; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(139, 115, 85, 0.15); }
         .svg-btn:active { transform: scale(0.95); }
-        .svg-btn.done { background: var(--color-tasks); color: white; width: 70px; border-color: transparent;}
-        .svg-btn.done:hover { background: #57785e; }
+        .svg-btn.done { background: #c25953; color: white; border-color: transparent; width: 55px; }
+        .svg-btn.done:hover { background: #a84742; box-shadow: 0 6px 15px rgba(194, 89, 83, 0.25); }
 
         #anim-overlay { position: fixed; inset: 0; background: rgba(250, 247, 242, 0.95); z-index: 100005; align-items: center; justify-content: center; perspective: 1200px; display: none;}
         .env-wrapper { position: relative; width: 340px; height: 230px; }
