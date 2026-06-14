@@ -437,16 +437,16 @@
                     </div>
                     
                     <div class="field-group upload-container" style="background: #fff; border-color:#e6dfd1;">
-                        <label class="field-label" style="color: #6b4423;">📸 上傳任務證明相片（必填）</label>
+                        <label class="field-label" style="color: #6b4423;">📸 上傳任務證明相片</label>
                         <label class="upload-btn" style="border-color:#dcd5c9;">點擊選擇圖片 <input type="file" id="random-image" accept="image/*" style="display:none;" onchange="handleFileSelect(event, 'random')"></label>
                         <span id="random-file-name-display" style="font-size: 0.95rem; color: #a48c76;">尚未選擇圖片</span>
                         <img id="random-image-preview" class="img-preview" src="">
                     </div>
                     
-                    <div class="field-group">
-                        <label class="field-label" style="color: #6b4423;">📝 備註文字（選填，可簡短說明）</label>
-                        <textarea id="random-note" class="textarea" style="min-height:120px; background:#fff; border-color:#e6dfd1;" placeholder="寫下完成這個任務時的心情或感觸..."></textarea>
-                    </div>
+                  <div class="field-group">
+    <label class="field-label" style="color: #6b4423;">📝 備註文字</label>
+    <textarea id="random-note" class="textarea" style="min-height:120px; background:#fff; border-color:#e6dfd1;" placeholder="寫下完成這個任務時的心情或感觸..."></textarea>
+</div>
                     
                     <div style="text-align: right; margin-top: 30px;"><button id="btn-submit-random" class="btn" style="background: #8b7355;" onclick="submitRandomTask()">封裝完成任務</button></div>
                 </div>
@@ -458,7 +458,7 @@
     <div id="draw-anim-overlay" style="display:none; position:fixed; inset:0; z-index:10000; background:rgba(20, 18, 16, 0.95); flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(10px);">
         <div id="draw-canvas-container" style="width:100%; height:60vh; position:relative;"></div>
         <div id="draw-result-text" style="opacity:0; transform:translateY(20px); text-align:center; color:#fff; font-family:var(--font-serif); margin-top:20px;">
-            <p style="font-size:1.2rem; color:#d4a373; margin-bottom:10px;">竹籤落地，緣分已定</p>
+          
             <h2 id="draw-result-h2" style="font-size:2.2rem; letter-spacing:2px; line-height:1.5;"></h2>
             <button class="btn" style="margin-top:40px; background:#d4a373; color:#fff; border:none; padding:12px 40px; font-size:1.1rem; border-radius:30px;" onclick="closeDrawAnim()">接受任務</button>
         </div>
@@ -1327,7 +1327,11 @@ function openRandomEditor() {
 
 async function submitRandomTask() {
     if (!selectedFileBase64) return alert("請務必上傳任務證明相片。");
+    
     const note = document.getElementById('random-note').value.trim();
+    // 📝 新增這行：檢查是否填寫了備註文字
+    if (!note) return alert("請務必填寫備註文字分享您的感觸。"); 
+    
     const btn = document.getElementById('btn-submit-random');
     btn.innerText = "相片上傳與封裝中..."; btn.disabled = true;
 
