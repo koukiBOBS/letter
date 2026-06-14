@@ -2578,79 +2578,85 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
 
  // 🎡 【精緻版】海濱摩天輪
     const fwContainer = new THREE.Group();
-    // 【位置修正】大幅向後退 (Z=-35)，確保完全在馬路與樹木的後方
     fwContainer.position.set(110, -5, -35); 
     sceneryGroup.add(fwContainer);
 
     // 1. 摩天輪底座廣場
     const fwBaseMat = new THREE.MeshStandardMaterial({color: 0xaaaaaa, roughness: 0.9});
     const fwPlaza = new THREE.Mesh(new THREE.BoxGeometry(70, 2, 40), fwBaseMat);
-    fwPlaza.position.y = 1; fwContainer.add(fwPlaza);
+    fwPlaza.position.y = 1; 
+    fwPlaza.receiveShadow = true; // 允許廣場接收陰影
+    fwContainer.add(fwPlaza);
 
-    // 2. A字型穩固支撐架 (取代原本那兩根奇怪的棍子)
+    // 2. A字型穩固支撐架
     const fwSupportMat = new THREE.MeshStandardMaterial({color: 0xdddddd, metalness: 0.6, roughness: 0.3});
     const supportPositions = [
-        {x: -18, z: 12, rotZ: -0.5, rotX: -0.3}, {x: 18, z: 12, rotZ: 0.5, rotX: -0.3}, // 前方兩腳
-        {x: -18, z: -12, rotZ: -0.5, rotX: 0.3}, {x: 18, z: -12, rotZ: 0.5, rotX: 0.3}  // 後方兩腳
+        {x: -18, z: 12, rotZ: -0.5, rotX: -0.3}, {x: 18, z: 12, rotZ: 0.5, rotX: -0.3},
+        {x: -18, z: -12, rotZ: -0.5, rotX: 0.3}, {x: 18, z: -12, rotZ: 0.5, rotX: 0.3}
     ];
     supportPositions.forEach(pos => {
         const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 38), fwSupportMat);
         leg.position.set(pos.x/2, 18, pos.z/2);
         leg.rotation.set(pos.rotX, 0, pos.rotZ);
+        leg.castShadow = true; // 支柱產生陰影
         fwContainer.add(leg);
     });
 
     // 3. 摩天輪旋轉主體
     ferrisWheelGrp = new THREE.Group();
-    ferrisWheelGrp.position.set(0, 32, 0); // 輪子中心點高度
+    ferrisWheelGrp.position.set(0, 32, 0); 
     fwContainer.add(ferrisWheelGrp);
 
-    // 中心軸 (Hub)
     const fwHub = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 6, 32), fwSupportMat);
-    fwHub.rotation.x = Math.PI / 2; ferrisWheelGrp.add(fwHub);
+    fwHub.rotation.x = Math.PI / 2; 
+    fwHub.castShadow = true; // 中心軸陰影
+    ferrisWheelGrp.add(fwHub);
 
-    // 外圈與內圈 (Rim)
     const fwOuterRim = new THREE.Mesh(new THREE.TorusGeometry(28, 0.4, 16, 64), fwSupportMat);
+    fwOuterRim.castShadow = true; // 外圈陰影
     ferrisWheelGrp.add(fwOuterRim);
+    
     const fwInnerRim = new THREE.Mesh(new THREE.TorusGeometry(22, 0.3, 16, 64), fwSupportMat);
+    fwInnerRim.castShadow = true; // 內圈陰影
     ferrisWheelGrp.add(fwInnerRim);
 
-    // 輻條 (Spokes - 交叉結構)
     for(let i=0; i<16; i++) {
         const spokeGrp = new THREE.Group();
         const spoke1 = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 28), fwSupportMat);
-        spoke1.position.y = 14; spokeGrp.add(spoke1);
+        spoke1.position.y = 14; 
+        spoke1.castShadow = true; // 輻條陰影
+        spokeGrp.add(spoke1);
         spokeGrp.rotation.z = (Math.PI * 2 / 16) * i;
         ferrisWheelGrp.add(spokeGrp);
     }
 
-    // 4. 製作 16 個獨立乘客車廂 (Cabins)
-    const cabinMat = new THREE.MeshStandardMaterial({color: 0x223344, metalness: 0.8, roughness: 0.2}); // 深色玻璃質感
-    const cabinRoofMat = new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.5}); // 白色車頂
+    // 4. 製作 16 個獨立乘客車廂
+    const cabinMat = new THREE.MeshStandardMaterial({color: 0x223344, metalness: 0.8, roughness: 0.2}); 
+    const cabinRoofMat = new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.5}); 
 
-    fwCabins = []; // 清空陣列
+    fwCabins = []; 
     for(let i=0; i<16; i++) {
-        // 每個車廂要有自己的 Group，方便保持垂直
         const cabinContainer = new THREE.Group();
-        
-        // 計算平均分佈在圓周上的位置 (半徑 28)
         const angle = (Math.PI * 2 / 16) * i;
         cabinContainer.position.set(Math.cos(angle) * 28, Math.sin(angle) * 28, 0);
 
-        // 懸掛軸
         const hanger = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.5), fwSupportMat);
-        hanger.position.y = -0.75; cabinContainer.add(hanger);
+        hanger.position.y = -0.75; 
+        hanger.castShadow = true; // 懸掛軸陰影
+        cabinContainer.add(hanger);
 
-        // 車廂主體
         const cabinBody = new THREE.Mesh(new THREE.BoxGeometry(2.5, 3.5, 2.5), cabinMat);
-        cabinBody.position.y = -2.5; cabinContainer.add(cabinBody);
+        cabinBody.position.y = -2.5; 
+        cabinBody.castShadow = true; // 車廂主體陰影
+        cabinContainer.add(cabinBody);
         
-        // 車頂
         const cabinRoof = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.4, 2.6), cabinRoofMat);
-        cabinRoof.position.y = -0.6; cabinContainer.add(cabinRoof);
+        cabinRoof.position.y = -0.6; 
+        cabinRoof.castShadow = true; // 車頂陰影
+        cabinContainer.add(cabinRoof);
 
         ferrisWheelGrp.add(cabinContainer);
-        fwCabins.push(cabinContainer); // 存入陣列，稍後動畫要用到
+        fwCabins.push(cabinContainer); 
     }
     // ==========================================
     // 以下完全保留你原本的設定 (大廈、山脈、房間底座)，
@@ -2835,9 +2841,12 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     balconyGrp.position.set(0, -0.1, -22); // 貼齊牆壁外部 (Z=-18外側)
     scene.add(balconyGrp);
 
-    // 露台木地板
-    const bFloor = new THREE.Mesh(new THREE.BoxGeometry(30, 0.8, 8), new THREE.MeshStandardMaterial({ color: 0x6e5c47, roughness: 0.9 }));
-    bFloor.position.y = -0.4; bFloor.receiveShadow = true; balconyGrp.add(bFloor);
+  // 露台木地板 (長寬稍微加大，製造自然邊緣突出，解決 Z-Fighting 閃爍)
+    const bFloor = new THREE.Mesh(new THREE.BoxGeometry(30.2, 0.8, 8.2), new THREE.MeshStandardMaterial({ color: 0x6e5c47, roughness: 0.9 }));
+    bFloor.position.set(0, -0.4, -0.1); // 微調位置
+    bFloor.receiveShadow = true; 
+    bFloor.castShadow = true; // 讓邊緣也能產生陰影
+    balconyGrp.add(bFloor);
 
     // 鐵藝欄杆
     const ironMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.8, roughness: 0.4 });
