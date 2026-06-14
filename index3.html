@@ -4587,59 +4587,74 @@ function showGachaAnim(itemId) {
         gachaScene.add(dlClone.target);
     }
     
-   if (item.type === 'model') {
+  // 👇 1. 【關鍵修復】校正相機比例，解決時鐘變成橢圓、畫作變形的問題！
+    gachaCam.aspect = window.innerWidth / (window.innerHeight * 0.6);
+    gachaCam.updateProjectionMatrix();
+
+    if (item.type === 'model') {
         let originalObj = null;
         scene.traverse(child => { if (child.userData && child.userData.itemId === itemId) originalObj = child; });
         
-      if (originalObj) {
+        if (originalObj) {
             const wrapper = new THREE.Group();
             const cloneObj = originalObj.clone();
             
-            // 1. 強制現形，但過濾掉透明的碰撞框(HitBox)，避免影響體積計算
+            // 2. 強制現形與過濾隱形點擊框
             cloneObj.traverse(node => { 
                 node.visible = true; 
                 if (node.material && node.material.visible === false) {
                     node.visible = false; 
                 }
             });
+
+            // 3. 【貓咪專屬】隱藏身體與四肢，只保留貓頭特寫
+            if (itemId === 'cat') {
+                cloneObj.traverse(child => {
+                    if (child.isSkinnedMesh) child.visible = false; // 隱藏四肢與尾巴
+                    if (child.isMesh && child.scale.z > 1.2) child.visible = false; // 隱藏橢圓形身體
+                });
+            }
             
-            // 2. 拔除原本在房間裡的座標與旋轉，把它當作全新的物件
+            // 4. 拔除原本在房間裡的座標與旋轉
             cloneObj.position.set(0, 0, 0);
             cloneObj.rotation.set(0, 0, 0);
             cloneObj.scale.set(1, 1, 1);
             
-            // 先加進 wrapper 確保它在座標系中
+            // 5. 【角度校正】針對特定物品還原「正面」
+            if (itemId === 'carpet') cloneObj.rotation.x = -Math.PI / 2; // 地氈平躺
+            if (itemId.includes('bookcase')) cloneObj.rotation.y = Math.PI; // 書櫃轉 180 度面向鏡頭
+            
             wrapper.add(cloneObj);
             
-            // 3. 重新計算它「歸零後」的真實體積與中心點
+            // 6. 重新計算真實體積與中心點
             const box = new THREE.Box3().setFromObject(wrapper); 
             const center = box.getCenter(new THREE.Vector3());
             const size = box.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z);
             
-            // 4. 將物件的中心點精準平移到正中央 (0,0,0)
+            // 7. 將物件精準置中
             cloneObj.position.x = -center.x;
             cloneObj.position.y = -center.y;
             cloneObj.position.z = -center.z;
             
             gachaGroup.add(wrapper);
             
-            // 5. 智慧相機：根據物品真實大小拉遠相機
+            // 8. 【智慧相機】根據物品特性給予最佳拍攝視角
             let dist = Math.max(maxDim * 1.5, 5);
+            
             if (itemId === 'carpet') {
-                gachaCam.position.set(0, dist, 0.1); 
+                gachaCam.position.set(0, dist, 0); // 地氈：由正上方往下拍
             } else if (itemId.includes('bookcase') || itemId.includes('painting') || itemId === 'clock' || itemId === 'rack') {
-                gachaCam.position.set(0, 0, dist); 
+                gachaCam.position.set(0, 0, dist); // 書櫃、畫作、時鐘、衣架：由正前方平視拍
+            } else if (itemId === 'umbrella') {
+                gachaCam.position.set(dist * 0.5, dist * 0.2, dist * 0.8); // 雨傘：放低視角，解決視覺穿模感
+            } else if (itemId === 'cat') {
+                gachaCam.position.set(0, 0, dist * 0.6); // 貓頭：拉近特寫
             } else {
-                gachaCam.position.set(dist * 0.6, dist * 0.4, dist); 
+                gachaCam.position.set(dist * 0.6, dist * 0.4, dist); // 其他立體物件：斜角俯拍
             }
             gachaCam.lookAt(0, 0, 0);
         }
-    } else {
-        const card = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 0.2), new THREE.MeshStandardMaterial({color: 0xd4af37, metalness: 0.8, roughness: 0.2}));
-        gachaGroup.add(card);
-        gachaCam.position.set(0, 0, 12);
-        gachaCam.lookAt(0,0,0);
     }
 
     // 移除所有縮放、位移與旋轉動畫，讓物品一出場就靜態完美呈現
