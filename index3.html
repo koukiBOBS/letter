@@ -487,6 +487,7 @@
         </div>
         <button class="dev-btn" onclick="addPointsAndGacha(1000, true)" style="background: #d4af37; color:#222; font-weight:bold;">測試：獲得1000分並抽獎</button>
 <button class="dev-btn" onclick="addPointsAndGacha(500, false)">測試：獲得500分(無抽獎)</button>
+        <button class="dev-btn" onclick="devResetAccount()" style="background: #ef4444; color:#fff; border:none;">測試：重置積分與道具歸零</button>
         <button class="dev-btn" onclick="devCancelWatering()">取消澆水狀態 (可再澆水)</button>
         <button class="dev-btn" onclick="devReselectPlant()">重新選擇植物</button>
         <button class="dev-btn" onclick="devAddGrowth()">加快生長 (10天份量)</button>
@@ -758,8 +759,21 @@
         </div>
     </div>
 
+
+
+    
     <!-- 3D 抽獎畫面 -->
     <div id="gacha-overlay">
+
+<!-- 抽獎前緩衝提示 -->
+    <div id="modal-gacha-buffer" class="room-modal">
+        <div class="room-modal-content" style="max-width: 400px; text-align: center; background: #fdfaf6; padding: 50px 30px;">
+            <h2 style="color: #d4af37; font-size: 2.2rem; margin-bottom: 20px; font-family: var(--font-serif);">🎉 任務完成</h2>
+            <p style="font-size: 1.1rem; color: #6b4423; margin-bottom: 40px; line-height: 1.6;">感謝您的用心分享！<br>為獎勵您的參與，您獲得了一次抽取房間道具的機會。</p>
+            <button class="btn" style="background: #d4af37; color: #fff; width: 100%; border:none; font-size: 1.2rem; padding: 15px;" id="btn-start-gacha">拆開驚喜</button>
+        </div>
+    </div>
+        
         <div class="gacha-light" id="gacha-flash"></div>
         <div id="gacha-canvas-container"></div>
         <div class="gacha-text" id="gacha-result-ui">
@@ -812,6 +826,18 @@
 
     <script>
 
+
+window.devResetAccount = function() {
+    if(confirm("確定要將積分歸零，並沒收所有收集到的道具嗎？")) {
+        db.ref(`users/${currentUser.uid}/points`).set(0);
+        db.ref(`users/${currentUser.uid}/inventory`).remove().then(() => {
+            alert("已重置，畫面將重新載入。");
+            window.location.reload();
+        });
+    }
+};
+
+        
 
 // 判斷是否為老師 Email ( @ccckyc.edu.hk 結尾，且 @ 之前沒有任何數字 )
 function isTeacherEmail(email) {
@@ -1343,27 +1369,29 @@ function renderTasks() {
 
 
 // 給予積分，如果是閱讀任務則額外進行抽獎
+// 給予積分，如果是閱讀任務則額外進行抽獎
 function addPointsAndGacha(points, triggerGachaAnim) {
     userPoints += points;
     db.ref(`users/${currentUser.uid}/points`).set(userPoints);
     showToast(`💰 獲得 ${points} 積分！當前積分：${userPoints}`);
     
     if (triggerGachaAnim) {
-        // 計算可抽池
-        let pool = Object.keys(ITEM_REGISTRY).filter(id => {
-            let item = ITEM_REGISTRY[id];
-            // 條件：玩家還沒擁有，且玩家總積分大於等於道具解鎖門檻
-            return !userInventory[id] && userPoints >= item.minPts;
-        });
+        let pool = Object.keys(ITEM_REGISTRY).filter(id => !userInventory[id] && userPoints >= ITEM_REGISTRY[id].minPts);
         
         if (pool.length > 0) {
-            // 隨機抽一個
             let wonId = pool[Math.floor(Math.random() * pool.length)];
             userInventory[wonId] = true;
             db.ref(`users/${currentUser.uid}/inventory/${wonId}`).set(true);
             
-            // 延遲一下等信件動畫結束再秀抽獎
-            setTimeout(() => { showGachaAnim(wonId); }, 1500);
+            // 延遲 1.5 秒等信封飛走後，顯示緩衝畫面
+            setTimeout(() => { 
+                document.getElementById('modal-gacha-buffer').style.display = 'flex';
+                // 綁定點擊按鈕後才進入 3D 抽獎
+                document.getElementById('btn-start-gacha').onclick = () => {
+                    document.getElementById('modal-gacha-buffer').style.display = 'none';
+                    showGachaAnim(wonId); 
+                };
+            }, 1500);
         } else {
             setTimeout(() => { showToast("🏆 恭喜！您已集齊目前階段的所有道具與權限！"); }, 1500);
         }
@@ -3409,6 +3437,14 @@ interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitB
     if(typeof catGrp !== 'undefined') catGrp.userData.itemId = 'cat';
     // 👆 【貼到這裡為止】 👆
 
+// 在 buildRoomEnvironment 結尾，將所有標記了 itemId 的道具預設隱藏
+    scene.traverse((obj) => {
+        if (obj.userData && obj.userData.itemId) {
+            obj.visible = false; 
+        }
+    });
+
+    
     
 }
         
@@ -4423,25 +4459,37 @@ function renderWalletGrid() {
         } else {
             // 實體道具拍 3D 快照
             if (!itemSnapshots[id]) {
-                const snapScene = new THREE.Scene();
-                snapScene.add(new THREE.AmbientLight(0xffffff, 1.0));
-                const dirL = new THREE.DirectionalLight(0xffffff, 0.8); dirL.position.set(5, 5, 5); snapScene.add(dirL);
+                // 1. 確保離線渲染器的色彩編碼與主畫面完全一致！這是質感的關鍵
+                offscreenRenderer.outputEncoding = THREE.sRGBEncoding;
+                offscreenRenderer.shadowMap.enabled = true;
                 
-                // 從主場景把該模型 clone 一份過來拍照
+                const snapScene = new THREE.Scene();
+                // 2. 複製主房間的溫暖光源設定
+                snapScene.add(new THREE.AmbientLight(0xaa9988, 1.2));
+                const dirL = new THREE.DirectionalLight(0xfff6ea, 1.0); 
+                dirL.position.set(5, 10, 5); 
+                snapScene.add(dirL);
+                
                 let cloneObj = null;
                 scene.traverse(child => { if (child.userData && child.userData.itemId === id) cloneObj = child.clone(); });
                 
                 if (cloneObj) {
-                    cloneObj.position.set(0,0,0);
-                    // 正規化大小與置中
+                    // 3. 完美取景演算法：讓物件精準置中並填滿鏡頭
                     const box = new THREE.Box3().setFromObject(cloneObj);
-                    const size = box.getSize(new THREE.Vector3());
                     const center = box.getCenter(new THREE.Vector3());
-                    cloneObj.position.sub(center); // 置中
-                    const maxDim = Math.max(size.x, size.y, size.z);
-                    cloneObj.scale.setScalar(8 / maxDim); // 縮放到適合相機的比例
+                    const sphere = box.getBoundingSphere(new THREE.Sphere());
                     
+                    cloneObj.position.sub(center); // 絕對置中
                     snapScene.add(cloneObj);
+                    
+                    // 利用三角函數計算相機應該退後多少，才能剛剛好拍下整個圓的半徑
+                    const fov = cam.fov * (Math.PI / 180);
+                    let distance = Math.abs(sphere.radius / Math.sin(fov / 2));
+                    
+                    // 調整拍攝角度，微微俯視會更好看
+                    cam.position.set(distance * 0.5, distance * 0.4, distance);
+                    cam.lookAt(0, 0, 0);
+                    
                     offscreenRenderer.render(snapScene, cam);
                     itemSnapshots[id] = offscreenRenderer.domElement.toDataURL("image/png");
                 }
