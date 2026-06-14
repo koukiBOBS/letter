@@ -2741,7 +2741,7 @@ function buildRoomEnvironment() {
             },
             undefined,
             (err) => { console.warn('畫作圖片載入失敗:', url); } // 若伺服器擋跨域，這裡會提示
-
+  ); // <--- 注意這裡，必須要有 ); 來結束 loader.load
 return frameGroup;
 
             
