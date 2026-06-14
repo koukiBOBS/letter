@@ -732,28 +732,46 @@ function renderTasks() {
             });
 
             // 2. 渲染隨機任務
-            const submittedRandomDates = randSubs.map(s => s.taskDate);
+           const submittedRandomDates = randSubs.map(s => s.taskDate);
             if (randomTasks.length === 0) randGrid.innerHTML = '<div class="empty-state"><p>目前尚未設定探索任務。</p></div>';
             randomTasks.forEach((dateStr, i) => {
-                const unlocked = new Date().setHours(0,0,0,0) >= new Date(dateStr).setHours(0,0,0,0);
+                // 📝 修改點 1：隨機任務只要派發就永遠解鎖 (true)
+                const unlocked = true; 
                 const done = submittedRandomDates.includes(dateStr);
                 
-                // 【新增】如果隨機任務已經開放（解鎖）但還沒完成，代表有待辦任務
-                if (unlocked && !done) {
+                // 📝 修改點 2：判斷是否已經逾期 (未交且今天大於截止日)
+                const isLate = !done && new Date().setHours(0,0,0,0) > new Date(dateStr).setHours(0,0,0,0);
+                
+                // 如果還沒完成，代表有待辦任務（不論是否逾期都能補交）
+                if (!done) {
                     hasPendingTasks = true;
                 }
 
-                const el = document.createElement('div'); el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
-                el.innerHTML = `<span class="task-num">第 ${i+1} 回探索</span><span class="task-date">${dateStr} 開放</span>`;
+                // 📝 修改點 3：移除 locked 的 css class，並根據是否逾期改變文字顏色
+                const el = document.createElement('div'); 
+                el.className = `task-card ${done ? 'completed' : ''}`;
+                
+                let dateTextHtml = `<span class="task-date">${dateStr} 截止</span>`;
+                if (isLate) {
+                    dateTextHtml = `<span class="task-date" style="color: #ef4444; font-weight: bold;">⚠️ 已逾期 (限期: ${dateStr})</span>`;
+                }
+
+                el.innerHTML = `<span class="task-num">第 ${i+1} 回探索</span>${dateTextHtml}`;
                 
                 // 顯示是否有抽過籤的提示
-                if (!done && unlocked && drawnTasksData[dateStr]) { el.innerHTML += `<div style="margin-top:10px; font-size:0.8rem; color:#8b7355; font-weight:600;">已抽籤，待繳交</div>`; }
+                if (!done && drawnTasksData[dateStr]) { 
+                    el.innerHTML += `<div style="margin-top:10px; font-size:0.8rem; color:#8b7355; font-weight:600;">已抽籤，待繳交</div>`; 
+                }
                 
                 el.onclick = () => {
-                    if(done) alert("此探索任務已完成並上傳！");
-                    else if(unlocked) handleRandomTaskClick(dateStr);
-                    else alert("時空未到，尚未開放。");
-                }; randGrid.appendChild(el);
+                    if(done) {
+                        alert("此探索任務已完成並上傳！");
+                    } else {
+                        // 📝 修改點 4：直接允許進入任務，不需再判斷時空未到
+                        handleRandomTaskClick(dateStr);
+                    }
+                }; 
+                randGrid.appendChild(el);
             });
 
             // 【新增】這就是 Promise 結束的地方！
