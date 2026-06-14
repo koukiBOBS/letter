@@ -502,7 +502,9 @@
 .knob-center {
     width: 44px; height: 44px; background: #fff; border-radius: 50%;
     box-shadow: inset 0 2px 5px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.1);
-    position: relative; /* 移除 transition，讓實時同步更跟手 */
+    position: relative;
+    /* 👇 加上這行平滑過渡，製造八段位的吸附手感 */
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .knob-indicator {
     position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
@@ -4507,15 +4509,15 @@ function isCatColliding(x, z) {
     requestAnimationFrame(animateRoom); 
 
 
-// 🔄 實時指南針：讓旋鈕指針永遠精準指向相機看出去的方向
-    const knobDial = document.getElementById('knob-dial');
-    if (knobDial && camera && controls) {
-        const dx = controls.target.x - camera.position.x;
-        const dz = controls.target.z - camera.position.z;
-        // 計算相機的方位角 (North = 0度, East = 90度)
-        const angleDeg = Math.atan2(dx, -dz) * (180 / Math.PI);
-        knobDial.style.transform = `rotate(${angleDeg}deg)`;
-    }
+// 尋找這段並修改 if 判斷式
+const knobDial = document.getElementById('knob-dial');
+// 👇 加上 && !window.isKnobDragging
+if (knobDial && camera && controls && !window.isKnobDragging) {
+    const dx = controls.target.x - camera.position.x;
+    const dz = controls.target.z - camera.position.z;
+    const angleDeg = Math.atan2(dx, -dz) * (180 / Math.PI);
+    knobDial.style.transform = `rotate(${angleDeg}deg)`;
+}
 
        
     if(controls) controls.update();
@@ -5371,57 +5373,58 @@ function acceptBankruptcy() {
         { angle: 315, cp: {x:20, y:22, z:35}, ct: {x:-40, y:10, z:10} } // 西北 (看左側露台外景)
     ];
  
-    let isKnobDragging = false;
-    let currentSnappedAngle = -1;
+   // 👇 改為全域變數，讓 animateRoom 可以讀取
+window.isKnobDragging = false;
+let currentSnappedAngle = -1;
  
-    function handleKnobMove(e) {
-        if(!isKnobDragging || isAtBalcony) return;
-        const rect = knob.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+function handleKnobMove(e) {
+    if(!window.isKnobDragging || isAtBalcony) return;
+    
+    const rect = knob.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
  
-        // 計算拖曳手勢的角度
-        let rad = Math.atan2(clientY - centerY, clientX - centerX);
-        let deg = (rad * 180 / Math.PI) + 90;
-        if(deg < 0) deg += 360;
+    let rad = Math.atan2(clientY - centerY, clientX - centerX);
+    let deg = (rad * 180 / Math.PI) + 90;
+    if(deg < 0) deg += 360;
  
-        // 磁吸至最近的 45 度角
-        let snappedDeg = Math.round(deg / 45) * 45;
-        if(snappedDeg === 360) snappedDeg = 0;
+    // 磁吸至最近的 45 度角 (即 8 個段位)
+    let snappedDeg = Math.round(deg / 45) * 45;
+    if(snappedDeg === 360) snappedDeg = 0;
  
-        // 如果角度改變了，觸發相機平滑轉場
-        if (currentSnappedAngle !== snappedDeg) {
-            currentSnappedAngle = snappedDeg;
-            const preset = camPresets.find(p => p.angle === snappedDeg);
-            if (preset) {
-                // 暫時解鎖保護限制，讓鏡頭能360度環繞
-                if (controls) {
-                    controls.minAzimuthAngle = -Infinity;
-                    controls.maxAzimuthAngle = Infinity;
-                    controls.minPolarAngle = 0;
-                }
-                
-                // 動畫過程中，第三步加的 animateRoom 邏輯會自動讓指針跟著平滑旋轉！
-                gsap.to(camera.position, { x: preset.cp.x, y: preset.cp.y, z: preset.cp.z, duration: 1.2, ease: "power2.inOut" });
-                gsap.to(controls.target, {
-                    x: preset.ct.x, y: preset.ct.y, z: preset.ct.z,
-                    duration: 1.2, ease: "power2.inOut",
-                    onUpdate: () => controls.update()
-                });
+    if (currentSnappedAngle !== snappedDeg) {
+        currentSnappedAngle = snappedDeg;
+        
+        // 👇 讓旋鈕 UI 也立刻轉到對應的段位
+        const knobDial = document.getElementById('knob-dial');
+        if (knobDial) knobDial.style.transform = `rotate(${snappedDeg}deg)`;
+ 
+        const preset = camPresets.find(p => p.angle === snappedDeg);
+        if (preset) {
+            if (controls) {
+                controls.minAzimuthAngle = -Infinity;
+                controls.maxAzimuthAngle = Infinity;
+                controls.minPolarAngle = 0;
             }
+            gsap.to(camera.position, { x: preset.cp.x, y: preset.cp.y, z: preset.cp.z, duration: 1.2, ease: "power2.inOut" });
+            gsap.to(controls.target, {
+                x: preset.ct.x, y: preset.ct.y, z: preset.ct.z,
+                duration: 1.2, ease: "power2.inOut",
+                onUpdate: () => controls.update()
+            });
         }
     }
+}
  
-    knob.addEventListener('mousedown', (e) => { isKnobDragging = true; handleKnobMove(e); });
-    knob.addEventListener('touchstart', (e) => { isKnobDragging = true; handleKnobMove(e); }, {passive: false});
-    window.addEventListener('mousemove', handleKnobMove);
-    window.addEventListener('touchmove', (e) => { if(isKnobDragging) e.preventDefault(); handleKnobMove(e); }, {passive: false});
-    window.addEventListener('mouseup', () => { isKnobDragging = false; currentSnappedAngle = -1; });
-    window.addEventListener('touchend', () => { isKnobDragging = false; currentSnappedAngle = -1; });
-})();
-
+// 👇 同步將下方的事件監聽器變數更新為 window.isKnobDragging
+knob.addEventListener('mousedown', (e) => { window.isKnobDragging = true; handleKnobMove(e); });
+knob.addEventListener('touchstart', (e) => { window.isKnobDragging = true; handleKnobMove(e); }, {passive: false});
+window.addEventListener('mousemove', handleKnobMove);
+window.addEventListener('touchmove', (e) => { if(window.isKnobDragging) e.preventDefault(); handleKnobMove(e); }, {passive: false});
+window.addEventListener('mouseup', () => { window.isKnobDragging = false; currentSnappedAngle = -1; });
+window.addEventListener('touchend', () => { window.isKnobDragging = false; currentSnappedAngle = -1; });
         
         
     </script>
