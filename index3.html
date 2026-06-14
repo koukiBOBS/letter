@@ -2257,13 +2257,15 @@ function buildRoomEnvironment() {
     dirLight.target.position.set(0, 0, 0); 
     
     dirLight.castShadow = true; 
-    dirLight.shadow.mapSize.width = 2048; 
-    dirLight.shadow.mapSize.height = 2048; 
+   dirLight.shadow.mapSize.width = 4096; 
+    dirLight.shadow.mapSize.height = 4096;
     
-    dirLight.shadow.camera.left = -45; 
-    dirLight.shadow.camera.right = 45; 
-    dirLight.shadow.camera.top = 45; 
-    dirLight.shadow.camera.bottom = -45; 
+  // 大幅擴張陰影攝影機的照射範圍，把室外的遠景也包覆進來
+    dirLight.shadow.camera.left = -200;   // 涵蓋左側的大橋與馬路
+    dirLight.shadow.camera.right = 200;   // 涵蓋右側的摩天輪與馬路
+    dirLight.shadow.camera.top = 150;     // 涵蓋上方的高樓大廈
+    dirLight.shadow.camera.bottom = -100; // 涵蓋下方與近處
+    dirLight.shadow.camera.far = 500;     // 確保光線投射距離夠遠
     
     dirLight.shadow.bias = -0.0005;        
     dirLight.shadow.normalBias = 0.05;     
