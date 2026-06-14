@@ -3619,6 +3619,19 @@ function setEnvironmentPhase(phaseStr) {
 
       let isDrawerAnimating = false; // <--- 加入這一行
 
+// 👇 【新增】過濾掉所有自身或父群組處於「隱藏狀態」的物件
+function getValidIntersects() {
+    return raycaster.intersectObjects(interactables, true).filter(hit => {
+        let curr = hit.object;
+        while(curr) { 
+            if(curr.visible === false) return false; // 如果有任何一層是隱藏的，就忽略它
+            curr = curr.parent; 
+        }
+        return true;
+    });
+}
+
+        
 function onPointerDown(e) {
     if(document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
     pointerDownPos.x = e.clientX; pointerDownPos.y = e.clientY;
@@ -3627,7 +3640,7 @@ function onPointerDown(e) {
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
 
-    const intersects = raycaster.intersectObjects(interactables, true);
+const intersects = getValidIntersects();
     if(intersects.length > 0) {
         let obj = intersects[0].object;
         while(obj.parent && !obj.userData.type) obj = obj.parent;
@@ -3785,7 +3798,7 @@ function onPointerMove(e) {
     }
 
     raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(interactables, true);
+const intersects = getValidIntersects();
     document.body.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
 }
 
@@ -3832,7 +3845,7 @@ function onPointerUp(e) {
     
     mouse.x = (e.clientX/window.innerWidth)*2-1; mouse.y = -(e.clientY/window.innerHeight)*2+1;
     raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(interactables, true);
+ const intersects = getValidIntersects();
     if(intersects.length > 0) {
         let obj = intersects[0].object; while(obj.parent && !obj.userData.type) obj = obj.parent;
         const type = obj.userData.type;
