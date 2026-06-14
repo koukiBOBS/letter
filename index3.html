@@ -240,12 +240,66 @@
         .hw-footer { background: #fdfaf6; display: flex; flex-direction: column; z-index: 20; border-top: 1px dashed #dcd5c9; box-shadow: 0 -4px 20px rgba(160, 140, 120, 0.08); }
         .hw-punctuations { display: flex; gap: 8px; padding: 15px 20px; overflow-x: auto; white-space: nowrap; align-items: center; border-bottom: 1px dashed #ebe6df; background: transparent; }
         .hw-punctuations::-webkit-scrollbar { height: 0px; background: transparent; }
-        .hw-punct-btn { background: transparent; border: 1px solid transparent; color: #5a5042; font-family: var(--font-serif); font-size: 1.4rem; width: 45px; height: 45px; border-radius: 8px; cursor: pointer; box-shadow: none; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.3s ease; }
-        .hw-punct-btn:hover { background: rgba(139, 115, 85, 0.08); border-color: rgba(139, 115, 85, 0.3); transform: translateY(-2px); }
+           .hw-punct-btn { 
+            background-color: transparent;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
+            border: 1px solid transparent; 
+            color: #5a5042; 
+            font-family: var(--font-serif); 
+            font-size: 1.4rem; 
+            width: 45px; 
+            height: 45px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            box-shadow: none; 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center; 
+            flex-shrink: 0; 
+            transition: all 0.3s ease; 
+        }
+        .hw-punct-btn:hover { 
+            background-color: rgba(139, 115, 85, 0.08); 
+            border-color: rgba(139, 115, 85, 0.3); 
+            transform: translateY(-2px); 
+        }
         .hw-punct-btn:active { transform: scale(0.95); }
-        .hw-actions { display: flex; justify-content: center; align-items: center; padding: 15px 20px; background: transparent; gap: 25px; }
-        .svg-btn { background: #fcfbf9; border: 1px solid #c4b8aa; border-radius: 50%; width: 55px; height: 55px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 10px rgba(139, 115, 85, 0.1); color: #8b7355; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .svg-btn:hover { background: #f0eadd; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(139, 115, 85, 0.15); }
+
+        /* 刪除鍵：茶褐色印扣 + 紋理 */
+        .svg-btn { 
+            background-color: #fcfbf9; 
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+            border: 1px solid #c4b8aa; 
+            border-radius: 50%; 
+            width: 55px; 
+            height: 55px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer; 
+            box-shadow: 0 4px 10px rgba(139, 115, 85, 0.1); 
+            color: #8b7355; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
+        .svg-btn:hover { 
+            background-color: #f0eadd; 
+            transform: translateY(-2px); 
+            box-shadow: 0 6px 15px rgba(139, 115, 85, 0.15); 
+        }
+        .svg-btn:active { transform: scale(0.95); }
+
+        /* 完成鍵：淡雅莫蘭迪綠 + 紋理 */
+        .svg-btn.done { 
+            background-color: #789680; /* 莫蘭迪綠 */
+            color: white; 
+            border-color: transparent; 
+            width: 55px; 
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1); /* 讓白色勾勾在紋理上更清晰 */
+        }
+        .svg-btn.done:hover { 
+            background-color: #637c69; /* 深一點的莫蘭迪綠 */
+            box-shadow: 0 6px 15px rgba(107, 142, 115, 0.25); 
+        }
         .svg-btn:active { transform: scale(0.95); }
         .svg-btn.done { background: #c25953; color: white; border-color: transparent; width: 55px; }
         .svg-btn.done:hover { background: #a84742; box-shadow: 0 6px 15px rgba(194, 89, 83, 0.25); }
@@ -1109,14 +1163,24 @@ function handleFileSelect(event, type = 'reading') {
                     }
                     flow.innerHTML = contentHTML;
 
-                    if (canReply) {
+                  if (canReply) {
                         if (!isTeacherEmail(currentUser.email)) {
                             document.getElementById('reply-text').addEventListener('click', function() { openHwKeyboard(this); });
                         }
+                        
+                        // 【新增】讀取與綁定回信草稿
+                        const replyInput = document.getElementById('reply-text');
+                        const draftKey = 'draft_reply_' + id;
+                        if (sessionStorage.getItem(draftKey)) replyInput.value = sessionStorage.getItem(draftKey);
+                        replyInput.addEventListener('input', () => sessionStorage.setItem(draftKey, replyInput.value));
+
                         document.getElementById('btn-send-reply').onclick = () => {
                             const txt = document.getElementById('reply-text').value.trim(); if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
                             if (isSubmittingReply) return; isSubmittingReply = true; document.getElementById('btn-send-reply').disabled = true; document.getElementById('btn-send-reply').innerText = "封裝寄出中...";
                             playAnim('reply', id, partnerUid, txt);
+                            
+                            // 【新增】送出後清除這封信的回信草稿
+                            sessionStorage.removeItem(draftKey);
                         };
                     }
                     
@@ -1171,8 +1235,12 @@ else processReply(letterId, partnerUid, ObjectData);
                     db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: ts });
                     if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
                     else db.ref(`unassigned_letters/${ref.key}`).set({ senderUid: currentUser.uid });
-                    db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
+                  db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
                         isSubmittingLog = false; 
+                        
+                        // 【新增】成功寄出後，清除這四個欄位的 SessionStorage 暫存
+                        clearDrafts(['draft_r_title', 'draft_r_page', 'draft_r_q', 'draft_r_c']);
+                        
                         document.getElementById('book-title').value = ''; document.getElementById('book-page').value = ''; document.getElementById('log-question').value = ''; document.getElementById('log-content').value = ''; 
                         document.getElementById('book-image').value=''; selectedFileBase64=null; document.getElementById('file-name-display').innerText="尚未選擇圖片"; document.getElementById('image-preview').style.display = 'none'; 
                         document.getElementById('write-editor').style.display = 'none'; document.getElementById('task-grid').style.display = 'grid'; 
@@ -1228,9 +1296,13 @@ function processRandomTask(data) {
             // 組合對話內容
             const combinedText = `【探索任務】\n${currentDrawnState.drawnTask}\n\n【備註與感悟】\n${data.text || '（無備註）'}`;
             
-            db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: combinedText, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
+           db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: combinedText, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
                 const btn = document.getElementById('btn-submit-random');
                 btn.innerText = "封裝完成任務"; btn.disabled = false;
+                
+                // 【新增】成功寄出後，清除備註文字的 SessionStorage 暫存
+                clearDrafts(['draft_rand_n']);
+                
                 document.getElementById('random-editor').style.display = 'none'; 
                 document.getElementById('random-task-grid').style.display = 'grid'; 
                 renderTasks(); showToast('探索任務已隨信箋寄出！'); 
@@ -2430,10 +2502,69 @@ indicatorLeft = createFloatingLetter(); indicatorLeft.position.set(-5.5, 6.5, 10
 
         function openHwKeyboard(targetInput) { if(!targetInput.classList.contains('handwrite-only')) return; activeHwInput = targetInput; document.getElementById('hw-overlay').classList.add('active'); const preview = document.getElementById('hw-preview'); preview.value = activeHwInput.value; setTimeout(() => { preview.scrollTop = preview.scrollHeight; }, 50); lockScroll(); clearHwCanvas(); setTimeout(() => { const rect = hwCanvas.parentElement.getBoundingClientRect(); if(hwCanvas.width !== rect.width) { hwCanvas.width = rect.width; hwCanvas.height = rect.height; hwCtx.lineCap = "round"; hwCtx.lineJoin = "round";} }, 100); }
         function closeHwKeyboard() { document.getElementById('hw-overlay').classList.remove('active'); clearHwCanvas(); unlockScroll(); }
-        function insertChar(char) { if (!activeHwInput) return; const preview = document.getElementById('hw-preview'); activeHwInput.value += char; preview.value += char; activeHwInput.scrollTop = activeHwInput.scrollHeight; preview.scrollTop = preview.scrollHeight; }
+       function insertChar(char) { 
+    if (!activeHwInput) return; 
+    const preview = document.getElementById('hw-preview'); 
+    activeHwInput.value += char; 
+    preview.value += char; 
+    activeHwInput.scrollTop = activeHwInput.scrollHeight; 
+    preview.scrollTop = preview.scrollHeight; 
+    activeHwInput.dispatchEvent(new Event('input')); // 觸發暫存
+}
+
+function hwBackspace() { 
+    if (!activeHwInput || activeHwInput.value.length === 0) return; 
+    const preview = document.getElementById('hw-preview'); 
+    activeHwInput.value = activeHwInput.value.slice(0, -1); 
+    preview.value = preview.value.slice(0, -1); 
+    activeHwInput.dispatchEvent(new Event('input')); // 觸發暫存
+}
         function hwBackspace() { if (!activeHwInput || activeHwInput.value.length === 0) return; const preview = document.getElementById('hw-preview'); activeHwInput.value = activeHwInput.value.slice(0, -1); preview.value = preview.value.slice(0, -1); }
         function toggleReadingLog() { const el = document.getElementById('mylog-editor'); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
+      
+        
+        
         function submitReadingLog() { showToast("紀錄已儲存！"); document.getElementById('mylog-editor').style.display = 'none'; }
+
+
+
+
+        // --- 草稿暫存系統 (Session Storage) ---
+const draftConfig = [
+    { id: 'book-title', key: 'draft_r_title' },
+    { id: 'book-page', key: 'draft_r_page' },
+    { id: 'log-question', key: 'draft_r_q' },
+    { id: 'log-content', key: 'draft_r_c' },
+    { id: 'random-note', key: 'draft_rand_n' },
+    { id: 'mylog-title', key: 'draft_ml_t' },
+    { id: 'mylog-notes', key: 'draft_ml_n' }
+];
+
+function initAutoSave() {
+    draftConfig.forEach(field => {
+        const el = document.getElementById(field.id);
+        if (el) {
+            // 讀取暫存
+            const savedValue = sessionStorage.getItem(field.key);
+            if (savedValue !== null) el.value = savedValue;
+            
+            // 監聽打字事件，寫入暫存
+            el.addEventListener('input', () => {
+                sessionStorage.setItem(field.key, el.value);
+            });
+        }
+    });
+}
+
+// 清除特定的暫存資料 (在成功寄出時呼叫)
+function clearDrafts(keys) {
+    keys.forEach(key => sessionStorage.removeItem(key));
+}
+
+// 頁面載入時啟動
+document.addEventListener("DOMContentLoaded", () => {
+    initAutoSave();
+});
     </script>
 </body>
 </html>
