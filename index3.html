@@ -2990,7 +2990,7 @@ const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.a
 
 
     
-interactables = [leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitBox, chairHitBox, hitL, hitR, glassDoorL, glassDoorR];
+interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitBox, chairHitBox, hitL, hitR, glassDoorL, glassDoorR);
     
    function createFurTexture(baseColor, highlight, shadow) {
         const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
