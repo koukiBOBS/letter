@@ -1014,8 +1014,7 @@ db.ref(`users/${currentUser.uid}`).on('value', snap => {
     
     document.getElementById('user-points-text').innerText = userPoints;
     
-    // 👇 【新增】根據趟門維修狀態，限制相機旋轉角度
-  // 👇 【修改】根據趟門維修狀態，同時限制左右與上下的旋轉角度
+   // 👇 【修改】根據趟門維修狀態，同時限制左右與上下的旋轉角度
     if (typeof controls !== 'undefined' && !isAtBalcony) {
         if (hasDoorPrivilege) {
             // 趟門已修復：解除限制，允許 360 度旋轉看風景，也能抬頭看
@@ -2719,7 +2718,6 @@ function buildRoomEnvironment() {
     ceiling.castShadow = true;
     ceiling.receiveShadow = true;
     scene.add(ceiling);
-
     const wallShape = new THREE.Shape(); wallShape.moveTo(-60, 0); wallShape.lineTo(60, 0); wallShape.lineTo(60, 40); wallShape.lineTo(-60, 40);
     const windowHole = new THREE.Path(); 
     windowHole.moveTo(-15, 1); windowHole.lineTo(15, 1); windowHole.lineTo(15, 28); windowHole.lineTo(-15, 28); 
