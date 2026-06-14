@@ -1996,34 +1996,32 @@ function closeDrawAnim() {
         function setDefaultCamera() { if (window.innerWidth < 768) { camera.position.set(0, 26, 48); } else { camera.position.set(0, 22, 45); } controls.target.set(0, 7, 0); }
 
       function buildRoomEnvironment() {
-    hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); 
+     hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); 
     scene.add(hemiLight);
     
-    // 1. 調整光源位置：讓陽光從窗外稍微偏右上方照進來，角度更自然
+    // 稍微調整陽光角度，讓光線落在桌面的比例更優美
     dirLight = new THREE.DirectionalLight(0xffeedd, 1.2); 
-    dirLight.position.set(25, 38, -60); 
-    dirLight.target.position.set(0, 0, 5); // 讓光束對準房間稍微靠前的位置
+    dirLight.position.set(20, 35, -50); 
+    dirLight.target.position.set(0, 0, 0); 
     
     dirLight.castShadow = true; 
     dirLight.shadow.mapSize.width = 2048; 
     dirLight.shadow.mapSize.height = 2048; 
     
-    // 2. 縮小陰影相機的範圍，讓 2048 的像素更集中在房間內，提高陰影清晰度
-    dirLight.shadow.camera.left = -30; 
-    dirLight.shadow.camera.right = 30; 
-    dirLight.shadow.camera.top = 30; 
-    dirLight.shadow.camera.bottom = -30; 
+    // 【關鍵修復：擴大陰影相機範圍】
+    // 數值從 30 擴大到 45，確保整個房間和桌面都在陰影計算範圍內，消除被裁切的三角形假影
+    dirLight.shadow.camera.left = -45; 
+    dirLight.shadow.camera.right = 45; 
+    dirLight.shadow.camera.top = 45; 
+    dirLight.shadow.camera.bottom = -45; 
     
-    // 3. 【關鍵修復】解決桌面上的奇怪斑馬紋 (Shadow Acne)
-    dirLight.shadow.bias = -0.0001;        // 減少基礎偏移量
-    dirLight.shadow.normalBias = 0.05;     // 加入法線偏移，完美解決平面自我遮擋的黑線問題
-    
-    // 4. 【關鍵修復】讓陰影邊緣變得柔和，更像真實穿透玻璃的陽光
-    dirLight.shadow.radius = 2.5; 
+    // 保留之前修復波紋和生硬邊緣的設定
+    dirLight.shadow.bias = -0.0005;        
+    dirLight.shadow.normalBias = 0.05;     // 消除桌面斑馬紋
+    dirLight.shadow.radius = 2.5;          // 讓窗框影子邊緣柔和自然
 
     scene.add(dirLight); 
     scene.add(dirLight.target);
-
     const lampGroup = new THREE.Group(); lampGroup.position.set(0, 39, 21); scene.add(lampGroup);
     const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 1, 32), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.5})); lampGroup.add(lampBase);
     lampBulb = new THREE.Mesh(new THREE.SphereGeometry(2.5, 32, 16), new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0x000000})); lampBulb.position.y = -1; lampGroup.add(lampBulb);
