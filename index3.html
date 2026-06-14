@@ -1276,7 +1276,7 @@ function closeDrawAnim() {
 
         function buildRoomEnvironment() {
             hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); scene.add(hemiLight);
-            dirLight = new THREE.DirectionalLight(0xffeedd, 1.2); dirLight.position.set(15, 45, -70); dirLight.target.position.set(0, 0, 0); 
+          dirLight = new THREE.DirectionalLight(0xffeedd, 1.2); dirLight.position.set(20, 30, -70); dirLight.target.position.set(0, 0, 0);
             dirLight.castShadow = true; dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048; dirLight.shadow.camera.left = -40; dirLight.shadow.camera.right = 40; dirLight.shadow.camera.top = 40; dirLight.shadow.camera.bottom = -40; dirLight.shadow.bias = -0.0005;
             scene.add(dirLight); scene.add(dirLight.target);
             const pointLight = new THREE.PointLight(0xffe8c4, 0.4, 20); pointLight.position.set(-5, 15, 10); scene.add(pointLight);
@@ -1291,23 +1291,35 @@ function closeDrawAnim() {
             const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(120, 78), wallMat); ceiling.rotation.x = Math.PI/2; ceiling.position.set(0, 40, 21); scene.add(ceiling);
 
             const wallShape = new THREE.Shape(); wallShape.moveTo(-60, 0); wallShape.lineTo(60, 0); wallShape.lineTo(60, 40); wallShape.lineTo(-60, 40);
-            const windowHole = new THREE.Path(); windowHole.moveTo(-9, 10); windowHole.lineTo(9, 10); windowHole.lineTo(9, 22); windowHole.lineTo(-9, 22); wallShape.holes.push(windowHole);
+           const windowHole = new THREE.Path(); 
+// 寬度擴大到 ±15 (與桌同寬)，高度從接近地面 1 延伸到 28
+windowHole.moveTo(-15, 1); windowHole.lineTo(15, 1); windowHole.lineTo(15, 28); windowHole.lineTo(-15, 28); 
+wallShape.holes.push(windowHole);
             const frontWall = new THREE.Mesh(new THREE.ExtrudeGeometry(wallShape, { depth: 1, bevelEnabled: false }), wallMat); frontWall.position.set(0, 0, -18); frontWall.castShadow = true; frontWall.receiveShadow = true; scene.add(frontWall);
             const sideWallGeo = new THREE.PlaneGeometry(78, 40); const leftWall = new THREE.Mesh(sideWallGeo, wallMat); leftWall.rotation.y = Math.PI/2; leftWall.position.set(-60, 20, 21); scene.add(leftWall); const rightWall = new THREE.Mesh(sideWallGeo, wallMat); rightWall.rotation.y = -Math.PI/2; rightWall.position.set(60, 20, 21); scene.add(rightWall);
             const backWall = new THREE.Mesh(new THREE.PlaneGeometry(120, 40), wallMat); backWall.position.set(0, 20, 60); scene.add(backWall);
 
             function createPainting(x, y, z, type) { const frameGroup = new THREE.Group(); frameGroup.position.set(x, y, z); const frame = new THREE.Mesh(new THREE.BoxGeometry(10, 12, 0.6), new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.8})); frameGroup.add(frame); const canvas = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 10.5), new THREE.MeshStandardMaterial({map: createPaintingTexture(type), roughness: 0.9})); canvas.position.z = 0.31; frameGroup.add(canvas); scene.add(frameGroup); }
-            createPainting(-40, 22, -17.5, 1); createPainting(-22, 17, -17.5, 3); createPainting(22, 17, -17.5, 4); createPainting(40, 22, -17.5, 2);
+          // 畫作往兩側推，避免被窗簾擋住
+createPainting(-42, 22, -17.5, 1); createPainting(-27, 17, -17.5, 3); createPainting(27, 17, -17.5, 4); createPainting(42, 22, -17.5, 2);
 
-            const windowFrameGroup = new THREE.Group(); windowFrameGroup.position.set(0, 16, -17.5); scene.add(windowFrameGroup);
-            const frameMat = new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.5, metalness: 0.1}); const frameThickness = 0.6; const frameDepth = 1.0;
-            const leftF = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 12, frameDepth), frameMat); leftF.position.set(-9 + frameThickness/2, 0, 0); leftF.castShadow = true; windowFrameGroup.add(leftF);
-            const rightF = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 12, frameDepth), frameMat); rightF.position.set(9 - frameThickness/2, 0, 0); rightF.castShadow = true; windowFrameGroup.add(rightF);
-            const topF = new THREE.Mesh(new THREE.BoxGeometry(18, frameThickness, frameDepth), frameMat); topF.position.set(0, 6 - frameThickness/2, 0); topF.castShadow = true; windowFrameGroup.add(topF);
-            const botF = new THREE.Mesh(new THREE.BoxGeometry(18, frameThickness, frameDepth), frameMat); botF.position.set(0, -6 + frameThickness/2, 0); botF.castShadow = true; windowFrameGroup.add(botF);
-            const midV = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 12, frameDepth - 0.2), frameMat); midV.castShadow = true; windowFrameGroup.add(midV);
-            const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, roughness: 0.1, transmission: 0.8 }); const glassPane = new THREE.Mesh(new THREE.BoxGeometry(17.5, 11.5, 0.05), glassMat); windowFrameGroup.add(glassPane);
+           const windowFrameGroup = new THREE.Group(); 
+windowFrameGroup.position.set(0, 14.5, -17.5); // 中心點稍微下移
+scene.add(windowFrameGroup);
+const frameMat = new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.5, metalness: 0.1}); 
+const frameThickness = 0.6; const frameDepth = 1.0;
 
+// 窗戶總寬30，高27
+const leftF = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 27, frameDepth), frameMat); leftF.position.set(-15 + frameThickness/2, 0, 0); leftF.castShadow = true; windowFrameGroup.add(leftF);
+const rightF = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 27, frameDepth), frameMat); rightF.position.set(15 - frameThickness/2, 0, 0); rightF.castShadow = true; windowFrameGroup.add(rightF);
+const topF = new THREE.Mesh(new THREE.BoxGeometry(30, frameThickness, frameDepth), frameMat); topF.position.set(0, 13.5 - frameThickness/2, 0); topF.castShadow = true; windowFrameGroup.add(topF);
+const botF = new THREE.Mesh(new THREE.BoxGeometry(30, frameThickness, frameDepth), frameMat); botF.position.set(0, -13.5 + frameThickness/2, 0); botF.castShadow = true; windowFrameGroup.add(botF);
+
+// 保留中間直向窗框
+const midV = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 27, frameDepth - 0.2), frameMat); midV.castShadow = true; windowFrameGroup.add(midV);
+
+const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, roughness: 0.1, transmission: 0.8 }); 
+const glassPane = new THREE.Mesh(new THREE.BoxGeometry(29.5, 26.5, 0.05), glassMat); windowFrameGroup.add(glassPane);
             const doorGroup = new THREE.Group(); doorGroup.position.set(-59.5, 14, 0); doorGroup.rotation.y = Math.PI/2; scene.add(doorGroup);
             const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(16, 28, 1), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.8})); doorGroup.add(doorFrame);
             const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(14, 26, 1.2), new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.7})); doorGroup.add(doorPanel);
@@ -1388,7 +1400,7 @@ function closeDrawAnim() {
                 cGrp.position.set(px, 19, -16.5);
                 scene.add(cGrp);
             }
-            createCurtain(-14); createCurtain(14);
+          createCurtain(-18); createCurtain(18);
 
             // Wall Shelves
             const shGrp = new THREE.Group(); shGrp.position.set(59.5, 20, -5); shGrp.rotation.y = -Math.PI/2; scene.add(shGrp);
@@ -1651,7 +1663,12 @@ function closeDrawAnim() {
                 ceilingLight.intensity = p.ceilingOn ? (phaseStr === 'night' ? 1.5 : 0.8) : 0.0; ceilingLight.color.setHex(phaseStr === 'night' ? 0xffcc88 : 0xfff0dd);
                 lampBulb.material.emissiveIntensity = p.ceilingOn ? 1.0 : 0.0; lampBulb.material.emissive.setHex(phaseStr === 'night' ? 0xffcc88 : 0xfff0dd); ceilingLight.castShadow = p.ceilingOn; 
             }
-            if (hemiLight) { hemiLight.color.setHex(phaseStr === 'night' ? 0x887766 : 0xffffff); hemiLight.groundColor.setHex(phaseStr === 'night' ? 0x332222 : 0x444444); }
+       if (hemiLight) { 
+    hemiLight.color.setHex(phaseStr === 'night' ? 0x887766 : 0xffffff); 
+    hemiLight.groundColor.setHex(phaseStr === 'night' ? 0x332222 : 0x555555); 
+    // 落地窗引入更多天光，白天大幅增強漫射光
+    hemiLight.intensity = phaseStr === 'noon' ? 0.75 : (phaseStr === 'dawn' || phaseStr === 'dusk' ? 0.5 : 0.25);
+}
         }
 
         function onWinResize() { if(!camera) return; camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
