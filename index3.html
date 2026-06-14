@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>閱讀交流</title>
+    <title>閱讀人生</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -950,7 +950,14 @@ function renderTasks() {
             });
 
            // 2. 渲染隨機任務
-            const submittedRandomDates = randSubs.map(s => s.taskDate);
+             const submittedRandomDates = randSubs.map(s => s.taskDate);
+            
+            // 【新增】建立一個 Map 方便透過日期找到對應的繳交紀錄與 letterId
+            const randMap = {};
+            randSubs.forEach(s => {
+                randMap[s.taskDate] = s;
+            });
+
             if (randomTasks.length === 0) randGrid.innerHTML = '<div class="empty-state"><p>目前尚未設定探索任務。</p></div>';
             randomTasks.forEach((dateStr, i) => {
                 const unlocked = true; 
@@ -958,7 +965,7 @@ function renderTasks() {
                 const isLate = !done && new Date().setHours(0,0,0,0) > new Date(dateStr).setHours(0,0,0,0);
                 
                 // 📝 寫入日曆資料
-                const randRecord = randSubs.find(s => s.taskDate === dateStr);
+                const randRecord = randMap[dateStr];
                 addCalTask(dateStr, 'random', randRecord);
 
                 if (!done) { hasPendingTasks = true; }
@@ -975,8 +982,12 @@ function renderTasks() {
                 if (!done && drawnTasksData[dateStr]) { el.innerHTML += `<div style="margin-top:10px; font-size:0.8rem; color:#8b7355; font-weight:600;">已抽籤，待繳交</div>`; }
                 
                 el.onclick = () => {
-                    if(done) alert("此探索任務已完成並上傳！");
-                    else handleRandomTaskClick(dateStr);
+                    if(done) {
+                        // 【修改】直接打開信紙對話框，顯示自己的隨機探索信件
+                        openChatModal(randMap[dateStr].letterId);
+                    } else {
+                        handleRandomTaskClick(dateStr);
+                    }
                 }; randGrid.appendChild(el);
             });
 
