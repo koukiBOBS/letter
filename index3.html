@@ -240,7 +240,7 @@
         .hw-footer { background: #fdfaf6; display: flex; flex-direction: column; z-index: 20; border-top: 1px dashed #dcd5c9; box-shadow: 0 -4px 20px rgba(160, 140, 120, 0.08); }
         .hw-punctuations { display: flex; gap: 8px; padding: 15px 20px; overflow-x: auto; white-space: nowrap; align-items: center; border-bottom: 1px dashed #ebe6df; background: transparent; }
         .hw-punctuations::-webkit-scrollbar { height: 0px; background: transparent; }
-           .hw-punct-btn { 
+            .hw-punct-btn { 
             background-color: transparent;
             background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
             border: 1px solid transparent; 
@@ -264,8 +264,7 @@
             transform: translateY(-2px); 
         }
         .hw-punct-btn:active { transform: scale(0.95); }
-
-        /* 刪除鍵：茶褐色印扣 + 紋理 */
+        .hw-actions { display: flex; justify-content: center; align-items: center; padding: 15px 20px; background: transparent; gap: 25px; }
         .svg-btn { 
             background-color: #fcfbf9; 
             background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
@@ -300,9 +299,6 @@
             background-color: #637c69; /* 深一點的莫蘭迪綠 */
             box-shadow: 0 6px 15px rgba(107, 142, 115, 0.25); 
         }
-        .svg-btn:active { transform: scale(0.95); }
-        .svg-btn.done { background: #c25953; color: white; border-color: transparent; width: 55px; }
-        .svg-btn.done:hover { background: #a84742; box-shadow: 0 6px 15px rgba(194, 89, 83, 0.25); }
 
         #anim-overlay { position: fixed; inset: 0; background: rgba(250, 247, 242, 0.95); z-index: 100005; align-items: center; justify-content: center; perspective: 1200px; display: none;}
         .env-wrapper { position: relative; width: 340px; height: 230px; }
@@ -1153,17 +1149,7 @@ function handleFileSelect(event, type = 'reading') {
                         </div>`;
                     });
 
-                    if (canReply) {
-                        let isTeacher = isTeacherEmail(currentUser.email);
-                        let hwClass = isTeacher ? '' : 'handwrite-only';
-                        let roAttr = isTeacher ? '' : 'readonly';
-                        let placeholderText = isTeacher ? '請輸入您的回音...（最少 100 字）' : '點此喚出全螢幕書寫板，一筆一劃寫下您的回音...（最少 100 字）';
-
-                        contentHTML += `<div class="letter-sheet reply-sheet my-letter"><div class="letter-header-meta"><span>✍️ 提筆回信</span><span>紙短情長</span></div><textarea id="reply-text" class="textarea ${hwClass}" ${roAttr} placeholder="${placeholderText}"></textarea><div style="text-align: center;"><button class="btn" style="margin: 20px auto 0; padding: 12px 40px; background: var(--color-replies);" id="btn-send-reply">寄出回信</button></div></div>`;
-                    }
-                    flow.innerHTML = contentHTML;
-
-                  if (canReply) {
+                   if (canReply) {
                         if (!isTeacherEmail(currentUser.email)) {
                             document.getElementById('reply-text').addEventListener('click', function() { openHwKeyboard(this); });
                         }
@@ -1235,7 +1221,7 @@ else processReply(letterId, partnerUid, ObjectData);
                     db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: ts });
                     if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
                     else db.ref(`unassigned_letters/${ref.key}`).set({ senderUid: currentUser.uid });
-                  db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
+                   db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
                         isSubmittingLog = false; 
                         
                         // 【新增】成功寄出後，清除這四個欄位的 SessionStorage 暫存
@@ -1296,7 +1282,7 @@ function processRandomTask(data) {
             // 組合對話內容
             const combinedText = `【探索任務】\n${currentDrawnState.drawnTask}\n\n【備註與感悟】\n${data.text || '（無備註）'}`;
             
-           db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: combinedText, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
+          db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: combinedText, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
                 const btn = document.getElementById('btn-submit-random');
                 btn.innerText = "封裝完成任務"; btn.disabled = false;
                 
@@ -2519,17 +2505,11 @@ function hwBackspace() {
     preview.value = preview.value.slice(0, -1); 
     activeHwInput.dispatchEvent(new Event('input')); // 觸發暫存
 }
-        function hwBackspace() { if (!activeHwInput || activeHwInput.value.length === 0) return; const preview = document.getElementById('hw-preview'); activeHwInput.value = activeHwInput.value.slice(0, -1); preview.value = preview.value.slice(0, -1); }
         function toggleReadingLog() { const el = document.getElementById('mylog-editor'); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
-      
-        
-        
         function submitReadingLog() { showToast("紀錄已儲存！"); document.getElementById('mylog-editor').style.display = 'none'; }
 
 
-
-
-        // --- 草稿暫存系統 (Session Storage) ---
+// --- 草稿暫存系統 (Session Storage) ---
 const draftConfig = [
     { id: 'book-title', key: 'draft_r_title' },
     { id: 'book-page', key: 'draft_r_page' },
@@ -2565,6 +2545,11 @@ function clearDrafts(keys) {
 document.addEventListener("DOMContentLoaded", () => {
     initAutoSave();
 });
+
+
+
+
+        
     </script>
 </body>
 </html>
