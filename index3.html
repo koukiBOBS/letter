@@ -4472,11 +4472,9 @@ function renderWalletGrid() {
         offscreenRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
         offscreenRenderer.setSize(256, 256);
         offscreenRenderer.outputEncoding = THREE.sRGBEncoding;
-        offscreenRenderer.shadowMap.enabled = true;
-        offscreenRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
     }
     
-    const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+    const snapCam = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
     
     Object.keys(ITEM_REGISTRY).forEach(id => {
         const item = ITEM_REGISTRY[id];
@@ -4484,45 +4482,64 @@ function renderWalletGrid() {
         
         let imgSrc = '';
         if (item.type === 'privilege') {
-            // 【關鍵修復 1】安全的 SVG 轉換方式，防止特殊符號破壞 HTML
             const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><text x="50%" y="50%" font-size="50" text-anchor="middle" dy=".3em">✨</text></svg>`;
             imgSrc = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgIcon);
         } else {
             if (!itemSnapshots[id]) {
-                const snapScene = new THREE.Scene();
+                let targetObj = null;
+                scene.traverse(child => { if (child.userData && child.userData.itemId === id) targetObj = child; });
                 
-                // 【關鍵修復 2】複製光影時必須包含 target，否則物品會一片漆黑導致圖片出不來
-                if (typeof hemiLight !== 'undefined') snapScene.add(hemiLight.clone());
-                if (typeof ceilingLight !== 'undefined') snapScene.add(ceilingLight.clone());
-                if (typeof dirLight !== 'undefined') {
-                    const dlClone = dirLight.clone();
-                    snapScene.add(dlClone);
-                    snapScene.add(dlClone.target);
-                }
-                
-                let cloneObj = null;
-                scene.traverse(child => { if (child.userData && child.userData.itemId === id) cloneObj = child.clone(); });
-                
-                if (cloneObj) {
-                    const box = new THREE.Box3().setFromObject(cloneObj);
+                if (targetObj) {
+                    // 【頂級修復技術：隱藏背景直接拍實物】
+                    // 1. 記錄並隱藏場景中所有的東西
+                    const visibilities = new Map();
+                    scene.traverse(node => { 
+                        visibilities.set(node, node.visible); 
+                        node.visible = false; 
+                    });
+
+                    // 2. 只把目標物品和它的父層/子層設為可見
+                    targetObj.traverse(node => node.visible = true);
+                    let curr = targetObj;
+                    while(curr) { curr.visible = true; curr = curr.parent; }
+
+                    // 3. 把房間內真實的燈光打開，保證 100% 光影一致
+                    scene.traverse(node => {
+                        if (node.isLight) {
+                            node.visible = true;
+                            if (node.target) node.target.visible = true;
+                        }
+                    });
+
+                    // 4. 計算物品大小，自動調整完美相機距離與角度
+                    const box = new THREE.Box3().setFromObject(targetObj);
                     const center = box.getCenter(new THREE.Vector3());
-                    const sphere = box.getBoundingSphere(new THREE.Sphere());
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const dist = Math.max(maxDim * 1.5, 4);
+
+                    // 針對特殊物品給予專屬的完美視角
+                    if (id === 'carpet') {
+                        snapCam.position.set(center.x, center.y + dist, center.z + 0.1); // 地氈由正上方往下拍
+                    } else if (id.includes('bookcase') || id.includes('painting') || id === 'clock' || id === 'rack') {
+                        snapCam.position.set(center.x, center.y, center.z + dist); // 書櫃/畫作/時鐘由正前方拍
+                    } else if (id === 'cat') {
+                        snapCam.position.set(center.x + maxDim, center.y + maxDim*0.5, center.z + maxDim); // 貓咪稍微側拍
+                    } else {
+                        snapCam.position.set(center.x + dist*0.6, center.y + dist*0.4, center.z + dist*0.8); // 其他立體物斜角拍
+                    }
                     
-                    cloneObj.position.sub(center); 
-                    snapScene.add(cloneObj);
-                    
-                    const fov = cam.fov * (Math.PI / 180);
-                    let radius = Math.max(sphere.radius, 1); 
-                    let distance = Math.abs((radius * 1.5) / Math.sin(fov / 2));
-                    
-                    cam.position.set(distance * 0.6, distance * 0.4, distance);
-                    cam.lookAt(0, 0, 0);
-                    
-                    // 【關鍵修復 3】連續渲染兩次，強制確保材質快取載入完畢，解決首次空白破圖
-                    offscreenRenderer.render(snapScene, cam);
-                    offscreenRenderer.render(snapScene, cam);
-                    
+                    snapCam.lookAt(center);
+                    snapCam.updateProjectionMatrix();
+
+                    // 5. 渲染截圖
+                    offscreenRenderer.render(scene, snapCam);
                     itemSnapshots[id] = offscreenRenderer.domElement.toDataURL("image/png");
+
+                    // 6. 將房間所有物品恢復原狀
+                    scene.traverse(node => {
+                        if (visibilities.has(node)) node.visible = visibilities.get(node);
+                    });
                 }
             }
             imgSrc = itemSnapshots[id] || '';
@@ -4545,71 +4562,81 @@ function showGachaAnim(itemId) {
     overlay.style.display = 'flex';
     document.getElementById('gacha-result-ui').style.opacity = 0;
     
-    // 初始化抽獎 3D 場景
     if (!gachaScene) {
         gachaScene = new THREE.Scene();
         gachaCam = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 100);
         
         gachaRen = new THREE.WebGLRenderer({ alpha: true, antialias: true });
         gachaRen.setSize(window.innerWidth, window.innerHeight * 0.6);
-        // 【關鍵修復 1】確保色彩編碼與主房間 100% 一致，解決色調古怪的問題
-        gachaRen.outputEncoding = THREE.sRGBEncoding;
-        gachaRen.shadowMap.enabled = true;
-        gachaRen.shadowMap.type = THREE.PCFSoftShadowMap;
+        gachaRen.outputEncoding = THREE.sRGBEncoding; // 修復色調古怪問題
         document.getElementById('gacha-canvas-container').appendChild(gachaRen.domElement);
         
         gachaGroup = new THREE.Group();
         gachaScene.add(gachaGroup);
     }
     
-    // 清理上一次的燈光與物件
     gachaScene.children = gachaScene.children.filter(c => c === gachaGroup);
     gachaGroup.clear();
     
-    // 【關鍵修復 2】完全克隆真實房間的光影，拋棄原本的古怪光源
+    // 複製真實房間的光源，確保色彩一模一樣
     if (typeof hemiLight !== 'undefined') gachaScene.add(hemiLight.clone());
     if (typeof ceilingLight !== 'undefined') gachaScene.add(ceilingLight.clone());
     if (typeof dirLight !== 'undefined') {
         const dlClone = dirLight.clone();
         gachaScene.add(dlClone);
-        gachaScene.add(dlClone.target); // 必須加入 target 才有正確的陰影方向
+        gachaScene.add(dlClone.target);
     }
     
     if (item.type === 'model') {
-        let cloneObj = null;
-        scene.traverse(child => { if (child.userData && child.userData.itemId === itemId) cloneObj = child.clone(); });
+        let originalObj = null;
+        scene.traverse(child => { if (child.userData && child.userData.itemId === itemId) originalObj = child; });
         
-        if (cloneObj) {
-            // 【關鍵修復 3】完美的攝影機取景演算法，不再粗暴縮放模型，而是動態拉遠相機
-            const box = new THREE.Box3().setFromObject(cloneObj);
+        if (originalObj) {
+            // 【修復貓咪爆裂與雨傘變形】創建一個安全包裝盒，確保內部相對位置不變
+            const wrapper = new THREE.Group();
+            const cloneObj = originalObj.clone();
+            
+            const box = new THREE.Box3().setFromObject(originalObj); // 測量原始物件
             const center = box.getCenter(new THREE.Vector3());
-            const sphere = box.getBoundingSphere(new THREE.Sphere());
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
             
-            cloneObj.position.sub(center); // 讓物品回到正中心
-            gachaGroup.add(cloneObj);
+            // 安全地將複製體居中，不破壞自身形狀
+            cloneObj.position.set(-center.x, -center.y, -center.z);
+            wrapper.add(cloneObj);
+            gachaGroup.add(wrapper);
             
-            const fov = gachaCam.fov * (Math.PI / 180);
-            let distance = Math.abs((sphere.radius * 1.6) / Math.sin(fov / 2)); // 1.6 倍預留邊界空白
-            distance = Math.max(distance, 6); // 避免相機靠太近
-            
-            gachaCam.position.set(distance * 0.6, distance * 0.4, distance);
+            // 智慧相機：根據物品真實大小拉遠相機，不再粗暴縮小物品
+            let dist = Math.max(maxDim * 1.5, 5);
+            if (itemId === 'carpet') {
+                gachaCam.position.set(0, dist, 0.1); // 地氈由上方往下看
+            } else if (itemId.includes('bookcase') || itemId.includes('painting') || itemId === 'clock') {
+                gachaCam.position.set(0, 0, dist); // 書櫃/畫作由正面看
+            } else {
+                gachaCam.position.set(dist * 0.6, dist * 0.4, dist); // 其他斜角看
+            }
             gachaCam.lookAt(0, 0, 0);
         }
     } else {
-        // 權限卡片
         const card = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 0.2), new THREE.MeshStandardMaterial({color: 0xd4af37, metalness: 0.8, roughness: 0.2}));
         gachaGroup.add(card);
         gachaCam.position.set(0, 0, 12);
         gachaCam.lookAt(0,0,0);
     }
 
-    // 動畫展演
+    // 播放動畫
     gsap.fromTo('#gacha-flash', {opacity: 1}, {opacity: 0, duration: 1.5, ease: "power2.out"});
     gachaGroup.scale.set(0.1, 0.1, 0.1);
     gachaGroup.position.y = -5;
     gsap.to(gachaGroup.scale, {x: 1, y: 1, z: 1, duration: 1.2, ease: "back.out(1.2)"});
     gsap.to(gachaGroup.position, {y: 0, duration: 1.2, ease: "back.out(1.2)"});
-    gsap.to(gachaGroup.rotation, {y: Math.PI * 2, duration: 5, repeat: -1, ease: "linear"});
+    
+    // 只讓非壁掛或非地墊的物品旋轉，地氈和書櫃旋轉會很怪
+    if (!itemId.includes('bookcase') && !itemId.includes('painting') && itemId !== 'carpet') {
+        gsap.to(gachaGroup.rotation, {y: Math.PI * 2, duration: 5, repeat: -1, ease: "linear"});
+    } else {
+        gachaGroup.rotation.y = 0; // 壁掛物保持正面
+    }
     
     document.getElementById('gacha-item-name').innerText = item.name;
     document.getElementById('gacha-item-desc').innerText = item.desc;
@@ -4618,6 +4645,7 @@ function showGachaAnim(itemId) {
     animateGacha();
 }
 
+        
 function animateGacha() {
     if (document.getElementById('gacha-overlay').style.display !== 'none') {
         requestAnimationFrame(animateGacha);
