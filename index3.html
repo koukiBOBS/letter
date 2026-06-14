@@ -2467,15 +2467,16 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
         }
         
 // --- 修訂：降低早中窗外過曝感，並設定黃昏開窗簾時不開燈 ---
+// --- 修訂：將中午的光線 (dir) 從純白改為微暖白 ---
 function setEnvironmentPhase(phaseStr) {
     const envPhases = {
         // 晨：降低天空底部與霧氣亮度，避免窗外白茫茫過曝
         dawn: { skyTop: 0x7a8b98, skyBot: 0xd0b8a8, fog: 0xd0b8a8, dir: 0xffe4cc, int: 0.65, windowLight: false, shadow: true, ceilingOn: false, lightPos: {x: 45, y: 15, z: -50} },
         
-        // 午：將原本偏白的天空底部加深為蔚藍色，微微調降太陽光直射強度
-        noon: { skyTop: 0x40a0d0, skyBot: 0xbae0ff, fog: 0xbae0ff, dir: 0xffffff, int: 0.95, windowLight: false, shadow: true, ceilingOn: false, lightPos: {x: 35, y: 28, z: -45} }, 
+        // 午：【關鍵修改】將 dir 改為 0xfff6ea (微暖白)，讓陽光有一點點溫度感
+        noon: { skyTop: 0x40a0d0, skyBot: 0xbae0ff, fog: 0xbae0ff, dir: 0xfff6ea, int: 0.95, windowLight: false, shadow: true, ceilingOn: false, lightPos: {x: 35, y: 28, z: -45} }, 
         
-        // 暮：【關鍵修改】ceilingOn 改為 false。打開窗簾時不開燈，享受純粹夕陽
+        // 暮：打開窗簾時不開燈，享受純粹夕陽
         dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, dir: 0xffaa66, int: 0.8, windowLight: true, shadow: true, ceilingOn: false, lightPos: {x: -45, y: 12, z: -50} }, 
         
         // 夜：微弱偏藍的月光，夜晚必須強制開燈
@@ -2501,6 +2502,7 @@ function setEnvironmentPhase(phaseStr) {
     applyCurtainRatio();
 }
 
+        
         function onWinResize() { if(!camera) return; camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
         
       // --- 拖曳與點擊系統全域變數 ---
