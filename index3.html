@@ -3823,11 +3823,17 @@ function isCatColliding(x, z) {
 
 
         
-        document.addEventListener("DOMContentLoaded", () => {
-            const q = document.getElementById('log-question'); const c = document.getElementById('log-content');
-            if(q) q.addEventListener('click', function() { openHwKeyboard(this); }); if(c) c.addEventListener('click', function() { openHwKeyboard(this); });
-            document.querySelectorAll('.handwrite-only').forEach(el => { el.addEventListener('keydown', e => { if(el.classList.contains('handwrite-only') && e.key !== 'Backspace') e.preventDefault(); }); el.addEventListener('paste', e => { if(el.classList.contains('handwrite-only')) e.preventDefault(); }); });
-        });
+     document.addEventListener("DOMContentLoaded", () => {
+    const q = document.getElementById('log-question'); const c = document.getElementById('log-content');
+    if(q) q.addEventListener('click', function() { openHwKeyboard(this); }); if(c) c.addEventListener('click', function() { openHwKeyboard(this); });
+    document.querySelectorAll('.handwrite-only').forEach(el => { el.addEventListener('keydown', e => { if(el.classList.contains('handwrite-only') && e.key !== 'Backspace') e.preventDefault(); }); el.addEventListener('paste', e => { if(el.classList.contains('handwrite-only')) e.preventDefault(); }); });
+    
+    // 👇 請在這裡加入以下這段：防止鋼琴背景的點擊穿透到 3D 房間
+    ['pointerdown', 'pointermove', 'pointerup'].forEach(evt => {
+        document.getElementById('piano-overlay').addEventListener(evt, e => e.stopPropagation());
+    });
+    // 👆 加入到這裡為止
+});
 
         function initHandwriting() {
             hwCanvas = document.getElementById('hw-canvas'); hwCtx = hwCanvas.getContext('2d');
