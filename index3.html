@@ -1565,6 +1565,67 @@ function renderList(type, data) {
 
         let scene, camera, renderer, controls, raycaster, mouse;
        let desk, leftDrawer, rightDrawer, book, clipboard, wateringCan, plantGroup, windowGroup, sceneryGroup;
+
+
+let leftCurtainGrp, rightCurtainGrp; 
+let curtainRatio = 1.0;
+let currentEnvParams = null;
+
+// 新增：處理窗簾開合時的模型縮放與室內光影變化
+function applyCurtainRatio() {
+    // 確保寬度縮放：全開時很窄(0.15)，全閉時很寬(1.0)
+    const scaleX = 0.15 + (1.0 - curtainRatio) * 0.85; 
+    if(leftCurtainGrp) leftCurtainGrp.scale.x = scaleX;
+    if(rightCurtainGrp) rightCurtainGrp.scale.x = scaleX;
+    
+    if (!currentEnvParams) return;
+    const p = currentEnvParams;
+    
+    // closedFactor = 1 代表全閉，0 代表全開
+    const closedFactor = 1.0 - curtainRatio; 
+    
+    // 1. 陽光 (dirLight)：窗簾拉上時阻擋陽光
+    if (dirLight) {
+        const targetDirInt = p.int * (1.0 - closedFactor * 0.95); 
+        dirLight.intensity = targetDirInt;
+        dirLight.color = new THREE.Color(p.dir); 
+        // 窗簾閉合超過 90% 時，完全關閉太陽影子，避免奇怪的邊緣漏光
+        dirLight.castShadow = p.shadow && (curtainRatio > 0.1); 
+    }
+    
+    // 2. 室內燈 (ceilingLight & lampBulb)
+    const isNight = (p.phaseStr === 'night');
+    // 白天若窗簾拉上超過 60%，自動開燈；夜晚則強制開燈
+    const needsLight = p.ceilingOn || (closedFactor > 0.6); 
+    
+    if (ceilingLight && lampBulb) {
+        ceilingLight.intensity = needsLight ? 1.2 : 0.0; 
+        ceilingLight.color.setHex(isNight ? 0xffcc88 : 0xfff0dd);
+        
+        // 【修復雙重影子問題】: 無論何時，天花板室內燈都不產生明顯陰影
+        ceilingLight.castShadow = false; 
+        
+        lampBulb.material.emissiveIntensity = needsLight ? 1.0 : 0.0; 
+        lampBulb.material.emissive.setHex(isNight ? 0xffcc88 : 0xfff0dd);
+    }
+    
+    // 3. 環境光 (hemiLight)：拉上窗簾時外部漫射光減弱
+    if (hemiLight) {
+        hemiLight.color.setHex(isNight ? 0x887766 : 0xffffff); 
+        hemiLight.groundColor.setHex(isNight ? 0x332222 : 0x555555); 
+        const baseHemiInt = p.phaseStr === 'noon' ? 0.75 : (p.phaseStr === 'dawn' || p.phaseStr === 'dusk' ? 0.5 : 0.25);
+        hemiLight.intensity = baseHemiInt * (1.0 - closedFactor * 0.5) + (needsLight ? 0.3 : 0);
+    }
+    
+    // 4. 窗外大樓發光
+    animScenery.buildings.forEach(b => {
+        b.material.emissiveIntensity = p.windowLight ? (isNight ? 4.0 : 1.5) : 0.0;
+        b.material.emissive.setHex(p.windowLight ? 0xffea88 : 0x000000);
+    });
+}
+
+
+        
 let dummySpoutTip; let indicatorLeft, indicatorRight, indicatorTasks; let interactables = []; let timePhase = 'noon'; let animScenery = { cars: [], buildings: [] };
         let clockHourHand, clockMinHand, clockSecHand;
 
@@ -1995,11 +2056,10 @@ function closeDrawAnim() {
 }
         function setDefaultCamera() { if (window.innerWidth < 768) { camera.position.set(0, 26, 48); } else { camera.position.set(0, 22, 45); } controls.target.set(0, 7, 0); }
 
-      function buildRoomEnvironment() {
-     hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); 
+    function buildRoomEnvironment() {
+    hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); 
     scene.add(hemiLight);
     
-    // 稍微調整陽光角度，讓光線落在桌面的比例更優美
     dirLight = new THREE.DirectionalLight(0xffeedd, 1.2); 
     dirLight.position.set(20, 35, -50); 
     dirLight.target.position.set(0, 0, 0); 
@@ -2008,17 +2068,14 @@ function closeDrawAnim() {
     dirLight.shadow.mapSize.width = 2048; 
     dirLight.shadow.mapSize.height = 2048; 
     
-    // 【關鍵修復：擴大陰影相機範圍】
-    // 數值從 30 擴大到 45，確保整個房間和桌面都在陰影計算範圍內，消除被裁切的三角形假影
     dirLight.shadow.camera.left = -45; 
     dirLight.shadow.camera.right = 45; 
     dirLight.shadow.camera.top = 45; 
     dirLight.shadow.camera.bottom = -45; 
     
-    // 保留之前修復波紋和生硬邊緣的設定
     dirLight.shadow.bias = -0.0005;        
-    dirLight.shadow.normalBias = 0.05;     // 消除桌面斑馬紋
-    dirLight.shadow.radius = 2.5;          // 讓窗框影子邊緣柔和自然
+    dirLight.shadow.normalBias = 0.05;     
+    dirLight.shadow.radius = 2.5;          
 
     scene.add(dirLight); 
     scene.add(dirLight.target);
@@ -2089,7 +2146,6 @@ function closeDrawAnim() {
     const cLegGeo = new THREE.CylinderGeometry(0.2, 0.1, 4.0); const legMat = new THREE.MeshStandardMaterial({color: 0xdaa520, metalness: 0.8, roughness: 0.3});
     [[-1.5, 2.0, -1.5], [1.5, 2.0, -1.5], [-1.5, 2.0, 1.5], [1.5, 2.0, 1.5]].forEach(pos => { const leg = new THREE.Mesh(cLegGeo, legMat); leg.position.set(...pos); leg.castShadow = true; chairGroup.add(leg); });
     
-    // 椅子的 HitBox，設定為可拖曳
     const chairHitBox = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 6), new THREE.MeshBasicMaterial({visible: false}));
     chairHitBox.position.y = 2.5; chairHitBox.userData = {type: 'chair'}; chairGroup.add(chairHitBox);
 
@@ -2129,20 +2185,51 @@ function closeDrawAnim() {
     const tcBot = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.2, 20), new THREE.MeshStandardMaterial({color: 0x7a7a7a, metalness: 0.6, roughness: 0.4}));
     tcBot.position.y = -2.4; tcGrp.add(tcBot);
 
-    // 垃圾桶的 HitBox，設定為可拖曳
     const tcHitBox = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 6), new THREE.MeshBasicMaterial({visible: false}));
     tcHitBox.position.y = 0; tcHitBox.userData = {type: 'trash'}; tcGrp.add(tcHitBox);
 
+    // ============================================
+    // 【修改點】替換成全新的動態可拖曳窗簾系統
+    // ============================================
+    const savedRatio = localStorage.getItem('roomCurtainRatio');
+    curtainRatio = savedRatio !== null ? parseFloat(savedRatio) : 1.0; 
+    
     const curtainMat = new THREE.MeshStandardMaterial({color: 0x8f9fa6, roughness: 0.9, side: THREE.DoubleSide});
-    function createCurtain(px) {
-        const cGrp = new THREE.Group();
-        for(let i=0; i<6; i++) {
-            const fold = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 38, 12), curtainMat);
-            fold.position.set((i-2.5)*1.2, 0, (i%2)*0.6); fold.scale.z = 0.4; fold.castShadow = true; cGrp.add(fold);
-        }
-        cGrp.position.set(px, 19, -16.5); scene.add(cGrp);
+    
+    leftCurtainGrp = new THREE.Group();
+    leftCurtainGrp.position.set(-15, 19, -16.5);
+    scene.add(leftCurtainGrp);
+    
+    rightCurtainGrp = new THREE.Group();
+    rightCurtainGrp.position.set(15, 19, -16.5);
+    scene.add(rightCurtainGrp);
+    
+    for(let i=0; i<8; i++) {
+        const foldL = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 38, 12), curtainMat);
+        foldL.position.set(i*1.8 + 0.9, 0, (i%2)*0.6);
+        foldL.scale.z = 0.4;
+        foldL.castShadow = true;
+        leftCurtainGrp.add(foldL);
+        
+        const foldR = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 38, 12), curtainMat);
+        foldR.position.set(-(i*1.8 + 0.9), 0, (i%2)*0.6);
+        foldR.scale.z = 0.4;
+        foldR.castShadow = true;
+        rightCurtainGrp.add(foldR);
     }
-    createCurtain(-18); createCurtain(18);
+    
+    const hitL = new THREE.Mesh(new THREE.BoxGeometry(15, 38, 4), new THREE.MeshBasicMaterial({visible:false}));
+    hitL.position.set(7.5, 0, 0);
+    hitL.userData = { type: 'curtain', side: 'left' };
+    leftCurtainGrp.add(hitL);
+    
+    const hitR = new THREE.Mesh(new THREE.BoxGeometry(15, 38, 4), new THREE.MeshBasicMaterial({visible:false}));
+    hitR.position.set(-7.5, 0, 0);
+    hitR.userData = { type: 'curtain', side: 'right' };
+    rightCurtainGrp.add(hitR);
+    
+    applyCurtainRatio(); // 初始化縮放比例
+    // ============================================
 
     const shGrp = new THREE.Group(); shGrp.position.set(59.5, 20, -5); shGrp.rotation.y = -Math.PI/2; scene.add(shGrp);
     const sh1 = new THREE.Mesh(new THREE.BoxGeometry(12, 0.6, 2.5), woodMat); sh1.position.set(0, 4, 0); sh1.castShadow = true; shGrp.add(sh1);
@@ -2185,11 +2272,11 @@ function closeDrawAnim() {
     const treeMat = new THREE.MeshStandardMaterial({color: 0x2d4c1e, roughness: 0.9}); const trunkMat = new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 0.9});
     for (let i = -50; i <= 50; i += 15) { if (Math.abs(i) < 5) continue; [[-7], [7]].forEach(pos => { const t = new THREE.Group(); const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 3), trunkMat); tr.position.y = 1.5; tr.castShadow = true; t.add(tr); const lf = new THREE.Mesh(new THREE.ConeGeometry(2.5, 6, 8), treeMat); lf.position.y = 4.5; lf.castShadow = true; t.add(lf); t.position.set(i + (Math.random()-0.5)*3, -4.9, pos[0]); sceneryGroup.add(t); }); }
 
-    // 加入可點擊與互動的物件清單
-    interactables = [leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitBox, chairHitBox];
+    // 【修改點】確保窗簾的 HitBox 加入 interactables 可拖曳陣列中
+    interactables = [leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitBox, chairHitBox, hitL, hitR];
     
     // 貓咪部分...
-    function createFurTexture(baseColor, highlight, shadow) {
+   function createFurTexture(baseColor, highlight, shadow) {
         const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
         ctx.fillStyle = baseColor; ctx.fillRect(0,0,512,512);
         for(let i=0; i<35000; i++) {
@@ -2206,7 +2293,6 @@ function closeDrawAnim() {
     catGrp = new THREE.Group(); catGrp.position.set(0, 0, 25); scene.add(catGrp);
     catBody = new THREE.Group(); catBody.position.y = 1.6; catGrp.add(catBody);
     
-    // 貓咪的 HitBox，設定為可拖曳
     const catHitBox = new THREE.Mesh(new THREE.BoxGeometry(3.5, 3.5, 3.5), new THREE.MeshBasicMaterial({visible: false}));
     catHitBox.position.y = 1.0; catHitBox.userData = {type: 'cat'}; catGrp.add(catHitBox);
     interactables.push(catHitBox);
@@ -2319,40 +2405,23 @@ function closeDrawAnim() {
             if (h >= 5 && h < 9) setEnvironmentPhase('dawn'); else if (h >= 9 && h < 16) setEnvironmentPhase('noon'); else if (h >= 16 && h < 19) setEnvironmentPhase('dusk'); else setEnvironmentPhase('night');
         }
         
-       function setEnvironmentPhase(phaseStr) {
-            const envPhases = {
-                // skyTop: 天頂顏色, skyBot: 地平線顏色, fog: 霧氣顏色(與地平線相近以融合邊界)
-                dawn: { skyTop: 0x8a9ba8, skyBot: 0xe8d0c0, fog: 0xe8d0c0, dir: 0xffe4cc, int: 0.8, windowLight: false, shadow: true, ceilingOn: false },
-                // 中午：降低飽和度，頂部柔藍，底部帶點水氣的泛白
-                noon: { skyTop: 0x4aaee6, skyBot: 0xddf3ff, fog: 0xddf3ff, dir: 0xffffff, int: 1.3, windowLight: false, shadow: true, ceilingOn: false },
-                // 黃昏：加入冷暖對比，頂部偏紫灰，底部為柔和的蜜桃橘，避免死橘色
-                dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, dir: 0xffaa66, int: 0.9, windowLight: true, shadow: true, ceilingOn: true }, 
-                night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x1a2235, dir: 0x404055, int: 0.1, windowLight: true, shadow: false, ceilingOn: true }
-            };
-            const p = envPhases[phaseStr];
-            
-            // 使用漸層材質作為背景，取代原本的純色
-            scene.background = createSkyTexture(p.skyTop, p.skyBot); 
-            scene.fog.color = new THREE.Color(p.fog);
-            dirLight.color = new THREE.Color(p.dir); 
-            dirLight.intensity = p.int; 
-            dirLight.castShadow = p.shadow; 
-            
-            animScenery.buildings.forEach(b => {
-                b.material.emissiveIntensity = p.windowLight ? (phaseStr === 'night' ? 4.0 : 1.5) : 0.0;
-                b.material.emissive.setHex(p.windowLight ? 0xffea88 : 0x000000);
-            });
-            
-            if (ceilingLight && lampBulb) {
-                ceilingLight.intensity = p.ceilingOn ? (phaseStr === 'night' ? 1.5 : 0.8) : 0.0; ceilingLight.color.setHex(phaseStr === 'night' ? 0xffcc88 : 0xfff0dd);
-                lampBulb.material.emissiveIntensity = p.ceilingOn ? 1.0 : 0.0; lampBulb.material.emissive.setHex(phaseStr === 'night' ? 0xffcc88 : 0xfff0dd); ceilingLight.castShadow = p.ceilingOn; 
-            }
-            if (hemiLight) { 
-                hemiLight.color.setHex(phaseStr === 'night' ? 0x887766 : 0xffffff); 
-                hemiLight.groundColor.setHex(phaseStr === 'night' ? 0x332222 : 0x555555); 
-                hemiLight.intensity = phaseStr === 'noon' ? 0.75 : (phaseStr === 'dawn' || phaseStr === 'dusk' ? 0.5 : 0.25);
-            }
-        }
+    function setEnvironmentPhase(phaseStr) {
+    const envPhases = {
+        dawn: { skyTop: 0x8a9ba8, skyBot: 0xe8d0c0, fog: 0xe8d0c0, dir: 0xffe4cc, int: 0.8, windowLight: false, shadow: true, ceilingOn: false },
+        noon: { skyTop: 0x4aaee6, skyBot: 0xddf3ff, fog: 0xddf3ff, dir: 0xffffff, int: 1.3, windowLight: false, shadow: true, ceilingOn: false },
+        dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, dir: 0xffaa66, int: 0.9, windowLight: true, shadow: true, ceilingOn: true }, 
+        night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x1a2235, dir: 0x404055, int: 0.1, windowLight: true, shadow: false, ceilingOn: true }
+    };
+    currentEnvParams = envPhases[phaseStr];
+    currentEnvParams.phaseStr = phaseStr;
+    
+    scene.background = createSkyTexture(currentEnvParams.skyTop, currentEnvParams.skyBot); 
+    scene.fog.color = new THREE.Color(currentEnvParams.fog);
+    
+    // 透過 applyCurtainRatio 統一處理光影邏輯，結合當前時間與窗簾狀態
+    applyCurtainRatio();
+}
+
 
         function onWinResize() { if(!camera) return; camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
         
@@ -2383,19 +2452,17 @@ function onPointerDown(e) {
 
         if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat'].includes(type)) {
             let targetObj = obj;
-            // 如果是群組物件，抓取其上層主體
-            if(type === 'plant' || type === 'trash' || type === 'chair' || type === 'cat') {
+            if(['plant', 'trash', 'chair', 'cat'].includes(type)) {
                 targetObj = obj.parent; 
             }
 
-          dragTimer = setTimeout(() => {
+            dragTimer = setTimeout(() => {
                 isDragging = true;
                 dragTarget = targetObj;
                 dragTarget.userData.dragType = type;
                 controls.enabled = false;
                 document.body.style.cursor = 'grabbing';
 
-                // 【新增】如果抓起的是貓咪，讓牠進入被抓起的懸空狀態
                 if (type === 'cat') {
                     setCatState('dragged');
                 }
@@ -2413,6 +2480,16 @@ function onPointerDown(e) {
                     dragOffset.copy(intersectPoint).sub(dragTarget.position);
                 }
             }, 300);
+        } 
+        else if (type === 'curtain') {
+            // 窗簾判定觸發稍微快一點，且不用提起來
+            dragTimer = setTimeout(() => {
+                isDragging = true;
+                dragTarget = obj; 
+                dragTarget.userData.dragType = type;
+                controls.enabled = false;
+                document.body.style.cursor = 'ew-resize';
+            }, 150);
         }
     }
 }
@@ -2437,7 +2514,6 @@ function onPointerMove(e) {
         if(['log', 'tasks', 'water', 'plant'].includes(type)) {
             raycaster.ray.intersectPlane(deskPlane, intersectPoint);
             if(intersectPoint) {
-                // 桌子邊界限制
                 let newX = Math.max(-13, Math.min(13, intersectPoint.x - dragOffset.x));
                 let newZ = Math.max(-6, Math.min(6, intersectPoint.z - dragOffset.z));
                 dragTarget.position.x = newX;
@@ -2447,48 +2523,49 @@ function onPointerMove(e) {
         else if (['trash', 'chair'].includes(type)) {
             raycaster.ray.intersectPlane(floorPlane, intersectPoint);
             if(intersectPoint) {
-                // 地氈邊界限制
                 let newX = Math.max(-18, Math.min(18, intersectPoint.x - dragOffset.x));
                 let newZ = Math.max(-4, Math.min(20, intersectPoint.z - dragOffset.z));
                 dragTarget.position.x = newX;
                 dragTarget.position.z = newZ;
             }
         }
-       else if (type === 'cat') {
+        else if (type === 'cat') {
             raycaster.ray.intersectPlane(floorPlane, intersectPoint);
             if(intersectPoint) {
                 let newX = intersectPoint.x - dragOffset.x;
                 let newZ = intersectPoint.z - dragOffset.z;
                 
-                // 判斷貓咪目前所在的平台，並進行嚴格邊界鎖定
                 if (newX >= -14 && newX <= 14 && newZ >= -7 && newZ <= 7) {
                     catPlatform = 'desk';
                     dragTarget.userData.originalY = 8.5;
-                    // 限制拖曳不出桌面邊緣
                     newX = Math.max(-12, Math.min(12, newX));
                     newZ = Math.max(-5.5, Math.min(5.5, newZ));
                 } else if (chairGroup && newX >= chairGroup.position.x - 3 && newX <= chairGroup.position.x + 3 && newZ >= chairGroup.position.z - 3 && newZ <= chairGroup.position.z + 3) {
                     catPlatform = 'chair';
                     dragTarget.userData.originalY = 4.5;
-                    // 限制拖曳不出椅墊邊緣
                     newX = Math.max(chairGroup.position.x - 1.5, Math.min(chairGroup.position.x + 1.5, newX));
                     newZ = Math.max(chairGroup.position.z - 1.5, Math.min(chairGroup.position.z + 1.5, newZ));
                 } else {
                     catPlatform = 'floor';
                     dragTarget.userData.originalY = 0;
-                    // 若在地上，則限制在地氈邊界
                     newX = Math.max(-16, Math.min(16, newX));
                     newZ = Math.max(-2, Math.min(18, newZ));
-                    
-                    // 【新增】拖曳時若碰到實體障礙物，阻止進入該區域 (滑鼠滑過去會卡在實物外)
-                    if (isCatColliding(newX, newZ)) {
-                        return; // 放棄此幀的位置更新
-                    }
+                    if (isCatColliding(newX, newZ)) return; 
                 }
                 
                 dragTarget.position.x = newX;
                 dragTarget.position.z = newZ;
                 dragTarget.position.y = dragTarget.userData.originalY + 1.2;
+            }
+        }
+        else if (type === 'curtain') {
+            // 窗簾左右拖拉：滑鼠 X 越靠近 0 越閉合
+            let curtainPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 16.5);
+            raycaster.ray.intersectPlane(curtainPlane, intersectPoint);
+            if (intersectPoint) {
+                let r = Math.abs(intersectPoint.x) / 15;
+                curtainRatio = Math.max(0, Math.min(1, r));
+                applyCurtainRatio();
             }
         }
         return; 
@@ -2505,9 +2582,18 @@ function onPointerUp(e) {
         dragTimer = null; 
     }
 
-   if(isDragging && dragTarget) {
-        const type = dragTarget.userData.dragType; // 記住拖曳的類型
-        const droppedObj = dragTarget;             // 記住被放開的物件 (因為稍後 dragTarget 會被清空)
+    if(isDragging && dragTarget) {
+        const type = dragTarget.userData.dragType; 
+        const droppedObj = dragTarget;             
+
+        if (type === 'curtain') {
+            localStorage.setItem('roomCurtainRatio', curtainRatio.toString());
+            isDragging = false;
+            dragTarget = null;
+            controls.enabled = true;
+            document.body.style.cursor = 'default';
+            return;
+        }
 
         gsap.to(dragTarget.position, { 
             y: dragTarget.userData.originalY, 
@@ -2515,9 +2601,6 @@ function onPointerUp(e) {
             ease: "bounce.out",
             onComplete: () => {
                 saveObjectPositions(); 
-                
-                // 【新增】貓咪落地後，強制把目標點設在自己的腳下，並恢復發呆狀態
-                // 這樣牠就不會一落地就拔腿狂奔去尋找舊的目標了
                 if (type === 'cat') {
                     catTarget.set(droppedObj.position.x, 0, droppedObj.position.z);
                     setCatState('idle');
