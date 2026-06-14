@@ -2170,15 +2170,8 @@ function closeDrawAnim() {
     const catMat = new THREE.MeshStandardMaterial({map: orangeFur, roughness: 0.9, bumpMap: orangeFur, bumpScale: 0.02});
     const whiteMat = new THREE.MeshStandardMaterial({map: whiteFur, roughness: 0.9, bumpMap: whiteFur, bumpScale: 0.02});
 
-   // 🐾 2. 創造高細緻度圓潤小貓
-    catGrp = new THREE.Group(); 
-    catGrp.position.set(0, 0, 25); 
-    catGrp.scale.set(1.2, 1.2, 1.2); // <--- 新增這行，將貓咪整體等比例放大 1.6 倍
-    scene.add(catGrp);
-    
-    catBody = new THREE.Group(); 
-    catBody.position.y = 1.6; 
-    catGrp.add(catBody);
+    catGrp = new THREE.Group(); catGrp.position.set(0, 0, 25); scene.add(catGrp);
+    catBody = new THREE.Group(); catBody.position.y = 1.6; catGrp.add(catBody);
     
     // 貓咪的 HitBox，設定為可拖曳
     const catHitBox = new THREE.Mesh(new THREE.BoxGeometry(3.5, 3.5, 3.5), new THREE.MeshBasicMaterial({visible: false}));
@@ -2616,8 +2609,8 @@ function onPointerUp(e) {
                 if (dist < 1.0) {
                     setCatState('idle');
                 } else {
-                    catGrp.position.x += (dx/dist) * 0.05; // <--- 配合體型，將 0.04 改為 0.06
-                    catGrp.position.z += (dz/dist) * 0.05; // <--- 配合體型，將 0.04 改為 0.06
+                    catGrp.position.x += (dx/dist) * 0.04;
+                    catGrp.position.z += (dz/dist) * 0.04;
                     const targetY = Math.atan2(dx, dz); 
                     let diff = targetY - catGrp.rotation.y;
                     while (diff < -Math.PI) diff += Math.PI * 2;
