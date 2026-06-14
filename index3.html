@@ -1155,19 +1155,38 @@ function handleFileSelect(event, type = 'reading') {
                         }
                         
                         // 【新增】讀取與綁定回信草稿
+                       if (canReply) {
                         const replyInput = document.getElementById('reply-text');
-                        const draftKey = 'draft_reply_' + id;
-                        if (sessionStorage.getItem(draftKey)) replyInput.value = sessionStorage.getItem(draftKey);
-                        replyInput.addEventListener('input', () => sessionStorage.setItem(draftKey, replyInput.value));
+                        const btnSend = document.getElementById('btn-send-reply');
 
-                        document.getElementById('btn-send-reply').onclick = () => {
-                            const txt = document.getElementById('reply-text').value.trim(); if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
-                            if (isSubmittingReply) return; isSubmittingReply = true; document.getElementById('btn-send-reply').disabled = true; document.getElementById('btn-send-reply').innerText = "封裝寄出中...";
-                            playAnim('reply', id, partnerUid, txt);
+                        // 安全檢查：確保真的有找到輸入框才綁定事件
+                        if (replyInput) {
+                            if (!isTeacherEmail(currentUser.email)) {
+                                replyInput.addEventListener('click', function() { openHwKeyboard(this); });
+                            }
                             
-                            // 【新增】送出後清除這封信的回信草稿
-                            sessionStorage.removeItem(draftKey);
-                        };
+                            // 讀取與綁定回信草稿
+                            const draftKey = 'draft_reply_' + id;
+                            if (sessionStorage.getItem(draftKey)) replyInput.value = sessionStorage.getItem(draftKey);
+                            
+                            replyInput.addEventListener('input', () => sessionStorage.setItem(draftKey, replyInput.value));
+                        }
+
+                        // 安全檢查：確保真的有找到按鈕才綁定事件
+                        if (btnSend) {
+                            btnSend.onclick = () => {
+                                const txt = replyInput ? replyInput.value.trim() : ''; 
+                                if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
+                                if (isSubmittingReply) return; 
+                                isSubmittingReply = true; 
+                                btnSend.disabled = true; 
+                                btnSend.innerText = "封裝寄出中...";
+                                playAnim('reply', id, partnerUid, txt);
+                                
+                                // 送出後清除這封信的回信草稿
+                                sessionStorage.removeItem('draft_reply_' + id);
+                            };
+                        }
                     }
                     
                     document.getElementById('modal').style.display = 'flex'; lockScroll();
