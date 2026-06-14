@@ -2637,7 +2637,7 @@ function closeDrawAnim() {
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.outputEncoding = THREE.sRGBEncoding;
     container.innerHTML = ''; container.appendChild(renderer.domElement);
     
-    controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.maxPolarAngle = Math.PI/2 - 0.05; controls.minDistance = 10; controls.maxDistance = 48; // 縮小最大距離，避免鏡頭退到書架內
+    controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.maxPolarAngle = Math.PI/2 - 0.05; controls.minDistance = 10; controls.maxDistance = 57; // 縮小最大距離，避免鏡頭退到書架內
     
     const savedState = localStorage.getItem('roomCameraState');
     if (savedState) { try { const s = JSON.parse(savedState); camera.position.set(s.cp.x, s.cp.y, s.cp.z); controls.target.set(s.ct.x, s.ct.y, s.ct.z); } catch(e) { setDefaultCamera(); } } else { setDefaultCamera(); }
