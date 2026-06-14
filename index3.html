@@ -1566,15 +1566,6 @@ function renderList(type, data) {
         let scene, camera, renderer, controls, raycaster, mouse;
        let desk, leftDrawer, rightDrawer, book, clipboard, wateringCan, plantGroup, windowGroup, sceneryGroup;
 let dummySpoutTip; let indicatorLeft, indicatorRight, indicatorTasks; let interactables = []; let timePhase = 'noon'; let animScenery = { cars: [], buildings: [] };
-    
-        let curtainLeftGrp, curtainRightGrp;
-// 從 LocalStorage 讀取窗簾狀態 (0 = 全開, 1 = 全關)
-let curtainRatio = parseFloat(localStorage.getItem('roomCurtainState') || '0'); 
-let currentEnvParams = null; // 記錄當前時段的光影基礎值
-let isWateringAnimPlaying = false; // 防澆水連點產生影子Bug
-        
-        
-        
         let clockHourHand, clockMinHand, clockSecHand;
 
 
@@ -2004,47 +1995,6 @@ function closeDrawAnim() {
 }
         function setDefaultCamera() { if (window.innerWidth < 768) { camera.position.set(0, 26, 48); } else { camera.position.set(0, 22, 45); } controls.target.set(0, 7, 0); }
 
-
-function applyCurtainRatio(ratio) {
-    curtainRatio = Math.max(0, Math.min(1, ratio));
-    localStorage.setItem('roomCurtainState', curtainRatio.toString());
-
-    // 比例換算：開的時候縮小到 0.2 (擠在旁邊)，關的時候拉長到 1.0
-    const scaleX = 0.2 + (0.8 * curtainRatio);
-    if(curtainLeftGrp) curtainLeftGrp.scale.x = scaleX;
-    if(curtainRightGrp) curtainRightGrp.scale.x = scaleX;
-
-    updateLightingByCurtain();
-}
-
-function updateLightingByCurtain() {
-    if (!currentEnvParams) return;
-    const p = currentEnvParams;
-    const isNight = timePhase === 'night';
-    
-    // 如果是白天但拉上窗簾，會逐漸開啟室內燈光
-    const indoorLightIntensity = isNight ? 1.0 : curtainRatio;
-
-    // 陽光隨窗簾關閉而逐漸遮蔽 (最暗剩 15%)
-    dirLight.intensity = p.int * (1 - curtainRatio * 0.85); 
-    dirLight.castShadow = p.shadow && (curtainRatio < 0.7); 
-
-    // 室內天花板燈與桌燈控制
-    if (ceilingLight && lampBulb) {
-        const ceilingVol = p.ceilingOn ? (isNight ? 1.5 : 0.8) : (0.8 * indoorLightIntensity);
-        ceilingLight.intensity = ceilingVol;
-        lampBulb.material.emissiveIntensity = ceilingVol > 0 ? 1.0 : 0.0;
-        ceilingLight.castShadow = (ceilingVol > 0.5);
-    }
-    
-    // 環境底光減弱
-    if (hemiLight) {
-        hemiLight.intensity = p.hemiInt * (1 - curtainRatio * 0.4);
-    }
-}
-
-
-        
       function buildRoomEnvironment() {
      hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); 
     scene.add(hemiLight);
@@ -2184,42 +2134,15 @@ function updateLightingByCurtain() {
     tcHitBox.position.y = 0; tcHitBox.userData = {type: 'trash'}; tcGrp.add(tcHitBox);
 
     const curtainMat = new THREE.MeshStandardMaterial({color: 0x8f9fa6, roughness: 0.9, side: THREE.DoubleSide});
-   function createCurtain(isLeft) {
-        const grp = new THREE.Group();
-        const sign = isLeft ? -1 : 1;
-        // 將基準點設在窗框的左右兩側，這樣縮放時才會像拉窗簾
-        grp.position.set(sign * 15, 14, -16.5); 
-
-        const foldGrp = new THREE.Group();
-        grp.add(foldGrp);
-
+    function createCurtain(px) {
+        const cGrp = new THREE.Group();
         for(let i=0; i<6; i++) {
             const fold = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 38, 12), curtainMat);
-            // 摺痕向中間延伸
-            fold.position.set(sign * (i * -2.4 + 1.2), 0, (i%2)*0.6); 
-            fold.scale.z = 0.4; 
-            fold.castShadow = true; 
-            foldGrp.add(fold);
+            fold.position.set((i-2.5)*1.2, 0, (i%2)*0.6); fold.scale.z = 0.4; fold.castShadow = true; cGrp.add(fold);
         }
-
-        // 加入隱形 HitBox，讓射線可以點擊拖曳
-        const hitBox = new THREE.Mesh(new THREE.BoxGeometry(15, 38, 4), new THREE.MeshBasicMaterial({visible: false}));
-        hitBox.position.set(sign * -7.5, 0, 0); 
-        hitBox.userData = { type: isLeft ? 'curtainLeft' : 'curtainRight' };
-        grp.add(hitBox);
-        interactables.push(hitBox);
-
-        return { grp, foldGrp };
+        cGrp.position.set(px, 19, -16.5); scene.add(cGrp);
     }
-
-    const leftC = createCurtain(true);
-    curtainLeftGrp = leftC.foldGrp;
-    scene.add(leftC.grp);
-
-    const rightC = createCurtain(false);
-    curtainRightGrp = rightC.foldGrp;
-    scene.add(rightC.grp);
- 
+    createCurtain(-18); createCurtain(18);
 
     const shGrp = new THREE.Group(); shGrp.position.set(59.5, 20, -5); shGrp.rotation.y = -Math.PI/2; scene.add(shGrp);
     const sh1 = new THREE.Mesh(new THREE.BoxGeometry(12, 0.6, 2.5), woodMat); sh1.position.set(0, 4, 0); sh1.castShadow = true; shGrp.add(sh1);
@@ -2407,12 +2330,6 @@ function updateLightingByCurtain() {
                 night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x1a2235, dir: 0x404055, int: 0.1, windowLight: true, shadow: false, ceilingOn: true }
             };
             const p = envPhases[phaseStr];
-
-
-
-            p.hemiInt = phaseStr === 'noon' ? 0.75 : (phaseStr === 'dawn' || phaseStr === 'dusk' ? 0.5 : 0.25);
-    currentEnvParams = p; 
-    timePhase = phaseStr;
             
             // 使用漸層材質作為背景，取代原本的純色
             scene.background = createSkyTexture(p.skyTop, p.skyBot); 
@@ -2464,17 +2381,12 @@ function onPointerDown(e) {
         while(obj.parent && !obj.userData.type) obj = obj.parent;
         const type = obj.userData.type;
 
-        // 修改 if 判斷式包含窗簾
-if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'curtainLeft', 'curtainRight'].includes(type)) {
-    
-    // --- 新增這段窗簾專用邏輯 ---
-    if (type === 'curtainLeft' || type === 'curtainRight') {
-        isDragging = true;
-        dragTarget = { type: type }; // 虛擬 Target
-        controls.enabled = false;
-        document.body.style.cursor = 'ew-resize';
-        return; // 跳過下方的長按 setTimeout
-    }
+        if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat'].includes(type)) {
+            let targetObj = obj;
+            // 如果是群組物件，抓取其上層主體
+            if(type === 'plant' || type === 'trash' || type === 'chair' || type === 'cat') {
+                targetObj = obj.parent; 
+            }
 
           dragTimer = setTimeout(() => {
                 isDragging = true;
@@ -2517,23 +2429,8 @@ function onPointerMove(e) {
         }
     }
 
-if(isDragging && dragTarget) {
-    const type = dragTarget.type || dragTarget.userData.dragType;
-    
-    // --- 新增這段窗簾推算 ---
-    if (type === 'curtainLeft' || type === 'curtainRight') {
-        const deltaX = e.clientX - pointerDownPos.x;
-        pointerDownPos.x = e.clientX; // 更新滑鼠位置
-        
-        // 左窗簾往右是關(正)，右窗簾往左是關(負)
-        const change = (type === 'curtainLeft' ? deltaX : -deltaX) * 0.003; 
-        applyCurtainRatio(curtainRatio + change);
-        return;
-    }
-
-
-
-        
+    if(isDragging && dragTarget) {
+        const type = dragTarget.userData.dragType;
         raycaster.setFromCamera(mouse, camera);
         let intersectPoint = new THREE.Vector3();
         
@@ -2608,20 +2505,9 @@ function onPointerUp(e) {
         dragTimer = null; 
     }
 
-if(isDragging && dragTarget) {
-    const type = dragTarget.type || dragTarget.userData.dragType;
-    
-    // --- 新增窗簾放開邏輯 ---
-    if (type === 'curtainLeft' || type === 'curtainRight') {
-        isDragging = false;
-        dragTarget = null;
-        controls.enabled = true;
-        document.body.style.cursor = 'default';
-        return;
-    }
-    // -------------------------
-
-    const droppedObj = dragTarget;
+   if(isDragging && dragTarget) {
+        const type = dragTarget.userData.dragType; // 記住拖曳的類型
+        const droppedObj = dragTarget;             // 記住被放開的物件 (因為稍後 dragTarget 會被清空)
 
         gsap.to(dragTarget.position, { 
             y: dragTarget.userData.originalY, 
@@ -2667,8 +2553,6 @@ if(isDragging && dragTarget) {
 }
 
        function performWateringAnimation() {
-           if (isWateringAnimPlaying) return;
-isWateringAnimPlaying = true;
             if (!userPlantData) { document.getElementById('modal-plant-selector').style.display = 'flex'; return; }
             if (userPlantData.isDead) return showToast("🥀 植物已經枯萎，無法再澆水了...");
             let today = new Date().toDateString(); let lastW = new Date(userPlantData.lastWatered).toDateString();
@@ -2699,20 +2583,15 @@ isWateringAnimPlaying = true;
             // 4. 計算水滴落下的目標高度 (大約是盆栽泥土的位置)
             const dropTargetY = pY + 0.5;
 
-          .to(wateringCan.position, {
-    x: startPos.x, y: startPos.y, z: startPos.z, 
-    duration: 0.8,
-    onComplete: () => { isWateringAnimPlaying = false; } // 加入這行解鎖
-});
+            gsap.timeline().to(wateringCan.position, {x: waterPos.x, y: waterPos.y, z: waterPos.z, duration: 0.8, ease: "power2.out"})
                 .to(wateringCan.rotation, {z: -Math.PI/4, duration: 0.4}) 
                 .call(() => {
                     let dropCount = 0; let targetPos = new THREE.Vector3();
                     let waterInterval = setInterval(() => {
                         if (dropCount++ > 15) { clearInterval(waterInterval); return; }
                         dummySpoutTip.getWorldPosition(targetPos);
-                       const p = new THREE.Mesh(new THREE.SphereGeometry(0.12), new THREE.MeshBasicMaterial({color:0x66ccff, transparent:true, opacity:0.8})); 
-p.castShadow = false; // 強制關閉水滴陰影
-p.position.copy(targetPos);
+                        const p = new THREE.Mesh(new THREE.SphereGeometry(0.12), new THREE.MeshBasicMaterial({color:0x66ccff, transparent:true, opacity:0.8})); 
+                        p.position.copy(targetPos); 
                         scene.add(p);
                         
                         // 讓水滴準確掉落在植物目前的位置與高度
