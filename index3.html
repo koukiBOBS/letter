@@ -1015,15 +1015,18 @@ db.ref(`users/${currentUser.uid}`).on('value', snap => {
     document.getElementById('user-points-text').innerText = userPoints;
     
     // 👇 【新增】根據趟門維修狀態，限制相機旋轉角度
+  // 👇 【修改】根據趟門維修狀態，同時限制左右與上下的旋轉角度
     if (typeof controls !== 'undefined' && !isAtBalcony) {
         if (hasDoorPrivilege) {
-            // 趟門已修復：解除限制，允許 360 度旋轉看風景
+            // 趟門已修復：解除限制，允許 360 度旋轉看風景，也能抬頭看
             controls.minAzimuthAngle = -Infinity;
             controls.maxAzimuthAngle = Infinity;
+            controls.minPolarAngle = 0; 
         } else {
-            // 趟門未修復：限制只能看室內前半部 (180度)，無法轉到窗外視角
+            // 趟門未修復：限制只能看室內，並限制抬頭角度 (約 57 度)，避免穿模看到外面天花板
             controls.minAzimuthAngle = -Math.PI / 2;
             controls.maxAzimuthAngle = Math.PI / 2;
+            controls.minPolarAngle = 1.0; 
         }
     }
     
@@ -2706,7 +2709,16 @@ function buildRoomEnvironment() {
 
     const wallMat = new THREE.MeshStandardMaterial({ color: 0xdbd4cc, roughness: 1.0, side: THREE.DoubleSide }); const floorMat = new THREE.MeshStandardMaterial({ map: createFloorTexture(), roughness: 0.3, metalness: 0.05 });
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 78), floorMat); floor.rotation.x = -Math.PI/2; floor.position.set(0, 0, 21); floor.receiveShadow = true; scene.add(floor);
-    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(120, 78), wallMat); ceiling.rotation.x = Math.PI/2; ceiling.position.set(0, 40, 21); scene.add(ceiling);
+   // 將天花板改為有厚度的屋頂實體，徹底阻擋室內光線外洩
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.9 });
+    const ceiling = new THREE.Mesh(
+        new THREE.BoxGeometry(130, 4, 90), 
+        [wallMat, wallMat, roofMat, wallMat, wallMat, wallMat]
+    ); 
+    ceiling.position.set(0, 42, 21); // 高度上調，確保室內天花板維持在 Y=40
+    ceiling.castShadow = true;
+    ceiling.receiveShadow = true;
+    scene.add(ceiling);
 
     const wallShape = new THREE.Shape(); wallShape.moveTo(-60, 0); wallShape.lineTo(60, 0); wallShape.lineTo(60, 40); wallShape.lineTo(-60, 40);
     const windowHole = new THREE.Path(); 
@@ -3488,6 +3500,8 @@ interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitB
     if(typeof benchGrp !== 'undefined') benchGrp.userData.itemId = 'piano_bench';
     if(typeof chairGroup !== 'undefined') chairGroup.userData.itemId = 'chair';
     if(typeof catGrp !== 'undefined') catGrp.userData.itemId = 'cat';
+    if(typeof leftCurtainGrp !== 'undefined') leftCurtainGrp.userData.itemId = 'curtain';
+    if(typeof rightCurtainGrp !== 'undefined') rightCurtainGrp.userData.itemId = 'curtain';
     // 👆 【貼到這裡為止】 👆
 
 // 在 buildRoomEnvironment 結尾，將所有標記了 itemId 的道具預設隱藏
