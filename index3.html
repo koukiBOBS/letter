@@ -2683,8 +2683,8 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     }
 
     // 琴椅
-    const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.add(benchGrp);
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(7, 0.8, 3), new THREE.MeshStandardMaterial({color: 0x3a1f11, roughness: 0.8})); seat.position.y = 4.5; seat.castShadow=true; benchGrp.add(seat);
+const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.add(benchGrp);
+    const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(7, 0.8, 3), new THREE.MeshStandardMaterial({color: 0x3a1f11, roughness: 0.8})); benchSeat.position.y = 4.5; benchSeat.castShadow=true; benchGrp.add(benchSeat);
     [[-3, 2.25, -1], [3, 2.25, -1], [-3, 2.25, 1], [3, 2.25, 1]].forEach(pos => { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 4.5), pianoGlossy); l.position.set(...pos); l.castShadow=true; benchGrp.add(l); });
 
     // 加入隱形 HitBox 以便點擊
