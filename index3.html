@@ -2766,14 +2766,7 @@ const bc2 = createBookcase(0, 59); if(bc2) bc2.userData.itemId = 'bookcase_2';
 const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
 
 
-cpt.userData.itemId = 'carpet';
-tcGrp.userData.itemId = 'trash';
-clockGrp.userData.itemId = 'clock';
-rackGrp.userData.itemId = 'rack';
-umbGrp.userData.itemId = 'umbrella';
-pianoGrp.userData.itemId = 'piano_model';
-benchGrp.userData.itemId = 'piano_bench';
-chairGroup.userData.itemId = 'chair';
+
 
     
 
@@ -3403,6 +3396,18 @@ interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitB
  wClip.position.set(0, 0.25, 1.8); walletObj.add(wClip);
  
  interactables.push(walletObj);
+
+      // 👇 【請把標記 ID 的程式碼統一貼在這裡】 👇
+    if(typeof cpt !== 'undefined') cpt.userData.itemId = 'carpet';
+    if(typeof tcGrp !== 'undefined') tcGrp.userData.itemId = 'trash';
+    if(typeof clockGrp !== 'undefined') clockGrp.userData.itemId = 'clock';
+    if(typeof rackGrp !== 'undefined') rackGrp.userData.itemId = 'rack';
+    if(typeof umbGrp !== 'undefined') umbGrp.userData.itemId = 'umbrella';
+    if(typeof pianoGrp !== 'undefined') pianoGrp.userData.itemId = 'piano_model';
+    if(typeof benchGrp !== 'undefined') benchGrp.userData.itemId = 'piano_bench';
+    if(typeof chairGroup !== 'undefined') chairGroup.userData.itemId = 'chair';
+    if(typeof catGrp !== 'undefined') catGrp.userData.itemId = 'cat';
+    // 👆 【貼到這裡為止】 👆
 
     
 }
