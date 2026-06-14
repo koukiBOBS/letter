@@ -541,6 +541,10 @@
                 <div class="dev-grid">
                     <button class="dev-btn span-2 highlight" onclick="addPointsAndGacha(1000, true)">🎁 獲取 1000 分並抽獎</button>
                     <button class="dev-btn" onclick="devDisableHandwriting()">⌨️ 解鎖鍵盤</button>
+                      <!-- 👇 新增這兩個按鈕 👇 -->
+                    <button class="dev-btn span-2 highlight" style="background:#16a34a; border-color:#15803d;" onclick="devUnlockAllAssets()">💎 一鍵解鎖</button>
+                    <button class="dev-btn span-2 danger" style="background:#78350f; border-color:#451a03;" onclick="devSimulateBankruptcy()">🍂 欠交破產</button>
+                    <!-- 👆 新增結束 👆 -->
                     <button class="dev-btn danger" onclick="devResetAccount()">⚠️ 帳號重置</button>
                 </div>
             </div>
@@ -910,6 +914,47 @@ window.devResetAccount = function() {
         });
     }
 };
+
+        
+// 👇👇👇 貼在這裡 👇👇👇
+
+// 🍂 開發測試：一鍵觸發破產清算視窗
+window.devSimulateBankruptcy = function() {
+    if(confirm("確定要模擬破產嗎？這將清空您的積分與所有房間佈置，並且強制彈出懲罰視窗。")) {
+        // 直接將分數歸零並刪除所有道具
+        db.ref(`users/${currentUser.uid}/points`).set(0);
+        db.ref(`users/${currentUser.uid}/inventory`).remove().then(() => {
+            // 同步本地變數
+            userPoints = 0;
+            userInventory = {};
+            document.getElementById('user-points-text').innerText = '0';
+            
+            // 彈出我們設計好的破產視窗
+            document.getElementById('modal-bankruptcy').style.display = 'flex';
+        });
+    }
+};
+
+// 💎 開發測試：一鍵擁有全部資產與權限
+window.devUnlockAllAssets = function() {
+    if(confirm("確定要直接解鎖所有資產嗎？這會讓您擁有所有家具與權限，畫面將會重新載入。")) {
+        let fullInventory = {};
+        
+        // 遍歷道具字典，把所有東西都塞進背包
+        Object.keys(ITEM_REGISTRY).forEach(id => {
+            fullInventory[id] = true;
+        });
+        
+        // 給予 99999 分，並寫入完整背包
+        db.ref(`users/${currentUser.uid}/points`).set(99999);
+        db.ref(`users/${currentUser.uid}/inventory`).set(fullInventory).then(() => {
+            showToast("💎 已發放滿配資產！重新載入中...");
+            setTimeout(() => window.location.reload(), 1000);
+        });
+    }
+};
+
+// 👆👆👆 貼到這裡結束 👆👆👆
         
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzcangpOrf05ZRhxzoMUN-C9T57CS3_G80to1lLWv4opXuHbYMMMuKXzap7kkcou3BPsQ/exec"; 
         const firebaseConfig = { apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms", authDomain: "letter-a74d1.firebaseapp.com", databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com", projectId: "letter-a74d1" };
