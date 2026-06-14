@@ -18,6 +18,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
+      <!-- 👇 新增這一行：用來解析實時電台廣播的套件 👇 -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
     <style>
         :root {
             --bg: #faf7f2; --paper: #ffffff; --text: #2c3e50; --text-muted: #8391a2; --border: #e6e1d6;
@@ -492,6 +495,9 @@
     </style>
 </head>
 <body>
+
+     <!-- 👇 新增這行：隱藏的音訊播放器 👇 -->
+    <audio id="rthk-audio" style="display:none;"></audio>
 
     <div id="notification-banner"><span id="notification-text">您有新訊息。</span></div>
     <div id="toast-container">通知訊息</div>
@@ -1001,6 +1007,8 @@ const ITEM_REGISTRY = {
     'painting_2': { name: '畫作二', desc: '為牆面增添藝術氣息', type: 'model', minPts: 0 },
     'painting_3': { name: '畫作三', desc: '為牆面增添藝術氣息', type: 'model', minPts: 0 },
     'painting_4': { name: '畫作四', desc: '為牆面增添藝術氣息', type: 'model', minPts: 0 },
+     // 👇 新增收音機 👇
+    'radio': { name: '復古收音機', desc: '實時播放香港電台，陪伴閱讀時光', type: 'model', minPts: 0 },
     'piano_model': { name: '直立式鋼琴', desc: '黑色的典雅樂器實體', type: 'model', minPts: 0 },
     'piano_bench': { name: '鋼琴椅', desc: '搭配鋼琴的皮革長凳', type: 'model', minPts: 0 },
    'curtain': { name: '雙層遮光窗簾', desc: '調節室內光線的質感窗簾', type: 'model', minPts: 0 },
@@ -2221,6 +2229,10 @@ let dummySpoutTip; let indicatorLeft, indicatorRight, indicatorTasks; let intera
 
 // --- 露台系統全域變數 ---
 let isAtBalcony = false;
+        let radioGrp, radioLED;
+let isRadioPlaying = false;
+let hls = null;
+let musicNotes = []; // 存放飄浮音符的陣列
 let roomCameraBackup = { cp: new THREE.Vector3(), ct: new THREE.Vector3() };
 
 function goToBalcony() {
@@ -3138,6 +3150,47 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     const handle = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.1, 8, 16), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})); handle.rotation.set(0, 0, 0); handle.position.set(-0.8, 0.9, 0); handle.castShadow = true; wateringCan.add(handle);
     dummySpoutTip = new THREE.Object3D(); dummySpoutTip.position.set(0, 1.3, 0); spout.add(dummySpoutTip);
 
+
+// ==========================================
+    // 📻 建造復古收音機 (RTHK 香港電台)
+    // ==========================================
+    radioGrp = new THREE.Group(); 
+    // 放置在桌子右側邊緣
+    radioGrp.position.set(12, 8.5, 0); 
+    radioGrp.rotation.y = -0.4;
+    desk.add(radioGrp);
+    radioGrp.userData.itemId = 'radio';
+
+    // 1. 木質外殼
+    const rBody = new THREE.Mesh(new THREE.BoxGeometry(3, 2, 1.5), woodMat);
+    rBody.position.y = 1; rBody.castShadow = true; radioGrp.add(rBody);
+    
+    // 2. 黑色喇叭網罩
+    const rGrill = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.4), new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.9}));
+    rGrill.position.set(-0.5, 1, 0.76); radioGrp.add(rGrill);
+
+    // 3. 調頻旋鈕
+    const knobMat = new THREE.MeshStandardMaterial({color: 0xdddddd, metalness: 0.8});
+    const rKnob1 = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16), knobMat);
+    rKnob1.rotation.x = Math.PI/2; rKnob1.position.set(0.8, 1.3, 0.75); radioGrp.add(rKnob1);
+    const rKnob2 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.2, 16), knobMat);
+    rKnob2.rotation.x = Math.PI/2; rKnob2.position.set(0.8, 0.7, 0.75); radioGrp.add(rKnob2);
+
+    // 4. 狀態指示燈 (紅燈停/綠燈播)
+    radioLED = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshStandardMaterial({color: 0x882222, emissive: 0x550000}));
+    radioLED.position.set(1.2, 1.8, 0.76); radioGrp.add(radioLED);
+
+    // 5. 金屬天線
+    const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 3), knobMat);
+    antenna.position.set(-1.2, 2.5, -0.5); antenna.rotation.z = -0.3; antenna.rotation.x = 0.2; radioGrp.add(antenna);
+
+    // 6. 點擊判定框
+    const radioHitBox = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 3), new THREE.MeshBasicMaterial({visible: false}));
+    radioHitBox.position.y = 1; radioHitBox.userData = {type: 'radio'}; 
+    radioGrp.add(radioHitBox);
+    interactables.push(radioHitBox);
+
+    
   const cpt = new THREE.Mesh(
         new THREE.PlaneGeometry(36, 24), 
         new THREE.MeshStandardMaterial({map: createCarpetTexture(), roughness: 1.0})
@@ -4103,10 +4156,61 @@ function onPointerUp(e) {
     if(hasPianoPrivilege) openPianoUI(); else showToast("🎹 需要收集「鋼琴彈奏權」才能彈奏。");
 } else if(type === 'wallet') {
     openWalletUI();
-}
+ // 👇 新增這兩行：點擊收音機 👇
+        } else if(type === 'radio') {
+            toggleRadio();
+        }
         
     }
 }
+
+        // 📻 控制香港電台播放
+function toggleRadio() {
+    const audio = document.getElementById('rthk-audio');
+    // RTHK Radio 2 香港電台第二台 (流行音樂與輕閒節目) 實時串流網址
+    const streamUrl = 'https://rthkaudio2-lh.akamaihd.net/i/radio2_1@355865/master.m3u8';
+
+    if (isRadioPlaying) {
+        // 停止播放
+        audio.pause();
+        isRadioPlaying = false;
+        radioLED.material.color.setHex(0x882222);
+        radioLED.material.emissive.setHex(0x550000);
+        showToast("📻 已關閉收音機");
+    } else {
+        // 開始播放
+        showToast("📻 正在連接香港電台 第二台...");
+        
+        // 由於是 HLS (m3u8) 格式，需要使用 hls.js 解析 (除非是原生支援的 Safari)
+        if (Hls.isSupported()) {
+            if (!hls) {
+                hls = new Hls();
+                hls.loadSource(streamUrl);
+                hls.attachMedia(audio);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    audio.play().catch(e => console.log("瀏覽器阻擋自動播放", e));
+                });
+            } else {
+                audio.play();
+            }
+        } 
+        // 支援原生 HLS 的瀏覽器 (例如手機上的 Safari / iOS)
+        else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+            if (!audio.src) audio.src = streamUrl;
+            audio.play();
+        }
+        
+        isRadioPlaying = true;
+        // 亮起復古綠色指示燈
+        radioLED.material.color.setHex(0x44aa44);
+        radioLED.material.emissive.setHex(0x228822);
+        
+        // 點擊時讓收音機跳動一下
+        gsap.to(radioGrp.scale, {y: 0.9, duration: 0.1, yoyo: true, repeat: 1});
+    }
+}
+
+        
 
        function performWateringAnimation() {
             if (!userPlantData) { document.getElementById('modal-plant-selector').style.display = 'flex'; return; }
@@ -4447,6 +4551,56 @@ function isCatColliding(x, z) {
 
     updateCat();
 
+
+// =====================================
+    // 🎵 收音機播放時的 3D 音符特效
+    // =====================================
+    if (isRadioPlaying && radioGrp && radioGrp.visible) {
+        // 隨機生成音符 (機率控制)
+        if (Math.random() > 0.95) {
+            // 使用 Canvas 畫出文字當作紋理
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = Math.random() > 0.5 ? '#d4af37' : '#ffffff'; // 金色或白色音符
+            ctx.font = '40px sans-serif';
+            ctx.fillText(Math.random() > 0.5 ? '🎵' : '🎶', 10, 45);
+            
+            const tex = new THREE.CanvasTexture(canvas);
+            const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.8 });
+            const sprite = new THREE.Sprite(spriteMat);
+            
+            // 初始位置設定在收音機上方
+            let startPos = new THREE.Vector3();
+            radioGrp.getWorldPosition(startPos);
+            sprite.position.set(startPos.x + (Math.random()-0.5)*2, startPos.y + 2, startPos.z + (Math.random()-0.5)*2);
+            sprite.scale.set(1.5, 1.5, 1.5);
+            
+            // 給予專屬物理屬性
+            sprite.userData = { speedY: 0.02 + Math.random()*0.02, speedX: (Math.random()-0.5)*0.01 };
+            
+            scene.add(sprite);
+            musicNotes.push(sprite);
+        }
+    }
+    
+    // 更新所有音符的位置與透明度
+    for (let i = musicNotes.length - 1; i >= 0; i--) {
+        let note = musicNotes[i];
+        note.position.y += note.userData.speedY;
+        note.position.x += note.userData.speedX;
+        note.material.opacity -= 0.005; // 慢慢變透明
+        
+        // 完全透明後移除
+        if (note.material.opacity <= 0) {
+            scene.remove(note);
+            note.material.map.dispose();
+            note.material.dispose();
+            musicNotes.splice(i, 1);
+        }
+    }
+    // =====================================
+       
     if(renderer && scene && camera) renderer.render(scene, camera);
 }
 
