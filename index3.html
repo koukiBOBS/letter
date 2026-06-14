@@ -148,36 +148,41 @@
         .task-card.locked { opacity: 0.6; cursor: not-allowed; border-style: dashed; }
         .task-num { font-size: 1.2rem; font-weight: 600; margin-bottom: 8px; display: block; color: #1e293b; }
         .task-date { font-size: 0.85rem; color: var(--text-muted); }
-       .list-container { 
+     .list-container { 
             background: transparent; 
             border: none; 
-            border-radius: 0; 
             display: flex; 
             flex-direction: column; 
-            gap: 15px; /* 增加信件之間的間距 */
+            gap: 12px; 
         }
-        
-        /* 基礎列表項目樣式 */
         .list-item { 
             display: flex; 
             align-items: center; 
-            padding: 20px 28px; 
+            padding: 22px 28px; 
+            background-color: #ffffff; 
+            border: 1px solid var(--border); 
+            border-radius: 12px; 
             cursor: pointer; 
             position: relative; 
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(160, 140, 120, 0.08); /* 柔和的紙質陰影 */
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        }
+        .list-item:hover { 
+            background-color: #f8fafc; 
+            transform: translateY(-2px); 
+            box-shadow: 0 8px 15px rgba(0,0,0,0.05); 
+        }
+
+        /* --- 視窗背景色區分 --- */
+        /* 1. 對我的回覆視窗 (暖宣紙黃) */
+        #modal-replies .room-modal-content { 
+            background-color: #fcf4e3; 
         }
         
-        /* 1. 對我的回覆列表 (暖宣紙黃 - 對應 my-letter) */
-        #replies-list .list-item { 
-            background-color: #fcf4e3; 
-            border-left: 6px solid var(--color-replies); 
-        }
-        #replies-list .list-item:hover { 
-            background-color: #f5ebd5; 
-            transform: translateY(-2px) translateX(4px); 
-            box-shadow: 0 8px 20px rgba(84, 140, 168, 0.2); 
+        /* 2. 收件箱視窗預設顏色 (加入漸變動畫，方便 JS 切換) */
+        #modal-inbox .room-modal-content { 
+            background-color: #e6f0e9; /* 預設為閱讀的竹葉青綠 */
+            transition: background-color 0.4s ease; /* 切換時會平滑變色 */
         }
         
         /* 2. 寄來的信箋-閱讀 (竹葉青綠 - 對應 partner-reading) */
@@ -909,6 +914,16 @@ function switchInboxTab(tab) {
     document.getElementById('tab-inbox-random').classList.toggle('active', tab === 'random');
     document.getElementById('inbox-reading-list').style.display = tab === 'reading' ? 'block' : 'none';
     document.getElementById('inbox-random-list').style.display = tab === 'random' ? 'block' : 'none';
+    
+    // 【新增】根據分頁切換整個視窗的背景顏色
+    const inboxModalContent = document.querySelector('#modal-inbox .room-modal-content');
+    if (inboxModalContent) {
+        if (tab === 'reading') {
+            inboxModalContent.style.backgroundColor = '#e6f0e9'; // 竹葉青綠
+        } else if (tab === 'random') {
+            inboxModalContent.style.backgroundColor = '#fbeae6'; // 淡胭紅粉
+        }
+    }
 }
 
         
