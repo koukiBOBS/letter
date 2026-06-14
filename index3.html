@@ -2416,25 +2416,36 @@ function onPointerMove(e) {
                 dragTarget.position.z = newZ;
             }
         }
-        else if (type === 'cat') {
+       else if (type === 'cat') {
             raycaster.ray.intersectPlane(floorPlane, intersectPoint);
             if(intersectPoint) {
                 let newX = intersectPoint.x - dragOffset.x;
                 let newZ = intersectPoint.z - dragOffset.z;
                 
-                // 判斷貓咪目前所在的平台
+                // 判斷貓咪目前所在的平台，並進行嚴格邊界鎖定
                 if (newX >= -14 && newX <= 14 && newZ >= -7 && newZ <= 7) {
                     catPlatform = 'desk';
                     dragTarget.userData.originalY = 8.5;
+                    // 限制拖曳不出桌面邊緣
+                    newX = Math.max(-12, Math.min(12, newX));
+                    newZ = Math.max(-5.5, Math.min(5.5, newZ));
                 } else if (chairGroup && newX >= chairGroup.position.x - 3 && newX <= chairGroup.position.x + 3 && newZ >= chairGroup.position.z - 3 && newZ <= chairGroup.position.z + 3) {
                     catPlatform = 'chair';
                     dragTarget.userData.originalY = 4.5;
+                    // 限制拖曳不出椅墊邊緣
+                    newX = Math.max(chairGroup.position.x - 1.5, Math.min(chairGroup.position.x + 1.5, newX));
+                    newZ = Math.max(chairGroup.position.z - 1.5, Math.min(chairGroup.position.z + 1.5, newZ));
                 } else {
                     catPlatform = 'floor';
                     dragTarget.userData.originalY = 0;
                     // 若在地上，則限制在地氈邊界
-                    newX = Math.max(-18, Math.min(18, newX));
-                    newZ = Math.max(-4, Math.min(20, newZ));
+                    newX = Math.max(-16, Math.min(16, newX));
+                    newZ = Math.max(-2, Math.min(18, newZ));
+                    
+                    // 【新增】拖曳時若碰到實體障礙物，阻止進入該區域 (滑鼠滑過去會卡在實物外)
+                    if (isCatColliding(newX, newZ)) {
+                        return; // 放棄此幀的位置更新
+                    }
                 }
                 
                 dragTarget.position.x = newX;
@@ -2543,14 +2554,37 @@ function onPointerUp(e) {
         gsap.to(allRoots, {x: -1.0, duration: 1.0});
         gsap.to(allKnees, {x: 1.5, duration: 1.0}); 
         
-    } else if (newState === 'walk') {
-        // 依照所在平台生成目標位置
-        if (catPlatform === 'desk') {
-            catTarget.set((Math.random()-0.5)*24, 0, (Math.random()-0.5)*10);
-        } else if (catPlatform === 'chair' && chairGroup) {
-            catTarget.set(chairGroup.position.x + (Math.random()-0.5)*4, 0, chairGroup.position.z + (Math.random()-0.5)*4);
-        } else {
-            catTarget.set((Math.random()-0.5)*32, 0, 8 + (Math.random()-0.5)*16);
+ } else if (newState === 'walk') {
+        let attempts = 0;
+        let validTarget = false;
+        
+        // 嘗試尋找不會撞牆或懸空的目標點 (最多嘗試10次)
+        while (!validTarget && attempts < 10) {
+            attempts++;
+            if (catPlatform === 'desk') {
+                // 桌子範圍：嚴格縮小在桌面內，防掉落
+                catTarget.set((Math.random()-0.5)*23, 0, (Math.random()-0.5)*10);
+                validTarget = true;
+            } else if (catPlatform === 'chair' && chairGroup) {
+                // 椅子範圍：嚴格縮小在圓形椅墊內
+                catTarget.set(chairGroup.position.x + (Math.random()-0.5)*2.5, 0, chairGroup.position.z + (Math.random()-0.5)*2.5);
+                validTarget = true;
+            } else {
+                // 地板範圍：嚴格限制在地氈附近
+                let tx = (Math.random()-0.5)*30; // -15 到 15
+                let tz = 2 + (Math.random()-0.5)*16; // -6 到 10
+                
+                // 檢查該目標點是否與實體障礙物重疊
+                if (!isCatColliding(tx, tz)) {
+                    catTarget.set(tx, 0, tz);
+                    validTarget = true;
+                }
+            }
+        }
+        
+        // 如果運氣太差真的找不到路，就原地發呆避免穿模
+        if (!validTarget) {
+            catTarget.set(catGrp.position.x, 0, catGrp.position.z);
         }
         
         gsap.to(catBody.scale, {x: 1, y: 1, z: 1, duration: 0.3});
@@ -2559,7 +2593,33 @@ function onPointerUp(e) {
         catTailBones.forEach((bone, i) => gsap.to(bone.rotation, {x: i===0 ? 0.6 : -0.08, duration: 0.3}));
     }
 }
-        // 🐾 貓咪每幀更新邏輯
+    
+
+// 🐾 新增：檢查貓咪是否會撞到實體障礙物
+function isCatColliding(x, z) {
+    // 只有在地上散步時才需要避開地上的障礙物
+    if (catPlatform !== 'floor') return false; 
+
+    const catRadius = 1.8; // 貓咪的防撞半徑
+
+    // 1. 垃圾桶 (tcGrp位置大約在 X:-16, Z:6)
+    if (Math.hypot(x - (-16), z - 6) < (2.5 + catRadius)) return true;
+
+    // 2. 椅子 (chairGroup)
+    if (chairGroup && Math.hypot(x - chairGroup.position.x, z - chairGroup.position.z) < (3.0 + catRadius)) return true;
+
+    // 3. 桌腳 四支柱子 [-12, -5], [12, -5], [-12, 5], [12, 5]
+    const legRadius = 0.5 + catRadius;
+    if (Math.hypot(x - (-12), z - (-5)) < legRadius) return true;
+    if (Math.hypot(x - 12, z - (-5)) < legRadius) return true;
+    if (Math.hypot(x - (-12), z - 5) < legRadius) return true;
+    if (Math.hypot(x - 12, z - 5) < legRadius) return true;
+
+    return false;
+}
+
+
+        
        // 🐾 貓咪每幀更新邏輯 (修訂版：步伐更大、前腿向前伸展更自然)
         function updateCat() {
             if(!catGrp) return;
@@ -2607,10 +2667,28 @@ function onPointerUp(e) {
                 const dist = Math.sqrt(dx*dx + dz*dz);
                 
                 if (dist < 1.0) {
+                   if (dist < 1.0) {
                     setCatState('idle');
                 } else {
-                    catGrp.position.x += (dx/dist) * 0.04;
-                    catGrp.position.z += (dz/dist) * 0.04;
+                    const nextX = catGrp.position.x + (dx/dist) * 0.04;
+                    const nextZ = catGrp.position.z + (dz/dist) * 0.04;
+                    
+                    // 【新增】檢查下一步是否會撞到東西 (僅限地板)
+                    if (isCatColliding(nextX, nextZ)) {
+                        // 如果會撞到，直接停止並重新思考路徑
+                        setCatState('idle');
+                    } else {
+                        // 安全，繼續移動
+                        catGrp.position.x = nextX;
+                        catGrp.position.z = nextZ;
+                        
+                        const targetY = Math.atan2(dx, dz); 
+                        let diff = targetY - catGrp.rotation.y;
+                        while (diff < -Math.PI) diff += Math.PI * 2;
+                        while (diff > Math.PI) diff -= Math.PI * 2;
+                        catGrp.rotation.y += diff * 0.1;
+                    }
+                }
                     const targetY = Math.atan2(dx, dz); 
                     let diff = targetY - catGrp.rotation.y;
                     while (diff < -Math.PI) diff += Math.PI * 2;
