@@ -976,6 +976,24 @@ let dummySpoutTip; let indicatorLeft, indicatorRight, indicatorTasks; let intera
         }
         function animateAuth() { if(!runAuth3D) return; requestAnimationFrame(animateAuth); authParts.children.forEach(m=>{ m.rotation.x+=m.userData.rx; m.rotation.y+=m.userData.ry; m.position.y+=m.userData.sy; m.position.x+=Math.sin(m.position.y*0.05)*0.02; if(m.position.y>60) m.position.y=-60;}); authRen.render(authScene, authCam); }
 
+
+// --- 新增：生成漸層天空背景的函數 ---
+        function createSkyTexture(topColorHex, bottomColorHex) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2; 
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createLinearGradient(0, 0, 0, 512);
+            grad.addColorStop(0, new THREE.Color(topColorHex).getStyle());
+            grad.addColorStop(1, new THREE.Color(bottomColorHex).getStyle());
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 2, 512);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+
+
+        
         function createWoodTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#a89381'; ctx.fillRect(0,0,512,512); for(let i=0; i<300; i++) { ctx.fillStyle = `rgba(130, 110, 95, ${Math.random()*0.2})`; ctx.fillRect(0, Math.random()*512, 512, Math.random()*5+1); } return new THREE.CanvasTexture(canvas);
@@ -1194,13 +1212,27 @@ function initDraw3D() {
 
     function createStick() {
         const grp = new THREE.Group();
-        // 竹身
-        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 14, 8), stickMat);
+        // 竹身改為扁平長方體 (寬度0.5, 長度14, 厚度0.06)
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 14, 0.06), stickMat);
         body.position.y = 7; grp.add(body);
-        // 紅頭
-        const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.8, 8), tipMat);
+        // 紅頭稍微寬一點點和厚一點點，包覆頂端
+        const tip = new THREE.Mesh(new THREE.BoxGeometry(0.52, 1.0, 0.08), tipMat);
         tip.position.y = 13.6; grp.add(tip);
         return grp;
+    }
+
+    // 放入 25 支干擾籤，限制在半徑內防穿模
+    for(let i=0; i<25; i++) {
+        const s = createStick();
+        const r = Math.random() * 1.5; 
+        const theta = Math.random() * Math.PI * 2;
+        s.position.set(Math.cos(theta)*r, 0.5, Math.sin(theta)*r);
+        // 因為是扁平的，給予任意的 Y 軸旋轉讓它們面朝不同方向
+        s.rotation.y = Math.random() * Math.PI; 
+        s.rotation.x = (Math.random() - 0.5) * 0.15;
+        s.rotation.z = (Math.random() - 0.5) * 0.15;
+        potGroup.add(s); 
+        sticks.push(s);
     }
 
     // 放入 25 支干擾籤，限制在半徑內防穿模
@@ -1690,16 +1722,24 @@ indicatorLeft = createFloatingLetter(); indicatorLeft.position.set(-5.5, 6.5, 10
             if (h >= 5 && h < 9) setEnvironmentPhase('dawn'); else if (h >= 9 && h < 16) setEnvironmentPhase('noon'); else if (h >= 16 && h < 19) setEnvironmentPhase('dusk'); else setEnvironmentPhase('night');
         }
         
-        function setEnvironmentPhase(phaseStr) {
+       function setEnvironmentPhase(phaseStr) {
             const envPhases = {
-                dawn: { sky: 0xffb7b2, fog:0xffb7b2, dir: 0xffe4cc, int: 0.8, windowLight: false, shadow: true, ceilingOn: false },
-                noon: { sky: 0x87ceeb, fog:0xc5c1bc, dir: 0xffffff, int: 1.2, windowLight: false, shadow: true, ceilingOn: false },
-                dusk: { sky: 0xff8c42, fog:0xff8c42, dir: 0xffaa66, int: 0.9, windowLight: true, shadow: true, ceilingOn: true }, 
-                night:{ sky: 0x050515, fog:0x050515, dir: 0x404055, int: 0.1, windowLight: true, shadow: false, ceilingOn: true }
+                // skyTop: 天頂顏色, skyBot: 地平線顏色, fog: 霧氣顏色(與地平線相近以融合邊界)
+                dawn: { skyTop: 0x8a9ba8, skyBot: 0xe8d0c0, fog: 0xe8d0c0, dir: 0xffe4cc, int: 0.8, windowLight: false, shadow: true, ceilingOn: false },
+                // 中午：降低飽和度，頂部柔藍，底部帶點水氣的泛白
+                noon: { skyTop: 0x5a8bc2, skyBot: 0xc8dbe9, fog: 0xc8dbe9, dir: 0xffffff, int: 1.2, windowLight: false, shadow: true, ceilingOn: false },
+                // 黃昏：加入冷暖對比，頂部偏紫灰，底部為柔和的蜜桃橘，避免死橘色
+                dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, dir: 0xffaa66, int: 0.9, windowLight: true, shadow: true, ceilingOn: true }, 
+                night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x1a2235, dir: 0x404055, int: 0.1, windowLight: true, shadow: false, ceilingOn: true }
             };
             const p = envPhases[phaseStr];
-            scene.background = new THREE.Color(p.sky); scene.fog.color = new THREE.Color(p.fog);
-            dirLight.color = new THREE.Color(p.dir); dirLight.intensity = p.int; dirLight.castShadow = p.shadow; 
+            
+            // 使用漸層材質作為背景，取代原本的純色
+            scene.background = createSkyTexture(p.skyTop, p.skyBot); 
+            scene.fog.color = new THREE.Color(p.fog);
+            dirLight.color = new THREE.Color(p.dir); 
+            dirLight.intensity = p.int; 
+            dirLight.castShadow = p.shadow; 
             
             animScenery.buildings.forEach(b => {
                 b.material.emissiveIntensity = p.windowLight ? (phaseStr === 'night' ? 4.0 : 1.5) : 0.0;
@@ -1710,12 +1750,11 @@ indicatorLeft = createFloatingLetter(); indicatorLeft.position.set(-5.5, 6.5, 10
                 ceilingLight.intensity = p.ceilingOn ? (phaseStr === 'night' ? 1.5 : 0.8) : 0.0; ceilingLight.color.setHex(phaseStr === 'night' ? 0xffcc88 : 0xfff0dd);
                 lampBulb.material.emissiveIntensity = p.ceilingOn ? 1.0 : 0.0; lampBulb.material.emissive.setHex(phaseStr === 'night' ? 0xffcc88 : 0xfff0dd); ceilingLight.castShadow = p.ceilingOn; 
             }
-       if (hemiLight) { 
-    hemiLight.color.setHex(phaseStr === 'night' ? 0x887766 : 0xffffff); 
-    hemiLight.groundColor.setHex(phaseStr === 'night' ? 0x332222 : 0x555555); 
-    // 落地窗引入更多天光，白天大幅增強漫射光
-    hemiLight.intensity = phaseStr === 'noon' ? 0.75 : (phaseStr === 'dawn' || phaseStr === 'dusk' ? 0.5 : 0.25);
-}
+            if (hemiLight) { 
+                hemiLight.color.setHex(phaseStr === 'night' ? 0x887766 : 0xffffff); 
+                hemiLight.groundColor.setHex(phaseStr === 'night' ? 0x332222 : 0x555555); 
+                hemiLight.intensity = phaseStr === 'noon' ? 0.75 : (phaseStr === 'dawn' || phaseStr === 'dusk' ? 0.5 : 0.25);
+            }
         }
 
         function onWinResize() { if(!camera) return; camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
