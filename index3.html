@@ -1117,6 +1117,9 @@ db.ref(`users/${currentUser.uid}`).on('value', snap => {
             db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); 
             setupNotifications(); loadMailbox(); loadUserPlant(); initHandwriting();
 
+            // 👇 在這裡加入稽核函數 👇
+    auditAntiCheat(); 
+
             // 【新增】如果是老師，自動解除所有手寫板限制，允許直接打字
             if (isTeacherEmail(currentUser.email)) {
                 document.querySelectorAll('.handwrite-only').forEach(el => { 
@@ -1137,6 +1140,79 @@ db.ref(`users/${currentUser.uid}`).on('value', snap => {
         // 👆👆👆 加到這裡為止 👆👆👆
            
         }
+
+
+
+// 🛡️ 防作弊稽核系統：驗證積分與任務數量是否匹配
+function auditAntiCheat() {
+    if (!currentUser) return;
+
+    // 👇 【新增這段】：如果是開發者或老師，直接跳過防作弊檢查，允許自由加分與測試道具！
+    if (typeof isDevUser === 'function' && isDevUser(currentUser.email)) {
+        console.log("🛠️ 開發者/老師帳號，已豁免防作弊稽核。");
+        return; 
+    }
+
+    // 同時抓取該學生的：1.寄出的信件 2.繳交的探索任務 3.收件箱的對話串狀態
+    Promise.all([
+        db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value'),
+        db.ref('random_task_submissions').orderByChild('senderUid').equalTo(currentUser.uid).once('value'),
+        db.ref(`user_threads/${currentUser.uid}`).once('value')
+    ]).then(([rSnap, randSnap, threadSnap]) => {
+        
+        // 1. 計算「閱讀心得」數量 (排除 type === 'random' 的信件)
+        const readingLetters = Object.values(rSnap.val() || {}).filter(l => l.type !== 'random');
+        const readingCount = readingLetters.length;
+        
+        // 2. 計算「探索任務」數量
+        const randSubs = Object.values(randSnap.val() || {});
+        const randomCount = randSubs.length;
+        
+        // 3. 計算「回信」數量
+        const threads = Object.values(threadSnap.val() || {});
+        const replyCount = threads.filter(t => !t.isSender && t.hasReplied).length;
+
+        // 🧮 計算「應得的最高合法總分」
+        const expectedPoints = (readingCount * 1000) + (randomCount * 500) + (replyCount * 1000);
+
+        // 🔍 比對資料庫中目前的分數
+        db.ref(`users/${currentUser.uid}`).once('value').then(userSnap => {
+            let userData = userSnap.val() || {};
+            let currentPoints = userData.points || 0;
+
+            // 🚨 如果發現異常 (資料庫分數 > 實際應得分數)
+            if (currentPoints > expectedPoints) {
+                console.warn(`⚠️ 偵測到異常積分！實際應得: ${expectedPoints}, 資料庫遭竄改為: ${currentPoints}`);
+                
+                // 懲罰 1：強制將分數覆蓋回「合法分數」
+                db.ref(`users/${currentUser.uid}/points`).set(expectedPoints);
+                userPoints = expectedPoints; 
+                document.getElementById('user-points-text').innerText = expectedPoints;
+
+                // 懲罰 2：檢查並沒收不該擁有的道具
+                let inventory = userData.inventory || {};
+                let inventoryModified = false;
+                
+                Object.keys(inventory).forEach(itemId => {
+                    if (ITEM_REGISTRY[itemId] && expectedPoints < ITEM_REGISTRY[itemId].minPts) {
+                        db.ref(`users/${currentUser.uid}/inventory/${itemId}`).remove();
+                        inventoryModified = true;
+                    }
+                });
+
+                if (inventoryModified) {
+                    alert("⚠️ 系統偵測到您的積分與實際完成的任務數量不符。\n已自動校正您的積分，並收回非法取得的道具與權限。");
+                    window.location.reload(); 
+                }
+            }
+        });
+    });
+}
+
+
+
+
+        
 
       function healPool() {
     db.ref('users').once('value').then(userSnap => {
