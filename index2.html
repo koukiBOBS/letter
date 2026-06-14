@@ -392,8 +392,11 @@
         // ==========================================
         // 註銷帳號功能
         // ==========================================
+       // ==========================================
+        // 註銷帳號功能 (安全優化版：不影響其他學生)
+        // ==========================================
         function deleteUserAccount(uid, userName) {
-            const confirmMsg = `⚠️ 嚴重警告！\n您即將註銷學生「${userName}」的帳號。\n\n此操作將會：\n1. 刪除該學生的所有個人資料、積分與道具。\n2. 清空該學生的私人信箱。\n3. 刪除該學生繳交的所有作業、信件與相片。\n\n註銷後該學生需要重新註冊（重新設定筆名）。\n\n您確定要繼續嗎？`;
+            const confirmMsg = `⚠️ 嚴重警告！\n您即將註銷學生「${userName}」的帳號。\n\n此操作將會：\n1. 徹底刪除該學生的所有個人資料、積分與道具。\n2. 清空該學生的私人視角信箱與個人相片。\n\n【保留機制】：\n為了不影響其他已配對的學生，該學生寄出或收到的「常規信件內容」將會被保留在對方的信箱中，但署名會自動變為「已註銷的筆友」。\n\n您確定要繼續嗎？`;
 
             if (!confirm(confirmMsg)) return;
 
@@ -405,37 +408,35 @@
 
             let updates = {};
 
-            // 1. 刪除使用者主資料與信箱
+            // 1. 刪除使用者主資料與他的私人信箱視角
             updates[`users/${uid}`] = null;
             updates[`user_threads/${uid}`] = null;
 
-            // 2. 刪除隨機任務繳交紀錄
+            // 2. 刪除他個人繳交的隨機任務紀錄
             Object.values(dbRandomSubs).forEach(sub => {
                 if (sub.senderUid === uid) {
                     updates[`random_task_submissions/${sub.id}`] = null;
                 }
             });
 
-            // 3. 刪除信件與對話 (包含發件或收件)
+            // 3. 處理常規信件 (重點：不影響他人)
             Object.values(dbLetters).forEach(letter => {
-                if (letter.senderUid === uid || letter.recipientUid === uid) {
+                // 如果這封信是他寫的，且「還沒有配對給任何人 (還在池子裡)」
+                // 那就直接銷毀，以免日後配給無辜的學生
+                if (letter.senderUid === uid && (!letter.recipientUid || letter.recipientUid === "")) {
                     const lid = letter.id;
                     updates[`letters/${lid}`] = null;
                     updates[`conversations/${lid}`] = null;
                     updates[`unassigned_letters/${lid}`] = null;
                     updates[`unassigned_random_letters/${lid}`] = null;
-
-                    // 同時從對方的信箱中移除這封信，避免死連結
-                    const otherUid = letter.senderUid === uid ? letter.recipientUid : letter.senderUid;
-                    if (otherUid) {
-                        updates[`user_threads/${otherUid}/${lid}`] = null;
-                    }
                 }
+                // 注意：如果 letter 已經有 recipientUid，我們就不刪除！
+                // 這樣對方學生的信箱依然會保留這封信與對話紀錄。
             });
 
             // 執行批量刪除
             db.ref().update(updates).then(() => {
-                alert(`學生「${userName}」的帳號已成功註銷並清除所有資料。`);
+                alert(`學生「${userName}」的帳號已成功註銷！`);
                 // 畫面會因 Listener 自動更新
             }).catch(err => {
                 alert("註銷失敗：" + err.message);
@@ -678,6 +679,9 @@
             return `<div class="task-card"><div style="font-size:1.05rem; font-weight:600; margin-bottom:10px;">${title}</div><span class="status-badge ${statusClass}">${statusText}</span><div style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">期限: ${deadlineStr}</div>${btnHtml}</div>`;
         }
 
+          // ==========================================
+        // 閱讀器 Modals (微調：顯示已註銷帳號)
+        // ==========================================
         function escapeHtml(str) { return str?str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):str; }
         
         function openReadingModal(letterId) {
@@ -687,7 +691,8 @@
             db.ref(`conversations/${letterId}`).once('value').then(snap => {
                 const msgs = snap.val() || {}; let html = '';
                 Object.values(msgs).forEach(m => {
-                    const senderName = dbUsers[m.senderUid] ? dbUsers[m.senderUid].name : '未知學生';
+                    // 【優化】如果找不到使用者資料，顯示為「已註銷的帳號」
+                    const senderName = dbUsers[m.senderUid] ? dbUsers[m.senderUid].name : '👻 已註銷的帳號';
                     const isOriginal = m.senderUid === letter.senderUid;
                     const d = new Date(m.timestamp); const tStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
                     let fText = escapeHtml(m.text).replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀頁數</span>').replace(/【思考問題】/g, '<span class="letter-section-divider">思考問題</span>').replace(/【閱讀心得】/g, '<span class="letter-section-divider">閱讀感悟</span>');
