@@ -4468,7 +4468,6 @@ function renderWalletGrid() {
     const grid = document.getElementById('collection-grid');
     grid.innerHTML = '';
     
-    // 加入 preserveDrawingBuffer 確保可截圖成功
     if (!offscreenRenderer) {
         offscreenRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
         offscreenRenderer.setSize(256, 256);
@@ -4478,8 +4477,6 @@ function renderWalletGrid() {
     }
     
     const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
-    cam.position.set(0, 5, 12);
-    cam.lookAt(0, 0, 0);
     
     Object.keys(ITEM_REGISTRY).forEach(id => {
         const item = ITEM_REGISTRY[id];
@@ -4487,16 +4484,21 @@ function renderWalletGrid() {
         
         let imgSrc = '';
         if (item.type === 'privilege') {
-            // 改用 encodeURIComponent 處理 Emoji 避免 Unicode 報錯
-            imgSrc = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><text x="50%" y="50%" font-size="50" text-anchor="middle" dy=".3em">✨</text></svg>');
+            // 【關鍵修復 1】安全的 SVG 轉換方式，防止特殊符號破壞 HTML
+            const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><text x="50%" y="50%" font-size="50" text-anchor="middle" dy=".3em">✨</text></svg>`;
+            imgSrc = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgIcon);
         } else {
             if (!itemSnapshots[id]) {
                 const snapScene = new THREE.Scene();
                 
-                // 100% 複製房間目前的真實光線
+                // 【關鍵修復 2】複製光影時必須包含 target，否則物品會一片漆黑導致圖片出不來
                 if (typeof hemiLight !== 'undefined') snapScene.add(hemiLight.clone());
-                if (typeof dirLight !== 'undefined') snapScene.add(dirLight.clone());
                 if (typeof ceilingLight !== 'undefined') snapScene.add(ceilingLight.clone());
+                if (typeof dirLight !== 'undefined') {
+                    const dlClone = dirLight.clone();
+                    snapScene.add(dlClone);
+                    snapScene.add(dlClone.target);
+                }
                 
                 let cloneObj = null;
                 scene.traverse(child => { if (child.userData && child.userData.itemId === id) cloneObj = child.clone(); });
@@ -4510,12 +4512,16 @@ function renderWalletGrid() {
                     snapScene.add(cloneObj);
                     
                     const fov = cam.fov * (Math.PI / 180);
-                    let distance = Math.abs(sphere.radius / Math.sin(fov / 2));
+                    let radius = Math.max(sphere.radius, 1); 
+                    let distance = Math.abs((radius * 1.5) / Math.sin(fov / 2));
                     
-                    cam.position.set(distance * 0.5, distance * 0.4, distance);
+                    cam.position.set(distance * 0.6, distance * 0.4, distance);
                     cam.lookAt(0, 0, 0);
                     
+                    // 【關鍵修復 3】連續渲染兩次，強制確保材質快取載入完畢，解決首次空白破圖
                     offscreenRenderer.render(snapScene, cam);
+                    offscreenRenderer.render(snapScene, cam);
+                    
                     itemSnapshots[id] = offscreenRenderer.domElement.toDataURL("image/png");
                 }
             }
@@ -4543,37 +4549,58 @@ function showGachaAnim(itemId) {
     if (!gachaScene) {
         gachaScene = new THREE.Scene();
         gachaCam = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 100);
-        gachaCam.position.set(0, 2, 12);
+        
         gachaRen = new THREE.WebGLRenderer({ alpha: true, antialias: true });
         gachaRen.setSize(window.innerWidth, window.innerHeight * 0.6);
+        // 【關鍵修復 1】確保色彩編碼與主房間 100% 一致，解決色調古怪的問題
+        gachaRen.outputEncoding = THREE.sRGBEncoding;
+        gachaRen.shadowMap.enabled = true;
+        gachaRen.shadowMap.type = THREE.PCFSoftShadowMap;
         document.getElementById('gacha-canvas-container').appendChild(gachaRen.domElement);
-        
-        gachaScene.add(new THREE.AmbientLight(0xffeedd, 0.8));
-        const dl = new THREE.DirectionalLight(0xffffff, 1.2); dl.position.set(5, 10, 5); gachaScene.add(dl);
-        const sl = new THREE.SpotLight(0xd4af37, 2); sl.position.set(0, -5, 5); gachaScene.add(sl);
         
         gachaGroup = new THREE.Group();
         gachaScene.add(gachaGroup);
     }
     
+    // 清理上一次的燈光與物件
+    gachaScene.children = gachaScene.children.filter(c => c === gachaGroup);
     gachaGroup.clear();
+    
+    // 【關鍵修復 2】完全克隆真實房間的光影，拋棄原本的古怪光源
+    if (typeof hemiLight !== 'undefined') gachaScene.add(hemiLight.clone());
+    if (typeof ceilingLight !== 'undefined') gachaScene.add(ceilingLight.clone());
+    if (typeof dirLight !== 'undefined') {
+        const dlClone = dirLight.clone();
+        gachaScene.add(dlClone);
+        gachaScene.add(dlClone.target); // 必須加入 target 才有正確的陰影方向
+    }
     
     if (item.type === 'model') {
         let cloneObj = null;
         scene.traverse(child => { if (child.userData && child.userData.itemId === itemId) cloneObj = child.clone(); });
+        
         if (cloneObj) {
+            // 【關鍵修復 3】完美的攝影機取景演算法，不再粗暴縮放模型，而是動態拉遠相機
             const box = new THREE.Box3().setFromObject(cloneObj);
             const center = box.getCenter(new THREE.Vector3());
-            const size = box.getSize(new THREE.Vector3());
-            cloneObj.position.sub(center);
-            const maxDim = Math.max(size.x, size.y, size.z);
-            cloneObj.scale.setScalar(8 / maxDim);
+            const sphere = box.getBoundingSphere(new THREE.Sphere());
+            
+            cloneObj.position.sub(center); // 讓物品回到正中心
             gachaGroup.add(cloneObj);
+            
+            const fov = gachaCam.fov * (Math.PI / 180);
+            let distance = Math.abs((sphere.radius * 1.6) / Math.sin(fov / 2)); // 1.6 倍預留邊界空白
+            distance = Math.max(distance, 6); // 避免相機靠太近
+            
+            gachaCam.position.set(distance * 0.6, distance * 0.4, distance);
+            gachaCam.lookAt(0, 0, 0);
         }
     } else {
-        // 權限卡片用發光幾何體替代
+        // 權限卡片
         const card = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 0.2), new THREE.MeshStandardMaterial({color: 0xd4af37, metalness: 0.8, roughness: 0.2}));
         gachaGroup.add(card);
+        gachaCam.position.set(0, 0, 12);
+        gachaCam.lookAt(0,0,0);
     }
 
     // 動畫展演
@@ -4582,7 +4609,6 @@ function showGachaAnim(itemId) {
     gachaGroup.position.y = -5;
     gsap.to(gachaGroup.scale, {x: 1, y: 1, z: 1, duration: 1.2, ease: "back.out(1.2)"});
     gsap.to(gachaGroup.position, {y: 0, duration: 1.2, ease: "back.out(1.2)"});
-    
     gsap.to(gachaGroup.rotation, {y: Math.PI * 2, duration: 5, repeat: -1, ease: "linear"});
     
     document.getElementById('gacha-item-name').innerText = item.name;
