@@ -374,11 +374,30 @@
             .env-wrapper { transform: scale(0.85); }
         }
 
-        #dev-test-panel { position: fixed; bottom: 15px; right: 15px; background: rgba(20, 20, 20, 0.85); color: #fff; padding: 15px 20px; border-radius: 12px; z-index: 999999; display: flex; flex-direction: column; gap: 8px; font-family: sans-serif; box-shadow: 0 5px 20px rgba(0,0,0,0.3); backdrop-filter: blur(5px); width: 220px; }
-        #dev-test-panel h3 { margin-bottom: 5px; color: #ffeb3b; font-size: 14px; text-align: center; border-bottom: 1px solid #444; padding-bottom: 8px;}
-        .dev-btn { background: #4a4a4a; color: #fff; border: 1px solid #666; padding: 8px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 0.85rem; width: 100%; }
-        .dev-btn:hover { background: #666; transform: translateY(-1px); }
-        .dev-flex { display: flex; gap: 5px; } .dev-flex .dev-btn { flex: 1; padding: 8px 0; }
+       /* --- 開發測試面板精緻化 --- */
+        #dev-panel-wrapper { position: fixed; bottom: 20px; right: 20px; z-index: 999999; font-family: var(--font-sans); }
+        #dev-toggle-btn { background: #2c3e50; color: white; border: 2px solid #e2e8f0; border-radius: 30px; padding: 10px 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: 0.3s; }
+        #dev-toggle-btn:hover { background: #34495e; transform: translateY(-2px); }
+        
+        #dev-test-panel { background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(10px); border: 1px solid #475569; width: 300px; border-radius: 16px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform-origin: bottom right; position: absolute; bottom: 0; right: 0; }
+        #dev-test-panel.collapsed { transform: scale(0.8); opacity: 0; pointer-events: none; }
+        
+        .dev-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #475569; padding-bottom: 10px; }
+        .dev-header h3 { color: #f8fafc; font-size: 1.1rem; margin: 0; font-family: var(--font-serif); }
+        .dev-close-btn { background: transparent; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer; transition: 0.2s; }
+        .dev-close-btn:hover { color: #ef4444; }
+        
+        .dev-section { margin-bottom: 15px; }
+        .dev-sec-title { color: #94a3b8; font-size: 0.8rem; margin-bottom: 8px; font-weight: 600; }
+        .dev-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        
+        .dev-btn { background: #334155; color: #e2e8f0; border: 1px solid #475569; padding: 8px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; transition: 0.2s; text-align: center; }
+        .dev-btn:hover { background: #475569; transform: translateY(-1px); }
+        .dev-btn.span-2 { grid-column: span 2; }
+        .dev-btn.highlight { background: #ca8a04; color: white; border-color: #eab308; font-weight: bold; }
+        .dev-btn.highlight:hover { background: #eab308; }
+        .dev-btn.danger { background: #991b1b; color: white; border-color: #b91c1c; }
+        .dev-btn.danger:hover { background: #b91c1c; }
 
 
 .tab-btn-custom { background: transparent; border: none; font-size: 1.3rem; font-family: var(--font-serif); color: var(--text-muted); cursor: pointer; padding: 10px 20px; transition: 0.3s; position: relative; }
@@ -477,25 +496,56 @@
     <div id="notification-banner"><span id="notification-text">您有新訊息。</span></div>
     <div id="toast-container">通知訊息</div>
 
-    <div id="dev-test-panel">
-        <h3>開發測試面板</h3>
-        <div class="dev-flex">
-            <button class="dev-btn" onclick="devSetTime('dawn')">晨</button>
-            <button class="dev-btn" onclick="devSetTime('noon')">午</button>
-            <button class="dev-btn" onclick="devSetTime('dusk')">暮</button>
-            <button class="dev-btn" onclick="devSetTime('night')">夜</button>
-        </div>
-        <button class="dev-btn" onclick="addPointsAndGacha(1000, true)" style="background: #d4af37; color:#222; font-weight:bold;">測試：獲得1000分並抽獎</button>
-<button class="dev-btn" onclick="addPointsAndGacha(500, false)">測試：獲得500分(無抽獎)</button>
-        <button class="dev-btn" onclick="devResetAccount()" style="background: #ef4444; color:#fff; border:none;">測試：重置積分與道具歸零</button>
-        <button class="dev-btn" onclick="devCancelWatering()">取消澆水狀態 (可再澆水)</button>
-        <button class="dev-btn" onclick="devReselectPlant()">重新選擇植物</button>
-        <button class="dev-btn" onclick="devAddGrowth()">加快生長 (10天份量)</button>
-        <button class="dev-btn" onclick="devAddWilt()">加快缺水 (1天份量)</button>
-        <button class="dev-btn" onclick="devSimulateMail()">模擬新信件/回應</button>
-        <button class="dev-btn" onclick="devDisableHandwriting()">一鍵解鎖純手寫限制</button>
-    </div>
+   <!-- 隱藏式的開發與測試面板 -->
+    <div id="dev-panel-wrapper" style="display: none;">
+        <button id="dev-toggle-btn" onclick="toggleDevPanel()">
+            <span style="font-size: 1.2rem;">⚙️</span> 開發測試面板
+        </button>
+        <div id="dev-test-panel" class="collapsed">
+            <div class="dev-header">
+                <h3>🛠️ 系統測試工具</h3>
+                <button class="dev-close-btn" onclick="toggleDevPanel()">×</button>
+            </div>
+            
+            <div class="dev-section">
+                <div class="dev-sec-title">⏳ 環境與植物</div>
+                <div class="dev-grid">
+                    <button class="dev-btn" onclick="devSetTime('dawn')">🌅 晨</button>
+                    <button class="dev-btn" onclick="devSetTime('noon')">☀️ 午</button>
+                    <button class="dev-btn" onclick="devSetTime('dusk')">🌇 暮</button>
+                    <button class="dev-btn" onclick="devSetTime('night')">🌙 夜</button>
+                    <button class="dev-btn span-2" onclick="devAddGrowth()">🌱 加快生長(10天)</button>
+                    <button class="dev-btn" onclick="devAddWilt()">🍂 缺水</button>
+                    <button class="dev-btn" onclick="devCancelWatering()">💧 重置澆水</button>
+                </div>
+            </div>
 
+            <div class="dev-section">
+                <div class="dev-sec-title">📝 派發任務 (全班即時解鎖)</div>
+                <div class="dev-grid">
+                    <button class="dev-btn span-2" onclick="devUnlockTask('reading')">➕ 派發 [閱讀任務]</button>
+                    <button class="dev-btn span-2" onclick="devUnlockTask('random')">➕ 派發 [探索任務]</button>
+                </div>
+            </div>
+
+            <div class="dev-section">
+                <div class="dev-sec-title">📬 模擬信件往來</div>
+                <div class="dev-grid">
+                    <button class="dev-btn span-2" onclick="devSimulateReceiveLog()">📥 模擬收到：別人的心得</button>
+                    <button class="dev-btn span-2" onclick="devSimulateReceiveReply()">💌 模擬收到：別人的回信</button>
+                </div>
+            </div>
+
+            <div class="dev-section">
+                <div class="dev-sec-title">💰 經濟與系統</div>
+                <div class="dev-grid">
+                    <button class="dev-btn span-2 highlight" onclick="addPointsAndGacha(1000, true)">🎁 獲取 1000 分並抽獎</button>
+                    <button class="dev-btn" onclick="devDisableHandwriting()">⌨️ 解鎖鍵盤</button>
+                    <button class="dev-btn danger" onclick="devResetAccount()">⚠️ 帳號重置</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 <!-- 鋼琴全螢幕介面 -->
     <div id="piano-overlay">
@@ -1051,6 +1101,14 @@ db.ref(`users/${currentUser.uid}`).on('value', snap => {
                     } 
                 });
             }
+
+ // 👇👇👇 請把這段加在這裡 👇👇👇
+        // 根據電郵判斷是否顯示開發面板
+        if (document.getElementById('dev-panel-wrapper')) {
+            document.getElementById('dev-panel-wrapper').style.display = isDevUser(currentUser.email) ? 'block' : 'none';
+        }
+        // 👆👆👆 加到這裡為止 👆👆👆
+           
         }
 
       function healPool() {
@@ -4748,6 +4806,90 @@ function closeGacha() {
 }
         
 
+
+        // === 1. 開發面板權限與收合邏輯 ===
+function isDevUser(email) {
+    if (!email) return false;
+    // 條件一：kenchan
+    if (email.toLowerCase().includes('kenchan')) return true;
+    // 條件二：@ccckyc.edu.hk 且 @ 前面不能有數字
+    const isTeacher = /^[^\d@]+@ccckyc\.edu\.hk$/.test(email);
+    return isTeacher;
+}
+
+function toggleDevPanel() {
+    const panel = document.getElementById('dev-test-panel');
+    panel.classList.toggle('collapsed');
+}
+
+// 在 initApp() 函數內部，把面板顯示出來 (請確保在 initApp 裡加上這一行)
+// document.getElementById('dev-panel-wrapper').style.display = isDevUser(currentUser.email) ? 'block' : 'none';
+
+// === 2. 一鍵解鎖任務功能 ===
+window.devUnlockTask = function(type) {
+    const classId = currentUser.classId || 'default';
+    const node = type === 'reading' ? 'tasks' : 'randomTasks';
+    const typeName = type === 'reading' ? '閱讀任務' : '探索任務';
+    
+    db.ref(`classes/${classId}/${node}`).once('value').then(snap => {
+        let arr = snap.val() || [];
+        // 塞入一個 2000 年的假日期，保證時間已過，直接解鎖
+        const fakeDate = `2000-01-${String(arr.length + 1).padStart(2, '0')}`; 
+        arr.push(fakeDate);
+        db.ref(`classes/${classId}/${node}`).set(arr).then(() => {
+            showToast(`✅ 成功派發第 ${arr.length} 回 [${typeName}]！`);
+        });
+    });
+};
+
+// === 3. 模擬收到別人寄來的心得 ===
+window.devSimulateReceiveLog = function() {
+    const ts = firebase.database.ServerValue.TIMESTAMP;
+    const ref = db.ref('letters').push();
+    const id = ref.key;
+    const bookName = ['百年孤寂', '人間失格', '小王子', '老人與海'][Math.floor(Math.random()*4)];
+    
+    ref.set({
+        id: id, senderUid: 'dummy_teacher_id', type: 'reading',
+        bookTitle: `測試書籍：${bookName}`, timestamp: ts, recipientUid: currentUser.uid
+    }).then(() => {
+        db.ref(`user_threads/${currentUser.uid}/${id}`).set({
+            letterId: id, type: 'reading', bookTitle: `測試書籍：${bookName}`,
+            isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts
+        });
+        db.ref(`conversations/${id}`).push({
+            senderUid: 'dummy_teacher_id', timestamp: ts,
+            text: '【目前進度】\n第 50 頁\n\n【思考問題】\n這是一本好書嗎？\n\n【閱讀心得】\n這是我利用測試按鈕產生的模擬心得，我覺得寫得非常棒！期待你的回信喔。'
+        });
+        showToast("📬 模擬成功：您的信箱收到了一封新的閱讀心得！");
+    });
+};
+
+// === 4. 模擬收到別人的回信 ===
+window.devSimulateReceiveReply = function() {
+    // 找出自己寄出、且還沒收到回覆的信件
+    db.ref(`user_threads/${currentUser.uid}`).once('value').then(snap => {
+        const threads = snap.val() || {};
+        const pendingIds = Object.keys(threads).filter(id => threads[id].isSender && threads[id].type !== 'random' && !threads[id].hasBeenRepliedTo);
+
+        if (pendingIds.length === 0) {
+            return alert("⚠️ 模擬失敗：您目前沒有『等待回覆中』的心得，請先寫一篇心得並寄出！");
+        }
+
+        const targetId = pendingIds[0]; // 挑選第一封等待回覆的信
+        const ts = firebase.database.ServerValue.TIMESTAMP;
+
+        db.ref(`conversations/${targetId}`).push({
+            senderUid: 'dummy_teacher_id', timestamp: ts,
+            text: '這是來自測試精靈的模擬回信！你的心得寫得太棒了，讓我也想去借這本書來看看。繼續加油喔！'
+        }).then(() => {
+            db.ref(`user_threads/${currentUser.uid}/${targetId}`).update({
+                hasUnread: true, hasBeenRepliedTo: true, lastUpdated: ts
+            });
+            showToast("💌 模擬成功：您收到了一封回信！");
+        });
+    });
+};
 
         
     </script>
