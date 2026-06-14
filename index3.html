@@ -3586,7 +3586,7 @@ function setEnvironmentPhase(phaseStr) {
 
 
 
-// --- 滑鼠拖曳與點擊系統全域變數 (請貼在 onPointerDown 的正上方) ---
+// --- 滑鼠拖曳與點擊系統全域變數 ---
 var pointerDownPos = { x: 0, y: 0 };
 var dragTimer = null;       
 var isDragging = false;     
@@ -3596,9 +3596,12 @@ var deskPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -8.5);
 var isDrawerAnimating = false;
 
 function onPointerDown(e) {
-   
+    // 加入這行防呆保護：如果變數不小心消失，就自動重新建立
+    if (!pointerDownPos) pointerDownPos = { x: 0, y: 0 };
+
     if(document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
-    pointerDownPos.x = e.clientX; pointerDownPos.y = e.clientY;
+    pointerDownPos.x = e.clientX; 
+    pointerDownPos.y = e.clientY;
 
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
@@ -3767,6 +3770,9 @@ function onPointerMove(e) {
 }
 
 function onPointerUp(e) {
+    // 加入這行防呆保護
+    if (!pointerDownPos) pointerDownPos = { x: 0, y: 0 };
+
     if(dragTimer) { 
         clearTimeout(dragTimer); 
         dragTimer = null; 
