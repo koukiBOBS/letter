@@ -2281,7 +2281,7 @@ function createCloudTexture() {
             }
             const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
         }
-     function createPainting(x, y, z, url, aspect) {
+   function createPainting(x, y, z, url, aspect) {
         const frameGroup = new THREE.Group(); 
         frameGroup.position.set(x, y, z); 
         
@@ -2318,8 +2318,9 @@ function createCloudTexture() {
             },
             undefined,
             (err) => { console.warn('畫作圖片載入失敗:', url); }
-        );
-        return frameGroup; // 這一行是修復無法隱藏的關鍵
+        ); // <--- 注意這裡，必須要有 ); 來結束 loader.load
+
+        return frameGroup; // 隱藏畫布與快照的關鍵
     }
         function createFloorTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 1024; const ctx = canvas.getContext('2d');
