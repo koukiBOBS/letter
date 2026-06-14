@@ -1594,9 +1594,22 @@ function restoreObjectPositions() {
         if(pos.water && wateringCan) wateringCan.position.set(pos.water.x, 8.5, pos.water.z);
         if(pos.trash && tcGrp) tcGrp.position.set(pos.trash.x, tcGrp.position.y, pos.trash.z);
         if(pos.chair && chairGroup) chairGroup.position.set(pos.chair.x, chairGroup.position.y, pos.chair.z);
-        if(pos.cat && catGrp) {
+       if(pos.cat && catGrp) {
             catPlatform = pos.cat.platform || 'floor';
-            catGrp.position.set(pos.cat.x, pos.cat.y, pos.cat.z);
+            
+            // 【修訂】強制校正貓咪的 Y 軸高度，無視存壞的懸空高度
+            let correctY = 0;
+            if (catPlatform === 'desk') correctY = 8.5;
+            else if (catPlatform === 'chair') correctY = 4.5;
+            
+            catGrp.position.set(pos.cat.x, correctY, pos.cat.z);
+            
+            // 同時把 HitBox 的基礎高度設定好，避免重整後第一次拖曳發生錯亂
+            catGrp.children.forEach(child => {
+                if (child.userData && child.userData.type === 'cat') {
+                    child.userData.originalY = correctY;
+                }
+            });
         }
     } catch(e){}
 }
@@ -2468,12 +2481,18 @@ function onPointerUp(e) {
     }
 
     if(isDragging && dragTarget) {
-        gsap.to(dragTarget.position, { y: dragTarget.userData.originalY, duration: 0.3, ease: "bounce.out" });
+        gsap.to(dragTarget.position, { 
+            y: dragTarget.userData.originalY, 
+            duration: 0.3, 
+            ease: "bounce.out",
+            onComplete: () => {
+                saveObjectPositions(); // 【修訂】必須等待掉落動畫完全結束，碰到表面後才能儲存
+            }
+        });
         isDragging = false;
         dragTarget = null;
         controls.enabled = true; 
         document.body.style.cursor = 'default';
-        saveObjectPositions(); // 拖曳結束後自動儲存所有位置
         return; 
     }
 
