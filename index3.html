@@ -1932,7 +1932,8 @@ function createHKVehicle(type, direction) {
             for(let i=0; i<=1024; i+=256) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 1024); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1024, i); ctx.stroke(); }
             const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(10, 10); return tex;
         }
-        function createCarpetTexture() {
+        
+     function createCarpetTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#b5a695'; ctx.fillRect(0,0,512,512); 
             ctx.strokeStyle = 'rgba(140, 122, 107, 0.4)'; ctx.lineWidth = 4;
@@ -1942,6 +1943,7 @@ function createHKVehicle(type, direction) {
             }
             return new THREE.CanvasTexture(canvas);
         }
+        
        function createClockTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256; const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(128, 128, 128, 0, Math.PI*2); ctx.fill();
@@ -2432,8 +2434,14 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     const handle = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.1, 8, 16), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})); handle.rotation.set(0, 0, 0); handle.position.set(-0.8, 0.9, 0); handle.castShadow = true; wateringCan.add(handle);
     dummySpoutTip = new THREE.Object3D(); dummySpoutTip.position.set(0, 1.3, 0); spout.add(dummySpoutTip);
 
-    const cpt = new THREE.Mesh(new THREE.PlaneGeometry(36, 24), new THREE.MeshStandardMaterial({map: createCarpetTexture(), roughness: 1.0}));
-    cpt.rotation.x = -Math.PI/2; cpt.position.set(0, 0.05, 8); cpt.receiveShadow = true; scene.add(cpt);
+  const cpt = new THREE.Mesh(
+        new THREE.PlaneGeometry(36, 24), 
+        new THREE.MeshStandardMaterial({map: createCarpetTexture(), roughness: 1.0})
+    );
+    cpt.rotation.x = -Math.PI/2; 
+    cpt.position.set(0, 0.05, 8); // 高度設為 0.05，微微浮在貼地(y=0)的地板上方避免破圖
+    cpt.receiveShadow = true; 
+    scene.add(cpt);
     
     tcGrp = new THREE.Group(); tcGrp.position.set(-16, 2.5, 6); scene.add(tcGrp);
     const tcBody = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.4, 5, 20, 1, true), new THREE.MeshStandardMaterial({color: 0x7a7a7a, metalness: 0.6, roughness: 0.4, side: THREE.DoubleSide}));
