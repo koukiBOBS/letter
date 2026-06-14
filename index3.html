@@ -446,6 +446,29 @@
         }
 
 
+
+/* --- 錢包與收集冊介面 --- */
+#modal-wallet { background: rgba(20, 18, 16, 0.9); backdrop-filter: blur(8px); }
+.wallet-content { background: #3c2a21; border: 2px solid #b4a08c; color: #fdfaf6; padding: 40px; border-radius: 12px; max-width: 900px; width: 95%; margin: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5); position: relative; max-height: 90vh; overflow-y: auto; font-family: var(--font-serif); }
+.wallet-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #b4a08c; padding-bottom: 20px; margin-bottom: 30px; }
+.points-display { font-size: 2.5rem; color: #d4af37; text-shadow: 0 2px 10px rgba(212, 175, 55, 0.3); }
+.collection-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
+.item-card { background: #523a28; border: 1px solid #7d5a40; border-radius: 8px; padding: 15px; text-align: center; transition: 0.3s; position: relative; overflow: hidden; }
+.item-card.locked { filter: grayscale(100%) brightness(0.5); opacity: 0.7; }
+.item-card.locked::after { content: '🔒 未解鎖'; position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; font-weight: bold; color: #aaa; letter-spacing: 2px; }
+.item-card img { width: 100%; height: 120px; object-fit: contain; margin-bottom: 10px; drop-shadow: 0 10px 10px rgba(0,0,0,0.5); }
+.item-card h4 { color: #e6dfd1; margin-bottom: 5px; font-size: 1.1rem; }
+.item-card p { font-size: 0.8rem; color: #a38c76; font-family: var(--font-sans); }
+
+/* --- 抽獎動畫介面 --- */
+#gacha-overlay { position: fixed; inset: 0; background: radial-gradient(circle, rgba(60,42,33,0.95) 0%, rgba(20,18,16,0.98) 100%); z-index: 100000; display: none; flex-direction: column; align-items: center; justify-content: center; }
+#gacha-canvas-container { width: 100%; height: 60vh; position: relative; }
+.gacha-text { text-align: center; color: #fff; font-family: var(--font-serif); opacity: 0; transform: translateY(30px); }
+.gacha-text h2 { font-size: 2.5rem; color: #d4af37; margin-bottom: 15px; letter-spacing: 3px; text-shadow: 0 0 20px rgba(212, 175, 55, 0.5); }
+.gacha-light { position: absolute; inset: 0; background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 60%); opacity: 0; pointer-events: none; mix-blend-mode: overlay; }
+
+        
+
         
     </style>
 </head>
@@ -462,6 +485,8 @@
             <button class="dev-btn" onclick="devSetTime('dusk')">暮</button>
             <button class="dev-btn" onclick="devSetTime('night')">夜</button>
         </div>
+        <button class="dev-btn" onclick="addPointsAndGacha(1000, true)" style="background: #d4af37; color:#222; font-weight:bold;">測試：獲得1000分並抽獎</button>
+<button class="dev-btn" onclick="addPointsAndGacha(500, false)">測試：獲得500分(無抽獎)</button>
         <button class="dev-btn" onclick="devCancelWatering()">取消澆水狀態 (可再澆水)</button>
         <button class="dev-btn" onclick="devReselectPlant()">重新選擇植物</button>
         <button class="dev-btn" onclick="devAddGrowth()">加快生長 (10天份量)</button>
@@ -716,6 +741,34 @@
         <div class="letter-desk" id="chat-flow"></div>
     </div>
 
+
+
+    <!-- 積分錢包與收集冊 -->
+    <div id="modal-wallet" class="room-modal">
+        <div class="wallet-content">
+            <button class="room-modal-close" onclick="closeRoomModal(event, 'modal-wallet')" style="color: #b4a08c;">×</button>
+            <div class="wallet-header">
+                <div>
+                    <h2 style="font-size: 1.8rem; color: #e6dfd1; margin-bottom: 5px;">我的資產與收集冊</h2>
+                    <span style="color: #a38c76; font-size: 0.95rem;">完成閱讀/回覆 +1000分，探索 +500分</span>
+                </div>
+                <div class="points-display"><span id="user-points-text">0</span> <span style="font-size:1.2rem; color:#a38c76;">分</span></div>
+            </div>
+            <div class="collection-grid" id="collection-grid"></div>
+        </div>
+    </div>
+
+    <!-- 3D 抽獎畫面 -->
+    <div id="gacha-overlay">
+        <div class="gacha-light" id="gacha-flash"></div>
+        <div id="gacha-canvas-container"></div>
+        <div class="gacha-text" id="gacha-result-ui">
+            <h2 id="gacha-item-name">獲得道具</h2>
+            <p id="gacha-item-desc" style="color: #b4a08c; font-size: 1.2rem; margin-bottom: 30px;">敘述文字</p>
+            <button class="btn" style="background: #d4af37; color: #222; border:none; padding: 12px 40px; font-weight:bold;" onclick="closeGacha()">收下並佈置</button>
+        </div>
+    </div>
+
     <!-- Mail Anim Overlay -->
     <div id="anim-overlay">
         <div class="env-wrapper">
@@ -786,6 +839,42 @@ const RANDOM_TASKS = [
 
 
 
+// --- 積分與收集系統 ---
+let userPoints = 0;
+let userInventory = {}; // { itemId: true }
+let walletObj = null; // 錢包 3D 物件
+let gachaScene, gachaCam, gachaRen, gachaGroup;
+
+// 權限開關
+let hasPianoPrivilege = false;
+let hasCurtainPrivilege = false;
+let hasDoorPrivilege = false;
+
+// 道具字典 (minPts 代表需要達到幾分才能抽入池子)
+const ITEM_REGISTRY = {
+    'bookcase_1': { name: '左側書櫃', desc: '充滿書香氣息的木製書櫃', type: 'model', minPts: 0 },
+    'bookcase_2': { name: '中央書櫃', desc: '擺放精裝大部頭的書櫃', type: 'model', minPts: 0 },
+    'bookcase_3': { name: '右側書櫃', desc: '收藏各式雜誌與圖鑑', type: 'model', minPts: 0 },
+    'trash': { name: '質感金屬垃圾筒', desc: '保持空間整潔的好幫手', type: 'model', minPts: 0 },
+    'carpet': { name: '幾何編織地氈', desc: '溫暖腳步的柔軟觸感', type: 'model', minPts: 0 },
+    'umbrella': { name: '直立傘筒與傘', desc: '為雨天做好準備', type: 'model', minPts: 0 },
+    'rack': { name: '原木掛衣架', desc: '懸掛大衣與帽子的角落', type: 'model', minPts: 0 },
+    'clock': { name: '極簡掛鐘', desc: '提醒你時間流逝的步伐', type: 'model', minPts: 0 },
+    'chair': { name: '復古書桌椅', desc: '符合人體工學的閱讀良伴', type: 'model', minPts: 0 },
+    'cat': { name: '橘白小貓', desc: '一隻會四處閒晃睡覺的小貓', type: 'model', minPts: 0 },
+    'painting_1': { name: '畫作一', desc: '為牆面增添藝術氣息', type: 'model', minPts: 0 },
+    'painting_2': { name: '畫作二', desc: '為牆面增添藝術氣息', type: 'model', minPts: 0 },
+    'painting_3': { name: '畫作三', desc: '為牆面增添藝術氣息', type: 'model', minPts: 0 },
+    'painting_4': { name: '畫作四', desc: '為牆面增添藝術氣息', type: 'model', minPts: 0 },
+    'piano_model': { name: '直立式鋼琴', desc: '黑色的典雅樂器實體', type: 'model', minPts: 0 },
+    'piano_bench': { name: '鋼琴椅', desc: '搭配鋼琴的皮革長凳', type: 'model', minPts: 0 },
+    'piano_use': { name: '🎵 鋼琴彈奏權', desc: '解鎖點擊鋼琴彈奏的功能', type: 'privilege', minPts: 10000 },
+    'curtain_use': { name: '🌤️ 窗簾開關權', desc: '解鎖拖曳窗簾控制光線', type: 'privilege', minPts: 10000 },
+    'door_use': { name: '🚪 露台通行權', desc: '修繕趟門，解鎖出外看海', type: 'privilege', minPts: 10000 }
+};
+
+
+        
         
  let currentUser = null; let config = null; let selectedTaskIndex = null; let selectedTaskDate = null;
 let hasUnrepliedLetters = false; let currentChatRef = null; let isInitialLoad = true;
@@ -891,6 +980,33 @@ let userPlantData = null; let timeForced = false;
         function hideAuthOverlay() { gsap.to("#auth-overlay", { opacity: 0, duration: 0.6, onComplete: () => { document.getElementById('auth-overlay').style.display = 'none'; }}); }
 
        function initApp() { 
+
+
+// 在 initApp() 裡面加入這段：
+db.ref(`users/${currentUser.uid}`).on('value', snap => {
+    let data = snap.val() || {};
+    userPoints = data.points || 0;
+    userInventory = data.inventory || {};
+    
+    // 更新權限布林值
+    hasPianoPrivilege = !!userInventory['piano_use'];
+    hasCurtainPrivilege = !!userInventory['curtain_use'];
+    hasDoorPrivilege = !!userInventory['door_use'];
+    
+    document.getElementById('user-points-text').innerText = userPoints;
+    
+    // 遍歷整個場景，隱藏未解鎖的實體模型
+    scene.traverse((obj) => {
+        if (obj.userData && obj.userData.itemId) {
+            // 如果道具在字典裡，且玩家沒有該道具，則隱藏；否則顯示
+            if (ITEM_REGISTRY[obj.userData.itemId]) {
+                obj.visible = !!userInventory[obj.userData.itemId];
+            }
+        }
+    });
+});
+
+           
             document.getElementById('room-canvas-container').style.display = 'block'; 
             initRoomScene(); healPool();
             db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); 
@@ -1224,6 +1340,38 @@ function renderTasks() {
     });
 }
 
+
+
+// 給予積分，如果是閱讀任務則額外進行抽獎
+function addPointsAndGacha(points, triggerGachaAnim) {
+    userPoints += points;
+    db.ref(`users/${currentUser.uid}/points`).set(userPoints);
+    showToast(`💰 獲得 ${points} 積分！當前積分：${userPoints}`);
+    
+    if (triggerGachaAnim) {
+        // 計算可抽池
+        let pool = Object.keys(ITEM_REGISTRY).filter(id => {
+            let item = ITEM_REGISTRY[id];
+            // 條件：玩家還沒擁有，且玩家總積分大於等於道具解鎖門檻
+            return !userInventory[id] && userPoints >= item.minPts;
+        });
+        
+        if (pool.length > 0) {
+            // 隨機抽一個
+            let wonId = pool[Math.floor(Math.random() * pool.length)];
+            userInventory[wonId] = true;
+            db.ref(`users/${currentUser.uid}/inventory/${wonId}`).set(true);
+            
+            // 延遲一下等信件動畫結束再秀抽獎
+            setTimeout(() => { showGachaAnim(wonId); }, 1500);
+        } else {
+            setTimeout(() => { showToast("🏆 恭喜！您已集齊目前階段的所有道具與權限！"); }, 1500);
+        }
+    }
+}
+
+
+        
 // 修改原有的圖片選擇功能，支援兩種上傳目標
 // 這是正確的，保留這個即可！
 function handleFileSelect(event, type = 'reading') {
@@ -2543,13 +2691,10 @@ function buildRoomEnvironment() {
     }
 
   // 依序掛上自己上載的四幅作品 (設定 X, Y, Z, 網址/本機路徑, 寬/高比例)
-createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0); 
-    // 2. 畫二：寬 2048 / 高 1365
-    createPainting(-26, 17, -16.7, '畫二.jpeg', 2048 / 1365); 
-    // 3. 畫三：維持正方形
-    createPainting(26, 17, -16.7, '畫三.jpeg', 1.0); 
-    // 4. 畫四：寬 1835 / 高 1224
-    createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224)
+const p1 = createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0); if(p1) p1.userData.itemId = 'painting_1';
+const p2 = createPainting(-26, 17, -16.7, '畫二.jpeg', 2048 / 1365); if(p2) p2.userData.itemId = 'painting_2';
+const p3 = createPainting(26, 17, -16.7, '畫三.jpeg', 1.0); if(p3) p3.userData.itemId = 'painting_3';
+const p4 = createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224); if(p4) p4.userData.itemId = 'painting_4';
 
   const windowFrameGroup = new THREE.Group(); 
     windowFrameGroup.position.set(0, 14.5, -17.5); 
@@ -2615,7 +2760,27 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
             while(bx < 10) { let bw = Math.random() * 0.8 + 0.3; let bh = Math.random() * 2.5 + 3; if(bx + bw > 10) break; const b = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.05, bh, 4), new THREE.MeshStandardMaterial({color: bookColors[Math.floor(Math.random()*bookColors.length)], roughness: 0.7})); if(Math.random() > 0.7) { b.rotation.z = (Math.random() - 0.5) * 0.3; bx += 0.4; } b.position.set(bx + bw/2, sy + bh/2 + 0.25, -2.5); b.castShadow = true; shelfGroup.add(b); bx += bw; }
         }
     }
-    createBookcase(-25, 59); createBookcase(0, 59); createBookcase(25, 59);
+// 替換原本的這三行
+const bc1 = createBookcase(-25, 59); if(bc1) bc1.userData.itemId = 'bookcase_1';
+const bc2 = createBookcase(0, 59); if(bc2) bc2.userData.itemId = 'bookcase_2';
+const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
+
+
+cpt.userData.itemId = 'carpet';
+tcGrp.userData.itemId = 'trash';
+clockGrp.userData.itemId = 'clock';
+rackGrp.userData.itemId = 'rack';
+umbGrp.userData.itemId = 'umbrella';
+pianoGrp.userData.itemId = 'piano_model';
+benchGrp.userData.itemId = 'piano_bench';
+chairGroup.userData.itemId = 'chair';
+
+    
+
+
+
+
+    
 
     woodMat = new THREE.MeshStandardMaterial({ map: createWoodTexture(), roughness: 0.6 });
     desk = new THREE.Group(); scene.add(desk);
@@ -3112,6 +3277,7 @@ interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitB
     const whiteMat = new THREE.MeshStandardMaterial({map: whiteFur, roughness: 0.9, bumpMap: whiteFur, bumpScale: 0.02});
 
     catGrp = new THREE.Group(); catGrp.position.set(0, 0, 25); scene.add(catGrp);
+    catGrp.userData.itemId = 'cat';
     catBody = new THREE.Group(); catBody.position.y = 1.6; catGrp.add(catBody);
     
     const catHitBox = new THREE.Mesh(new THREE.BoxGeometry(3.5, 3.5, 3.5), new THREE.MeshBasicMaterial({visible: false}));
@@ -3218,6 +3384,25 @@ interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitB
     bPot.position.set(8, 4.97, -1.5); balconyGrp.add(bPot);
     const bPlant = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 16), new THREE.MeshStandardMaterial({color: 0x2d4c1e, roughness: 0.9}));
     bPlant.position.set(8, 5.6, -1.5); balconyGrp.add(bPlant);
+
+
+
+
+    // 建立桌上的錢包
+ walletObj = new THREE.Group();
+ walletObj.position.set(-2, 8.5, 3); // 放在桌上
+ walletObj.rotation.y = -0.3;
+ walletObj.userData = { type: 'wallet' };
+ desk.add(walletObj);
+ 
+ const wBase = new THREE.Mesh(new THREE.BoxGeometry(3, 0.4, 4), new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.9}));
+ wBase.castShadow = true; walletObj.add(wBase);
+ const wFlap = new THREE.Mesh(new THREE.BoxGeometry(3, 0.1, 2.5), new THREE.MeshStandardMaterial({color: 0x4e342e, roughness: 0.9}));
+ wFlap.position.set(0, 0.25, 0.5); wFlap.rotation.x = -0.1; walletObj.add(wFlap);
+ const wClip = new THREE.Mesh(new THREE.BoxGeometry(1, 0.2, 0.5), new THREE.MeshStandardMaterial({color: 0xd4af37, metalness: 0.8}));
+ wClip.position.set(0, 0.25, 1.8); walletObj.add(wClip);
+ 
+ interactables.push(walletObj);
 
     
 }
@@ -3558,11 +3743,13 @@ function onPointerUp(e) {
                 showPlantStatus(); 
             } 
         // 👇 新增這三行，讓窗戶可以直接點擊
-        } else if(type === 'window') {
-            goToBalcony();
-       } else if(type === 'piano') {
-            openPianoUI();
-        }
+       } else if(type === 'window') {
+    if(hasDoorPrivilege) goToBalcony(); else showToast("🚪 露台趟門失修，無法開啟。需收集「通行權」。");
+} else if(type === 'piano') {
+    if(hasPianoPrivilege) openPianoUI(); else showToast("🎹 需要收集「鋼琴彈奏權」才能彈奏。");
+} else if(type === 'wallet') {
+    openWalletUI();
+}
         
     }
 }
@@ -4192,6 +4379,155 @@ function openPianoUI() {
 function closePianoUI() {
     document.getElementById('piano-overlay').style.display = 'none';
 }
+
+
+
+// --- 錢包 UI 與卡片快照邏輯 ---
+let offscreenRenderer = null;
+let itemSnapshots = {}; // 快取截圖
+
+function openWalletUI() {
+    gsap.to(walletObj.position, {y: 9, rotationX: -0.2, duration: 0.3, yoyo: true, repeat: 1, onComplete: () => {
+        document.getElementById('modal-wallet').style.display = 'flex';
+        renderWalletGrid();
+    }});
+}
+
+function renderWalletGrid() {
+    const grid = document.getElementById('collection-grid');
+    grid.innerHTML = '';
+    
+    // 初始化離線渲染器 (用來拍 3D 道具快照)
+    if (!offscreenRenderer) {
+        offscreenRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        offscreenRenderer.setSize(256, 256);
+    }
+    
+    const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+    cam.position.set(0, 5, 12);
+    cam.lookAt(0, 0, 0);
+    
+    Object.keys(ITEM_REGISTRY).forEach(id => {
+        const item = ITEM_REGISTRY[id];
+        const isUnlocked = !!userInventory[id];
+        
+        let imgSrc = '';
+        if (item.type === 'privilege') {
+            // 權限卡片給個預設圖片或 Emoji 即可
+            imgSrc = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><text x="50%" y="50%" font-size="50" text-anchor="middle" dy=".3em">✨</text></svg>';
+        } else {
+            // 實體道具拍 3D 快照
+            if (!itemSnapshots[id]) {
+                const snapScene = new THREE.Scene();
+                snapScene.add(new THREE.AmbientLight(0xffffff, 1.0));
+                const dirL = new THREE.DirectionalLight(0xffffff, 0.8); dirL.position.set(5, 5, 5); snapScene.add(dirL);
+                
+                // 從主場景把該模型 clone 一份過來拍照
+                let cloneObj = null;
+                scene.traverse(child => { if (child.userData && child.userData.itemId === id) cloneObj = child.clone(); });
+                
+                if (cloneObj) {
+                    cloneObj.position.set(0,0,0);
+                    // 正規化大小與置中
+                    const box = new THREE.Box3().setFromObject(cloneObj);
+                    const size = box.getSize(new THREE.Vector3());
+                    const center = box.getCenter(new THREE.Vector3());
+                    cloneObj.position.sub(center); // 置中
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    cloneObj.scale.setScalar(8 / maxDim); // 縮放到適合相機的比例
+                    
+                    snapScene.add(cloneObj);
+                    offscreenRenderer.render(snapScene, cam);
+                    itemSnapshots[id] = offscreenRenderer.domElement.toDataURL("image/png");
+                }
+            }
+            imgSrc = itemSnapshots[id];
+        }
+
+        grid.innerHTML += `
+            <div class="item-card ${isUnlocked ? '' : 'locked'}">
+                <img src="${imgSrc}" alt="${item.name}">
+                <h4>${item.name}</h4>
+                <p>${item.desc}</p>
+            </div>
+        `;
+    });
+}
+
+// --- 3D 抽獎畫面邏輯 ---
+function showGachaAnim(itemId) {
+    const item = ITEM_REGISTRY[itemId];
+    const overlay = document.getElementById('gacha-overlay');
+    overlay.style.display = 'flex';
+    document.getElementById('gacha-result-ui').style.opacity = 0;
+    
+    // 初始化抽獎 3D 場景
+    if (!gachaScene) {
+        gachaScene = new THREE.Scene();
+        gachaCam = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 100);
+        gachaCam.position.set(0, 2, 12);
+        gachaRen = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        gachaRen.setSize(window.innerWidth, window.innerHeight * 0.6);
+        document.getElementById('gacha-canvas-container').appendChild(gachaRen.domElement);
+        
+        gachaScene.add(new THREE.AmbientLight(0xffeedd, 0.8));
+        const dl = new THREE.DirectionalLight(0xffffff, 1.2); dl.position.set(5, 10, 5); gachaScene.add(dl);
+        const sl = new THREE.SpotLight(0xd4af37, 2); sl.position.set(0, -5, 5); gachaScene.add(sl);
+        
+        gachaGroup = new THREE.Group();
+        gachaScene.add(gachaGroup);
+    }
+    
+    gachaGroup.clear();
+    
+    if (item.type === 'model') {
+        let cloneObj = null;
+        scene.traverse(child => { if (child.userData && child.userData.itemId === itemId) cloneObj = child.clone(); });
+        if (cloneObj) {
+            const box = new THREE.Box3().setFromObject(cloneObj);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            cloneObj.position.sub(center);
+            const maxDim = Math.max(size.x, size.y, size.z);
+            cloneObj.scale.setScalar(8 / maxDim);
+            gachaGroup.add(cloneObj);
+        }
+    } else {
+        // 權限卡片用發光幾何體替代
+        const card = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 0.2), new THREE.MeshStandardMaterial({color: 0xd4af37, metalness: 0.8, roughness: 0.2}));
+        gachaGroup.add(card);
+    }
+
+    // 動畫展演
+    gsap.fromTo('#gacha-flash', {opacity: 1}, {opacity: 0, duration: 1.5, ease: "power2.out"});
+    gachaGroup.scale.set(0.1, 0.1, 0.1);
+    gachaGroup.position.y = -5;
+    gsap.to(gachaGroup.scale, {x: 1, y: 1, z: 1, duration: 1.2, ease: "back.out(1.2)"});
+    gsap.to(gachaGroup.position, {y: 0, duration: 1.2, ease: "back.out(1.2)"});
+    
+    gsap.to(gachaGroup.rotation, {y: Math.PI * 2, duration: 5, repeat: -1, ease: "linear"});
+    
+    document.getElementById('gacha-item-name').innerText = item.name;
+    document.getElementById('gacha-item-desc').innerText = item.desc;
+    setTimeout(() => { gsap.to('#gacha-result-ui', {opacity: 1, y: 0, duration: 0.8}); }, 1000);
+    
+    animateGacha();
+}
+
+function animateGacha() {
+    if (document.getElementById('gacha-overlay').style.display !== 'none') {
+        requestAnimationFrame(animateGacha);
+        gachaRen.render(gachaScene, gachaCam);
+    }
+}
+
+function closeGacha() {
+    gsap.to('#gacha-overlay', {opacity: 0, duration: 0.5, onComplete: () => {
+        document.getElementById('gacha-overlay').style.display = 'none';
+        document.getElementById('gacha-overlay').style.opacity = 1;
+    }});
+}
+        
 
 
         
