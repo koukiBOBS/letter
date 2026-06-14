@@ -1662,39 +1662,29 @@ function goToBalcony() {
     if (isAtBalcony) return;
     isAtBalcony = true;
 
-    // 記憶原本室內的相機與目標位置
     roomCameraBackup.cp.copy(camera.position);
     roomCameraBackup.ct.copy(controls.target);
 
- controls.minDistance = 0.1; // 允許目標點非常靠近相機
+    controls.minDistance = 0.1; 
     controls.maxDistance = 100;
-
-  controls.minAzimuthAngle = -Math.PI / 2.5; // 稍微放寬左右轉頭的視角
+    controls.minAzimuthAngle = -Math.PI / 2.5; 
     controls.maxAzimuthAngle = Math.PI / 2.5;
-    controls.minPolarAngle = 0.05;           // 【關鍵修改】改為接近 0，允許完全仰起頭看正上方天空！
+    controls.minPolarAngle = 0.05;           
     controls.maxPolarAngle = Math.PI / 2;
 
-    // 【修訂三】：將相機推進至 z:-19.5 (完全站到露臺外)，這樣中間的窗框就會在背後而看不見
-    gsap.to(camera.position, { x: 0, y: 15, z: -19.5, duration: 1.8, ease: "power2.inOut" });
-  gsap.to(controls.target, { x: 0, y: 15, z: -20, duration: 1.8, ease: "power2.inOut", onUpdate: () => controls.update() });
-
-// 開門動畫：左側玻璃門向右滑動，與右側玻璃重疊
-  // 1. 開門動畫 (左側門框滑向右側)
-    if (glassDoorL) {
+    // 開門動畫 (左側門滑向右側)
+    if (typeof glassDoorL !== 'undefined' && glassDoorL) {
         gsap.to(glassDoorL.position, { x: 7.3, duration: 1.3, ease: "power2.inOut" });
     }
 
-    // 2. 鏡頭推進 (加上 delay: 0.3)
+    // 鏡頭推進 (加上 delay: 0.3，等門先開)
     gsap.to(camera.position, { x: 0, y: 15, z: -19.5, duration: 1.8, delay: 0.3, ease: "power2.inOut" });
     gsap.to(controls.target, { x: 0, y: 15, z: -20, duration: 1.8, delay: 0.3, ease: "power2.inOut", onUpdate: () => controls.update() });
-    
-    // 【修訂二】：動態擴大鏡頭廣角 (FOV 50 -> 75)，減輕景物放大的壓迫感，讓露臺空間更開闊
-    gsap.to(camera, { fov: 75, duration: 1.8, ease: "power2.inOut", onUpdate: () => camera.updateProjectionMatrix() });
+    gsap.to(camera, { fov: 75, duration: 1.8, delay: 0.3, ease: "power2.inOut", onUpdate: () => camera.updateProjectionMatrix() });
 
-    // 【修訂一】：解決返回按鈕無法點擊的問題
     const btn = document.getElementById('btn-return-room');
     btn.style.display = 'flex';
-    btn.style.pointerEvents = 'auto'; // 強制賦予這顆按鈕點擊權限
+    btn.style.pointerEvents = 'auto'; 
 }
 
 function returnToRoom() {
@@ -1706,24 +1696,22 @@ function returnToRoom() {
     controls.minPolarAngle = 0;
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
-    // 動畫：退回室內原本的位置
+    // 退回室內的鏡頭動畫
     gsap.to(camera.position, { x: roomCameraBackup.cp.x, y: roomCameraBackup.cp.y, z: roomCameraBackup.cp.z, duration: 1.8, ease: "power2.inOut" });
     gsap.to(controls.target, { x: roomCameraBackup.ct.x, y: roomCameraBackup.ct.y, z: roomCameraBackup.ct.z, duration: 1.8, ease: "power2.inOut", onUpdate: () => controls.update() });
-    
-    // 關門動畫 (等待鏡頭退回來後，門框滑回左側)
-    if (glassDoorL) {
+    gsap.to(camera, { fov: 50, duration: 1.8, ease: "power2.inOut", onUpdate: () => camera.updateProjectionMatrix() });
+
+    // 關門動畫 (加上 delay: 0.8，等鏡頭退回室內再拉上門)
+    if (typeof glassDoorL !== 'undefined' && glassDoorL) {
         gsap.to(glassDoorL.position, { x: -7.3, duration: 1.3, delay: 0.8, ease: "power2.inOut" });
     }
-    
-    // 【修訂二】：動態恢復室內原本的視野廣角 (FOV 75 -> 50)，確保室內景觀不變形
-    gsap.to(camera, { fov: 50, duration: 1.8, ease: "power2.inOut", onUpdate: () => camera.updateProjectionMatrix() });
 
     controls.minDistance = 10;
     controls.maxDistance = 60;
-
     document.getElementById('btn-return-room').style.display = 'none';
 }
 
+        
 
 
         
@@ -2413,7 +2401,7 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     // 4. 畫四：寬 1835 / 高 1224
     createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224)
 
-    const windowFrameGroup = new THREE.Group(); 
+  const windowFrameGroup = new THREE.Group(); 
     windowFrameGroup.position.set(0, 14.5, -17.5); 
     scene.add(windowFrameGroup);
     const frameMat = new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.5, metalness: 0.1}); 
@@ -2423,7 +2411,8 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     const rightF = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 27, frameDepth), frameMat); rightF.position.set(15 - frameThickness/2, 0, 0); rightF.castShadow = true; windowFrameGroup.add(rightF);
     const topF = new THREE.Mesh(new THREE.BoxGeometry(30, frameThickness, frameDepth), frameMat); topF.position.set(0, 13.5 - frameThickness/2, 0); topF.castShadow = true; windowFrameGroup.add(topF);
     const botF = new THREE.Mesh(new THREE.BoxGeometry(30, frameThickness, frameDepth), frameMat); botF.position.set(0, -13.5 + frameThickness/2, 0); botF.castShadow = true; windowFrameGroup.add(botF);
-   / 啟用物理透射與折射，打造真實玻璃質感
+
+    // 啟用物理透射與折射，打造真實玻璃質感
     const glassMat = new THREE.MeshPhysicalMaterial({ 
         color: 0xebf8ff, metalness: 0.15, roughness: 0.02, transmission: 0.95, 
         ior: 1.52, thickness: 0.5, transparent: true, opacity: 1.0, 
@@ -2432,22 +2421,20 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
 
     // 【左側動態趟門 (包含玻璃與金屬邊框)】
     glassDoorL = new THREE.Group();
-    glassDoorL.position.set(-7.3, 0, 0.08); // 稍微靠前，模擬外側滑軌
+    glassDoorL.position.set(-7.3, 0, 0.08); 
     windowFrameGroup.add(glassDoorL);
     
     const paneL = new THREE.Mesh(new THREE.BoxGeometry(14.8, 26.5, 0.05), glassMat);
     glassDoorL.add(paneL);
-    // 左趟門的左右金屬框，滑動時視覺才明顯
     const frameL_right = new THREE.Mesh(new THREE.BoxGeometry(0.8, 26.5, 0.6), frameMat);
     frameL_right.position.set(7, 0, 0); glassDoorL.add(frameL_right);
     const frameL_left = new THREE.Mesh(new THREE.BoxGeometry(0.8, 26.5, 0.6), frameMat);
     frameL_left.position.set(-7, 0, 0); glassDoorL.add(frameL_left);
-
     glassDoorL.userData = { type: 'window' };
     
     // 【右側固定門 (包含玻璃與金屬邊框)】
     glassDoorR = new THREE.Group();
-    glassDoorR.position.set(7.3, 0, -0.08); // 稍微靠後，模擬內側
+    glassDoorR.position.set(7.3, 0, -0.08); 
     windowFrameGroup.add(glassDoorR);
     
     const paneR = new THREE.Mesh(new THREE.BoxGeometry(14.8, 26.5, 0.05), glassMat);
@@ -2456,10 +2443,8 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     frameR_left.position.set(-7, 0, 0); glassDoorR.add(frameR_left);
     const frameR_right = new THREE.Mesh(new THREE.BoxGeometry(0.8, 26.5, 0.6), frameMat);
     frameR_right.position.set(7, 0, 0); glassDoorR.add(frameR_right);
-
     glassDoorR.userData = { type: 'window' };
 
-    
     const doorGroup = new THREE.Group(); doorGroup.position.set(-59.5, 14, 0); doorGroup.rotation.y = Math.PI/2; scene.add(doorGroup);
     const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(16, 28, 1), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.8})); doorGroup.add(doorFrame);
     const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(14, 26, 1.2), new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.7})); doorGroup.add(doorPanel);
