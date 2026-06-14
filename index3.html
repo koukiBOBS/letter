@@ -984,13 +984,15 @@ let dummySpoutTip; let indicatorLeft, indicatorRight, indicatorTasks; let intera
             const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256; const ctx = canvas.getContext('2d');
             ctx.fillStyle = color; ctx.fillRect(0,0,256,256); if (text) { ctx.fillStyle = '#fff'; ctx.font = 'bold 36px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(text, 128, 140); } return new THREE.CanvasTexture(canvas);
         }
-       function createBuildingTexture() {
+      function createBuildingTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 256; const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#445'; ctx.fillRect(0, 0, 128, 256); ctx.fillStyle = '#ffea99'; 
-            for(let y=10; y<250; y+=18) { 
+            
+            // 為了抵銷大廈垂直方向的拉伸，將窗戶畫成「寬度大於高度」的扁平矩形
+            // 順便縮小 y 軸間距，讓大樓有更多層樓，比例更自然
+            for(let y=6; y<250; y+=8) { 
                 for(let x=10; x<110; x+=25) { 
-                    // 【修改點】將原本的 14, 8 改為 12, 12，讓窗戶變成正方形
-                    if(Math.random() > 0.3) ctx.fillRect(x, y, 12, 12); 
+                    if(Math.random() > 0.3) ctx.fillRect(x, y, 14, 4); // 畫成寬 14、高 4 的扁長形
                 } 
             }
             const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
