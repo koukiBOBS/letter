@@ -1572,52 +1572,52 @@ let curtainRatio = 1.0;
 let currentEnvParams = null;
 
 function applyCurtainRatio() {
-    // 確保寬度縮放：全開時很窄(0.15)，全閉時很寬(1.0)
     const scaleX = 0.15 + (1.0 - curtainRatio) * 0.85; 
     if(leftCurtainGrp) leftCurtainGrp.scale.x = scaleX;
     if(rightCurtainGrp) rightCurtainGrp.scale.x = scaleX;
     
     if (!currentEnvParams) return;
     const p = currentEnvParams;
-    
-    // closedFactor = 1 代表全閉，0 代表全開
     const closedFactor = 1.0 - curtainRatio; 
     
-    // 1. 陽光 (dirLight)：窗簾拉上時阻擋陽光
+    // 1. 陽光 (dirLight)
     if (dirLight) {
-        // 稍微保留一點點微弱的指向光，讓物體邊緣保留立體感
-        const targetDirInt = p.int * (1.0 - closedFactor * 0.8); 
+        // 【修正亮度】：窗簾全關時，幾乎阻擋 98% 的直射光 (原本只擋 80%)
+        const targetDirInt = p.int * Math.max(0.02, 1.0 - closedFactor * 0.98); 
         dirLight.intensity = targetDirInt;
         dirLight.color = new THREE.Color(p.dir); 
-        // 除非窗簾拉到 95% 以上，否則不輕易關閉太陽投影
         dirLight.castShadow = p.shadow && (curtainRatio > 0.05); 
     }
     
-    // 2. 室內燈 (ceilingLight & lampBulb)
     const isNight = (p.phaseStr === 'night');
-    // 白天若窗簾拉上超過 60%，自動開燈；夜晚則強制開燈
+    const isDay = (p.phaseStr === 'dawn' || p.phaseStr === 'noon');
     const needsLight = p.ceilingOn || (closedFactor > 0.6); 
     
+    // 2. 室內燈 (ceilingLight & lampBulb)
     if (ceilingLight && lampBulb) {
-        // 當窗簾關上時，稍微調亮室內燈來彌補自然光的缺失
-        ceilingLight.intensity = needsLight ? 1.5 : 0.0; 
-        ceilingLight.color.setHex(isNight ? 0xffcc88 : 0xfff0dd);
+        // 【修正亮度】：白天關窗簾為了看書自動開的燈，不需要像晚上那麼亮
+        let targetCeilingInt = 0;
+        if (needsLight) {
+            targetCeilingInt = isDay ? 0.7 : 1.4; // 白天開燈亮度 0.7，晚上 1.4
+        }
         
-        // 【修訂】：讓室內燈產生陰影，這樣關上窗簾時物品和窗簾本身才會有立體感
+        ceilingLight.intensity = targetCeilingInt; 
+        ceilingLight.color.setHex(isNight ? 0xffcc88 : 0xfff0dd);
         ceilingLight.castShadow = needsLight; 
-        ceilingLight.shadow.radius = 4; // 柔化陰影邊緣，減少突兀的雙重影
+        ceilingLight.shadow.radius = 4; 
         
         lampBulb.material.emissiveIntensity = needsLight ? 1.0 : 0.0; 
         lampBulb.material.emissive.setHex(isNight ? 0xffcc88 : 0xfff0dd);
     }
     
-    // 3. 環境光 (hemiLight)：拉上窗簾時外部漫射光減弱
+    // 3. 環境漫射光 (hemiLight)
     if (hemiLight) {
         hemiLight.color.setHex(isNight ? 0x887766 : 0xffffff); 
         hemiLight.groundColor.setHex(isNight ? 0x332222 : 0x555555); 
-        const baseHemiInt = p.phaseStr === 'noon' ? 0.75 : (p.phaseStr === 'dawn' || p.phaseStr === 'dusk' ? 0.5 : 0.25);
-        // 拉上窗簾時，室內環境光若太暗會失去細節，加入 needsLight 補償
-        hemiLight.intensity = baseHemiInt * (1.0 - closedFactor * 0.4) + (needsLight ? 0.35 : 0);
+        // 降低白天的基礎環境光，避免整體發白
+        const baseHemiInt = p.phaseStr === 'noon' ? 0.6 : (p.phaseStr === 'dawn' || p.phaseStr === 'dusk' ? 0.4 : 0.2);
+        // 窗簾關閉時，大幅降低漫射光
+        hemiLight.intensity = baseHemiInt * Math.max(0.2, 1.0 - closedFactor * 0.8) + (needsLight ? 0.25 : 0);
     }
     
     // 4. 窗外大樓發光
@@ -1626,7 +1626,6 @@ function applyCurtainRatio() {
         b.material.emissive.setHex(p.windowLight ? 0xffea88 : 0x000000);
     });
 }
-
         
 let dummySpoutTip; let indicatorLeft, indicatorRight, indicatorTasks; let interactables = []; let timePhase = 'noon'; let animScenery = { cars: [], buildings: [] };
         let clockHourHand, clockMinHand, clockSecHand;
@@ -2467,12 +2466,16 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
             if (h >= 5 && h < 9) setEnvironmentPhase('dawn'); else if (h >= 9 && h < 16) setEnvironmentPhase('noon'); else if (h >= 16 && h < 19) setEnvironmentPhase('dusk'); else setEnvironmentPhase('night');
         }
         
-    function setEnvironmentPhase(phaseStr) {
+  function setEnvironmentPhase(phaseStr) {
     const envPhases = {
-        dawn: { skyTop: 0x8a9ba8, skyBot: 0xe8d0c0, fog: 0xe8d0c0, dir: 0xffe4cc, int: 0.8, windowLight: false, shadow: true, ceilingOn: false },
-        noon: { skyTop: 0x4aaee6, skyBot: 0xddf3ff, fog: 0xddf3ff, dir: 0xffffff, int: 1.3, windowLight: false, shadow: true, ceilingOn: false },
-        dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, dir: 0xffaa66, int: 0.9, windowLight: true, shadow: true, ceilingOn: true }, 
-        night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x1a2235, dir: 0x404055, int: 0.1, windowLight: true, shadow: false, ceilingOn: true }
+        // 晨：陽光從右側（東）低角度照射，拉長影子
+        dawn: { skyTop: 0x8a9ba8, skyBot: 0xe8d0c0, fog: 0xe8d0c0, dir: 0xffe4cc, int: 0.7, windowLight: false, shadow: true, ceilingOn: false, lightPos: {x: 45, y: 15, z: -50} },
+        // 午：陽光偏高，但不要太正中（X=15，稍微偏右），整體亮度稍微收斂
+        noon: { skyTop: 0x4aaee6, skyBot: 0xddf3ff, fog: 0xddf3ff, dir: 0xffffff, int: 1.1, windowLight: false, shadow: true, ceilingOn: false, lightPos: {x: 15, y: 45, z: -30} }, 
+        // 暮：陽光從左側（西）低角度斜射，帶著暖橘色
+        dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, dir: 0xffaa66, int: 0.8, windowLight: true, shadow: true, ceilingOn: true, lightPos: {x: -45, y: 12, z: -50} }, 
+        // 夜：微弱偏藍的月光
+        night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x1a2235, dir: 0x404055, int: 0.1, windowLight: true, shadow: false, ceilingOn: true, lightPos: {x: -20, y: 30, z: -40} }
     };
     currentEnvParams = envPhases[phaseStr];
     currentEnvParams.phaseStr = phaseStr;
@@ -2480,10 +2483,19 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     scene.background = createSkyTexture(currentEnvParams.skyTop, currentEnvParams.skyBot); 
     scene.fog.color = new THREE.Color(currentEnvParams.fog);
     
-    // 透過 applyCurtainRatio 統一處理光影邏輯，結合當前時間與窗簾狀態
+    // 平滑移動太陽（指向光）的位置，如果透過測試面板切換時間，影子會平滑地滑動過去
+    if (dirLight) {
+        gsap.to(dirLight.position, {
+            x: currentEnvParams.lightPos.x,
+            y: currentEnvParams.lightPos.y,
+            z: currentEnvParams.lightPos.z,
+            duration: 2.0, 
+            ease: "power2.out"
+        });
+    }
+    
     applyCurtainRatio();
 }
-
 
         function onWinResize() { if(!camera) return; camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
         
