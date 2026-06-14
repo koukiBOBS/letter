@@ -875,6 +875,10 @@
     <script>
 
 
+
+        let allowedEmailsWhitelist = [];
+
+
 // 判斷是否為老師 Email ( @ccckyc.edu.hk 結尾，且 @ 之前沒有任何數字 )
 function isTeacherEmail(email) {
     return email && /^[^\d@]+@ccckyc\.edu\.hk$/.test(email);
@@ -984,29 +988,50 @@ let userPlantData = null; let timeForced = false;
             setTimeout(() => gsap.to(toast, {y: 100, opacity: 0, duration: 0.5}), 3500);
         }
 
-   auth.onAuthStateChanged(user => {
+  auth.onAuthStateChanged(user => {
     if (user) {
-        currentUser = user;
-        db.ref(`users/${user.uid}`).once('value').then(snap => {
-            let data = snap.val();
-            if (data && data.name) { 
-                document.getElementById('user-name').innerText = data.name; 
-                
-                // 【修訂】判斷身份，並明確將 classId 寫入 currentUser 記憶體中
-                if (isTeacherEmail(user.email) && data.classId !== 'teacher_class') {
-                    db.ref(`users/${user.uid}`).update({ classId: 'teacher_class' });
-                    db.ref('classes/teacher_class').update({ name: "老師" });
-                    currentUser.classId = 'teacher_class'; // 強制賦予老師班級
-                } else {
-                    currentUser.classId = data.classId || 'default'; // 寫入學生所在班級
-                }
-                
-                hideAuthOverlay(); initApp(); 
-            } 
-            else { 
-                document.getElementById('login-container').style.display = 'none'; 
-                document.getElementById('name-setup-container').style.display = 'flex'; 
+        // 1. 登入成功後，第一時間去 Firebase 讀取「特許名單」
+        db.ref('settings/allowed_emails').once('value').then(whitelistSnap => {
+            let whitelistData = whitelistSnap.val() || {};
+            // 將資料轉為陣列方便比對
+            allowedEmailsWhitelist = Array.isArray(whitelistData) ? whitelistData : Object.values(whitelistData);
+
+            const email = user.email.toLowerCase();
+            const isCCCKYC = email.endsWith('@ccckyc.edu.hk');
+            const isKenchan = email.includes('kenchan');
+            const isInWhitelist = allowedEmailsWhitelist.includes(email);
+
+            // 2. 核心過濾機制：如果不符合任何一項條件，強制踢出！
+            if (!isCCCKYC && !isKenchan && !isInWhitelist) {
+                alert("很抱歉，您的電郵不符合註冊與登入資格。");
+                auth.signOut();
+                return; // 終止後續載入
             }
+
+            // 3. 通過審查，繼續進入房間
+            currentUser = user;
+            db.ref(`users/${user.uid}`).once('value').then(snap => {
+                let data = snap.val();
+                if (data && data.name) { 
+                    document.getElementById('user-name').innerText = data.name; 
+                    
+                    // 判斷是否為老師並分班
+                    if (isTeacherEmail(user.email) && data.classId !== 'teacher_class') {
+                        db.ref(`users/${user.uid}`).update({ classId: 'teacher_class' });
+                        db.ref('classes/teacher_class').update({ name: "老師" });
+                        currentUser.classId = 'teacher_class'; 
+                    } else {
+                        currentUser.classId = data.classId || 'default'; 
+                    }
+                    
+                    hideAuthOverlay(); 
+                    initApp(); 
+                } 
+                else { 
+                    document.getElementById('login-container').style.display = 'none'; 
+                    document.getElementById('name-setup-container').style.display = 'flex'; 
+                }
+            });
         });
     } else { 
         document.getElementById('auth-overlay').style.display = 'flex'; 
@@ -4812,13 +4837,25 @@ function closeGacha() {
 
 
         // === 1. 開發面板權限與收合邏輯 ===
+// === 1. 開發面板權限與收合邏輯 ===
 function isDevUser(email) {
     if (!email) return false;
-    // 條件一：kenchan
-    if (email.toLowerCase().includes('kenchan')) return true;
-    // 條件二：@ccckyc.edu.hk 且 @ 前面不能有數字
-    const isTeacher = /^[^\d@]+@ccckyc\.edu\.hk$/.test(email);
-    return isTeacher;
+    const lowerEmail = email.toLowerCase();
+
+    // ⛔ 【絕對排除】：若是這個測試帳號，直接當作普通學生，剝奪面板！
+    if (lowerEmail === 'kenchan20131@gmail.com') return false;
+
+    // ✅ 條件一：包含 kenchan 的其他帳號
+    if (lowerEmail.includes('kenchan')) return true;
+    
+    // ✅ 條件二：@ccckyc.edu.hk 且 @ 前面不能有數字 (老師)
+    const isTeacher = /^[^\d@]+@ccckyc\.edu\.hk$/.test(lowerEmail);
+    if (isTeacher) return true;
+
+    // ✅ 條件三：存在於 Firebase 資料庫的 allowed_emails 特許名單中
+    if (allowedEmailsWhitelist.includes(lowerEmail)) return true;
+
+    return false;
 }
 
 function toggleDevPanel() {
