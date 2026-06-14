@@ -1571,7 +1571,6 @@ let leftCurtainGrp, rightCurtainGrp;
 let curtainRatio = 1.0;
 let currentEnvParams = null;
 
-// 新增：處理窗簾開合時的模型縮放與室內光影變化
 function applyCurtainRatio() {
     // 確保寬度縮放：全開時很窄(0.15)，全閉時很寬(1.0)
     const scaleX = 0.15 + (1.0 - curtainRatio) * 0.85; 
@@ -1586,11 +1585,12 @@ function applyCurtainRatio() {
     
     // 1. 陽光 (dirLight)：窗簾拉上時阻擋陽光
     if (dirLight) {
-        const targetDirInt = p.int * (1.0 - closedFactor * 0.95); 
+        // 稍微保留一點點微弱的指向光，讓物體邊緣保留立體感
+        const targetDirInt = p.int * (1.0 - closedFactor * 0.8); 
         dirLight.intensity = targetDirInt;
         dirLight.color = new THREE.Color(p.dir); 
-        // 窗簾閉合超過 90% 時，完全關閉太陽影子，避免奇怪的邊緣漏光
-        dirLight.castShadow = p.shadow && (curtainRatio > 0.1); 
+        // 除非窗簾拉到 95% 以上，否則不輕易關閉太陽投影
+        dirLight.castShadow = p.shadow && (curtainRatio > 0.05); 
     }
     
     // 2. 室內燈 (ceilingLight & lampBulb)
@@ -1599,11 +1599,13 @@ function applyCurtainRatio() {
     const needsLight = p.ceilingOn || (closedFactor > 0.6); 
     
     if (ceilingLight && lampBulb) {
-        ceilingLight.intensity = needsLight ? 1.2 : 0.0; 
+        // 當窗簾關上時，稍微調亮室內燈來彌補自然光的缺失
+        ceilingLight.intensity = needsLight ? 1.5 : 0.0; 
         ceilingLight.color.setHex(isNight ? 0xffcc88 : 0xfff0dd);
         
-        // 【修復雙重影子問題】: 無論何時，天花板室內燈都不產生明顯陰影
-        ceilingLight.castShadow = false; 
+        // 【修訂】：讓室內燈產生陰影，這樣關上窗簾時物品和窗簾本身才會有立體感
+        ceilingLight.castShadow = needsLight; 
+        ceilingLight.shadow.radius = 4; // 柔化陰影邊緣，減少突兀的雙重影
         
         lampBulb.material.emissiveIntensity = needsLight ? 1.0 : 0.0; 
         lampBulb.material.emissive.setHex(isNight ? 0xffcc88 : 0xfff0dd);
@@ -1614,7 +1616,8 @@ function applyCurtainRatio() {
         hemiLight.color.setHex(isNight ? 0x887766 : 0xffffff); 
         hemiLight.groundColor.setHex(isNight ? 0x332222 : 0x555555); 
         const baseHemiInt = p.phaseStr === 'noon' ? 0.75 : (p.phaseStr === 'dawn' || p.phaseStr === 'dusk' ? 0.5 : 0.25);
-        hemiLight.intensity = baseHemiInt * (1.0 - closedFactor * 0.5) + (needsLight ? 0.3 : 0);
+        // 拉上窗簾時，室內環境光若太暗會失去細節，加入 needsLight 補償
+        hemiLight.intensity = baseHemiInt * (1.0 - closedFactor * 0.4) + (needsLight ? 0.35 : 0);
     }
     
     // 4. 窗外大樓發光
@@ -1623,7 +1626,6 @@ function applyCurtainRatio() {
         b.material.emissive.setHex(p.windowLight ? 0xffea88 : 0x000000);
     });
 }
-
 
         
 let dummySpoutTip; let indicatorLeft, indicatorRight, indicatorTasks; let interactables = []; let timePhase = 'noon'; let animScenery = { cars: [], buildings: [] };
@@ -2056,7 +2058,8 @@ function closeDrawAnim() {
 }
         function setDefaultCamera() { if (window.innerWidth < 768) { camera.position.set(0, 26, 48); } else { camera.position.set(0, 22, 45); } controls.target.set(0, 7, 0); }
 
-    function buildRoomEnvironment() {
+ // --- 修訂 2：將畫作移出牆壁，使其貼在室內牆面上 ---
+function buildRoomEnvironment() {
     hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); 
     scene.add(hemiLight);
     
@@ -2082,7 +2085,7 @@ function closeDrawAnim() {
     const lampGroup = new THREE.Group(); lampGroup.position.set(0, 39, 21); scene.add(lampGroup);
     const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 1, 32), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.5})); lampGroup.add(lampBase);
     lampBulb = new THREE.Mesh(new THREE.SphereGeometry(2.5, 32, 16), new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0x000000})); lampBulb.position.y = -1; lampGroup.add(lampBulb);
-    ceilingLight = new THREE.PointLight(0xfff0dd, 0, 150); ceilingLight.position.set(0, 36, 21); ceilingLight.castShadow = false; ceilingLight.shadow.mapSize.width = 1024; ceilingLight.shadow.mapSize.height = 1024; ceilingLight.shadow.bias = -0.001; scene.add(ceilingLight);
+    ceilingLight = new THREE.PointLight(0xfff0dd, 0, 150); ceilingLight.position.set(0, 36, 21); ceilingLight.castShadow = false; ceilingLight.shadow.mapSize.width = 1024; ceilingLight.shadow.mapSize.height = 1024; ceilingLight.shadow.bias = -0.001; ceilingLight.shadow.radius = 4; scene.add(ceilingLight);
 
     const wallMat = new THREE.MeshStandardMaterial({ color: 0xdbd4cc, roughness: 1.0, side: THREE.DoubleSide }); const floorMat = new THREE.MeshStandardMaterial({ map: createFloorTexture(), roughness: 0.3, metalness: 0.05 });
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 78), floorMat); floor.rotation.x = -Math.PI/2; floor.position.set(0, 0, 21); floor.receiveShadow = true; scene.add(floor);
@@ -2097,7 +2100,8 @@ function closeDrawAnim() {
     const backWall = new THREE.Mesh(new THREE.PlaneGeometry(120, 40), wallMat); backWall.position.set(0, 20, 60); scene.add(backWall);
 
     function createPainting(x, y, z, type) { const frameGroup = new THREE.Group(); frameGroup.position.set(x, y, z); const frame = new THREE.Mesh(new THREE.BoxGeometry(10, 12, 0.6), new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.8})); frameGroup.add(frame); const canvas = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 10.5), new THREE.MeshStandardMaterial({map: createPaintingTexture(type), roughness: 0.9})); canvas.position.z = 0.31; frameGroup.add(canvas); scene.add(frameGroup); }
-    createPainting(-42, 22, -17.5, 1); createPainting(-27, 17, -17.5, 3); createPainting(27, 17, -17.5, 4); createPainting(42, 22, -17.5, 2);
+    // 【修訂】：把畫作的 Z 軸從 -17.5 往外移到 -16.7，剛好貼緊室內的牆壁，不再卡在牆內
+    createPainting(-42, 22, -16.7, 1); createPainting(-27, 17, -16.7, 3); createPainting(27, 17, -16.7, 4); createPainting(42, 22, -16.7, 2);
 
     const windowFrameGroup = new THREE.Group(); 
     windowFrameGroup.position.set(0, 14.5, -17.5); 
@@ -2188,9 +2192,6 @@ function closeDrawAnim() {
     const tcHitBox = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 6), new THREE.MeshBasicMaterial({visible: false}));
     tcHitBox.position.y = 0; tcHitBox.userData = {type: 'trash'}; tcGrp.add(tcHitBox);
 
-    // ============================================
-    // 【修改點】替換成全新的動態可拖曳窗簾系統
-    // ============================================
     const savedRatio = localStorage.getItem('roomCurtainRatio');
     curtainRatio = savedRatio !== null ? parseFloat(savedRatio) : 1.0; 
     
@@ -2228,8 +2229,7 @@ function closeDrawAnim() {
     hitR.userData = { type: 'curtain', side: 'right' };
     rightCurtainGrp.add(hitR);
     
-    applyCurtainRatio(); // 初始化縮放比例
-    // ============================================
+    applyCurtainRatio(); 
 
     const shGrp = new THREE.Group(); shGrp.position.set(59.5, 20, -5); shGrp.rotation.y = -Math.PI/2; scene.add(shGrp);
     const sh1 = new THREE.Mesh(new THREE.BoxGeometry(12, 0.6, 2.5), woodMat); sh1.position.set(0, 4, 0); sh1.castShadow = true; shGrp.add(sh1);
@@ -2272,10 +2272,8 @@ function closeDrawAnim() {
     const treeMat = new THREE.MeshStandardMaterial({color: 0x2d4c1e, roughness: 0.9}); const trunkMat = new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 0.9});
     for (let i = -50; i <= 50; i += 15) { if (Math.abs(i) < 5) continue; [[-7], [7]].forEach(pos => { const t = new THREE.Group(); const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 3), trunkMat); tr.position.y = 1.5; tr.castShadow = true; t.add(tr); const lf = new THREE.Mesh(new THREE.ConeGeometry(2.5, 6, 8), treeMat); lf.position.y = 4.5; lf.castShadow = true; t.add(lf); t.position.set(i + (Math.random()-0.5)*3, -4.9, pos[0]); sceneryGroup.add(t); }); }
 
-    // 【修改點】確保窗簾的 HitBox 加入 interactables 可拖曳陣列中
     interactables = [leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitBox, chairHitBox, hitL, hitR];
     
-    // 貓咪部分...
    function createFurTexture(baseColor, highlight, shadow) {
         const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
         ctx.fillStyle = baseColor; ctx.fillRect(0,0,512,512);
@@ -2350,7 +2348,6 @@ function closeDrawAnim() {
     
     setCatState('idle');
 }
-
         
       function buildPlantIn3D(type, growth, wilt) {
     if (plantGroup) { desk.remove(plantGroup); interactables = interactables.filter(i => !(i.userData && i.userData.type === 'plant')); }
