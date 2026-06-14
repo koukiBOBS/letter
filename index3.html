@@ -1639,6 +1639,8 @@ function applyCurtainRatio() {
 let dummySpoutTip; let indicatorLeft, indicatorRight, indicatorTasks; let interactables = []; let timePhase = 'noon'; let animScenery = { cars: [], buildings: [] };
         let clockHourHand, clockMinHand, clockSecHand;
 
+        let waterMat; // 新增：用來控制海水的材質與顏色
+
 
 // --- 露台系統全域變數 ---
 let isAtBalcony = false;
@@ -2536,10 +2538,11 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     const bMatDark = new THREE.MeshStandardMaterial({color:0x556677, roughness:0.9, map: buildingTex, emissiveMap: emissiveTex, emissive: 0xffffff, emissiveIntensity: 0.0}); 
     
     // 將大廈的 Z 軸往後退 (變得更負)，確保不會侵占前方馬路
+  // 修正後的大樓位置：清空 x > 30 的空間，留給海洋與大橋
     const buildingsData = [ 
-        {x: -60, z: -55, h: 120, c: bMat}, {x: -30, z: -60, h: 140, c: bMatDark}, {x: 0, z: -65, h: 110, c: bMat}, {x: 40, z: -55, h: 150, c: bMatDark}, {x: 70, z: -45, h: 105, c: bMat},
-        {x: -45, z: -25, h: 75, c: bMatDark}, {x: -28, z: -30, h: 65, c: bMat}, {x: -12, z: -22, h: 55, c: bMatDark}, 
-        {x: 12, z: -28, h: 68, c: bMatDark}, {x: 26, z: -24, h: 80, c: bMat}, {x: 45, z: -32, h: 90, c: bMatDark} 
+        {x: -60, z: -55, h: 120, c: bMat}, {x: -30, z: -60, h: 140, c: bMatDark}, {x: 0, z: -65, h: 110, c: bMat}, 
+        {x: -70, z: -45, h: 105, c: bMat}, {x: -45, z: -25, h: 75, c: bMatDark}, {x: -28, z: -30, h: 65, c: bMat}, 
+        {x: -12, z: -22, h: 55, c: bMatDark}, {x: 12, z: -28, h: 68, c: bMatDark}, {x: 20, z: -40, h: 80, c: bMat} 
     ];
     buildingsData.forEach(bd => { 
         const b = new THREE.Mesh(new THREE.BoxGeometry(12+Math.random()*6, bd.h, 12+Math.random()*6), bd.c); 
@@ -2557,6 +2560,61 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     const walkNear = new THREE.Mesh(new THREE.BoxGeometry(160, 0.4, 12), walkMat); walkNear.position.set(0, -4.7, roadWidth/2 + 10); walkNear.receiveShadow = true; sceneryGroup.add(walkNear);
     const walkFar = new THREE.Mesh(new THREE.BoxGeometry(160, 0.4, 12), walkMat); walkFar.position.set(0, -4.7, -roadWidth/2 - 2); walkFar.receiveShadow = true; sceneryGroup.add(walkFar);
 
+
+// --- 新增：右側海洋 ---
+    waterMat = new THREE.MeshStandardMaterial({
+        color: 0xbae0ff, 
+        roughness: 0.1,  // 低粗糙度，讓表面平滑像鏡面
+        metalness: 0.85, // 高金屬度，強烈反射天空光線
+        transparent: true,
+        opacity: 0.95
+    });
+    const ocean = new THREE.Mesh(new THREE.PlaneGeometry(200, 150), waterMat);
+    ocean.rotation.x = -Math.PI / 2;
+    ocean.position.set(100, -11, -30); // 放在馬路右側下方
+    sceneryGroup.add(ocean);
+
+    // --- 新增：跨海大橋的橋墩 ---
+    const pillarMat = new THREE.MeshStandardMaterial({color: 0x999999, roughness: 0.9});
+    for(let px = 35; px <= 80; px += 20) {
+        // 前排橋墩
+        const pillarFront = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.5, 15), pillarMat);
+        pillarFront.position.set(px, -12, roadWidth/2 + 2);
+        sceneryGroup.add(pillarFront);
+        // 後排橋墩
+        const pillarBack = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.5, 15), pillarMat);
+        pillarBack.position.set(px, -12, -roadWidth/2 + 2);
+        sceneryGroup.add(pillarBack);
+    }
+
+    // --- 新增：左側綠意隧道口 ---
+    const tunnelGrp = new THREE.Group();
+    tunnelGrp.position.set(-82, -4.9, 4); // 放在馬路最左端 (對應 road 的 Z 軸)
+    sceneryGroup.add(tunnelGrp);
+
+    // 隧道水泥結構
+    const tunnelConcrete = new THREE.MeshStandardMaterial({color: 0x555555, roughness: 1.0});
+    const tunnelEntrance = new THREE.Mesh(new THREE.BoxGeometry(10, 18, roadWidth + 4), tunnelConcrete);
+    tunnelEntrance.position.set(0, 9, 0);
+    tunnelGrp.add(tunnelEntrance);
+
+    // 隧道內部的黑暗視角 (吃掉車輛)
+    const tunnelHole = new THREE.Mesh(new THREE.BoxGeometry(11, 12, roadWidth), new THREE.MeshBasicMaterial({color: 0x020202}));
+    tunnelHole.position.set(0.5, 6, 0); 
+    tunnelGrp.add(tunnelHole);
+
+    // 鋪上香港特色的山體與茂密植被
+    const mountainGreenMat = new THREE.MeshStandardMaterial({color: 0x2d4c1e, roughness: 1.0});
+    for(let i = 0; i < 40; i++) {
+        const bush = new THREE.Mesh(new THREE.SphereGeometry(3 + Math.random()*5, 8, 8), mountainGreenMat);
+        bush.position.set(
+            (Math.random()-0.5) * 15 - 2, // 稍微偏後方延伸
+            8 + Math.random() * 18,       // 覆蓋在隧道頂部與兩側
+            (Math.random()-0.5) * (roadWidth + 10)
+        );
+        tunnelGrp.add(bush);
+    }
+    
     // 【修訂二：修正汽車車頭朝向】
    const vehicleTypes = ['taxi', 'taxi', 'car', 'car', 'car', 'minibus', 'bus'];
     for(let i=0; i<8; i++) { 
@@ -2833,6 +2891,18 @@ function setEnvironmentPhase(phaseStr) {
     }
     
     applyCurtainRatio();
+
+    // (加在 applyCurtainRatio(); 之前)
+    if (waterMat) {
+        // 將天空底部顏色與一點深藍色混合，製造出水面的深邃與反射感
+        const baseWaterColor = new THREE.Color(currentEnvParams.skyBot).lerp(new THREE.Color(0x1a3b5c), 0.35);
+        gsap.to(waterMat.color, { 
+            r: baseWaterColor.r, 
+            g: baseWaterColor.g, 
+            b: baseWaterColor.b, 
+            duration: 2.0 
+        });
+    }
 }
 
         
@@ -3351,8 +3421,8 @@ function isCatColliding(x, z) {
   animScenery.cars.forEach(c => { 
         c.position.x += c.userData.speed; 
         // 放大邊界，讓車輛從遠處駛入、駛離
-        if(c.position.x > 90) c.position.x = -90; 
-        else if(c.position.x < -90) c.position.x = 90; 
+   if(c.position.x > 95) c.position.x = -95; 
+    else if(c.position.x < -95) c.position.x = 95;
     });
     if(indicatorLeft && indicatorLeft.visible) { indicatorLeft.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorLeft.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
     if(indicatorRight && indicatorRight.visible) { indicatorRight.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorRight.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
