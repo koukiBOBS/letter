@@ -1794,6 +1794,26 @@ function restoreObjectPositions() {
 
 
 
+// 專屬發光貼圖 (背景純黑，只有窗戶會亮，解決整棟大廈發光的 BUG)
+function createBuildingEmissiveTexture() {
+    const canvas = document.createElement('canvas'); 
+    canvas.width = 128; canvas.height = 256; 
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, 128, 256); // 純黑牆體不發光
+    ctx.fillStyle = '#ffffff'; // 純白窗戶發光
+    for(let y=6; y<250; y+=8) { 
+        for(let x=10; x<110; x+=25) { 
+            if(Math.random() > 0.3) ctx.fillRect(x, y, 14, 4);
+        } 
+    }
+    const tex = new THREE.CanvasTexture(canvas); 
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; 
+    return tex;
+}
+
+        
+
+
 // 1. 產生具備柏油路質感與行車線的馬路紋理
 function createAsphaltTexture() {
     const canvas = document.createElement('canvas'); 
@@ -2495,31 +2515,31 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     const uHan = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.1, 8, 16, Math.PI), new THREE.MeshStandardMaterial({color: 0x111111})); uHan.position.set(0.4, 10, 0); umb.add(uHan);
 
     // === 重建窗外宏大場景 ===
-    sceneryGroup = new THREE.Group(); 
+ sceneryGroup = new THREE.Group(); 
     sceneryGroup.position.set(0, -15, -50); 
     scene.add(sceneryGroup);
 
-    // 1. 遠景：香港群山輪廓 (太平山/獅子山意象)
-    const mountainMat = new THREE.MeshStandardMaterial({color: 0x2a3d34, roughness: 1.0, fog: true});
-    for(let i=0; i<5; i++) {
-        const mtn = new THREE.Mesh(new THREE.ConeGeometry(40 + Math.random()*30, 40 + Math.random()*40, 16), mountainMat);
-        mtn.position.set(-80 + i*40 + (Math.random()-0.5)*20, 10, -90 - Math.random()*30);
-        mtn.scale.z = 0.5; // 壓扁一點更像遠山
+    // 【修訂三：綠色且宏偉的遠景山脈】
+    const mountainMat = new THREE.MeshStandardMaterial({color: 0x365942, roughness: 1.0}); // 賦予實體深綠色
+    for(let i=0; i<6; i++) {
+        // 大幅拔高山脈 (高達 150~250)，確保超越大廈
+        const mtn = new THREE.Mesh(new THREE.ConeGeometry(80 + Math.random()*50, 150 + Math.random()*100, 32), mountainMat);
+        // 將山脈推至極遠處 (Z = -130)
+        mtn.position.set(-120 + i*50 + (Math.random()-0.5)*20, 60, -130 - Math.random()*20);
         sceneryGroup.add(mtn);
     }
 
-    // 2. 中景與前景：大廈群與行人路
+    // 【修訂一：解決大廈發光 BUG 與超出馬路問題】
     const buildingTex = createBuildingTexture();
-    const bMat = new THREE.MeshStandardMaterial({color:0x8895a5, roughness:0.8, map: buildingTex, emissiveMap: buildingTex, emissive: 0xffffee, emissiveIntensity: 0.0}); 
-    const bMatDark = new THREE.MeshStandardMaterial({color:0x556677, roughness:0.9, map: buildingTex}); 
+    const emissiveTex = createBuildingEmissiveTexture(); // 引入純黑底色的發光貼圖
+    const bMat = new THREE.MeshStandardMaterial({color:0x8895a5, roughness:0.8, map: buildingTex, emissiveMap: emissiveTex, emissive: 0xffffff, emissiveIntensity: 0.0}); 
+    const bMatDark = new THREE.MeshStandardMaterial({color:0x556677, roughness:0.9, map: buildingTex, emissiveMap: emissiveTex, emissive: 0xffffff, emissiveIntensity: 0.0}); 
     
-    // 增加兩側與後方的層次感大廈
+    // 將大廈的 Z 軸往後退 (變得更負)，確保不會侵占前方馬路
     const buildingsData = [ 
-        // 遠排
-        {x: -60, z: -40, h: 90, c: bMat}, {x: -30, z: -45, h: 110, c: bMatDark}, {x: 0, z: -50, h: 80, c: bMat}, {x: 40, z: -45, h: 120, c: bMatDark}, {x: 70, z: -35, h: 95, c: bMat},
-        // 中近排 (左右兩側包圍感)
-        {x: -45, z: -15, h: 65, c: bMatDark}, {x: -28, z: -20, h: 55, c: bMat}, {x: -12, z: -12, h: 45, c: bMatDark}, 
-        {x: 12, z: -18, h: 58, c: bMatDark}, {x: 26, z: -14, h: 70, c: bMat}, {x: 45, z: -22, h: 80, c: bMatDark} 
+        {x: -60, z: -55, h: 120, c: bMat}, {x: -30, z: -60, h: 140, c: bMatDark}, {x: 0, z: -65, h: 110, c: bMat}, {x: 40, z: -55, h: 150, c: bMatDark}, {x: 70, z: -45, h: 105, c: bMat},
+        {x: -45, z: -25, h: 75, c: bMatDark}, {x: -28, z: -30, h: 65, c: bMat}, {x: -12, z: -22, h: 55, c: bMatDark}, 
+        {x: 12, z: -28, h: 68, c: bMatDark}, {x: 26, z: -24, h: 80, c: bMat}, {x: 45, z: -32, h: 90, c: bMatDark} 
     ];
     buildingsData.forEach(bd => { 
         const b = new THREE.Mesh(new THREE.BoxGeometry(12+Math.random()*6, bd.h, 12+Math.random()*6), bd.c); 
@@ -2528,51 +2548,49 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
         sceneryGroup.add(b); animScenery.buildings.push(b); 
     });
 
-    // 3. 馬路與行人路質感
+    // 馬路與行人路
     const roadWidth = 26;
     const road = new THREE.Mesh(new THREE.PlaneGeometry(160, roadWidth), new THREE.MeshStandardMaterial({map: createAsphaltTexture(), roughness: 0.9})); 
     road.rotation.x = -Math.PI/2; road.position.set(0, -4.9, 4); road.receiveShadow = true; sceneryGroup.add(road);
     
-    // 行人路 (稍微墊高，不同顏色)
     const walkMat = new THREE.MeshStandardMaterial({color: 0x888888, roughness: 1.0});
     const walkNear = new THREE.Mesh(new THREE.BoxGeometry(160, 0.4, 12), walkMat); walkNear.position.set(0, -4.7, roadWidth/2 + 10); walkNear.receiveShadow = true; sceneryGroup.add(walkNear);
     const walkFar = new THREE.Mesh(new THREE.BoxGeometry(160, 0.4, 12), walkMat); walkFar.position.set(0, -4.7, -roadWidth/2 - 2); walkFar.receiveShadow = true; sceneryGroup.add(walkFar);
 
-    // 4. 車輛生成 (的士、私家車、小巴、巴士)
+    // 【修訂二：修正汽車車頭朝向】
     const vehicleTypes = ['taxi', 'taxi', 'car', 'car', 'car', 'minibus', 'bus'];
     for(let i=0; i<8; i++) { 
         const vType = vehicleTypes[Math.floor(Math.random()*vehicleTypes.length)];
-        const direction = Math.random() > 0.5 ? 1 : -1; // 1 向右, -1 向左
-        const laneZ = direction > 0 ? 8 : 0; // 香港左上右落
+        const direction = Math.random() > 0.5 ? 1 : -1; 
+        const laneZ = direction > 0 ? 8 : 0; 
         const carGroup = createHKVehicle(vType, direction);
         
         carGroup.position.set((Math.random()-0.5)*120, -4.6, laneZ + (Math.random()-0.5)*2); 
-        // 香港車速，巴士小巴稍慢
+        
+        // 關鍵：將車輛沿 Y 軸旋轉 90 度，讓車頭與馬路平齊
+        carGroup.rotation.y = Math.PI / 2; 
+        
         let speedBase = (vType === 'bus' || vType === 'minibus') ? 0.25 : 0.4;
         carGroup.userData = { speed: speedBase * direction, type: 'vehicle' }; 
         sceneryGroup.add(carGroup); 
         animScenery.cars.push(carGroup); 
     }
 
-    // 5. 高矮不同、色彩豐富的路邊樹木
+    // 路邊樹木
     const trunkMat = new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 0.9});
     for (let i = -70; i <= 70; i += 12) { 
-        if (Math.abs(i) < 8) continue; // 避開正中間
-        // 分別在近端和遠端的行人路上種樹
+        if (Math.abs(i) < 8) continue; 
         [roadWidth/2 + 8, -roadWidth/2 - 2].forEach(zPos => { 
-            // 隨機產生不同層次的綠色 (黃綠到深綠)
             const hue = 0.25 + Math.random() * 0.1; 
             const lightness = 0.2 + Math.random() * 0.2;
             const treeMat = new THREE.MeshStandardMaterial({color: new THREE.Color().setHSL(hue, 0.6, lightness), roughness: 0.9});
             
             const t = new THREE.Group(); 
-            // 隨機高矮大小
             const scale = 0.7 + Math.random() * 0.8; 
             
             const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.6, 4), trunkMat); 
             tr.position.y = 2; tr.castShadow = true; t.add(tr); 
             
-            // 讓樹冠有圓潤層次感，不再只是簡單的圓錐
             const lf1 = new THREE.Mesh(new THREE.SphereGeometry(3, 8, 8), treeMat); 
             lf1.position.y = 5; lf1.scale.set(1, 1.2, 1); lf1.castShadow = true; t.add(lf1);
             const lf2 = new THREE.Mesh(new THREE.SphereGeometry(2, 8, 8), treeMat); 
@@ -2580,12 +2598,18 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
             
             t.scale.setScalar(scale);
             t.position.set(i + (Math.random()-0.5)*4, -4.5, zPos + (Math.random()-0.5)*1.5); 
-            
-            // 隨機旋轉讓樹形看起來不重複
             t.rotation.y = Math.random() * Math.PI;
             sceneryGroup.add(t); 
         }); 
     }
+
+    // 【修訂四：建立玩家居住大樓的基座，拒絕空中樓閣】
+    const myBuildingBaseMat = new THREE.MeshStandardMaterial({color: 0xdbd4cc, roughness: 1.0}); // 與室內外牆同色
+    // 填滿房間地板 (Y=0) 到馬路地面 (Y=-4.9) 之間的空間
+    const myBuildingBase = new THREE.Mesh(new THREE.BoxGeometry(160, 5.5, 40), myBuildingBaseMat);
+    myBuildingBase.position.set(0, -2.5, 0); // 中心點下降，完美支撐整個房間到地面
+    myBuildingBase.receiveShadow = true;
+    scene.add(myBuildingBase);
  interactables = [leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitBox, chairHitBox, hitL, hitR, glassPane];
     
    function createFurTexture(baseColor, highlight, shadow) {
