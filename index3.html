@@ -2702,94 +2702,93 @@ function isCatColliding(x, z) {
 
         
        // 🐾 貓咪每幀更新邏輯 (修訂版：步伐更大、前腿向前伸展更自然)
-      function updateCat() {
-            if(!catGrp) return;
-            const time = Date.now();
-            
-            // 【新增】如果貓咪正在被抓著，只讓尾巴尖端微幅擺動，不執行走路邏輯
-            if (catState === 'dragged') {
-                catTailBones[catTailBones.length-1].rotation.z = Math.sin(time * 0.005) * 0.1;
-                return; 
-            }
+    function updateCat() {
+    if(!catGrp) return;
+    const time = Date.now();
+    
+    // 如果貓咪正在被抓著，只讓尾巴尖端微幅擺動，不執行走路邏輯
+    if (catState === 'dragged') {
+        catTailBones[catTailBones.length-1].rotation.z = Math.sin(time * 0.005) * 0.1;
+        return; 
+    }
 
-            if (catState === 'sleep') {
-                catBody.scale.y = 0.8 + Math.sin(time * 0.002) * 0.03;
-                catBody.scale.x = 1.1 + Math.sin(time * 0.002) * 0.02;
-                catTailBones[catTailBones.length-1].rotation.z = Math.sin(time * 0.002) * 0.1;
+    if (catState === 'sleep') {
+        catBody.scale.y = 0.8 + Math.sin(time * 0.002) * 0.03;
+        catBody.scale.x = 1.1 + Math.sin(time * 0.002) * 0.02;
+        catTailBones[catTailBones.length-1].rotation.z = Math.sin(time * 0.002) * 0.1;
+        
+        if (--catTimer <= 0) setCatState('idle');
+    } else if (catState === 'walk') {
+        // 身體上下起伏
+        catBody.position.y = 1.6 + Math.abs(Math.sin(time * 0.015)) * 0.15;
+        
+        // 尾巴波浪擺動
+        catTailBones.forEach((bone, i) => {
+            if (i > 0) bone.rotation.z = Math.sin(time * 0.008 - i * 0.4) * 0.15;
+        });
+        
+        const walkSpeed = time * 0.015;
+        
+        // 定義左右腳的擺動週期 (相差半圈 Math.PI)
+        const swingL = Math.sin(walkSpeed);
+        const swingR = Math.sin(walkSpeed + Math.PI);
+        
+        // 🐾 前腳：大幅增加擺動幅度 (0.85)，並加上「往前伸展」的基礎偏移 (+0.2)
+        legFL.root.rotation.x = swingL * 0.85 + 0.2;
+        legFL.knee.rotation.x = swingL > 0 ? swingL * 1.2 : 0; 
+        
+        legFR.root.rotation.x = swingR * 0.85 + 0.2;
+        legFR.knee.rotation.x = swingR > 0 ? swingR * 1.2 : 0;
+        
+        // 🐾 後腳：配合前腳增加步伐幅度 (0.8)，後腳重心天生稍微偏後 (-0.1)
+        legBL.root.rotation.x = swingR * 0.8 - 0.1;
+        legBL.knee.rotation.x = swingR > 0 ? swingR * 0.9 : 0;
+        
+        legBR.root.rotation.x = swingL * 0.8 - 0.1;
+        legBR.knee.rotation.x = swingL > 0 ? swingL * 0.9 : 0;
+        
+        // --- 移動與轉向邏輯 (已修復括號錯誤) ---
+        const dx = catTarget.x - catGrp.position.x;
+        const dz = catTarget.z - catGrp.position.z;
+        const dist = Math.sqrt(dx*dx + dz*dz);
+        
+        if (dist < 1.0) {
+            // 距離小於 1，代表抵達目標
+            setCatState('idle');
+        } else {
+            // 距離大於 1，往目標方向步進
+            const nextX = catGrp.position.x + (dx/dist) * 0.04;
+            const nextZ = catGrp.position.z + (dz/dist) * 0.04;
+            
+            // 檢查下一步是否會撞到東西 (僅限地板)
+            if (isCatColliding(nextX, nextZ)) {
+                // 如果會撞到，直接停止並重新思考路徑
+                setCatState('idle');
+            } else {
+                // 安全，更新坐標
+                catGrp.position.x = nextX;
+                catGrp.position.z = nextZ;
                 
-                if (--catTimer <= 0) setCatState('idle');
-            } else if (catState === 'walk') {
-                // 身體上下起伏
-                catBody.position.y = 1.6 + Math.abs(Math.sin(time * 0.015)) * 0.15;
-                
-                // 尾巴波浪擺動
-                catTailBones.forEach((bone, i) => {
-                    if (i > 0) bone.rotation.z = Math.sin(time * 0.008 - i * 0.4) * 0.15;
-                });
-                
-                const walkSpeed = time * 0.015;
-                
-                // 定義左右腳的擺動週期 (相差半圈 Math.PI)
-                const swingL = Math.sin(walkSpeed);
-                const swingR = Math.sin(walkSpeed + Math.PI);
-                
-                // 🐾 前腳：大幅增加擺動幅度 (0.85)，並加上「往前伸展」的基礎偏移 (+0.2)
-                legFL.root.rotation.x = swingL * 0.85 + 0.2;
-                legFL.knee.rotation.x = swingL > 0 ? swingL * 1.2 : 0; // 往前揮時彎起膝蓋，往後蹬時伸直
-                
-                legFR.root.rotation.x = swingR * 0.85 + 0.2;
-                legFR.knee.rotation.x = swingR > 0 ? swingR * 1.2 : 0;
-                
-                // 🐾 後腳：配合前腳增加步伐幅度 (0.8)，後腳重心天生稍微偏後 (-0.1)
-                // 貓咪是「對角線」走路 (左前配右後)，所以左後腳(BL)配對右邊的擺動週期(swingR)
-                legBL.root.rotation.x = swingR * 0.8 - 0.1;
-                legBL.knee.rotation.x = swingR > 0 ? swingR * 0.9 : 0;
-                
-                legBR.root.rotation.x = swingL * 0.8 - 0.1;
-                legBR.knee.rotation.x = swingL > 0 ? swingL * 0.9 : 0;
-                
-                // 移動與轉向邏輯
-                const dx = catTarget.x - catGrp.position.x;
-                const dz = catTarget.z - catGrp.position.z;
-                const dist = Math.sqrt(dx*dx + dz*dz);
-                
-                if (dist < 1.0) {
-                   if (dist < 1.0) {
-                    setCatState('idle');
-                } else {
-                    const nextX = catGrp.position.x + (dx/dist) * 0.04;
-                    const nextZ = catGrp.position.z + (dz/dist) * 0.04;
-                    
-                    // 【新增】檢查下一步是否會撞到東西 (僅限地板)
-                    if (isCatColliding(nextX, nextZ)) {
-                        // 如果會撞到，直接停止並重新思考路徑
-                        setCatState('idle');
-                    } else {
-                        // 安全，繼續移動
-                        catGrp.position.x = nextX;
-                        catGrp.position.z = nextZ;
-                        
-                        const targetY = Math.atan2(dx, dz); 
-                        let diff = targetY - catGrp.rotation.y;
-                        while (diff < -Math.PI) diff += Math.PI * 2;
-                        while (diff > Math.PI) diff -= Math.PI * 2;
-                        catGrp.rotation.y += diff * 0.1;
-                    }
-                }
-                    const targetY = Math.atan2(dx, dz); 
-                    let diff = targetY - catGrp.rotation.y;
-                    while (diff < -Math.PI) diff += Math.PI * 2;
-                    while (diff > Math.PI) diff -= Math.PI * 2;
-                    catGrp.rotation.y += diff * 0.1;
-                }
-            } else if (catState === 'idle') {
-                catTailBones.forEach((bone, i) => {
-                    if (i > 0) bone.rotation.z = Math.sin(time * 0.002 - i * 0.3) * 0.12;
-                });
-                
-                if (--catTimer <= 0) { Math.random() < 0.4 ? setCatState('sleep') : setCatState('walk'); }
+                // 平滑轉向目標方位
+                const targetY = Math.atan2(dx, dz); 
+                let diff = targetY - catGrp.rotation.y;
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+                catGrp.rotation.y += diff * 0.1;
             }
         }
+    } else if (catState === 'idle') {
+        // 發呆時尾巴微幅擺動
+        catTailBones.forEach((bone, i) => {
+            if (i > 0) bone.rotation.z = Math.sin(time * 0.002 - i * 0.3) * 0.12;
+        });
+        
+        // 計時器結束後，決定睡覺還是去散步
+        if (--catTimer <= 0) { 
+            Math.random() < 0.4 ? setCatState('sleep') : setCatState('walk'); 
+        }
+    }
+}
         
         function animateRoom() {
     requestAnimationFrame(animateRoom); if(controls) controls.update();
