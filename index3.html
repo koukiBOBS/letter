@@ -621,7 +621,7 @@ function renderTasks() {
     if (!currentUser) return; // 確保有登入才執行
     const classId = currentUser.classId || 'default';
     
-    // 這裡加上了 .catch 來防止卡死
+    // 取得該班級的任務設定
     db.ref(`classes/${classId}`).once('value').then(classSnap => {
         const classData = classSnap.val() || {};
         const readingTasks = classData.tasks || [];
@@ -638,7 +638,10 @@ function renderTasks() {
             drawnTasksData = drawnSnap.val() || {};
             randomSubmissions = randSubs;
 
-            // 1. 渲染閱讀任務 (保留原邏輯，利用 taskDate)
+            // 【新增】用來記錄是否有未解任務的開關
+            let hasPendingTasks = false; 
+
+            // 1. 渲染閱讀任務
             const submittedReadingDates = readingLetters.map(l => l.taskDate || (readingTasks[l.taskIndex] && new Date(l.timestamp).setHours(0,0,0,0) >= new Date(readingTasks[l.taskIndex]).setHours(0,0,0,0) ? readingTasks[l.taskIndex] : null)).filter(v=>v);
             const rMap = {}; readingLetters.forEach(l => { let d = l.taskDate; if(!d && readingTasks[l.taskIndex] && new Date(l.timestamp).setHours(0,0,0,0) >= new Date(readingTasks[l.taskIndex]).setHours(0,0,0,0)) d = readingTasks[l.taskIndex]; if(d) rMap[d] = l.id; });
             
@@ -646,6 +649,12 @@ function renderTasks() {
             readingTasks.forEach((dateStr, i) => {
                 const unlocked = new Date().setHours(0,0,0,0) >= new Date(dateStr).setHours(0,0,0,0);
                 const done = submittedReadingDates.includes(dateStr);
+                
+                // 【新增】如果任務已經開放（解鎖）但還沒完成，代表有待辦任務
+                if (unlocked && !done) {
+                    hasPendingTasks = true;
+                }
+
                 const el = document.createElement('div'); el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
                 el.innerHTML = `<span class="task-num">第 ${i+1} 回閱讀</span><span class="task-date">${dateStr} 開放</span>`;
                 el.onclick = () => {
@@ -664,6 +673,12 @@ function renderTasks() {
             randomTasks.forEach((dateStr, i) => {
                 const unlocked = new Date().setHours(0,0,0,0) >= new Date(dateStr).setHours(0,0,0,0);
                 const done = submittedRandomDates.includes(dateStr);
+                
+                // 【新增】如果隨機任務已經開放（解鎖）但還沒完成，代表有待辦任務
+                if (unlocked && !done) {
+                    hasPendingTasks = true;
+                }
+
                 const el = document.createElement('div'); el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
                 el.innerHTML = `<span class="task-num">第 ${i+1} 回探索</span><span class="task-date">${dateStr} 開放</span>`;
                 
@@ -676,6 +691,13 @@ function renderTasks() {
                     else alert("時空未到，尚未開放。");
                 }; randGrid.appendChild(el);
             });
+
+            // 【新增】這就是 Promise 結束的地方！
+            // 迴圈都跑完後，根據檢查結果控制 3D 信封顯示與否
+            if (indicatorTasks) {
+                indicatorTasks.visible = hasPendingTasks;
+            }
+
         });
     });
 }
@@ -930,8 +952,8 @@ function handleFileSelect(event, type = 'reading') {
         };
 
         let scene, camera, renderer, controls, raycaster, mouse;
-        let desk, leftDrawer, rightDrawer, book, clipboard, wateringCan, plantGroup, windowGroup, sceneryGroup;
-    let dummySpoutTip; let indicatorLeft, indicatorRight; let interactables = []; let timePhase = 'noon'; let animScenery = { cars: [], buildings: [] };
+       let desk, leftDrawer, rightDrawer, book, clipboard, wateringCan, plantGroup, windowGroup, sceneryGroup;
+let dummySpoutTip; let indicatorLeft, indicatorRight, indicatorTasks; let interactables = []; let timePhase = 'noon'; let animScenery = { cars: [], buildings: [] };
         let clockHourHand, clockMinHand, clockSecHand;
         
       // 🐾 新增小貓咪的全域變數
@@ -962,9 +984,15 @@ function handleFileSelect(event, type = 'reading') {
             const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256; const ctx = canvas.getContext('2d');
             ctx.fillStyle = color; ctx.fillRect(0,0,256,256); if (text) { ctx.fillStyle = '#fff'; ctx.font = 'bold 36px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(text, 128, 140); } return new THREE.CanvasTexture(canvas);
         }
-        function createBuildingTexture() {
+       function createBuildingTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 256; const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#445'; ctx.fillRect(0, 0, 128, 256); ctx.fillStyle = '#ffea99'; for(let y=10; y<250; y+=18) { for(let x=10; x<110; x+=25) { if(Math.random() > 0.3) ctx.fillRect(x, y, 14, 8); } }
+            ctx.fillStyle = '#445'; ctx.fillRect(0, 0, 128, 256); ctx.fillStyle = '#ffea99'; 
+            for(let y=10; y<250; y+=18) { 
+                for(let x=10; x<110; x+=25) { 
+                    // 【修改點】將原本的 14, 8 改為 12, 12，讓窗戶變成正方形
+                    if(Math.random() > 0.3) ctx.fillRect(x, y, 12, 12); 
+                } 
+            }
             const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
         }
         function createPaintingTexture(type) {
@@ -1003,14 +1031,15 @@ function handleFileSelect(event, type = 'reading') {
             return new THREE.CanvasTexture(canvas);
         }
         
-        function createHollowDrawer(userData) {
+       function createHollowDrawer(userData) {
             const group = new THREE.Group(); group.userData = userData; const mat = woodMat;
-            const bot = new THREE.Mesh(new THREE.BoxGeometry(10.2, 0.4, 11.2), mat); bot.position.y = -1.05; bot.castShadow = true; bot.receiveShadow = true; group.add(bot);
-            const left = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.5, 11.2), mat); left.position.set(-5.3, 0, 0); left.castShadow = true; group.add(left);
-            const right = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.5, 11.2), mat); right.position.set(5.3, 0, 0); right.castShadow = true; group.add(right);
-            const back = new THREE.Mesh(new THREE.BoxGeometry(11, 2.5, 0.4), mat); back.position.set(0, 0, -5.8); back.castShadow = true; group.add(back);
-            const front = new THREE.Mesh(new THREE.BoxGeometry(11, 2.5, 0.4), mat); front.position.set(0, 0, 5.8); front.castShadow = true; group.add(front);
-            const paper = new THREE.Mesh(new THREE.BoxGeometry(8, 0.05, 10), new THREE.MeshStandardMaterial({color: 0xffffff})); paper.position.set(0, -0.8, 0); paper.rotation.y = 0.1; group.add(paper);
+            // 【修改點】抽屜整體寬度從 11 縮小為 9，調整各面板的寬度與位置
+            const bot = new THREE.Mesh(new THREE.BoxGeometry(8.2, 0.4, 11.2), mat); bot.position.y = -1.05; bot.castShadow = true; bot.receiveShadow = true; group.add(bot);
+            const left = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.5, 11.2), mat); left.position.set(-4.3, 0, 0); left.castShadow = true; group.add(left);
+            const right = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.5, 11.2), mat); right.position.set(4.3, 0, 0); right.castShadow = true; group.add(right);
+            const back = new THREE.Mesh(new THREE.BoxGeometry(9, 2.5, 0.4), mat); back.position.set(0, 0, -5.8); back.castShadow = true; group.add(back);
+            const front = new THREE.Mesh(new THREE.BoxGeometry(9, 2.5, 0.4), mat); front.position.set(0, 0, 5.8); front.castShadow = true; group.add(front);
+            const paper = new THREE.Mesh(new THREE.BoxGeometry(7, 0.05, 10), new THREE.MeshStandardMaterial({color: 0xffffff})); paper.position.set(0, -0.8, 0); paper.rotation.y = 0.1; group.add(paper);
             return group;
         }
 
@@ -1353,22 +1382,30 @@ const glassPane = new THREE.Mesh(new THREE.BoxGeometry(29.5, 26.5, 0.05), glassM
             const cLegGeo = new THREE.CylinderGeometry(0.2, 0.1, 4.0); const legMat = new THREE.MeshStandardMaterial({color: 0xdaa520, metalness: 0.8, roughness: 0.3});
             [[-1.5, 2.0, -1.5], [1.5, 2.0, -1.5], [-1.5, 2.0, 1.5], [1.5, 2.0, 1.5]].forEach(pos => { const leg = new THREE.Mesh(cLegGeo, legMat); leg.position.set(...pos); leg.castShadow = true; chairGroup.add(leg); });
 
-            leftDrawer = createHollowDrawer({type: 'replies'}); leftDrawer.position.set(-7, 6, 0); desk.add(leftDrawer);
-            rightDrawer = createHollowDrawer({type: 'inbox'}); rightDrawer.position.set(7, 6, 0); desk.add(rightDrawer);
+         leftDrawer = createHollowDrawer({type: 'replies'}); leftDrawer.position.set(-5.5, 6, 0); desk.add(leftDrawer);
+            rightDrawer = createHollowDrawer({type: 'inbox'}); rightDrawer.position.set(5.5, 6, 0); desk.add(rightDrawer);
+            const knobGeo = new THREE.SphereGeometry(0.5, 32, 32); const knobMat = new THREE.MeshStandardMaterial({color:0x555555, metalness:0.8, roughness:0.2});
+            const knobL = new THREE.Mesh(knobGeo, knobMat); knobL.position.z = 6.05; leftDrawer.add(knobL); const knobR = new THREE.Mesh(knobGeo, knobMat); knobR.position.z = 6.05; rightDrawer.add(knobR);
             const knobGeo = new THREE.SphereGeometry(0.5, 32, 32); const knobMat = new THREE.MeshStandardMaterial({color:0x555555, metalness:0.8, roughness:0.2});
             const knobL = new THREE.Mesh(knobGeo, knobMat); knobL.position.z = 6.05; leftDrawer.add(knobL); const knobR = new THREE.Mesh(knobGeo, knobMat); knobR.position.z = 6.05; rightDrawer.add(knobR);
             
-           indicatorLeft = createFloatingLetter(); indicatorLeft.position.set(-7, 6.5, 10); indicatorLeft.rotation.set(-0.1, 0, 0.05); indicatorLeft.visible = false; desk.add(indicatorLeft);
-indicatorRight = createFloatingLetter(); indicatorRight.position.set(7, 6.5, 10); indicatorRight.rotation.set(-0.1, 0, -0.05); indicatorRight.visible = false; desk.add(indicatorRight);
+ indicatorLeft = createFloatingLetter(); indicatorLeft.position.set(-5.5, 6.5, 10); indicatorLeft.rotation.set(-0.1, 0, 0.05); indicatorLeft.visible = false; desk.add(indicatorLeft);
+            indicatorRight = createFloatingLetter(); indicatorRight.position.set(5.5, 6.5, 10); indicatorRight.rotation.set(-0.1, 0, -0.05); indicatorRight.visible = false; desk.add(indicatorRight);
             book = new THREE.Group(); book.position.set(8, 8.6, 2); book.rotation.y = -0.2; book.userData = {type: 'log'}; desk.add(book);
             const bookPages = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.6, 5.2), new THREE.MeshStandardMaterial({color:0xffffff})); bookPages.castShadow = true; book.add(bookPages);
             const bookCover = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.8, 5.6), new THREE.MeshStandardMaterial({map: createCoverTexture("", "#8b7355")})); bookCover.castShadow = true; book.add(bookCover);
 
-            clipboard = new THREE.Group(); clipboard.position.set(-8, 8.55, 1); clipboard.rotation.y = 0.15; clipboard.userData = {type: 'tasks'}; desk.add(clipboard);
+          clipboard = new THREE.Group(); clipboard.position.set(-8, 8.55, 1); clipboard.rotation.y = 0.15; clipboard.userData = {type: 'tasks'}; desk.add(clipboard);
             const clipBoardBase = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.1, 6), new THREE.MeshStandardMaterial({map: createWoodTexture()})); clipBoardBase.castShadow = true; clipboard.add(clipBoardBase);
             const paper = new THREE.Mesh(new THREE.BoxGeometry(4, 0.12, 5.5), new THREE.MeshStandardMaterial({color:0xffffff})); paper.position.y=0.05; clipboard.add(paper);
             const clip = new THREE.Mesh(new THREE.BoxGeometry(2, 0.3, 0.5), new THREE.MeshStandardMaterial({color:0xaaaaaa, metalness:0.8})); clip.position.set(0, 0.2, -2.5); clipboard.add(clip);
 
+            // 【新增】生成懸浮在任務板上方的信封
+            indicatorTasks = createFloatingLetter(); 
+            indicatorTasks.position.set(-8, 9.5, 1); // 位於任務板上方
+            indicatorTasks.rotation.set(-0.1, 0.15, 0); 
+            indicatorTasks.visible = false; // 預設隱藏
+            desk.add(indicatorTasks);
             wateringCan = new THREE.Group(); wateringCan.position.set(-11, 8.5, -3); wateringCan.rotation.y = Math.PI/4; wateringCan.userData = {type: 'water'}; desk.add(wateringCan);
             const canBody = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1, 1.8, 16), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})); canBody.position.y = 0.9; canBody.castShadow = true; wateringCan.add(canBody);
             const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, 2.5), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})); spout.position.set(1.2, 0.8, 0); spout.rotation.z = -Math.PI/3; spout.castShadow = true; wateringCan.add(spout);
@@ -1848,9 +1885,14 @@ indicatorRight = createFloatingLetter(); indicatorRight.position.set(7, 6.5, 10)
         function animateRoom() {
             requestAnimationFrame(animateRoom); if(controls) controls.update();
             animScenery.cars.forEach(c => { c.position.x += c.userData.speed; if(c.position.x > 60) c.position.x = -60; else if(c.position.x < -60) c.position.x = 60; });
-   if(indicatorLeft && indicatorLeft.visible) { indicatorLeft.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorLeft.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
-if(indicatorRight && indicatorRight.visible) { indicatorRight.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorRight.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
+  if(indicatorLeft && indicatorLeft.visible) { indicatorLeft.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorLeft.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
+            if(indicatorRight && indicatorRight.visible) { indicatorRight.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorRight.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
             
+            // 【新增】任務板上方信封的漂浮動畫
+            if(indicatorTasks && indicatorTasks.visible) { 
+                indicatorTasks.position.y = 9.5 + Math.sin(Date.now()*0.003)*0.2; 
+                indicatorTasks.rotation.y = 0.15 + Math.sin(Date.now()*0.002)*0.2; 
+            }
             // 獲取實時香港時間 (UTC+8) 並轉動指針
             if(clockHourHand && clockMinHand && clockSecHand) {
                 const now = new Date();
