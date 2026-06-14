@@ -2144,15 +2144,15 @@ function buildRoomEnvironment() {
         );
     }
 
-    // 依序掛上川內倫子的四幅作品 (設定 X, Y, Z, 網址, 寬/高比例)
-    // 1. Hanabi (600x600 -> 1:1)
-    createPainting(-42, 22, -16.7, 'https://rinkokawauchi.com/unit/wp-content/uploads/2017/12/Hanabi_01_L-600x600.jpg', 1.0); 
-    // 2. AILA cover (2000x2000 -> 1:1)
-    createPainting(-26, 17, -16.7, 'https://rinkokawauchi.com/unit/wp-content/uploads/2017/12/AILA_cover-2000x2000.jpg', 1.0); 
-    // 3. Utatane cover (2000x2000 -> 1:1)
-    createPainting(26, 17, -16.7, 'https://rinkokawauchi.com/unit/wp-content/uploads/2017/12/Utatane_cover-2000x2000.jpg', 1.0); 
-    // 4. The river embraced me (2000x1567 -> 1.276)
-    createPainting(43, 22, -16.7, 'https://rinkokawauchi.com/unit/wp-content/uploads/2017/09/The-river-embraced-me_04-2000x1567.jpg', 2000 / 1567);
+  // 依序掛上自己上載的四幅作品 (設定 X, Y, Z, 網址/本機路徑, 寬/高比例)
+    // 1. 畫一：花瓶 (正方形 -> 1:1)
+    createPainting(-42, 22, -16.7, '畫一.jpg', 1.0); 
+    // 2. 畫二：窗前小孩 (正方形 -> 1:1)
+    createPainting(-26, 17, -16.7, '畫二.jpg', 1.0); 
+    // 3. 畫三：窗台橘子與飯糰 (正方形 -> 1:1)
+    createPainting(26, 17, -16.7, '畫三.jpg', 1.0); 
+    // 4. 畫四：煙火 (正方形 -> 1:1)
+    createPainting(43, 22, -16.7, '畫四.jpg', 1.0);
 
     const windowFrameGroup = new THREE.Group(); 
     windowFrameGroup.position.set(0, 14.5, -17.5); 
