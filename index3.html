@@ -1277,8 +1277,12 @@ function renderTasks() {
     // 取得該班級的任務設定
     db.ref(`classes/${classId}`).once('value').then(classSnap => {
         const classData = classSnap.val() || {};
-        const readingTasks = classData.tasks || [];
-        const randomTasks = classData.randomTasks || [];
+      let readingTasks = classData.tasks || [];
+        let randomTasks = classData.randomTasks || [];
+        
+        // 👇 注入開發面板產生的本地模擬任務（這只存在於老師當前的瀏覽器中，不會影響學生）
+        if (window.mockReadingTasks) readingTasks = readingTasks.concat(window.mockReadingTasks);
+        if (window.mockRandomTasks) randomTasks = randomTasks.concat(window.mockRandomTasks);
         
         // 同步拉取所有繳交紀錄與抽籤狀態
         Promise.all([
@@ -4826,20 +4830,31 @@ function toggleDevPanel() {
 // document.getElementById('dev-panel-wrapper').style.display = isDevUser(currentUser.email) ? 'block' : 'none';
 
 // === 2. 一鍵解鎖任務功能 ===
+// 建立本地模擬任務的陣列
+window.mockReadingTasks = [];
+window.mockRandomTasks = [];
+
+// === 2. 一鍵解鎖任務功能 (僅限本機模擬，不影響真實資料庫) ===
 window.devUnlockTask = function(type) {
-    const classId = currentUser.classId || 'default';
-    const node = type === 'reading' ? 'tasks' : 'randomTasks';
-    const typeName = type === 'reading' ? '閱讀任務' : '探索任務';
+    let d = new Date();
     
-    db.ref(`classes/${classId}/${node}`).once('value').then(snap => {
-        let arr = snap.val() || [];
-        // 塞入一個 2000 年的假日期，保證時間已過，直接解鎖
-        const fakeDate = `2000-01-${String(arr.length + 1).padStart(2, '0')}`; 
-        arr.push(fakeDate);
-        db.ref(`classes/${classId}/${node}`).set(arr).then(() => {
-            showToast(`✅ 成功派發第 ${arr.length} 回 [${typeName}]！`);
-        });
-    });
+    if (type === 'reading') {
+        // 利用今天的日期，並根據已產生的模擬任務數量往前推（避免同日期的任務重疊）
+        d.setDate(d.getDate() - window.mockReadingTasks.length);
+        let dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        
+        window.mockReadingTasks.push(dateStr);
+        showToast("✅ 模擬：已於您的畫面生成 1 個 [閱讀任務]！");
+    } else {
+        d.setDate(d.getDate() - window.mockRandomTasks.length);
+        let dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        
+        window.mockRandomTasks.push(dateStr);
+        showToast("✅ 模擬：已於您的畫面生成 1 個 [探索任務]！");
+    }
+    
+    // 重新渲染畫面，讓模擬任務立刻出現在清單與日曆上
+    renderTasks();
 };
 
 // === 3. 模擬收到別人寄來的心得 ===
