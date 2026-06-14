@@ -2708,6 +2708,10 @@ function buildRoomEnvironment() {
             },
             undefined,
             (err) => { console.warn('畫作圖片載入失敗:', url); } // 若伺服器擋跨域，這裡會提示
+
+return frameGroup;
+
+            
         );
     }
 
@@ -2780,6 +2784,8 @@ const p4 = createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224); if(p4) p4.
             const bookColors = [0x8b3a3a, 0x3a5f8b, 0x4f8b3a, 0x8b6b3a, 0x222222, 0xdddddd]; let bx = -10;
             while(bx < 10) { let bw = Math.random() * 0.8 + 0.3; let bh = Math.random() * 2.5 + 3; if(bx + bw > 10) break; const b = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.05, bh, 4), new THREE.MeshStandardMaterial({color: bookColors[Math.floor(Math.random()*bookColors.length)], roughness: 0.7})); if(Math.random() > 0.7) { b.rotation.z = (Math.random() - 0.5) * 0.3; bx += 0.4; } b.position.set(bx + bw/2, sy + bh/2 + 0.25, -2.5); b.castShadow = true; shelfGroup.add(b); bx += bw; }
         }
+return shelfGroup;
+        
     }
 // 替換原本的這三行
 const bc1 = createBookcase(-25, 59); if(bc1) bc1.userData.itemId = 'bookcase_1';
@@ -4431,9 +4437,13 @@ function renderWalletGrid() {
     grid.innerHTML = '';
     
     // 初始化離線渲染器 (用來拍 3D 道具快照)
+   // 初始化離線渲染器 (加入 preserveDrawingBuffer 確保可輸出圖片)
     if (!offscreenRenderer) {
-        offscreenRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        offscreenRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
         offscreenRenderer.setSize(256, 256);
+        offscreenRenderer.outputEncoding = THREE.sRGBEncoding;
+        offscreenRenderer.shadowMap.enabled = true;
+        offscreenRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
     }
     
     const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
@@ -4446,40 +4456,31 @@ function renderWalletGrid() {
         
         let imgSrc = '';
         if (item.type === 'privilege') {
-            // 權限卡片給個預設圖片或 Emoji 即可
-            imgSrc = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><text x="50%" y="50%" font-size="50" text-anchor="middle" dy=".3em">✨</text></svg>';
+            // 使用 Base64 編碼，避免 SVG 符號破壞 HTML 結構
+            imgSrc = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><text x="50%" y="50%" font-size="50" text-anchor="middle" dy=".3em">✨</text></svg>');
         } else {
-            // 實體道具拍 3D 快照
-          // 實體道具拍 3D 快照 (高保真版)
             if (!itemSnapshots[id]) {
-                // 1. 確保離線渲染器的色彩編碼與主畫面完全一致！這是質感的關鍵
-                offscreenRenderer.outputEncoding = THREE.sRGBEncoding;
-                offscreenRenderer.shadowMap.enabled = true;
-                
                 const snapScene = new THREE.Scene();
-                // 2. 複製主房間的溫暖光源設定
-                snapScene.add(new THREE.AmbientLight(0xaa9988, 1.2));
-                const dirL = new THREE.DirectionalLight(0xfff6ea, 1.0); 
-                dirL.position.set(5, 10, 5); 
-                snapScene.add(dirL);
+                
+                // 100% 複製房間目前的真實光線，保證光影完全匹配
+                if (typeof hemiLight !== 'undefined') snapScene.add(hemiLight.clone());
+                if (typeof dirLight !== 'undefined') snapScene.add(dirLight.clone());
+                if (typeof ceilingLight !== 'undefined') snapScene.add(ceilingLight.clone());
                 
                 let cloneObj = null;
                 scene.traverse(child => { if (child.userData && child.userData.itemId === id) cloneObj = child.clone(); });
                 
                 if (cloneObj) {
-                    // 3. 完美取景演算法：讓物件精準置中並填滿鏡頭
                     const box = new THREE.Box3().setFromObject(cloneObj);
                     const center = box.getCenter(new THREE.Vector3());
                     const sphere = box.getBoundingSphere(new THREE.Sphere());
                     
-                    cloneObj.position.sub(center); // 絕對置中
+                    cloneObj.position.sub(center); 
                     snapScene.add(cloneObj);
                     
-                    // 利用三角函數計算相機應該退後多少，才能剛剛好拍下整個圓的半徑
                     const fov = cam.fov * (Math.PI / 180);
                     let distance = Math.abs(sphere.radius / Math.sin(fov / 2));
                     
-                    // 調整拍攝角度，微微俯視會更好看
                     cam.position.set(distance * 0.5, distance * 0.4, distance);
                     cam.lookAt(0, 0, 0);
                     
@@ -4487,7 +4488,7 @@ function renderWalletGrid() {
                     itemSnapshots[id] = offscreenRenderer.domElement.toDataURL("image/png");
                 }
             }
-            imgSrc = itemSnapshots[id];
+            imgSrc = itemSnapshots[id] || '';
         }
 
         grid.innerHTML += `
