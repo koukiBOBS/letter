@@ -460,6 +460,15 @@
     <!-- 3D Room Container & Header -->
     <div id="room-canvas-container"></div>
     <div id="room-ui-layer">
+
+<!-- 加入在 <div id="room-ui-layer"> 內部即可 -->
+<button id="btn-return-room" class="btn" style="display:none; position:fixed; bottom:40px; left:50%; transform:translateX(-50%); z-index:4000; background:rgba(250, 247, 242, 0.85); backdrop-filter:blur(5px); color:#2c3e50; border: 1px solid #dcd5c9; box-shadow: 0 10px 25px rgba(0,0,0,0.1);" onclick="returnToRoom()">
+    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" style="margin-right:8px;">
+        <path d="M15 18l-6-6 6-6"/>
+    </svg>
+    返回室內
+</button>
+        
         <div class="room-header">
             <span class="user-info"><span id="user-name">載入中...</span></span>
             <button class="logout-btn" onclick="signOut()" title="登出">
@@ -1631,6 +1640,49 @@ let dummySpoutTip; let indicatorLeft, indicatorRight, indicatorTasks; let intera
         let clockHourHand, clockMinHand, clockSecHand;
 
 
+// --- 露台系統全域變數 ---
+let isAtBalcony = false;
+let roomCameraBackup = { cp: new THREE.Vector3(), ct: new THREE.Vector3() };
+
+function goToBalcony() {
+    if (isAtBalcony) return;
+    isAtBalcony = true;
+
+    // 記憶原本室內的相機與目標位置
+    roomCameraBackup.cp.copy(camera.position);
+    roomCameraBackup.ct.copy(controls.target);
+
+    // 動畫：將相機推進至露台，視線看向遠方大樓
+    gsap.to(camera.position, { x: 0, y: 16, z: -15, duration: 1.8, ease: "power2.inOut" });
+    gsap.to(controls.target, { x: 0, y: 14, z: -50, duration: 1.8, ease: "power2.inOut", onUpdate: () => controls.update() });
+    
+    // 限制在露台時的縮放範圍，避免穿牆
+    controls.minDistance = 5;
+    controls.maxDistance = 25;
+
+    // 顯示返回按鈕
+    document.getElementById('btn-return-room').style.display = 'flex';
+}
+
+function returnToRoom() {
+    if (!isAtBalcony) return;
+    isAtBalcony = false;
+
+    // 動畫：退回室內原本的位置
+    gsap.to(camera.position, { x: roomCameraBackup.cp.x, y: roomCameraBackup.cp.y, z: roomCameraBackup.cp.z, duration: 1.8, ease: "power2.inOut" });
+    gsap.to(controls.target, { x: roomCameraBackup.ct.x, y: roomCameraBackup.ct.y, z: roomCameraBackup.ct.z, duration: 1.8, ease: "power2.inOut", onUpdate: () => controls.update() });
+
+    // 恢復室內的縮放限制
+    controls.minDistance = 10;
+    controls.maxDistance = 60;
+
+    // 隱藏返回按鈕
+    document.getElementById('btn-return-room').style.display = 'none';
+}
+
+
+
+        
 let tcGrp, chairGroup; 
 let floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 let catPlatform = 'floor'; // 記錄貓咪所在位置：'floor', 'desk', 'chair'
@@ -2180,7 +2232,11 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     const midV = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 27, frameDepth - 0.2), frameMat); midV.castShadow = true; windowFrameGroup.add(midV);
 
     const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, roughness: 0.1, transmission: 0.8 }); 
-    const glassPane = new THREE.Mesh(new THREE.BoxGeometry(29.5, 26.5, 0.05), glassMat); windowFrameGroup.add(glassPane);
+   const glassPane = new THREE.Mesh(new THREE.BoxGeometry(29.5, 26.5, 0.05), glassMat); 
+    windowFrameGroup.add(glassPane);
+    // 👇 加入這兩行
+    glassPane.userData = { type: 'window' };
+    interactables.push(glassPane);
     const doorGroup = new THREE.Group(); doorGroup.position.set(-59.5, 14, 0); doorGroup.rotation.y = Math.PI/2; scene.add(doorGroup);
     const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(16, 28, 1), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.8})); doorGroup.add(doorFrame);
     const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(14, 26, 1.2), new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.7})); doorGroup.add(doorPanel);
@@ -2411,6 +2467,44 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), catMat); catTailBones[tailBoneCount].add(tailTip);
     
     setCatState('idle');
+
+
+// --- 建造精緻露台 ---
+    const balconyGrp = new THREE.Group();
+    balconyGrp.position.set(0, -0.1, -22); // 貼齊牆壁外部 (Z=-18外側)
+    scene.add(balconyGrp);
+
+    // 露台木地板
+    const bFloor = new THREE.Mesh(new THREE.BoxGeometry(30, 0.8, 8), new THREE.MeshStandardMaterial({ color: 0x6e5c47, roughness: 0.9 }));
+    bFloor.position.y = -0.4; bFloor.receiveShadow = true; balconyGrp.add(bFloor);
+
+    // 鐵藝欄杆
+    const ironMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.8, roughness: 0.4 });
+    const topRail = new THREE.Mesh(new THREE.BoxGeometry(30, 0.4, 0.4), ironMat);
+    topRail.position.set(0, 8.5, -3.8); balconyGrp.add(topRail);
+    const sideRailL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 8), ironMat);
+    sideRailL.position.set(-14.8, 8.5, 0); balconyGrp.add(sideRailL);
+    const sideRailR = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 8), ironMat);
+    sideRailR.position.set(14.8, 8.5, 0); balconyGrp.add(sideRailR);
+    
+    // 欄杆立柱
+    for(let i = -14.5; i <= 14.5; i += 2.9) {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.2, 8.5, 0.2), ironMat);
+        post.position.set(i, 4.25, -3.8); post.castShadow = true; balconyGrp.add(post);
+    }
+
+    // 露台休閒小圓桌與盆栽
+    const bTable = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.15, 32), new THREE.MeshStandardMaterial({color: 0xeeeeee}));
+    bTable.position.set(8, 4.5, -1.5); bTable.castShadow = true; balconyGrp.add(bTable);
+    const bTableLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 4.5, 16), ironMat);
+    bTableLeg.position.set(8, 2.25, -1.5); bTableLeg.castShadow = true; balconyGrp.add(bTableLeg);
+    
+    const bPot = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.4, 0.8, 16), new THREE.MeshStandardMaterial({color: 0xc28259}));
+    bPot.position.set(8, 4.97, -1.5); balconyGrp.add(bPot);
+    const bPlant = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 16), new THREE.MeshStandardMaterial({color: 0x2d4c1e, roughness: 0.9}));
+    bPlant.position.set(8, 5.6, -1.5); balconyGrp.add(bPlant);
+
+    
 }
         
       function buildPlantIn3D(type, growth, wilt) {
@@ -2584,6 +2678,17 @@ function onPointerDown(e) {
                 document.body.style.cursor = 'ew-resize';
             }, 150);
         }
+
+// 👇 加入這段長按窗戶的邏輯
+        else if (type === 'window') {
+            dragTimer = setTimeout(() => {
+                goToBalcony();
+                clearTimeout(dragTimer);
+                dragTimer = null;
+            }, 500); // 500毫秒視為長按
+        }
+
+        
     }
 }
 
