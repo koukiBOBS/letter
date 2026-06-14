@@ -578,6 +578,16 @@
     </div>
 
     <script>
+
+
+// 判斷是否為老師 Email ( @ccckyc.edu.hk 結尾，且 @ 之前沒有任何數字 )
+function isTeacherEmail(email) {
+    return email && /^[^\d@]+@ccckyc\.edu\.hk$/.test(email);
+}
+
+
+
+        
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzcangpOrf05ZRhxzoMUN-C9T57CS3_G80to1lLWv4opXuHbYMMMuKXzap7kkcou3BPsQ/exec"; 
         const firebaseConfig = { apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms", authDomain: "letter-a74d1.firebaseapp.com", databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com", projectId: "letter-a74d1" };
         firebase.initializeApp(firebaseConfig); const auth = firebase.auth(); const db = firebase.database();
@@ -635,13 +645,26 @@ let userPlantData = null; let timeForced = false;
             setTimeout(() => gsap.to(toast, {y: 100, opacity: 0, duration: 0.5}), 3500);
         }
 
-        auth.onAuthStateChanged(user => {
+     auth.onAuthStateChanged(user => {
             if (user) {
                 currentUser = user;
                 db.ref(`users/${user.uid}`).once('value').then(snap => {
                     let data = snap.val();
-                    if (data && data.name) { document.getElementById('user-name').innerText = data.name; hideAuthOverlay(); initApp(); } 
-                    else { document.getElementById('login-container').style.display = 'none'; document.getElementById('name-setup-container').style.display = 'flex'; }
+                    if (data && data.name) { 
+                        document.getElementById('user-name').innerText = data.name; 
+                        
+                        // 【新增】如果老師是舊帳號，自動更新他的班級為老師班
+                        if (isTeacherEmail(user.email) && data.classId !== 'teacher_class') {
+                            db.ref(`users/${user.uid}`).update({ classId: 'teacher_class' });
+                            db.ref('classes/teacher_class').update({ name: "老師" });
+                        }
+                        
+                        hideAuthOverlay(); initApp(); 
+                    } 
+                    else { 
+                        document.getElementById('login-container').style.display = 'none'; 
+                        document.getElementById('name-setup-container').style.display = 'flex'; 
+                    }
                 });
             } else { 
                 document.getElementById('auth-overlay').style.display = 'flex'; document.getElementById('login-container').style.display = 'flex'; document.getElementById('name-setup-container').style.display = 'none'; 
@@ -649,53 +672,93 @@ let userPlantData = null; let timeForced = false;
             }
         });
 
+
         function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert("登入失敗")); }
         function signOut() { auth.signOut().then(() => window.location.reload()); }
-        function saveName() { 
+       function saveName() { 
             const name = document.getElementById('setup-name').value.trim(); if (!name) return alert("請輸入姓名"); 
             document.getElementById('btn-setup-name').disabled = true; document.getElementById('btn-setup-name').innerText = "設定中...";
-            db.ref(`users/${currentUser.uid}`).set({ name, email: currentUser.email, receivedCount: 0 }).then(() => { document.getElementById('user-name').innerText = name; hideAuthOverlay(); initApp(); }); 
+            
+            // 【新增】註冊時判斷身份並分班
+            let classId = 'default';
+            if (isTeacherEmail(currentUser.email)) {
+                classId = 'teacher_class';
+                db.ref('classes/teacher_class').update({ name: "老師" }); // 確保導師中心有這個班級
+            }
+
+            db.ref(`users/${currentUser.uid}`).set({ name, email: currentUser.email, classId: classId, receivedCount: 0, receivedRandomCount: 0 }).then(() => { 
+                document.getElementById('user-name').innerText = name; hideAuthOverlay(); initApp(); 
+            }); 
         }
         function hideAuthOverlay() { gsap.to("#auth-overlay", { opacity: 0, duration: 0.6, onComplete: () => { document.getElementById('auth-overlay').style.display = 'none'; }}); }
 
-        function initApp() { 
+       function initApp() { 
             document.getElementById('room-canvas-container').style.display = 'block'; 
             initRoomScene(); healPool();
             db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); 
             setupNotifications(); loadMailbox(); loadUserPlant(); initHandwriting();
+
+            // 【新增】如果是老師，自動解除所有手寫板限制，允許直接打字
+            if (isTeacherEmail(currentUser.email)) {
+                document.querySelectorAll('.handwrite-only').forEach(el => { 
+                    el.removeAttribute('readonly'); 
+                    el.classList.remove('handwrite-only'); 
+                    let placeholder = el.nextElementSibling; 
+                    if (placeholder && placeholder.classList.contains('handwrite-placeholder')) { 
+                        placeholder.style.display = 'none'; 
+                    } 
+                });
+            }
         }
 
-       function healPool() {
-    // 處理閱讀心得的孤兒信
-    db.ref('unassigned_letters').once('value').then(snap => {
-        const pool = snap.val() || {}; const ids = Object.keys(pool).filter(id => pool[id].senderUid !== currentUser.uid);
-        if (ids.length > 0) {
-            const rId = ids[Math.floor(Math.random() * ids.length)];
-            db.ref(`letters/${rId}`).once('value').then(lSnap => {
-                const lData = lSnap.val(); if(lData) {
-                    db.ref(`letters/${rId}/recipientUid`).set(currentUser.uid); db.ref(`unassigned_letters/${rId}`).remove(); const now = firebase.database.ServerValue.TIMESTAMP;
-                    db.ref(`user_threads/${currentUser.uid}/${rId}`).set({ letterId: rId, type: 'reading', bookTitle: lData.bookTitle, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: now });
-                    db.ref(`user_threads/${lData.senderUid}/${rId}`).set({ letterId: rId, type: 'reading', bookTitle: lData.bookTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: now });
-                    db.ref(`users/${currentUser.uid}/receivedCount`).transaction(count => (count || 0) + 1);
-                }
-            });
-        }
-    });
+      function healPool() {
+    db.ref('users').once('value').then(userSnap => {
+        const users = userSnap.val() || {};
+        const isMeTeacher = isTeacherEmail(currentUser.email);
 
-    // 處理探索任務的孤兒信
-    db.ref('unassigned_random_letters').once('value').then(snap => {
-        const pool = snap.val() || {}; const ids = Object.keys(pool).filter(id => pool[id].senderUid !== currentUser.uid);
-        if (ids.length > 0) {
-            const rId = ids[Math.floor(Math.random() * ids.length)];
-            db.ref(`letters/${rId}`).once('value').then(lSnap => {
-                const lData = lSnap.val(); if(lData) {
-                    db.ref(`letters/${rId}/recipientUid`).set(currentUser.uid); db.ref(`unassigned_random_letters/${rId}`).remove(); const now = firebase.database.ServerValue.TIMESTAMP;
-                    db.ref(`user_threads/${currentUser.uid}/${rId}`).set({ letterId: rId, type: 'random', bookTitle: lData.bookTitle, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: now });
-                    db.ref(`user_threads/${lData.senderUid}/${rId}`).set({ letterId: rId, type: 'random', bookTitle: lData.bookTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: now });
-                    db.ref(`users/${currentUser.uid}/receivedRandomCount`).transaction(count => (count || 0) + 1);
-                }
+        // 處理閱讀心得的孤兒信
+        db.ref('unassigned_letters').once('value').then(snap => {
+            const pool = snap.val() || {}; 
+            const ids = Object.keys(pool).filter(id => {
+                if (pool[id].senderUid === currentUser.uid) return false;
+                const senderEmail = users[pool[id].senderUid] ? users[pool[id].senderUid].email : '';
+                return isMeTeacher === isTeacherEmail(senderEmail); // 隔離
             });
-        }
+
+            if (ids.length > 0) {
+                const rId = ids[Math.floor(Math.random() * ids.length)];
+                db.ref(`letters/${rId}`).once('value').then(lSnap => {
+                    const lData = lSnap.val(); if(lData) {
+                        db.ref(`letters/${rId}/recipientUid`).set(currentUser.uid); db.ref(`unassigned_letters/${rId}`).remove(); const now = firebase.database.ServerValue.TIMESTAMP;
+                        db.ref(`user_threads/${currentUser.uid}/${rId}`).set({ letterId: rId, type: 'reading', bookTitle: lData.bookTitle, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: now });
+                        db.ref(`user_threads/${lData.senderUid}/${rId}`).set({ letterId: rId, type: 'reading', bookTitle: lData.bookTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: now });
+                        db.ref(`users/${currentUser.uid}/receivedCount`).transaction(count => (count || 0) + 1);
+                    }
+                });
+            }
+        });
+
+        // 處理探索任務的孤兒信
+        db.ref('unassigned_random_letters').once('value').then(snap => {
+            const pool = snap.val() || {}; 
+            const ids = Object.keys(pool).filter(id => {
+                if (pool[id].senderUid === currentUser.uid) return false;
+                const senderEmail = users[pool[id].senderUid] ? users[pool[id].senderUid].email : '';
+                return isMeTeacher === isTeacherEmail(senderEmail); // 隔離
+            });
+
+            if (ids.length > 0) {
+                const rId = ids[Math.floor(Math.random() * ids.length)];
+                db.ref(`letters/${rId}`).once('value').then(lSnap => {
+                    const lData = lSnap.val(); if(lData) {
+                        db.ref(`letters/${rId}/recipientUid`).set(currentUser.uid); db.ref(`unassigned_random_letters/${rId}`).remove(); const now = firebase.database.ServerValue.TIMESTAMP;
+                        db.ref(`user_threads/${currentUser.uid}/${rId}`).set({ letterId: rId, type: 'random', bookTitle: lData.bookTitle, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: now });
+                        db.ref(`user_threads/${lData.senderUid}/${rId}`).set({ letterId: rId, type: 'random', bookTitle: lData.bookTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: now });
+                        db.ref(`users/${currentUser.uid}/receivedRandomCount`).transaction(count => (count || 0) + 1);
+                    }
+                });
+            }
+        });
     });
 }
 
@@ -1007,23 +1070,26 @@ contentHTML += `<div class="letter-sheet ${sheetClass}">
 </div>`;
                     });
 
-                    if (canReply) {
-                        contentHTML += `<div class="letter-sheet reply-sheet my-letter"><div class="letter-header-meta"><span>✍️ 提筆回信</span><span>紙短情長</span></div><textarea id="reply-text" class="textarea handwrite-only" readonly placeholder="點此喚出全螢幕書寫板，一筆一劃寫下您的回音...（最少 100 字）"></textarea><div style="text-align: center;"><button class="btn" style="margin: 20px auto 0; padding: 12px 40px; background: var(--color-replies);" id="btn-send-reply">寄出回信</button></div></div>`;
+                  if (canReply) {
+                        let isTeacher = isTeacherEmail(currentUser.email);
+                        let hwClass = isTeacher ? '' : 'handwrite-only';
+                        let roAttr = isTeacher ? '' : 'readonly';
+                        let placeholderText = isTeacher ? '請輸入您的回音...（最少 100 字）' : '點此喚出全螢幕書寫板，一筆一劃寫下您的回音...（最少 100 字）';
+
+                        contentHTML += `<div class="letter-sheet reply-sheet my-letter"><div class="letter-header-meta"><span>✍️ 提筆回信</span><span>紙短情長</span></div><textarea id="reply-text" class="textarea ${hwClass}" ${roAttr} placeholder="${placeholderText}"></textarea><div style="text-align: center;"><button class="btn" style="margin: 20px auto 0; padding: 12px 40px; background: var(--color-replies);" id="btn-send-reply">寄出回信</button></div></div>`;
                     }
                     flow.innerHTML = contentHTML;
 
                     if (canReply) {
-                        document.getElementById('reply-text').addEventListener('click', function() { openHwKeyboard(this); });
+                        if (!isTeacherEmail(currentUser.email)) {
+                            document.getElementById('reply-text').addEventListener('click', function() { openHwKeyboard(this); });
+                        }
                         document.getElementById('btn-send-reply').onclick = () => {
                             const txt = document.getElementById('reply-text').value.trim(); if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
                             if (isSubmittingReply) return; isSubmittingReply = true; document.getElementById('btn-send-reply').disabled = true; document.getElementById('btn-send-reply').innerText = "封裝寄出中...";
                             playAnim('reply', id, partnerUid, txt);
                         };
                     }
-                    document.getElementById('modal').style.display = 'flex'; lockScroll();
-                });
-            });
-        }
 
         function lockScroll() { if(document.body.style.overflow !== 'hidden') { originalBodyOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden'; } }
         function unlockScroll() { const modalOpen = document.getElementById('modal').style.display === 'flex'; const hwOpen = document.getElementById('hw-overlay').classList.contains('active'); if(!modalOpen && !hwOpen) document.body.style.overflow = originalBodyOverflow; }
@@ -1040,10 +1106,20 @@ else processReply(letterId, partnerUid, ObjectData);
             }});
         }
 
-        function processLog(data) {
+       function processLog(data) {
             const ts = firebase.database.ServerValue.TIMESTAMP; const ref = db.ref('letters').push();
             db.ref('users').once('value').then(snap => {
-                const users = snap.val() || {}; let eligibleUids = Object.keys(users).filter(u => u !== currentUser.uid); let rec = "";
+                const users = snap.val() || {}; 
+                const isMeTeacher = isTeacherEmail(currentUser.email);
+                
+                // 【新增】隔離對象：排除自己，且老師只能配對老師、學生只能配對學生
+                let eligibleUids = Object.keys(users).filter(u => {
+                    if (u === currentUser.uid) return false;
+                    const targetIsTeacher = isTeacherEmail(users[u].email);
+                    return isMeTeacher === targetIsTeacher;
+                });
+                
+                let rec = "";
                 if (eligibleUids.length > 0) {
                     let minCount = Infinity; eligibleUids.forEach(uid => { let count = users[uid].receivedCount || 0; if (count < minCount) minCount = count; });
                     let candidates = eligibleUids.filter(uid => (users[uid].receivedCount || 0) === minCount); rec = candidates[Math.floor(Math.random() * candidates.length)];
@@ -1075,16 +1151,22 @@ else processReply(letterId, partnerUid, ObjectData);
 
 function processRandomTask(data) {
     const ts = firebase.database.ServerValue.TIMESTAMP; 
-    const ref = db.ref('letters').push(); // 寫入信件系統以進行派發
-    const subRef = db.ref('random_task_submissions').push(); // 保留繳交紀錄供任務板讀取
+    const ref = db.ref('letters').push(); 
+    const subRef = db.ref('random_task_submissions').push(); 
 
     db.ref('users').once('value').then(snap => {
         const users = snap.val() || {}; 
-        let eligibleUids = Object.keys(users).filter(u => u !== currentUser.uid); 
-        let rec = "";
+        const isMeTeacher = isTeacherEmail(currentUser.email);
+
+        // 【新增】隔離對象
+        let eligibleUids = Object.keys(users).filter(u => {
+            if (u === currentUser.uid) return false;
+            const targetIsTeacher = isTeacherEmail(users[u].email);
+            return isMeTeacher === targetIsTeacher;
+        });
         
+        let rec = "";
         if (eligibleUids.length > 0) {
-            // 找出收到最少「探索任務」的人
             let minCount = Infinity; 
             eligibleUids.forEach(uid => { let count = users[uid].receivedRandomCount || 0; if (count < minCount) minCount = count; });
             let candidates = eligibleUids.filter(uid => (users[uid].receivedRandomCount || 0) === minCount); 
