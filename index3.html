@@ -2173,7 +2173,7 @@ function closeDrawAnim() {
    // 🐾 2. 創造高細緻度圓潤小貓
     catGrp = new THREE.Group(); 
     catGrp.position.set(0, 0, 25); 
-    catGrp.scale.set(1.6, 1.6, 1.6); // <--- 新增這行，將貓咪整體等比例放大 1.6 倍
+    catGrp.scale.set(1.2, 1.2, 1.2); // <--- 新增這行，將貓咪整體等比例放大 1.6 倍
     scene.add(catGrp);
     
     catBody = new THREE.Group(); 
@@ -2609,15 +2609,15 @@ function onPointerUp(e) {
                 legBR.knee.rotation.x = swingL > 0 ? swingL * 0.9 : 0;
                 
                 // 移動與轉向邏輯
-               const dx = catTarget.x - catGrp.position.x;
+                const dx = catTarget.x - catGrp.position.x;
                 const dz = catTarget.z - catGrp.position.z;
                 const dist = Math.sqrt(dx*dx + dz*dz);
                 
                 if (dist < 1.0) {
                     setCatState('idle');
                 } else {
-                    catGrp.position.x += (dx/dist) * 0.06; // <--- 配合體型，將 0.04 改為 0.06
-                    catGrp.position.z += (dz/dist) * 0.06; // <--- 配合體型，將 0.04 改為 0.06
+                    catGrp.position.x += (dx/dist) * 0.05; // <--- 配合體型，將 0.04 改為 0.06
+                    catGrp.position.z += (dz/dist) * 0.05; // <--- 配合體型，將 0.04 改為 0.06
                     const targetY = Math.atan2(dx, dz); 
                     let diff = targetY - catGrp.rotation.y;
                     while (diff < -Math.PI) diff += Math.PI * 2;
