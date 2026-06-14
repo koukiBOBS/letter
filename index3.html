@@ -462,12 +462,7 @@
     <div id="room-ui-layer">
 
 <!-- 加入在 <div id="room-ui-layer"> 內部即可 -->
-<button id="btn-return-room" class="btn" style="pointer-events: auto; display:none; position:fixed; bottom:40px; left:50%; transform:translateX(-50%); z-index:4000; background:rgba(250, 247, 242, 0.85); backdrop-filter:blur(5px); color:#2c3e50; border: 1px solid #dcd5c9; box-shadow: 0 10px 25px rgba(0,0,0,0.1);" onclick="returnToRoom()">
-    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" style="margin-right:8px;">
-        <path d="M15 18l-6-6 6-6"/>
-    </svg>
-    返回室內
-</button>
+<button id="btn-return-room" class="btn" style="display:none; position:fixed; bottom:40px; left:50%; transform:translateX(-50%); z-index:4000; background:rgba(250, 247, 242, 0.85); backdrop-filter:blur(5px); color:#2c3e50; border: 1px solid #dcd5c9; box-shadow: 0 10px 25px rgba(0,0,0,0.1); pointer-events: auto;" onclick="returnToRoom()">
         
         <div class="room-header">
             <span class="user-info"><span id="user-name">載入中...</span></span>
@@ -1648,24 +1643,43 @@ function goToBalcony() {
     if (isAtBalcony) return;
     isAtBalcony = true;
 
-    // 記憶原本室內的相機與目標位置
     roomCameraBackup.cp.copy(camera.position);
     roomCameraBackup.ct.copy(controls.target);
 
-    // 動畫：將相機推進至露台，視線看向遠方大樓
-    gsap.to(camera.position, { x: 0, y: 16, z: -15, duration: 1.8, ease: "power2.inOut" });
-    gsap.to(controls.target, { x: 0, y: 14, z: -40, duration: 1.8, ease: "power2.inOut", onUpdate: () => controls.update() });
+    // 鏡頭退後一點 (z:-10)，並看向遠方，減少景物過大的壓迫感
+    gsap.to(camera.position, { x: 0, y: 16, z: -10, duration: 1.8, ease: "power2.inOut" });
+    gsap.to(controls.target, { x: 0, y: 14, z: -80, duration: 1.8, ease: "power2.inOut", onUpdate: () => controls.update() });
     
-    // 【修訂：防止鏡頭被往前擠】放大 maxDistance
     controls.minDistance = 5;
-    controls.maxDistance = 50; 
+    controls.maxDistance = 20;
 
-    // 【修訂：鎖死視角】限制水平旋轉，防止回頭看室內 (正前方為 0，限制左右約 60 度)
-    controls.minAzimuthAngle = -Math.PI / 3;
-    controls.maxAzimuthAngle = Math.PI / 3;
+    // 【新增】限制左右旋轉角度，禁止回頭看室內 (假設 0 度是直視窗外)
+    controls.minAzimuthAngle = -Math.PI / 3; // 左轉極限
+    controls.maxAzimuthAngle = Math.PI / 3;  // 右轉極限
+    // 【新增】限制上下仰俯，防止看穿天花板或過度看地
+    controls.minPolarAngle = Math.PI / 2.5;
+    controls.maxPolarAngle = Math.PI / 1.8;
 
-    // 顯示返回按鈕
     document.getElementById('btn-return-room').style.display = 'flex';
+}
+
+function returnToRoom() {
+    if (!isAtBalcony) return;
+    isAtBalcony = false;
+
+    gsap.to(camera.position, { x: roomCameraBackup.cp.x, y: roomCameraBackup.cp.y, z: roomCameraBackup.cp.z, duration: 1.8, ease: "power2.inOut" });
+    gsap.to(controls.target, { x: roomCameraBackup.ct.x, y: roomCameraBackup.ct.y, z: roomCameraBackup.ct.z, duration: 1.8, ease: "power2.inOut", onUpdate: () => controls.update() });
+
+    controls.minDistance = 10;
+    controls.maxDistance = 60;
+
+    // 【新增】返回室內後，解除所有視角限制，恢復 360 度自由旋轉
+    controls.minAzimuthAngle = -Infinity;
+    controls.maxAzimuthAngle = Infinity;
+    controls.minPolarAngle = 0;
+    controls.maxPolarAngle = Math.PI/2 - 0.05;
+
+    document.getElementById('btn-return-room').style.display = 'none';
 }
 
 function returnToRoom() {
@@ -1679,10 +1693,6 @@ function returnToRoom() {
     // 恢復室內的縮放限制
     controls.minDistance = 10;
     controls.maxDistance = 60;
-    
-    // 【修訂：解除視角限制】讓室內可以 360 度自由旋轉
-    controls.minAzimuthAngle = -Infinity; 
-    controls.maxAzimuthAngle = Infinity;  
 
     // 隱藏返回按鈕
     document.getElementById('btn-return-room').style.display = 'none';
@@ -2390,15 +2400,104 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     const uFab = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 1.0, 5), new THREE.MeshStandardMaterial({color: 0x3b5998})); uFab.position.set(0, 4, 0); umb.add(uFab);
     const uHan = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.1, 8, 16, Math.PI), new THREE.MeshStandardMaterial({color: 0x111111})); uHan.position.set(0.4, 10, 0); umb.add(uHan);
 
-    sceneryGroup = new THREE.Group(); sceneryGroup.position.set(0, -15, -50); scene.add(sceneryGroup);
+    sceneryGroup = new THREE.Group(); 
+    sceneryGroup.position.set(0, -20, -80); // 推遠場景，降低壓迫感
+    scene.add(sceneryGroup);
+    
     const buildingTex = createBuildingTexture();
-    const bMat = new THREE.MeshStandardMaterial({color:0x778899, roughness:0.8, map: buildingTex, emissiveMap: buildingTex, emissive: 0xffffee, emissiveIntensity: 0.0}); 
-    const fixedBuildings = [ {x: -35, z: -15, h: 55}, {x: -20, z: -20, h: 65}, {x: -8, z: -12, h: 45}, {x: 5, z: -18, h: 58}, {x: 18, z: -14, h: 70}, {x: 32, z: -22, h: 50}, {x: 45, z: -16, h: 62}, {x: -50, z: -18, h: 48} ];
-    fixedBuildings.forEach(bd => { const b = new THREE.Mesh(new THREE.BoxGeometry(8, bd.h, 8), bMat); b.position.set(bd.x, bd.h/2 - 5, bd.z); b.castShadow = true; b.receiveShadow = true; sceneryGroup.add(b); animScenery.buildings.push(b); });
-    const road = new THREE.Mesh(new THREE.PlaneGeometry(120, 8), new THREE.MeshStandardMaterial({color:0x333333})); road.rotation.x = -Math.PI/2; road.position.set(0, -4.9, 0); road.receiveShadow=true; sceneryGroup.add(road);
-    for(let i=0; i<6; i++) { const c = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 2.5), new THREE.MeshStandardMaterial({color: Math.random()>0.5?0xff3333:0xeeeeee, roughness:0.4})); c.position.set((Math.random()-0.5)*80, -4.6, (Math.random()-0.5)*4); c.castShadow = true; c.userData={speed: (Math.random()*0.3+0.15) * (Math.random()>0.5?1:-1)}; sceneryGroup.add(c); animScenery.cars.push(c); }
-    const treeMat = new THREE.MeshStandardMaterial({color: 0x2d4c1e, roughness: 0.9}); const trunkMat = new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 0.9});
-    for (let i = -50; i <= 50; i += 15) { if (Math.abs(i) < 5) continue; [[-7], [7]].forEach(pos => { const t = new THREE.Group(); const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 3), trunkMat); tr.position.y = 1.5; tr.castShadow = true; t.add(tr); const lf = new THREE.Mesh(new THREE.ConeGeometry(2.5, 6, 8), treeMat); lf.position.y = 4.5; lf.castShadow = true; t.add(lf); t.position.set(i + (Math.random()-0.5)*3, -4.9, pos[0]); sceneryGroup.add(t); }); }
+    const bMat = new THREE.MeshStandardMaterial({color:0x8899aa, roughness:0.7, map: buildingTex, emissiveMap: buildingTex, emissive: 0xffffee, emissiveIntensity: 0.0}); 
+    
+    // 1. 生成錯落有致的城市大廈與霓虹招牌
+    for(let i = 0; i < 20; i++) {
+        let bw = 10 + Math.random() * 15;
+        let bd = 10 + Math.random() * 15;
+        let bh = 40 + Math.random() * 90;
+        let bx = (Math.random() - 0.5) * 180;
+        let bz = -15 - Math.random() * 40;
+
+        const b = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), bMat); 
+        b.position.set(bx, bh/2 - 5, bz); 
+        b.castShadow = true; b.receiveShadow = true; 
+        sceneryGroup.add(b); 
+        animScenery.buildings.push(b); 
+
+        // 點綴香港風味直立招牌
+        if(Math.random() > 0.4) {
+            const signColors = [0xff3366, 0x33ff66, 0x33ccff, 0xffcc00];
+            const signMat = new THREE.MeshBasicMaterial({color: signColors[Math.floor(Math.random()*signColors.length)]});
+            const sign = new THREE.Mesh(new THREE.BoxGeometry(0.8, 15 + Math.random()*15, 4), signMat);
+            sign.position.set(bx + (Math.random()>0.5? bw/2 : -bw/2), 20 + Math.random()*20, bz + bd/2 + 1);
+            sceneryGroup.add(sign);
+        }
+    }
+
+    // 2. 寬闊馬路與白色虛線標線
+    const road = new THREE.Mesh(new THREE.PlaneGeometry(220, 26), new THREE.MeshStandardMaterial({color:0x222222})); 
+    road.rotation.x = -Math.PI/2; road.position.set(0, -4.9, 5); road.receiveShadow=true; sceneryGroup.add(road);
+    for(let i=-100; i<100; i+=12) {
+        const line = new THREE.Mesh(new THREE.PlaneGeometry(6, 0.4), new THREE.MeshBasicMaterial({color:0xffffff}));
+        line.rotation.x = -Math.PI/2; line.position.set(i, -4.8, 5); sceneryGroup.add(line);
+    }
+
+    // 3. 香港特色車輛生成器
+    function createHKVehicle() {
+        const vGroup = new THREE.Group();
+        const typeRand = Math.random();
+        let speedObj = { speed: (Math.random()*0.4 + 0.25) * (Math.random()>0.5 ? 1 : -1) };
+
+        if (typeRand < 0.35) {
+            // 紅色的士
+            const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.6, 1.2), new THREE.MeshStandardMaterial({color: 0xcc0000, roughness: 0.3}));
+            body.position.y = 0.4; vGroup.add(body);
+            const top = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 1.1), new THREE.MeshStandardMaterial({color: 0xdddddd, roughness: 0.2}));
+            top.position.y = 0.95; vGroup.add(top);
+        } else if (typeRand < 0.7) {
+            // 小巴 (米黃車身 + 紅/綠車頂)
+            const isGreen = Math.random() > 0.5;
+            const body = new THREE.Mesh(new THREE.BoxGeometry(4.0, 1.6, 1.4), new THREE.MeshStandardMaterial({color: 0xf5f5dc, roughness: 0.4})); 
+            body.position.y = 0.9; vGroup.add(body);
+            const roof = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.2, 1.4), new THREE.MeshStandardMaterial({color: isGreen ? 0x008800 : 0xcc0000, roughness: 0.4}));
+            roof.position.y = 1.8; vGroup.add(roof);
+        } else {
+            // 雙層巴士 (金、紅、白)
+            const busColors = [0xddb841, 0xcc0000, 0xeeeeee]; 
+            const body = new THREE.Mesh(new THREE.BoxGeometry(7.0, 2.8, 1.6), new THREE.MeshStandardMaterial({color: busColors[Math.floor(Math.random()*busColors.length)], roughness: 0.5}));
+            body.position.y = 1.6; vGroup.add(body);
+            // 黑色車窗帶
+            const win1 = new THREE.Mesh(new THREE.BoxGeometry(6.8, 0.7, 1.65), new THREE.MeshStandardMaterial({color: 0x111111}));
+            win1.position.y = 2.3; vGroup.add(win1);
+            const win2 = new THREE.Mesh(new THREE.BoxGeometry(6.8, 0.6, 1.65), new THREE.MeshStandardMaterial({color: 0x111111}));
+            win2.position.y = 1.1; vGroup.add(win2);
+            speedObj.speed *= 0.65; // 巴士車速較慢
+        }
+        vGroup.userData = speedObj;
+        return vGroup;
+    }
+
+    // 放置 14 輛車在雙向車道上
+    for(let i=0; i<14; i++) { 
+        const v = createHKVehicle(); 
+        const isForward = v.userData.speed > 0;
+        v.position.set((Math.random()-0.5)*180, -4.6, isForward ? 1.5 : 8.5); 
+        if (!isForward) v.rotation.y = Math.PI; // 調整車頭方向
+        sceneryGroup.add(v); 
+        animScenery.cars.push(v); 
+    }
+
+    // 4. 行道樹
+    const treeMat = new THREE.MeshStandardMaterial({color: 0x2d4c1e, roughness: 0.9}); 
+    const trunkMat = new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 0.9});
+    for (let i = -90; i <= 90; i += 18) { 
+        [[-2], [12]].forEach(pos => { // 種植於馬路兩側
+            const t = new THREE.Group(); 
+            const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 4), trunkMat); 
+            tr.position.y = 2; tr.castShadow = true; t.add(tr); 
+            const lf = new THREE.Mesh(new THREE.SphereGeometry(3.5, 12, 12), treeMat); 
+            lf.position.y = 5.5; lf.scale.y = 1.2; lf.castShadow = true; t.add(lf); 
+            t.position.set(i + (Math.random()-0.5)*6, -4.9, pos[0]); 
+            sceneryGroup.add(t); 
+        }); 
+    }
 
 //把 glassPane 直接寫進去陣列中
     interactables = [leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitBox, chairHitBox, hitL, hitR, glassPane];
@@ -2497,10 +2596,16 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     sideRailR.position.set(14.8, 8.5, 0); balconyGrp.add(sideRailR);
     
     // 欄杆立柱
-    for(let z = -0.5; z > -3.8; z -= 1.1) {
+   // 欄杆立柱 - 正面
+    for(let i = -14.5; i <= 14.5; i += 2.9) {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.2, 8.5, 0.2), ironMat);
+        post.position.set(i, 4.25, -3.8); post.castShadow = true; balconyGrp.add(post);
+    }
+    // 欄杆立柱 - 左側與右側
+    for(let z = -3.8; z <= 0; z += 1.9) {
+        if(z === -3.8) continue; // 避免與前方的角柱重疊
         const postL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 8.5, 0.2), ironMat);
         postL.position.set(-14.8, 4.25, z); postL.castShadow = true; balconyGrp.add(postL);
-        
         const postR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 8.5, 0.2), ironMat);
         postR.position.set(14.8, 4.25, z); postR.castShadow = true; balconyGrp.add(postR);
     }
@@ -3118,7 +3223,7 @@ function isCatColliding(x, z) {
         
         function animateRoom() {
     requestAnimationFrame(animateRoom); if(controls) controls.update();
-    animScenery.cars.forEach(c => { c.position.x += c.userData.speed; if(c.position.x > 60) c.position.x = -60; else if(c.position.x < -60) c.position.x = 60; });
+animScenery.cars.forEach(c => { c.position.x += c.userData.speed; if(c.position.x > 100) c.position.x = -100; else if(c.position.x < -100) c.position.x = 100; });
     if(indicatorLeft && indicatorLeft.visible) { indicatorLeft.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorLeft.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
     if(indicatorRight && indicatorRight.visible) { indicatorRight.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorRight.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
     
