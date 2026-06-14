@@ -1076,7 +1076,8 @@ let userPlantData = null; let timeForced = false;
         function hideAuthOverlay() { gsap.to("#auth-overlay", { opacity: 0, duration: 0.6, onComplete: () => { document.getElementById('auth-overlay').style.display = 'none'; }}); }
 
        function initApp() { 
-
+// 👇 加入這行：每次使用者登入進入房間，就更新他的最後上線時間
+db.ref(`users/${currentUser.uid}/lastLoginTime`).set(firebase.database.ServerValue.TIMESTAMP);
 
 db.ref(`users/${currentUser.uid}`).on('value', snap => {
     let data = snap.val() || {};
@@ -1720,10 +1721,30 @@ else processReply(letterId, partnerUid, ObjectData);
                 });
                 
                 let rec = "";
+             let rec = "";
                 if (eligibleUids.length > 0) {
-                    let minCount = Infinity; eligibleUids.forEach(uid => { let count = users[uid].receivedCount || 0; if (count < minCount) minCount = count; });
-                    let candidates = eligibleUids.filter(uid => (users[uid].receivedCount || 0) === minCount); rec = candidates[Math.floor(Math.random() * candidates.length)];
-                    db.ref(`users/${rec}/receivedCount`).set(minCount + 1);
+                    if (selectedTaskIndex === 'free') {
+                        // ✨ 自由撰寫邏輯：發送給「最近上線」的同學
+                        eligibleUids.sort((a, b) => {
+                            let timeA = users[a].lastLoginTime || 0;
+                            let timeB = users[b].lastLoginTime || 0;
+                            return timeB - timeA; // 降序排列 (時間越大代表越晚登入，排在越前面)
+                        });
+                        rec = eligibleUids[0]; // 取最上面第一位 (最近上線的同學)
+                        
+                        // 為了不干擾常規任務的公平性，自由信件我們依然稍微加總收到次數
+                        db.ref(`users/${rec}/receivedCount`).set((users[rec].receivedCount || 0) + 1);
+                    } else {
+                        // 📖 常規任務邏輯：維持原本的「收到信件最少」的公平分配
+                        let minCount = Infinity; 
+                        eligibleUids.forEach(uid => { 
+                            let count = users[uid].receivedCount || 0; 
+                            if (count < minCount) minCount = count; 
+                        });
+                        let candidates = eligibleUids.filter(uid => (users[uid].receivedCount || 0) === minCount); 
+                        rec = candidates[Math.floor(Math.random() * candidates.length)];
+                        db.ref(`users/${rec}/receivedCount`).set(minCount + 1);
+                    }
                 }
                 ref.set({ 
     id: ref.key, 
@@ -1773,30 +1794,17 @@ function processRandomTask(data) {
        // 每次寄信，更新自己的最後寄信時間（代表最後活躍）
                 db.ref(`users/${currentUser.uid}/lastSentTime`).set(ts);
 
-                let rec = "";
+               let rec = "";
                 if (eligibleUids.length > 0) {
-                    if (selectedTaskIndex === 'free') {
-                        // 自由撰寫邏輯：發送給「最近有寄信/最晚活躍」的同學
-                        eligibleUids.sort((a, b) => {
-                            let timeA = users[a].lastSentTime || 0;
-                            let timeB = users[b].lastSentTime || 0;
-                            return timeB - timeA; // 降序排列 (時間越大代表越近)
-                        });
-                        rec = eligibleUids[0]; // 取最上面第一位 (最近活躍)
-                        
-                        // 為了不干擾常規任務的公平性，自由信件我們依然稍微加總收到次數
-                        db.ref(`users/${rec}/receivedCount`).set((users[rec].receivedCount || 0) + 1);
-                    } else {
-                        // 常規任務邏輯：維持原本的「收到信件最少」的公平分配
-                        let minCount = Infinity; 
-                        eligibleUids.forEach(uid => { 
-                            let count = users[uid].receivedCount || 0; 
-                            if (count < minCount) minCount = count; 
-                        });
-                        let candidates = eligibleUids.filter(uid => (users[uid].receivedCount || 0) === minCount); 
-                        rec = candidates[Math.floor(Math.random() * candidates.length)];
-                        db.ref(`users/${rec}/receivedCount`).set(minCount + 1);
-                    }
+                    // 📸 探索任務只有常規模式：維持「收到信件最少」的公平分配
+                    let minCount = Infinity; 
+                    eligibleUids.forEach(uid => { 
+                        let count = users[uid].receivedCount || 0; 
+                        if (count < minCount) minCount = count; 
+                    });
+                    let candidates = eligibleUids.filter(uid => (users[uid].receivedCount || 0) === minCount); 
+                    rec = candidates[Math.floor(Math.random() * candidates.length)];
+                    db.ref(`users/${rec}/receivedCount`).set(minCount + 1);
                 }
 
         // 1. 寫入繳交區 (維持任務清單打勾狀態)
