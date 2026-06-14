@@ -813,7 +813,8 @@ function handleFileSelect(event, type = 'reading') {
                 
                 currentChatRef.once('value').then(cSnap => {
                     const messages = cSnap.val() || {}; const msgKeys = Object.keys(messages); let contentHTML = '';
-                    const lastMsg = messages[msgKeys[msgKeys.length - 1]]; const canReply = lastMsg && lastMsg.senderUid !== currentUser.uid;
+                    const lastMsg = messages[msgKeys[msgKeys.length - 1]]; // 加入判斷：如果是隨機探索任務 (l.type === 'random')，就不顯示回信區塊
+const canReply = lastMsg && lastMsg.senderUid !== currentUser.uid && l.type !== 'random';
 
                     msgKeys.forEach((key, index) => {
                         const m = messages[key]; const isMe = m.senderUid === currentUser.uid; const d = new Date(m.timestamp);
@@ -1022,24 +1023,32 @@ function processRandomTask(data) {
             setTimeout(() => gsap.to(b, {y:0, opacity:0, duration:0.4}), 8000); 
         }
 
-       function loadMailbox() { 
+      function loadMailbox() { 
     db.ref(`user_threads/${currentUser.uid}`).on('value', snap => { 
         let all = Object.values(snap.val() || {}).sort((a, b) => b.lastUpdated - a.lastUpdated); 
         let repliesData = [], inboxReadingData = [], inboxRandomData = []; 
         hasUnrepliedLetters = false; let uRep = false, uIn = false; 
+        
         all.forEach(t => { 
             if (t.isSender) { 
-                if (t.hasBeenRepliedTo) { 
+                // 我寄出的閱讀心得，收到回覆後才會進入「對我的回覆」列表
+                if (t.type !== 'random' && t.hasBeenRepliedTo) { 
                     repliesData.push(t); 
                     if(!t.hasReplied) hasUnrepliedLetters = true; 
                     if(t.hasUnread) uRep = true; 
                 } 
+                // (寄出的探索任務由於沒有回信，就不顯示在此列表，用家已在任務板看見完成狀態)
             } else { 
-                // 分流收到的信件
-                if (t.type === 'random') inboxRandomData.push(t);
-                else inboxReadingData.push(t);
+                // 我收到的信件 (分為探索 / 閱讀)
+                if (t.type === 'random') {
+                    inboxRandomData.push(t);
+                    // 探索任務不強制回覆，所以這裡不觸發 hasUnrepliedLetters
+                } else {
+                    inboxReadingData.push(t);
+                    // 閱讀心得必須回覆，否則卡住新任務
+                    if(!t.hasReplied) hasUnrepliedLetters = true; 
+                }
                 
-                if(!t.hasReplied) hasUnrepliedLetters = true; 
                 if(t.hasUnread) uIn = true; 
             } 
         }); 
@@ -1055,20 +1064,25 @@ function renderList(type, data) {
     if(!listEl) return;
     listEl.innerHTML = ''; 
     if (data.length === 0) { listEl.innerHTML = `<div class="empty-state"><p>信箱空空如也，靜候佳音。</p></div>`; return; } 
+    
     data.forEach(t => { 
         const timeStr = new Date(t.lastUpdated).toLocaleString([], {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}); 
         const el = document.createElement('div'); el.className = 'list-item'; 
         
         let isReplyList = (type === 'replies');
-        let badge = !t.hasReplied ? `<span class="badge wait">待回覆</span>` : (t.hasUnread ? `<span class="badge unread">新回覆</span>` : (isReplyList ? `<span class="badge replied">已讀</span>` : `<span class="badge replied">已回覆</span>`)); 
-        
-        el.onclick = () => { closeRoomModal(null, isReplyList ? 'modal-replies' : 'modal-inbox'); openChatModal(t.letterId); }; 
-        
-        let titleHtml = '';
-        if (isReplyList) { titleHtml = `關於《${escapeHtml(t.bookTitle)}》的回音`; } 
-        else if (type === 'inbox-random') { titleHtml = `筆友的 ${escapeHtml(t.bookTitle)}`; } 
-        else { titleHtml = `筆友寄來《${escapeHtml(t.bookTitle)}》的心得`; }
+        let badge = "";
+        let titleHtml = "";
 
+        // 判斷是探索任務還是閱讀心得，給予不同的標籤與標題
+        if (t.type === 'random') {
+            badge = t.hasUnread ? `<span class="badge unread">新探索</span>` : `<span class="badge replied">已讀</span>`;
+            titleHtml = `筆友的 ${escapeHtml(t.bookTitle)}`;
+        } else {
+            badge = !t.hasReplied ? `<span class="badge wait">待回覆</span>` : (t.hasUnread ? `<span class="badge unread">新回覆</span>` : (isReplyList ? `<span class="badge replied">已讀</span>` : `<span class="badge replied">已回覆</span>`)); 
+            titleHtml = isReplyList ? `關於《${escapeHtml(t.bookTitle)}》的回音` : `筆友寄來《${escapeHtml(t.bookTitle)}》的心得`;
+        }
+
+        el.onclick = () => { closeRoomModal(null, isReplyList ? 'modal-replies' : 'modal-inbox'); openChatModal(t.letterId); }; 
         el.innerHTML = `${badge}<div class="item-title">${titleHtml}</div><div class="item-time">${timeStr}</div>`; 
         listEl.appendChild(el); 
     }); 
