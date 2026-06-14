@@ -1029,7 +1029,7 @@ db.ref(`users/${currentUser.uid}`).on('value', snap => {
             controls.minAzimuthAngle = -Math.PI / 2;
             controls.maxAzimuthAngle = Math.PI / 2;
             controls.minPolarAngle = 1.15; // 角度加大至 65 度，徹底阻止相機升高越過天花板
-            controls.maxDistance = 45;     // 縮小最大拉遠距離，避免相機退到後方牆壁外面
+      
         }
     }
     
