@@ -1015,17 +1015,21 @@ db.ref(`users/${currentUser.uid}`).on('value', snap => {
     document.getElementById('user-points-text').innerText = userPoints;
     
    // 👇 【修改】根據趟門維修狀態，同時限制左右與上下的旋轉角度
-    if (typeof controls !== 'undefined' && !isAtBalcony) {
+      if (typeof controls !== 'undefined' && !isAtBalcony) {
+        controls.enablePan = false; // 關鍵：禁用滑鼠右鍵平移，防止用家把相機拖拽出房間外
+        
         if (hasDoorPrivilege) {
-            // 趟門已修復：解除限制，允許 360 度旋轉看風景，也能抬頭看
+            // 趟門已修復：解除限制
             controls.minAzimuthAngle = -Infinity;
             controls.maxAzimuthAngle = Infinity;
-            controls.minPolarAngle = 0; 
+            controls.minPolarAngle = 0.1; 
+            controls.maxDistance = 55; // 解鎖後允許拉遠一點看風景
         } else {
-            // 趟門未修復：限制只能看室內，並限制抬頭角度 (約 57 度)，避免穿模看到外面天花板
+            // 趟門未修復：嚴格限制在室內
             controls.minAzimuthAngle = -Math.PI / 2;
             controls.maxAzimuthAngle = Math.PI / 2;
-            controls.minPolarAngle = 1.0; 
+            controls.minPolarAngle = 1.15; // 角度加大至 65 度，徹底阻止相機升高越過天花板
+            controls.maxDistance = 45;     // 縮小最大拉遠距離，避免相機退到後方牆壁外面
         }
     }
     
