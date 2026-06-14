@@ -4002,20 +4002,29 @@ const pianoNotes = [
 function initPianoUI() {
     const kb = document.getElementById('piano-keyboard');
     kb.innerHTML = '';
-    let currentLeft = 0;
+    
+    // 1. 計算總共有幾個白鍵，用來分配精準的寬度比例
+    const totalWhiteKeys = pianoNotes.filter(n => !n.isBlack).length;
+    let whiteKeyIndex = 0; // 記錄目前畫到第幾個白鍵
     
     pianoNotes.forEach(keyData => {
         const keyEl = document.createElement('div');
+        
         if (keyData.isBlack) {
             keyEl.className = 'key-black';
-            keyEl.style.left = `${currentLeft}px`;
+            // 黑鍵定位：精準落在當前累積的白鍵邊緣上 (配合 CSS 的 translateX(-50%) 完美置中於縫隙)
+            keyEl.style.left = `calc(${(whiteKeyIndex / totalWhiteKeys) * 100}%)`;
         } else {
             keyEl.className = 'key-white';
-            // 每畫完一個白鍵，才推進 left 的計算位置供黑鍵使用
-            setTimeout(() => { currentLeft += keyEl.offsetWidth; }, 0); 
+            // 白鍵平分整個鍵盤的寬度
+            keyEl.style.width = `${100 / totalWhiteKeys}%`;
+            // 解除 CSS 裡的死板寬度限制，確保沒有縫隙
+            keyEl.style.maxWidth = 'none';
+            keyEl.style.minWidth = '0';
+            whiteKeyIndex++; // 準備為下一個黑鍵提供基準
         }
         
-        // 綁定音效與視覺回饋 (支援多點觸控)
+        // 綁定音效與視覺回饋
         const triggerNote = (e) => {
             e.preventDefault();
             if(!keyEl.classList.contains('active')) {
@@ -4038,6 +4047,8 @@ function initPianoUI() {
     });
 }
 
+
+        
 function playSynthTone(freq) {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -4065,8 +4076,6 @@ function openPianoUI() {
     document.getElementById('piano-overlay').style.display = 'flex';
     // 動態計算寬度並渲染琴鍵
     initPianoUI();
-    // 給予渲染時間後再對齊一次黑鍵
-    setTimeout(initPianoUI, 100); 
 }
 
 function closePianoUI() {
