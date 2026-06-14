@@ -462,7 +462,7 @@
     <div id="room-ui-layer">
 
 <!-- 加入在 <div id="room-ui-layer"> 內部即可 -->
-<button id="btn-return-room" class="btn" style="display:none; position:fixed; bottom:40px; left:50%; transform:translateX(-50%); z-index:4000; background:rgba(250, 247, 242, 0.85); backdrop-filter:blur(5px); color:#2c3e50; border: 1px solid #dcd5c9; box-shadow: 0 10px 25px rgba(0,0,0,0.1);" onclick="returnToRoom()">
+<button id="btn-return-room" class="btn" style="pointer-events: auto; display:none; position:fixed; bottom:40px; left:50%; transform:translateX(-50%); z-index:4000; background:rgba(250, 247, 242, 0.85); backdrop-filter:blur(5px); color:#2c3e50; border: 1px solid #dcd5c9; box-shadow: 0 10px 25px rgba(0,0,0,0.1);" onclick="returnToRoom()">
     <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" style="margin-right:8px;">
         <path d="M15 18l-6-6 6-6"/>
     </svg>
@@ -1654,11 +1654,15 @@ function goToBalcony() {
 
     // 動畫：將相機推進至露台，視線看向遠方大樓
     gsap.to(camera.position, { x: 0, y: 16, z: -15, duration: 1.8, ease: "power2.inOut" });
-    gsap.to(controls.target, { x: 0, y: 14, z: -50, duration: 1.8, ease: "power2.inOut", onUpdate: () => controls.update() });
+    gsap.to(controls.target, { x: 0, y: 14, z: -40, duration: 1.8, ease: "power2.inOut", onUpdate: () => controls.update() });
     
-    // 限制在露台時的縮放範圍，避免穿牆
+    // 【修訂：防止鏡頭被往前擠】放大 maxDistance
     controls.minDistance = 5;
-    controls.maxDistance = 25;
+    controls.maxDistance = 50; 
+
+    // 【修訂：鎖死視角】限制水平旋轉，防止回頭看室內 (正前方為 0，限制左右約 60 度)
+    controls.minAzimuthAngle = -Math.PI / 3;
+    controls.maxAzimuthAngle = Math.PI / 3;
 
     // 顯示返回按鈕
     document.getElementById('btn-return-room').style.display = 'flex';
@@ -1675,6 +1679,10 @@ function returnToRoom() {
     // 恢復室內的縮放限制
     controls.minDistance = 10;
     controls.maxDistance = 60;
+    
+    // 【修訂：解除視角限制】讓室內可以 360 度自由旋轉
+    controls.minAzimuthAngle = -Infinity; 
+    controls.maxAzimuthAngle = Infinity;  
 
     // 隱藏返回按鈕
     document.getElementById('btn-return-room').style.display = 'none';
@@ -2489,9 +2497,12 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     sideRailR.position.set(14.8, 8.5, 0); balconyGrp.add(sideRailR);
     
     // 欄杆立柱
-    for(let i = -14.5; i <= 14.5; i += 2.9) {
-        const post = new THREE.Mesh(new THREE.BoxGeometry(0.2, 8.5, 0.2), ironMat);
-        post.position.set(i, 4.25, -3.8); post.castShadow = true; balconyGrp.add(post);
+    for(let z = -0.5; z > -3.8; z -= 1.1) {
+        const postL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 8.5, 0.2), ironMat);
+        postL.position.set(-14.8, 4.25, z); postL.castShadow = true; balconyGrp.add(postL);
+        
+        const postR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 8.5, 0.2), ironMat);
+        postR.position.set(14.8, 4.25, z); postR.castShadow = true; balconyGrp.add(postR);
     }
 
     // 露台休閒小圓桌與盆栽
