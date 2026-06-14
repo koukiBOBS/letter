@@ -1631,8 +1631,13 @@ function applyCurtainRatio() {
     
     // 4. 窗外大樓發光
     animScenery.buildings.forEach(b => {
-        b.material.emissiveIntensity = p.windowLight ? (isNight ? 4.0 : 1.5) : 0.0;
-        b.material.emissive.setHex(p.windowLight ? 0xffea88 : 0x000000);
+        if(Array.isArray(b.material)) {
+            // 索引 0, 1, 4, 5 代表四面牆，我們只讓牆壁的窗戶發光
+            [0, 1, 4, 5].forEach(i => {
+                b.material[i].emissiveIntensity = p.windowLight ? (isNight ? 4.0 : 1.5) : 0.0;
+                b.material[i].emissive.setHex(p.windowLight ? 0xffea88 : 0x000000);
+            });
+        }
     });
 }
 
@@ -1660,7 +1665,7 @@ function goToBalcony() {
     roomCameraBackup.cp.copy(camera.position);
     roomCameraBackup.ct.copy(controls.target);
 
-    controls.minDistance = 5;
+ controls.minDistance = 0.1; // 允許目標點非常靠近相機
     controls.maxDistance = 100;
 
   controls.minAzimuthAngle = -Math.PI / 2.5; // 稍微放寬左右轉頭的視角
@@ -1670,7 +1675,7 @@ function goToBalcony() {
 
     // 【修訂三】：將相機推進至 z:-19.5 (完全站到露臺外)，這樣中間的窗框就會在背後而看不見
     gsap.to(camera.position, { x: 0, y: 15, z: -19.5, duration: 1.8, ease: "power2.inOut" });
-    gsap.to(controls.target, { x: 0, y: 15, z: -65, duration: 1.8, ease: "power2.inOut", onUpdate: () => controls.update() });
+  gsap.to(controls.target, { x: 0, y: 15, z: -20, duration: 1.8, ease: "power2.inOut", onUpdate: () => controls.update() });
     
     // 【修訂二】：動態擴大鏡頭廣角 (FOV 50 -> 75)，減輕景物放大的壓迫感，讓露臺空間更開闊
     gsap.to(camera, { fov: 75, duration: 1.8, ease: "power2.inOut", onUpdate: () => camera.updateProjectionMatrix() });
@@ -2772,8 +2777,11 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
         {x: -45, z: -25, h: 75, c: bMatDark}, {x: -28, z: -30, h: 65, c: bMat}, {x: -12, z: -22, h: 55, c: bMatDark}, 
         {x: 12, z: -28, h: 68, c: bMatDark}, {x: 26, z: -24, h: 80, c: bMat}, {x: 45, z: -32, h: 90, c: bMatDark} 
     ];
+   const roofMat = new THREE.MeshStandardMaterial({color: 0x334455, roughness: 0.9}); // 純色無發光的屋頂材質
     buildingsData.forEach(bd => { 
-        const b = new THREE.Mesh(new THREE.BoxGeometry(12+Math.random()*6, bd.h, 12+Math.random()*6), bd.c); 
+        // 將材質改為陣列：[右, 左, 上(屋頂), 下(底座), 前, 後]
+        const materials = [bd.c, bd.c, roofMat, roofMat, bd.c, bd.c];
+        const b = new THREE.Mesh(new THREE.BoxGeometry(12+Math.random()*6, bd.h, 12+Math.random()*6), materials); 
         b.position.set(bd.x, bd.h/2 - 5, bd.z); 
         b.castShadow = true; b.receiveShadow = true; 
         sceneryGroup.add(b); animScenery.buildings.push(b); 
