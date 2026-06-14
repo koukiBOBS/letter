@@ -1358,9 +1358,8 @@ const glassPane = new THREE.Mesh(new THREE.BoxGeometry(29.5, 26.5, 0.05), glassM
             const knobGeo = new THREE.SphereGeometry(0.5, 32, 32); const knobMat = new THREE.MeshStandardMaterial({color:0x555555, metalness:0.8, roughness:0.2});
             const knobL = new THREE.Mesh(knobGeo, knobMat); knobL.position.z = 6.05; leftDrawer.add(knobL); const knobR = new THREE.Mesh(knobGeo, knobMat); knobR.position.z = 6.05; rightDrawer.add(knobR);
             
-            indicatorLeft = createFloatingLetter(); indicatorLeft.position.set(-7, 10, 1.5); indicatorLeft.rotation.set(-0.2, 0, 0.1); indicatorLeft.visible = false; desk.add(indicatorLeft);
-            indicatorRight = createFloatingLetter(); indicatorRight.position.set(7, 10, 1.5); indicatorRight.rotation.set(-0.2, 0, -0.1); indicatorRight.visible = false; desk.add(indicatorRight);
-            
+           indicatorLeft = createFloatingLetter(); indicatorLeft.position.set(-7, 6.5, 10); indicatorLeft.rotation.set(-0.1, 0, 0.05); indicatorLeft.visible = false; desk.add(indicatorLeft);
+indicatorRight = createFloatingLetter(); indicatorRight.position.set(7, 6.5, 10); indicatorRight.rotation.set(-0.1, 0, -0.05); indicatorRight.visible = false; desk.add(indicatorRight);
             book = new THREE.Group(); book.position.set(8, 8.6, 2); book.rotation.y = -0.2; book.userData = {type: 'log'}; desk.add(book);
             const bookPages = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.6, 5.2), new THREE.MeshStandardMaterial({color:0xffffff})); bookPages.castShadow = true; book.add(bookPages);
             const bookCover = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.8, 5.6), new THREE.MeshStandardMaterial({map: createCoverTexture("", "#8b7355")})); bookCover.castShadow = true; book.add(bookCover);
@@ -1842,8 +1841,8 @@ const glassPane = new THREE.Mesh(new THREE.BoxGeometry(29.5, 26.5, 0.05), glassM
         function animateRoom() {
             requestAnimationFrame(animateRoom); if(controls) controls.update();
             animScenery.cars.forEach(c => { c.position.x += c.userData.speed; if(c.position.x > 60) c.position.x = -60; else if(c.position.x < -60) c.position.x = 60; });
-            if(indicatorLeft && indicatorLeft.visible) { indicatorLeft.position.y = 9.5 + Math.sin(Date.now()*0.003)*0.2; indicatorLeft.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
-            if(indicatorRight && indicatorRight.visible) { indicatorRight.position.y = 9.5 + Math.sin(Date.now()*0.003)*0.2; indicatorRight.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
+   if(indicatorLeft && indicatorLeft.visible) { indicatorLeft.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorLeft.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
+if(indicatorRight && indicatorRight.visible) { indicatorRight.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorRight.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
             
             // 獲取實時香港時間 (UTC+8) 並轉動指針
             if(clockHourHand && clockMinHand && clockSecHand) {
