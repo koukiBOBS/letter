@@ -1023,7 +1023,7 @@ db.ref(`users/${currentUser.uid}`).on('value', snap => {
             controls.minAzimuthAngle = -Infinity;
             controls.maxAzimuthAngle = Infinity;
             controls.minPolarAngle = 0.1; 
-            controls.maxDistance = 55; // 解鎖後允許拉遠一點看風景
+            controls.maxDistance = 59; // 解鎖後允許拉遠一點看風景
         } else {
             // 趟門未修復：嚴格限制在室內
             controls.minAzimuthAngle = -Math.PI / 2;
