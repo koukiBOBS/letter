@@ -2368,12 +2368,17 @@ function onPointerDown(e) {
                 targetObj = obj.parent; 
             }
 
-            dragTimer = setTimeout(() => {
+          dragTimer = setTimeout(() => {
                 isDragging = true;
                 dragTarget = targetObj;
                 dragTarget.userData.dragType = type;
                 controls.enabled = false;
                 document.body.style.cursor = 'grabbing';
+
+                // 【新增】如果抓起的是貓咪，讓牠進入被抓起的懸空狀態
+                if (type === 'cat') {
+                    setCatState('dragged');
+                }
 
                 if(dragTarget.userData.originalY === undefined) {
                     dragTarget.userData.originalY = dragTarget.position.y;
@@ -2480,13 +2485,23 @@ function onPointerUp(e) {
         dragTimer = null; 
     }
 
-    if(isDragging && dragTarget) {
+   if(isDragging && dragTarget) {
+        const type = dragTarget.userData.dragType; // 記住拖曳的類型
+        const droppedObj = dragTarget;             // 記住被放開的物件 (因為稍後 dragTarget 會被清空)
+
         gsap.to(dragTarget.position, { 
             y: dragTarget.userData.originalY, 
             duration: 0.3, 
             ease: "bounce.out",
             onComplete: () => {
-                saveObjectPositions(); // 【修訂】必須等待掉落動畫完全結束，碰到表面後才能儲存
+                saveObjectPositions(); 
+                
+                // 【新增】貓咪落地後，強制把目標點設在自己的腳下，並恢復發呆狀態
+                // 這樣牠就不會一落地就拔腿狂奔去尋找舊的目標了
+                if (type === 'cat') {
+                    catTarget.set(droppedObj.position.x, 0, droppedObj.position.z);
+                    setCatState('idle');
+                }
             }
         });
         isDragging = false;
@@ -2576,10 +2591,23 @@ function onPointerUp(e) {
                 .to(wateringCan.position, {x: startPos.x, y: startPos.y, z: startPos.z, duration: 0.8});
         }
     // 🐾 設定貓咪狀態的函數
-       function setCatState(newState) {
+      function setCatState(newState) {
     catState = newState;
     const allRoots = [legFL.root.rotation, legFR.root.rotation, legBL.root.rotation, legBR.root.rotation];
     const allKnees = [legFL.knee.rotation, legFR.knee.rotation, legBL.knee.rotation, legBR.knee.rotation];
+
+    // 【新增】當貓咪被手動抓起時，四肢自然下垂，暫停所有行為
+    if (newState === 'dragged') {
+        gsap.to(catBody.scale, {x: 0.9, y: 1.1, z: 0.9, duration: 0.3}); // 身體因為地心引力微微拉長
+        gsap.to(catBody.position, {y: 1.6, duration: 0.3});
+        gsap.to(catHeadGrp.rotation, {x: 0, y: 0, z: 0, duration: 0.3});
+        catTailBones.forEach((bone, i) => gsap.to(bone.rotation, {x: i===0 ? 0.4 : 0.1, y: 0, z: 0, duration: 0.3}));
+        
+        // 四肢自然下垂
+        gsap.to(allRoots, {x: 0, duration: 0.3});
+        gsap.to(allKnees, {x: 0, duration: 0.3});
+        return; // 結束函數，不設定任何計時器
+    }
 
     if (newState === 'idle') {
         catTimer = 100 + Math.random() * 200;
@@ -2674,10 +2702,16 @@ function isCatColliding(x, z) {
 
         
        // 🐾 貓咪每幀更新邏輯 (修訂版：步伐更大、前腿向前伸展更自然)
-        function updateCat() {
+      function updateCat() {
             if(!catGrp) return;
             const time = Date.now();
             
+            // 【新增】如果貓咪正在被抓著，只讓尾巴尖端微幅擺動，不執行走路邏輯
+            if (catState === 'dragged') {
+                catTailBones[catTailBones.length-1].rotation.z = Math.sin(time * 0.005) * 0.1;
+                return; 
+            }
+
             if (catState === 'sleep') {
                 catBody.scale.y = 0.8 + Math.sin(time * 0.002) * 0.03;
                 catBody.scale.x = 1.1 + Math.sin(time * 0.002) * 0.02;
