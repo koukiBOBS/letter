@@ -2357,18 +2357,119 @@ indicatorLeft = createFloatingLetter(); indicatorLeft.position.set(-5.5, 6.5, 10
 
         function onWinResize() { if(!camera) return; camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
         
-        let pointerDownPos = {x:0, y:0};
-        function onPointerDown(e) { pointerDownPos.x = e.clientX; pointerDownPos.y = e.clientY; }
+      // --- 拖曳與點擊系統全域變數 ---
+        let pointerDownPos = { x: 0, y: 0 };
+        let dragTimer = null;       // 長按計時器
+        let isDragging = false;     // 是否正在拖曳
+        let dragTarget = null;      // 正在拖曳的目標
+        let dragOffset = new THREE.Vector3(); // 滑鼠與物件中心的偏移量
+        // 建立一個代表桌面的隱形平面 (高度約為 y=8.5)
+        let deskPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -8.5); 
+
+        function onPointerDown(e) {
+            if(document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
+            pointerDownPos.x = e.clientX; pointerDownPos.y = e.clientY;
+
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(interactables, true);
+            if(intersects.length > 0) {
+                let obj = intersects[0].object;
+                while(obj.parent && !obj.userData.type) obj = obj.parent;
+                const type = obj.userData.type;
+
+                // 只有桌面上的這四類物件允許拖曳 (抽屜等不可拖曳)
+                if(['log', 'tasks', 'water', 'plant'].includes(type)) {
+                    // 植物的 hitBox 是子物件，需要往上抓到整個 plantGroup
+                    let targetObj = (type === 'plant') ? obj.parent : obj;
+
+                    // 啟動長按判定 (300毫秒不動則視為拖曳)
+                    dragTimer = setTimeout(() => {
+                        isDragging = true;
+                        dragTarget = targetObj;
+                        controls.enabled = false; // 拖曳時暫停畫面旋轉
+                        document.body.style.cursor = 'grabbing';
+
+                        // 記錄物件原本的高度
+                        if(dragTarget.userData.originalY === undefined) {
+                            dragTarget.userData.originalY = dragTarget.position.y;
+                        }
+
+                        // 輕微浮起並放大，提供「抓起來」的視覺回饋
+                        gsap.to(dragTarget.position, { y: dragTarget.userData.originalY + 1.2, duration: 0.2 });
+
+                        // 記錄抓取點的偏移量，讓物件不會瞬間瞬移到滑鼠中心
+                        let intersectPoint = new THREE.Vector3();
+                        raycaster.ray.intersectPlane(deskPlane, intersectPoint);
+                        if(intersectPoint) {
+                            dragOffset.copy(intersectPoint).sub(dragTarget.position);
+                        }
+                    }, 300);
+                }
+            }
+        }
+
         function onPointerMove(e) {
             if(document.querySelector('.room-modal[style*="flex"]')) return;
-            mouse.x = (e.clientX/window.innerWidth)*2-1; mouse.y = -(e.clientY/window.innerHeight)*2+1;
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+            // 如果還沒觸發長按，且滑鼠移動超過誤差值，則取消長按 (視為視角旋轉)
+            if(dragTimer && !isDragging) {
+                if(Math.abs(e.clientX - pointerDownPos.x) > 5 || Math.abs(e.clientY - pointerDownPos.y) > 5) {
+                    clearTimeout(dragTimer); 
+                    dragTimer = null;
+                }
+            }
+
+            // === 拖曳邏輯 ===
+            if(isDragging && dragTarget) {
+                raycaster.setFromCamera(mouse, camera);
+                let intersectPoint = new THREE.Vector3();
+                raycaster.ray.intersectPlane(deskPlane, intersectPoint);
+                
+                if(intersectPoint) {
+                    let newX = intersectPoint.x - dragOffset.x;
+                    let newZ = intersectPoint.z - dragOffset.z;
+                    
+                    // 【物理限制】設定桌面的邊界，確保物件不會掉下去
+                    // 桌面總寬為28，深為14。限制在 X: -13~13, Z: -6~6
+                    newX = Math.max(-13, Math.min(13, newX));
+                    newZ = Math.max(-6, Math.min(6, newZ));
+
+                    dragTarget.position.x = newX;
+                    dragTarget.position.z = newZ;
+                }
+                return; // 如果在拖曳，就跳過下方的 Hover 效果
+            }
+
+            // === 一般 Hover 效果 ===
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(interactables, true);
             document.body.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
         }
-        
+
         let isDrawerAnimating = false; 
         function onPointerUp(e) {
+            // 清除長按計時器
+            if(dragTimer) { 
+                clearTimeout(dragTimer); 
+                dragTimer = null; 
+            }
+
+            // 如果正在拖曳，則放下物件 (加入落地彈跳動畫) 並結束，不觸發點擊事件
+            if(isDragging && dragTarget) {
+                gsap.to(dragTarget.position, { y: dragTarget.userData.originalY, duration: 0.3, ease: "bounce.out" });
+                isDragging = false;
+                dragTarget = null;
+                controls.enabled = true; // 恢復畫面旋轉
+                document.body.style.cursor = 'default';
+                return; 
+            }
+
+            // === 以下為原本的點擊觸發邏輯 ===
             if(Math.abs(e.clientX - pointerDownPos.x) > 10 || Math.abs(e.clientY - pointerDownPos.y) > 10) return;
             if(document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
             
