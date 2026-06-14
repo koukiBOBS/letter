@@ -2621,6 +2621,65 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     scene.add(balconyBase);
 
 
+// 【修訂五：馬路兩端遠景 - 左側隧道與右側開闊海灣】
+    
+    // ================= 左側：行車隧道入口 =================
+    // 作用：自然地將駛出的車輛藏入山體，化解邊界突兀感
+    const tunnelGroup = new THREE.Group();
+    tunnelGroup.position.set(-100, -4.9, 4); // 對齊馬路高度與Z軸
+    sceneryGroup.add(tunnelGroup);
+    
+    // 隧道山體 (與遠景山脈同色系)
+    const tunnelMtn = new THREE.Mesh(new THREE.BoxGeometry(40, 60, 80), new THREE.MeshStandardMaterial({color: 0x365942, roughness: 1.0}));
+    tunnelMtn.position.set(-15, 30, 0);
+    tunnelGroup.add(tunnelMtn);
+    
+    // 隧道入口的深邃黑洞
+    const tunnelHole = new THREE.Mesh(new THREE.PlaneGeometry(30, 16), new THREE.MeshBasicMaterial({color: 0x050505}));
+    tunnelHole.position.set(6, 8, 0);
+    tunnelHole.rotation.y = Math.PI / 2;
+    tunnelGroup.add(tunnelHole);
+
+    // ================= 右側：跨海大橋與開闊海面 =================
+    // 作用：徹底釋放空間壓迫感，提供廣闊的視野
+    const seaGroup = new THREE.Group();
+    seaGroup.position.set(100, -4.9, 4); // 從右側馬路盡頭開始延伸
+    sceneryGroup.add(seaGroup);
+
+    // 1. 廣闊平靜的海面 (高金屬感、低粗糙度，完美反射天空早晚的光色)
+    const water = new THREE.Mesh(
+        new THREE.PlaneGeometry(400, 400), 
+        new THREE.MeshStandardMaterial({color: 0x2a445e, roughness: 0.15, metalness: 0.85})
+    );
+    water.rotation.x = -Math.PI / 2;
+    water.position.set(150, -6, 0); // 海面低於馬路
+    seaGroup.add(water);
+
+    // 2. 延伸入海的跨海大橋橋面
+    const bridgeRoad = new THREE.Mesh(
+        new THREE.BoxGeometry(160, 1.5, 26), 
+        new THREE.MeshStandardMaterial({color: 0x444444, roughness: 0.9})
+    );
+    bridgeRoad.position.set(80, 0, 0); 
+    seaGroup.add(bridgeRoad);
+
+    // 3. 支撐橋面的粗壯橋墩
+    const pillarMat = new THREE.MeshStandardMaterial({color: 0xcccccc, roughness: 0.8});
+    for(let i = 20; i <= 140; i += 40) {
+        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 20), pillarMat);
+        pillar.position.set(i, -10, 0);
+        seaGroup.add(pillar);
+    }
+
+    // 4. 海平線遠方平緩放鬆的離島
+    const island = new THREE.Mesh(
+        new THREE.SphereGeometry(50, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), 
+        new THREE.MeshStandardMaterial({color: 0x365942, roughness: 1.0})
+    );
+    island.scale.set(1.8, 0.25, 1); // 壓扁成平緩的圓弧形島嶼，消除尖銳感
+    island.position.set(180, -6, -80);
+    seaGroup.add(island);
+
     
  interactables = [leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitBox, chairHitBox, hitL, hitR, glassPane];
     
