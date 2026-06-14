@@ -185,27 +185,21 @@
             transition: background-color 0.4s ease; /* 切換時會平滑變色 */
         }
         
-        /* 2. 寄來的信箋-閱讀 (竹葉青綠 - 對應 partner-reading) */
-        #inbox-reading-list .list-item { 
-            background-color: #e6f0e9; 
-            border-left: 6px solid var(--color-tasks); 
-        }
-        #inbox-reading-list .list-item:hover { 
-            background-color: #dbe8df; 
-            transform: translateY(-2px) translateX(4px); 
-            box-shadow: 0 8px 20px rgba(107, 142, 115, 0.2); 
-        }
-
-        /* 3. 寄來的信箋-探索 (淡胭紅粉 - 對應 partner-random) */
-        #inbox-random-list .list-item { 
-            background-color: #fbeae6; 
-            border-left: 6px solid var(--color-inbox); 
-        }
-        #inbox-random-list .list-item:hover { 
-            background-color: #f2dbd5; 
-            transform: translateY(-2px) translateX(4px); 
-            box-shadow: 0 8px 20px rgba(217, 138, 108, 0.2); 
-        }
+        /* 將寄來的信箋列表卡片底色強制改為白色，但保留 hover 的效果 */
+#inbox-reading-list .list-item,
+#inbox-random-list .list-item { 
+    background-color: #ffffff !important; 
+}
+#inbox-reading-list .list-item:hover { 
+    background-color: #f8fafc !important; 
+    transform: translateY(-2px) translateX(4px); 
+    box-shadow: 0 8px 20px rgba(107, 142, 115, 0.2); 
+}
+#inbox-random-list .list-item:hover { 
+    background-color: #f8fafc !important; 
+    transform: translateY(-2px) translateX(4px); 
+    box-shadow: 0 8px 20px rgba(217, 138, 108, 0.2); 
+}
         .badge { font-size: 0.75rem; padding: 6px 12px; border-radius: 20px; margin-right: 18px; font-weight: 600; white-space: nowrap; }
         .badge.unread { background: #fee2e2; color: #ef4444; } .badge.replied { background: #f1f5f9; color: #64748b; } .badge.wait { background: #fef3c7; color: #f59e0b; }
         .item-title { flex-grow: 1; font-size: 1.1rem; font-family: var(--font-serif); }
@@ -1573,6 +1567,41 @@ function renderList(type, data) {
        let desk, leftDrawer, rightDrawer, book, clipboard, wateringCan, plantGroup, windowGroup, sceneryGroup;
 let dummySpoutTip; let indicatorLeft, indicatorRight, indicatorTasks; let interactables = []; let timePhase = 'noon'; let animScenery = { cars: [], buildings: [] };
         let clockHourHand, clockMinHand, clockSecHand;
+
+
+let tcGrp, chairGroup; 
+let floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+let catPlatform = 'floor'; // 記錄貓咪所在位置：'floor', 'desk', 'chair'
+
+function saveObjectPositions() {
+    const pos = {};
+    if(book) pos.log = {x: book.position.x, z: book.position.z};
+    if(clipboard) pos.tasks = {x: clipboard.position.x, z: clipboard.position.z};
+    if(wateringCan) pos.water = {x: wateringCan.position.x, z: wateringCan.position.z};
+    if(plantGroup) pos.plant = {x: plantGroup.position.x, z: plantGroup.position.z};
+    if(tcGrp) pos.trash = {x: tcGrp.position.x, z: tcGrp.position.z};
+    if(chairGroup) pos.chair = {x: chairGroup.position.x, z: chairGroup.position.z};
+    if(catGrp) pos.cat = {x: catGrp.position.x, y: catGrp.position.y, z: catGrp.position.z, platform: catPlatform};
+    localStorage.setItem('roomObjectPositions', JSON.stringify(pos));
+}
+
+function restoreObjectPositions() {
+    try {
+        const pos = JSON.parse(localStorage.getItem('roomObjectPositions'));
+        if(!pos) return;
+        if(pos.log && book) book.position.set(pos.log.x, 8.6, pos.log.z);
+        if(pos.tasks && clipboard) clipboard.position.set(pos.tasks.x, 8.55, pos.tasks.z);
+        if(pos.water && wateringCan) wateringCan.position.set(pos.water.x, 8.5, pos.water.z);
+        if(pos.trash && tcGrp) tcGrp.position.set(pos.trash.x, tcGrp.position.y, pos.trash.z);
+        if(pos.chair && chairGroup) chairGroup.position.set(pos.chair.x, chairGroup.position.y, pos.chair.z);
+        if(pos.cat && catGrp) {
+            catPlatform = pos.cat.platform || 'floor';
+            catGrp.position.set(pos.cat.x, pos.cat.y, pos.cat.z);
+        }
+    } catch(e){}
+}
+
+
         
       // 🐾 新增小貓咪的全域變數
      // 🐾 新增小貓咪的全域變數
@@ -1929,401 +1958,323 @@ function closeDrawAnim() {
 
 
         
-        function initRoomScene() {
-            const container = document.getElementById('room-canvas-container');
-            scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0xc5c1bc, 0.015);
-            camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
-            renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.outputEncoding = THREE.sRGBEncoding;
-            container.innerHTML = ''; container.appendChild(renderer.domElement);
-            
-            controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.maxPolarAngle = Math.PI/2 - 0.05; controls.minDistance = 10; controls.maxDistance = 60; 
-            
-            const savedState = localStorage.getItem('roomCameraState');
-            if (savedState) { try { const s = JSON.parse(savedState); camera.position.set(s.cp.x, s.cp.y, s.cp.z); controls.target.set(s.ct.x, s.ct.y, s.ct.z); } catch(e) { setDefaultCamera(); } } else { setDefaultCamera(); }
-            controls.update(); controls.addEventListener('change', () => { if(!camera || !controls) return; const state = { cp: {x: camera.position.x, y: camera.position.y, z: camera.position.z}, ct: {x: controls.target.x, y: controls.target.y, z: controls.target.z} }; localStorage.setItem('roomCameraState', JSON.stringify(state)); });
-            raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2();
-            
-            window.addEventListener('pointerdown', onPointerDown); window.addEventListener('pointerup', onPointerUp); window.addEventListener('pointermove', onPointerMove); window.addEventListener('resize', onWinResize);
-            buildRoomEnvironment(); syncEnvironmentTime(); animateRoom();
-        }
-
+       function initRoomScene() {
+    const container = document.getElementById('room-canvas-container');
+    scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0xc5c1bc, 0.015);
+    camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+    renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.outputEncoding = THREE.sRGBEncoding;
+    container.innerHTML = ''; container.appendChild(renderer.domElement);
+    
+    controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.maxPolarAngle = Math.PI/2 - 0.05; controls.minDistance = 10; controls.maxDistance = 60; 
+    
+    const savedState = localStorage.getItem('roomCameraState');
+    if (savedState) { try { const s = JSON.parse(savedState); camera.position.set(s.cp.x, s.cp.y, s.cp.z); controls.target.set(s.ct.x, s.ct.y, s.ct.z); } catch(e) { setDefaultCamera(); } } else { setDefaultCamera(); }
+    controls.update(); controls.addEventListener('change', () => { if(!camera || !controls) return; const state = { cp: {x: camera.position.x, y: camera.position.y, z: camera.position.z}, ct: {x: controls.target.x, y: controls.target.y, z: controls.target.z} }; localStorage.setItem('roomCameraState', JSON.stringify(state)); });
+    raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2();
+    
+    window.addEventListener('pointerdown', onPointerDown); window.addEventListener('pointerup', onPointerUp); window.addEventListener('pointermove', onPointerMove); window.addEventListener('resize', onWinResize);
+    
+    buildRoomEnvironment(); 
+    restoreObjectPositions(); // 載入所有物件的移動紀錄
+    syncEnvironmentTime(); 
+    animateRoom();
+}
         function setDefaultCamera() { if (window.innerWidth < 768) { camera.position.set(0, 26, 48); } else { camera.position.set(0, 22, 45); } controls.target.set(0, 7, 0); }
 
-        function buildRoomEnvironment() {
-            hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); scene.add(hemiLight);
-          dirLight = new THREE.DirectionalLight(0xffeedd, 1.2); dirLight.position.set(20, 30, -70); dirLight.target.position.set(0, 0, 0);
-            dirLight.castShadow = true; dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048; dirLight.shadow.camera.left = -40; dirLight.shadow.camera.right = 40; dirLight.shadow.camera.top = 40; dirLight.shadow.camera.bottom = -40; dirLight.shadow.bias = -0.0005;
-            scene.add(dirLight); scene.add(dirLight.target);
-            const pointLight = new THREE.PointLight(0xffe8c4, 0.4, 20); pointLight.position.set(-5, 15, 10); scene.add(pointLight);
+      function buildRoomEnvironment() {
+    hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); scene.add(hemiLight);
+    dirLight = new THREE.DirectionalLight(0xffeedd, 1.2); dirLight.position.set(20, 30, -70); dirLight.target.position.set(0, 0, 0);
+    dirLight.castShadow = true; dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048; dirLight.shadow.camera.left = -40; dirLight.shadow.camera.right = 40; dirLight.shadow.camera.top = 40; dirLight.shadow.camera.bottom = -40; dirLight.shadow.bias = -0.0005;
+    scene.add(dirLight); scene.add(dirLight.target);
+    const pointLight = new THREE.PointLight(0xffe8c4, 0.4, 20); pointLight.position.set(-5, 15, 10); scene.add(pointLight);
 
-            const lampGroup = new THREE.Group(); lampGroup.position.set(0, 39, 21); scene.add(lampGroup);
-            const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 1, 32), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.5})); lampGroup.add(lampBase);
-            lampBulb = new THREE.Mesh(new THREE.SphereGeometry(2.5, 32, 16), new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0x000000})); lampBulb.position.y = -1; lampGroup.add(lampBulb);
-            ceilingLight = new THREE.PointLight(0xfff0dd, 0, 150); ceilingLight.position.set(0, 36, 21); ceilingLight.castShadow = false; ceilingLight.shadow.mapSize.width = 1024; ceilingLight.shadow.mapSize.height = 1024; ceilingLight.shadow.bias = -0.001; scene.add(ceilingLight);
+    const lampGroup = new THREE.Group(); lampGroup.position.set(0, 39, 21); scene.add(lampGroup);
+    const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 1, 32), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.5})); lampGroup.add(lampBase);
+    lampBulb = new THREE.Mesh(new THREE.SphereGeometry(2.5, 32, 16), new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0x000000})); lampBulb.position.y = -1; lampGroup.add(lampBulb);
+    ceilingLight = new THREE.PointLight(0xfff0dd, 0, 150); ceilingLight.position.set(0, 36, 21); ceilingLight.castShadow = false; ceilingLight.shadow.mapSize.width = 1024; ceilingLight.shadow.mapSize.height = 1024; ceilingLight.shadow.bias = -0.001; scene.add(ceilingLight);
 
-            const wallMat = new THREE.MeshStandardMaterial({ color: 0xdbd4cc, roughness: 1.0, side: THREE.DoubleSide }); const floorMat = new THREE.MeshStandardMaterial({ map: createFloorTexture(), roughness: 0.3, metalness: 0.05 });
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 78), floorMat); floor.rotation.x = -Math.PI/2; floor.position.set(0, 0, 21); floor.receiveShadow = true; scene.add(floor);
-            const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(120, 78), wallMat); ceiling.rotation.x = Math.PI/2; ceiling.position.set(0, 40, 21); scene.add(ceiling);
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0xdbd4cc, roughness: 1.0, side: THREE.DoubleSide }); const floorMat = new THREE.MeshStandardMaterial({ map: createFloorTexture(), roughness: 0.3, metalness: 0.05 });
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 78), floorMat); floor.rotation.x = -Math.PI/2; floor.position.set(0, 0, 21); floor.receiveShadow = true; scene.add(floor);
+    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(120, 78), wallMat); ceiling.rotation.x = Math.PI/2; ceiling.position.set(0, 40, 21); scene.add(ceiling);
 
-            const wallShape = new THREE.Shape(); wallShape.moveTo(-60, 0); wallShape.lineTo(60, 0); wallShape.lineTo(60, 40); wallShape.lineTo(-60, 40);
-           const windowHole = new THREE.Path(); 
-// 寬度擴大到 ±15 (與桌同寬)，高度從接近地面 1 延伸到 28
-windowHole.moveTo(-15, 1); windowHole.lineTo(15, 1); windowHole.lineTo(15, 28); windowHole.lineTo(-15, 28); 
-wallShape.holes.push(windowHole);
-            const frontWall = new THREE.Mesh(new THREE.ExtrudeGeometry(wallShape, { depth: 1, bevelEnabled: false }), wallMat); frontWall.position.set(0, 0, -18); frontWall.castShadow = true; frontWall.receiveShadow = true; scene.add(frontWall);
-            const sideWallGeo = new THREE.PlaneGeometry(78, 40); const leftWall = new THREE.Mesh(sideWallGeo, wallMat); leftWall.rotation.y = Math.PI/2; leftWall.position.set(-60, 20, 21); scene.add(leftWall); const rightWall = new THREE.Mesh(sideWallGeo, wallMat); rightWall.rotation.y = -Math.PI/2; rightWall.position.set(60, 20, 21); scene.add(rightWall);
-            const backWall = new THREE.Mesh(new THREE.PlaneGeometry(120, 40), wallMat); backWall.position.set(0, 20, 60); scene.add(backWall);
+    const wallShape = new THREE.Shape(); wallShape.moveTo(-60, 0); wallShape.lineTo(60, 0); wallShape.lineTo(60, 40); wallShape.lineTo(-60, 40);
+    const windowHole = new THREE.Path(); 
+    windowHole.moveTo(-15, 1); windowHole.lineTo(15, 1); windowHole.lineTo(15, 28); windowHole.lineTo(-15, 28); 
+    wallShape.holes.push(windowHole);
+    const frontWall = new THREE.Mesh(new THREE.ExtrudeGeometry(wallShape, { depth: 1, bevelEnabled: false }), wallMat); frontWall.position.set(0, 0, -18); frontWall.castShadow = true; frontWall.receiveShadow = true; scene.add(frontWall);
+    const sideWallGeo = new THREE.PlaneGeometry(78, 40); const leftWall = new THREE.Mesh(sideWallGeo, wallMat); leftWall.rotation.y = Math.PI/2; leftWall.position.set(-60, 20, 21); scene.add(leftWall); const rightWall = new THREE.Mesh(sideWallGeo, wallMat); rightWall.rotation.y = -Math.PI/2; rightWall.position.set(60, 20, 21); scene.add(rightWall);
+    const backWall = new THREE.Mesh(new THREE.PlaneGeometry(120, 40), wallMat); backWall.position.set(0, 20, 60); scene.add(backWall);
 
-            function createPainting(x, y, z, type) { const frameGroup = new THREE.Group(); frameGroup.position.set(x, y, z); const frame = new THREE.Mesh(new THREE.BoxGeometry(10, 12, 0.6), new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.8})); frameGroup.add(frame); const canvas = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 10.5), new THREE.MeshStandardMaterial({map: createPaintingTexture(type), roughness: 0.9})); canvas.position.z = 0.31; frameGroup.add(canvas); scene.add(frameGroup); }
-          // 畫作往兩側推，避免被窗簾擋住
-createPainting(-42, 22, -17.5, 1); createPainting(-27, 17, -17.5, 3); createPainting(27, 17, -17.5, 4); createPainting(42, 22, -17.5, 2);
+    function createPainting(x, y, z, type) { const frameGroup = new THREE.Group(); frameGroup.position.set(x, y, z); const frame = new THREE.Mesh(new THREE.BoxGeometry(10, 12, 0.6), new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.8})); frameGroup.add(frame); const canvas = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 10.5), new THREE.MeshStandardMaterial({map: createPaintingTexture(type), roughness: 0.9})); canvas.position.z = 0.31; frameGroup.add(canvas); scene.add(frameGroup); }
+    createPainting(-42, 22, -17.5, 1); createPainting(-27, 17, -17.5, 3); createPainting(27, 17, -17.5, 4); createPainting(42, 22, -17.5, 2);
 
-           const windowFrameGroup = new THREE.Group(); 
-windowFrameGroup.position.set(0, 14.5, -17.5); // 中心點稍微下移
-scene.add(windowFrameGroup);
-const frameMat = new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.5, metalness: 0.1}); 
-const frameThickness = 0.6; const frameDepth = 1.0;
+    const windowFrameGroup = new THREE.Group(); 
+    windowFrameGroup.position.set(0, 14.5, -17.5); 
+    scene.add(windowFrameGroup);
+    const frameMat = new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.5, metalness: 0.1}); 
+    const frameThickness = 0.6; const frameDepth = 1.0;
 
-// 窗戶總寬30，高27
-const leftF = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 27, frameDepth), frameMat); leftF.position.set(-15 + frameThickness/2, 0, 0); leftF.castShadow = true; windowFrameGroup.add(leftF);
-const rightF = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 27, frameDepth), frameMat); rightF.position.set(15 - frameThickness/2, 0, 0); rightF.castShadow = true; windowFrameGroup.add(rightF);
-const topF = new THREE.Mesh(new THREE.BoxGeometry(30, frameThickness, frameDepth), frameMat); topF.position.set(0, 13.5 - frameThickness/2, 0); topF.castShadow = true; windowFrameGroup.add(topF);
-const botF = new THREE.Mesh(new THREE.BoxGeometry(30, frameThickness, frameDepth), frameMat); botF.position.set(0, -13.5 + frameThickness/2, 0); botF.castShadow = true; windowFrameGroup.add(botF);
+    const leftF = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 27, frameDepth), frameMat); leftF.position.set(-15 + frameThickness/2, 0, 0); leftF.castShadow = true; windowFrameGroup.add(leftF);
+    const rightF = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 27, frameDepth), frameMat); rightF.position.set(15 - frameThickness/2, 0, 0); rightF.castShadow = true; windowFrameGroup.add(rightF);
+    const topF = new THREE.Mesh(new THREE.BoxGeometry(30, frameThickness, frameDepth), frameMat); topF.position.set(0, 13.5 - frameThickness/2, 0); topF.castShadow = true; windowFrameGroup.add(topF);
+    const botF = new THREE.Mesh(new THREE.BoxGeometry(30, frameThickness, frameDepth), frameMat); botF.position.set(0, -13.5 + frameThickness/2, 0); botF.castShadow = true; windowFrameGroup.add(botF);
+    const midV = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 27, frameDepth - 0.2), frameMat); midV.castShadow = true; windowFrameGroup.add(midV);
 
-// 保留中間直向窗框
-const midV = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, 27, frameDepth - 0.2), frameMat); midV.castShadow = true; windowFrameGroup.add(midV);
+    const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, roughness: 0.1, transmission: 0.8 }); 
+    const glassPane = new THREE.Mesh(new THREE.BoxGeometry(29.5, 26.5, 0.05), glassMat); windowFrameGroup.add(glassPane);
+    const doorGroup = new THREE.Group(); doorGroup.position.set(-59.5, 14, 0); doorGroup.rotation.y = Math.PI/2; scene.add(doorGroup);
+    const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(16, 28, 1), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.8})); doorGroup.add(doorFrame);
+    const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(14, 26, 1.2), new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.7})); doorGroup.add(doorPanel);
+    const doorKnob = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshStandardMaterial({color: 0x888888, metalness: 0.8})); doorKnob.position.set(5, 0, 0.8); doorGroup.add(doorKnob);
 
-const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, roughness: 0.1, transmission: 0.8 }); 
-const glassPane = new THREE.Mesh(new THREE.BoxGeometry(29.5, 26.5, 0.05), glassMat); windowFrameGroup.add(glassPane);
-            const doorGroup = new THREE.Group(); doorGroup.position.set(-59.5, 14, 0); doorGroup.rotation.y = Math.PI/2; scene.add(doorGroup);
-            const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(16, 28, 1), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.8})); doorGroup.add(doorFrame);
-            const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(14, 26, 1.2), new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.7})); doorGroup.add(doorPanel);
-            const doorKnob = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshStandardMaterial({color: 0x888888, metalness: 0.8})); doorKnob.position.set(5, 0, 0.8); doorGroup.add(doorKnob);
+    const acGroup = new THREE.Group(); acGroup.position.set(59, 32, -5); scene.add(acGroup);
+    const acBody = new THREE.Mesh(new THREE.BoxGeometry(2, 6, 16), new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.3})); acGroup.add(acBody);
+    const acVent = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1, 14), new THREE.MeshStandardMaterial({color: 0x111111})); acVent.position.set(-0.1, -2, 0); acGroup.add(acVent);
 
-            const acGroup = new THREE.Group(); acGroup.position.set(59, 32, -5); scene.add(acGroup);
-            const acBody = new THREE.Mesh(new THREE.BoxGeometry(2, 6, 16), new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.3})); acGroup.add(acBody);
-            const acVent = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1, 14), new THREE.MeshStandardMaterial({color: 0x111111})); acVent.position.set(-0.1, -2, 0); acGroup.add(acVent);
-
-            function createBookcase(x, z) {
-                const shelfGroup = new THREE.Group(); shelfGroup.position.set(x, 15, z); scene.add(shelfGroup); const shelfMat = new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.8});
-                const shelfBack = new THREE.Mesh(new THREE.BoxGeometry(22, 30, 0.5), shelfMat); shelfGroup.add(shelfBack); const sideGeo = new THREE.BoxGeometry(0.5, 30, 6);
-                const leftSide = new THREE.Mesh(sideGeo, shelfMat); leftSide.position.set(-11, 0, -2.5); leftSide.castShadow = true; shelfGroup.add(leftSide); const rightSide = new THREE.Mesh(sideGeo, shelfMat); rightSide.position.set(11, 0, -2.5); rightSide.castShadow = true; shelfGroup.add(rightSide);
-                const topBotGeo = new THREE.BoxGeometry(22, 0.5, 6); const topBoard = new THREE.Mesh(topBotGeo, shelfMat); topBoard.position.set(0, 15, -2.5); topBoard.castShadow = true; shelfGroup.add(topBoard); const botBoard = new THREE.Mesh(topBotGeo, shelfMat); botBoard.position.set(0, -15, -2.5); botBoard.castShadow = true; shelfGroup.add(botBoard);
-                for(let sy = -10; sy <= 10; sy += 6.5) {
-                    const shelfBoard = new THREE.Mesh(new THREE.BoxGeometry(21.5, 0.5, 5), shelfMat); shelfBoard.position.set(0, sy, -2.5); shelfBoard.castShadow = true; shelfGroup.add(shelfBoard);
-                    const bookColors = [0x8b3a3a, 0x3a5f8b, 0x4f8b3a, 0x8b6b3a, 0x222222, 0xdddddd]; let bx = -10;
-                    while(bx < 10) { let bw = Math.random() * 0.8 + 0.3; let bh = Math.random() * 2.5 + 3; if(bx + bw > 10) break; const b = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.05, bh, 4), new THREE.MeshStandardMaterial({color: bookColors[Math.floor(Math.random()*bookColors.length)], roughness: 0.7})); if(Math.random() > 0.7) { b.rotation.z = (Math.random() - 0.5) * 0.3; bx += 0.4; } b.position.set(bx + bw/2, sy + bh/2 + 0.25, -2.5); b.castShadow = true; shelfGroup.add(b); bx += bw; }
-                }
-            }
-            createBookcase(-25, 59); createBookcase(0, 59); createBookcase(25, 59);
-
-            woodMat = new THREE.MeshStandardMaterial({ map: createWoodTexture(), roughness: 0.6 });
-            desk = new THREE.Group(); scene.add(desk);
-            const top = new THREE.Mesh(new THREE.BoxGeometry(28, 0.8, 14), woodMat); top.position.y = 8; top.receiveShadow = true; top.castShadow = true; desk.add(top);
-            const legGeo = new THREE.CylinderGeometry(0.4, 0.3, 8, 16); [[-12,-5],[12,-5],[-12,5],[12,5]].forEach(pos => { const leg = new THREE.Mesh(legGeo, woodMat); leg.position.set(pos[0], 4, pos[1]); leg.castShadow = true; leg.receiveShadow = true; desk.add(leg); });
-
-            const chairGroup = new THREE.Group(); chairGroup.position.set(0, 0, 11); scene.add(chairGroup);
-            const seatGeo = new THREE.CylinderGeometry(2.5, 2.5, 1.0, 32); const cushionMat = new THREE.MeshStandardMaterial({color: 0x2b4c3f, roughness: 0.9, metalness: 0.1});
-            const seat = new THREE.Mesh(seatGeo, cushionMat); seat.position.y = 4.0; seat.castShadow = true; seat.receiveShadow = true; chairGroup.add(seat);
-            const cLegGeo = new THREE.CylinderGeometry(0.2, 0.1, 4.0); const legMat = new THREE.MeshStandardMaterial({color: 0xdaa520, metalness: 0.8, roughness: 0.3});
-            [[-1.5, 2.0, -1.5], [1.5, 2.0, -1.5], [-1.5, 2.0, 1.5], [1.5, 2.0, 1.5]].forEach(pos => { const leg = new THREE.Mesh(cLegGeo, legMat); leg.position.set(...pos); leg.castShadow = true; chairGroup.add(leg); });
-
-        leftDrawer = createHollowDrawer({type: 'replies'}); leftDrawer.position.set(-5.5, 6, 0); desk.add(leftDrawer);
-            rightDrawer = createHollowDrawer({type: 'inbox'}); rightDrawer.position.set(5.5, 6, 0); desk.add(rightDrawer);
-            
-            // 把手只宣告一次
-            const knobGeo = new THREE.SphereGeometry(0.5, 32, 32); 
-            const knobMat = new THREE.MeshStandardMaterial({color:0x555555, metalness:0.8, roughness:0.2});
-            const knobL = new THREE.Mesh(knobGeo, knobMat); knobL.position.z = 6.05; leftDrawer.add(knobL); 
-            const knobR = new THREE.Mesh(knobGeo, knobMat); knobR.position.z = 6.05; rightDrawer.add(knobR);
-            
-indicatorLeft = createFloatingLetter(); indicatorLeft.position.set(-5.5, 6.5, 10); indicatorLeft.rotation.set(-0.1, 0, 0.05); indicatorLeft.visible = false; desk.add(indicatorLeft);
-            indicatorRight = createFloatingLetter(); indicatorRight.position.set(5.5, 6.5, 10); indicatorRight.rotation.set(-0.1, 0, -0.05); indicatorRight.visible = false; desk.add(indicatorRight);
-            book = new THREE.Group(); book.position.set(8, 8.6, 2); book.rotation.y = -0.2; book.userData = {type: 'log'}; desk.add(book);
-            const bookPages = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.6, 5.2), new THREE.MeshStandardMaterial({color:0xffffff})); bookPages.castShadow = true; book.add(bookPages);
-            const bookCover = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.8, 5.6), new THREE.MeshStandardMaterial({map: createCoverTexture("", "#8b7355")})); bookCover.castShadow = true; book.add(bookCover);
-
-          clipboard = new THREE.Group(); clipboard.position.set(-8, 8.55, 1); clipboard.rotation.y = 0.15; clipboard.userData = {type: 'tasks'}; desk.add(clipboard);
-            const clipBoardBase = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.1, 6), new THREE.MeshStandardMaterial({map: createWoodTexture()})); clipBoardBase.castShadow = true; clipboard.add(clipBoardBase);
-            const paper = new THREE.Mesh(new THREE.BoxGeometry(4, 0.12, 5.5), new THREE.MeshStandardMaterial({color:0xffffff})); paper.position.y=0.05; clipboard.add(paper);
-            const clip = new THREE.Mesh(new THREE.BoxGeometry(2, 0.3, 0.5), new THREE.MeshStandardMaterial({color:0xaaaaaa, metalness:0.8})); clip.position.set(0, 0.2, -2.5); clipboard.add(clip);
-
-            // 【新增】生成懸浮在任務板上方的信封
-            indicatorTasks = createFloatingLetter(); 
-            indicatorTasks.position.set(-8, 9.5, 1); // 位於任務板上方
-            indicatorTasks.rotation.set(-0.1, 0.15, 0); 
-            indicatorTasks.visible = false; // 預設隱藏
-            desk.add(indicatorTasks);
-            wateringCan = new THREE.Group(); wateringCan.position.set(-11, 8.5, -3); wateringCan.rotation.y = Math.PI/4; wateringCan.userData = {type: 'water'}; desk.add(wateringCan);
-            const canBody = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1, 1.8, 16), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})); canBody.position.y = 0.9; canBody.castShadow = true; wateringCan.add(canBody);
-            const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, 2.5), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})); spout.position.set(1.2, 0.8, 0); spout.rotation.z = -Math.PI/3; spout.castShadow = true; wateringCan.add(spout);
-            const handle = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.1, 8, 16), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})); handle.rotation.set(0, 0, 0); handle.position.set(-0.8, 0.9, 0); handle.castShadow = true; wateringCan.add(handle);
-            dummySpoutTip = new THREE.Object3D(); dummySpoutTip.position.set(0, 1.3, 0); spout.add(dummySpoutTip);
-
-            // Carpet
-            const cpt = new THREE.Mesh(new THREE.PlaneGeometry(36, 24), new THREE.MeshStandardMaterial({map: createCarpetTexture(), roughness: 1.0}));
-            cpt.rotation.x = -Math.PI/2; cpt.position.set(0, 0.05, 8); cpt.receiveShadow = true; scene.add(cpt);
-            
-            // Trash Can
-            const tcGrp = new THREE.Group(); tcGrp.position.set(-16, 2.5, 6); scene.add(tcGrp);
-            const tcBody = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.4, 5, 20, 1, true), new THREE.MeshStandardMaterial({color: 0x7a7a7a, metalness: 0.6, roughness: 0.4, side: THREE.DoubleSide}));
-            tcBody.castShadow = true; tcGrp.add(tcBody);
-            const tcBot = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.2, 20), new THREE.MeshStandardMaterial({color: 0x7a7a7a, metalness: 0.6, roughness: 0.4}));
-            tcBot.position.y = -2.4; tcGrp.add(tcBot);
-
-            // Curtains
-            const curtainMat = new THREE.MeshStandardMaterial({color: 0x8f9fa6, roughness: 0.9, side: THREE.DoubleSide});
-            function createCurtain(px) {
-                const cGrp = new THREE.Group();
-                for(let i=0; i<6; i++) {
-                    const fold = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 38, 12), curtainMat);
-                    fold.position.set((i-2.5)*1.2, 0, (i%2)*0.6);
-                    fold.scale.z = 0.4; fold.castShadow = true;
-                    cGrp.add(fold);
-                }
-                cGrp.position.set(px, 19, -16.5);
-                scene.add(cGrp);
-            }
-          createCurtain(-18); createCurtain(18);
-
-            // Wall Shelves
-            const shGrp = new THREE.Group(); shGrp.position.set(59.5, 20, -5); shGrp.rotation.y = -Math.PI/2; scene.add(shGrp);
-            const sh1 = new THREE.Mesh(new THREE.BoxGeometry(12, 0.6, 2.5), woodMat); sh1.position.set(0, 4, 0); sh1.castShadow = true; shGrp.add(sh1);
-            const sh2 = new THREE.Mesh(new THREE.BoxGeometry(12, 0.6, 2.5), woodMat); sh2.position.set(0, -2, 0); sh2.castShadow = true; shGrp.add(sh2);
-            const dec1 = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 2), new THREE.MeshStandardMaterial({color: 0x5a6b5d})); dec1.position.set(-4, 5.8, 0); dec1.castShadow=true; shGrp.add(dec1);
-            const dec2 = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2, 2), new THREE.MeshStandardMaterial({color: 0x8c7a6b})); dec2.position.set(3, 5.3, 0); dec2.castShadow=true; shGrp.add(dec2);
-            const dec3 = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 2), new THREE.MeshStandardMaterial({color: 0xdddddd})); dec3.position.set(2, -0.7, 0); dec3.castShadow=true; shGrp.add(dec3);
-
-          // Clock
-            const clockGrp = new THREE.Group(); clockGrp.position.set(59.5, 28, 15); clockGrp.rotation.y = -Math.PI/2; scene.add(clockGrp);
-            const clkBase = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 0.6, 32), new THREE.MeshStandardMaterial({color: 0x2c3e50})); clkBase.rotation.x = Math.PI/2; clkBase.castShadow = true; clockGrp.add(clkBase);
-            const clkFace = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 7.4), new THREE.MeshBasicMaterial({map: createClockTexture()})); clkFace.position.z = 0.31; clockGrp.add(clkFace);
-            
-            // 建立 3D 指針實體
-            const handMat = new THREE.MeshBasicMaterial({color: 0x333333});
-            const secHandMat = new THREE.MeshBasicMaterial({color: 0xc25953});
-            
-            clockHourHand = new THREE.Group(); clockHourHand.position.z = 0.35;
-            const hHand = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.8, 0.05), handMat); hHand.position.y = 0.9; clockHourHand.add(hHand);
-            clockGrp.add(clockHourHand);
-            
-            clockMinHand = new THREE.Group(); clockMinHand.position.z = 0.38;
-            const mHand = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.8, 0.05), handMat); mHand.position.y = 1.4; clockMinHand.add(mHand);
-            clockGrp.add(clockMinHand);
-            
-            clockSecHand = new THREE.Group(); clockSecHand.position.z = 0.41;
-            const sHand = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.2, 0.05), secHandMat); sHand.position.y = 1.0; clockSecHand.add(sHand);
-            clockGrp.add(clockSecHand);
-
-            
-         // Coat Rack
-            const rackGrp = new THREE.Group(); rackGrp.position.set(-56, 0, 30); scene.add(rackGrp);
-            const rPole = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 22, 16), woodMat); rPole.position.y = 11; rPole.castShadow = true; rackGrp.add(rPole);
-            const rBase = new THREE.Mesh(new THREE.CylinderGeometry(3, 3.5, 0.6, 32), woodMat); rBase.position.y = 0.3; rBase.castShadow = true; rackGrp.add(rBase);
-            
-            // 將掛鉤數量增加到 8 個，並拉開距離呈螺旋分佈
-            for(let i=0; i<8; i++) { 
-                const piv = new THREE.Group(); 
-                piv.position.y = 10 + i * 1.4; // 從高度 10 開始往上長，每個垂直間距拉大到 1.4
-                piv.rotation.y = i * (Math.PI * 0.75); // 每次旋轉 135 度，形成不會重疊的螺旋上升錯落感
-                const hk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.5), woodMat);
-                hk.position.set(0.8, 0.8, 0); 
-                hk.rotation.z = -Math.PI/4; // 保持樹枝向上
-                hk.castShadow = true; 
-                piv.add(hk); 
-                rackGrp.add(piv); 
-            }
-            
-            // Umbrella Stand
-            const umbGrp = new THREE.Group(); umbGrp.position.set(-55, 0, 38); scene.add(umbGrp); // 遠離門口
-            const uBody = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.2, 6, 16, 1, true), new THREE.MeshStandardMaterial({color: 0x2c3e50, roughness: 0.8, side: THREE.DoubleSide}));
-            uBody.position.y = 3; uBody.castShadow = true; umbGrp.add(uBody);
-            const uBot = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.2, 16), new THREE.MeshStandardMaterial({color: 0x2c3e50})); uBot.position.y = 0.1; umbGrp.add(uBot);
-            const umb = new THREE.Group(); umb.rotation.set(0.15, 0, 0.2); umbGrp.add(umb);
-            const uStick = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 10), new THREE.MeshStandardMaterial({color: 0xaaaaaa})); uStick.position.set(0, 5, 0); umb.add(uStick);
-            const uFab = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 1.0, 5), new THREE.MeshStandardMaterial({color: 0x3b5998})); uFab.position.set(0, 4, 0); umb.add(uFab);
-            const uHan = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.1, 8, 16, Math.PI), new THREE.MeshStandardMaterial({color: 0x111111})); uHan.position.set(0.4, 10, 0); umb.add(uHan);
-
-          sceneryGroup = new THREE.Group(); 
-            // 【修改點 1】將室外場景群組的 Y 軸高度從 5 降至 -15 (下降 20 單位)，產生高度差與俯視感
-            sceneryGroup.position.set(0, -15, -50); 
-            scene.add(sceneryGroup);
-            
-            const buildingTex = createBuildingTexture();
-            const bMat = new THREE.MeshStandardMaterial({color:0x778899, roughness:0.8, map: buildingTex, emissiveMap: buildingTex, emissive: 0xffffee, emissiveIntensity: 0.0}); 
-            
-            // 【修改點 2】配合場景下降，把大樓的高度 (h) 統一增加 20，確保視平線上依然能看到大樓錯落的頂層窗戶
-            const fixedBuildings = [ {x: -35, z: -15, h: 55}, {x: -20, z: -20, h: 65}, {x: -8, z: -12, h: 45}, {x: 5, z: -18, h: 58}, {x: 18, z: -14, h: 70}, {x: 32, z: -22, h: 50}, {x: 45, z: -16, h: 62}, {x: -50, z: -18, h: 48} ];
-            
-            fixedBuildings.forEach(bd => { const b = new THREE.Mesh(new THREE.BoxGeometry(8, bd.h, 8), bMat); b.position.set(bd.x, bd.h/2 - 5, bd.z); b.castShadow = true; b.receiveShadow = true; sceneryGroup.add(b); animScenery.buildings.push(b); });
-            const road = new THREE.Mesh(new THREE.PlaneGeometry(120, 8), new THREE.MeshStandardMaterial({color:0x333333})); road.rotation.x = -Math.PI/2; road.position.set(0, -4.9, 0); road.receiveShadow=true; sceneryGroup.add(road);
-            for(let i=0; i<6; i++) { const c = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 2.5), new THREE.MeshStandardMaterial({color: Math.random()>0.5?0xff3333:0xeeeeee, roughness:0.4})); c.position.set((Math.random()-0.5)*80, -4.6, (Math.random()-0.5)*4); c.castShadow = true; c.userData={speed: (Math.random()*0.3+0.15) * (Math.random()>0.5?1:-1)}; sceneryGroup.add(c); animScenery.cars.push(c); }
-            const treeMat = new THREE.MeshStandardMaterial({color: 0x2d4c1e, roughness: 0.9}); const trunkMat = new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 0.9});
-            for (let i = -50; i <= 50; i += 15) { if (Math.abs(i) < 5) continue; [[-7], [7]].forEach(pos => { const t = new THREE.Group(); const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 3), trunkMat); tr.position.y = 1.5; tr.castShadow = true; t.add(tr); const lf = new THREE.Mesh(new THREE.ConeGeometry(2.5, 6, 8), treeMat); lf.position.y = 4.5; lf.castShadow = true; t.add(lf); t.position.set(i + (Math.random()-0.5)*3, -4.9, pos[0]); sceneryGroup.add(t); }); }
-
-        interactables = [leftDrawer, rightDrawer, book, clipboard, wateringCan];
-            
-            // 🐾 1. 動態生成毛髮紋理 (Fur Texture)
-          // 🐾 1. 動態生成毛髮紋理 (Fur Texture)
-            function createFurTexture(baseColor, highlight, shadow) {
-                const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
-                ctx.fillStyle = baseColor; ctx.fillRect(0,0,512,512);
-                for(let i=0; i<35000; i++) {
-                    ctx.fillStyle = Math.random() > 0.5 ? highlight : shadow;
-                    ctx.beginPath();
-                    ctx.ellipse(Math.random()*512, Math.random()*512, Math.random()*0.6+0.2, Math.random()*6+4, Math.random()*0.2-0.1, 0, Math.PI*2);
-                    ctx.fill();
-                }
-                const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2, 2); return tex;
-            }
-
-            const orangeFur = createFurTexture('#d48035', 'rgba(255,255,255,0.15)', 'rgba(160,70,20,0.2)');
-            const whiteFur = createFurTexture('#f0f0f0', 'rgba(255,255,255,0.8)', 'rgba(200,200,200,0.3)');
-            const catMat = new THREE.MeshStandardMaterial({map: orangeFur, roughness: 0.9, bumpMap: orangeFur, bumpScale: 0.02});
-            const whiteMat = new THREE.MeshStandardMaterial({map: whiteFur, roughness: 0.9, bumpMap: whiteFur, bumpScale: 0.02});
-
-            // 🐾 2. 創造高細緻度圓潤小貓
-            catGrp = new THREE.Group(); catGrp.position.set(0, 0, 25); scene.add(catGrp);
-            catBody = new THREE.Group(); catBody.position.y = 1.6; catGrp.add(catBody);
-            
-            // 身體與頭部
-            const bodyMesh = new THREE.Mesh(new THREE.SphereGeometry(1.2, 32, 32), catMat);
-            bodyMesh.scale.set(0.8, 0.8, 1.4); bodyMesh.castShadow = true; catBody.add(bodyMesh);
-            const belly = new THREE.Mesh(new THREE.SphereGeometry(1.15, 32, 32), whiteMat);
-            belly.scale.set(0.75, 0.75, 1.35); belly.position.y = -0.15; catBody.add(belly);
-
-            catHeadGrp = new THREE.Group(); catHeadGrp.position.set(0, 0.6, 1.3); catBody.add(catHeadGrp);
-            const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.85, 32, 32), catMat); headMesh.castShadow = true; catHeadGrp.add(headMesh);
-            const snout = new THREE.Mesh(new THREE.SphereGeometry(0.35, 24, 24), whiteMat); snout.position.set(0, -0.2, 0.7); catHeadGrp.add(snout); 
-            const nose = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 16), new THREE.MeshStandardMaterial({color: 0xffaaaa, roughness: 0.4})); nose.position.set(0, 0.02, 0.95); catHeadGrp.add(nose); 
-            
-            const eyeMat = new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.1, metalness: 0.8}); 
-            const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), eyeMat); eyeL.position.set(0.35, 0.15, 0.65); catHeadGrp.add(eyeL);
-            const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), eyeMat); eyeR.position.set(-0.35, 0.15, 0.65); catHeadGrp.add(eyeR);
-
-            const earGeo = new THREE.ConeGeometry(0.28, 0.6, 16); earGeo.translate(0, 0.3, 0);
-            const earL = new THREE.Mesh(earGeo, catMat); earL.position.set(0.4, 0.5, 0); earL.rotation.set(-0.2, 0, -0.3); catHeadGrp.add(earL);
-            const earR = new THREE.Mesh(earGeo, catMat); earR.position.set(-0.4, 0.5, 0); earR.rotation.set(-0.2, 0, 0.3); catHeadGrp.add(earR);
-
-            // 🐾 3. 建立柔軟關節四肢 (骨架蒙皮)
-            const legSkinMat = new THREE.MeshStandardMaterial({ map: catMat.map, roughness: 0.9, skinning: true });
-            
-            function createLeg(x, z) {
-                const legGrp = new THREE.Group(); legGrp.position.set(x, 0, z);
-                const legLength = 1.2; const boneCount = 2;
-                const bones = []; let prevBone = new THREE.Bone(); prevBone.position.y = 0; bones.push(prevBone);
-                
-                for(let i=1; i<=boneCount; i++) {
-                    const bone = new THREE.Bone(); bone.position.y = -legLength / boneCount;
-                    prevBone.add(bone); bones.push(bone); prevBone = bone;
-                }
-                const skeleton = new THREE.Skeleton(bones);
-                const legGeo = new THREE.CylinderGeometry(0.25, 0.18, legLength, 16, 10);
-                legGeo.translate(0, -legLength / 2, 0);
-                
-                const posAttr = legGeo.attributes.position; const skinIndices = []; const skinWeights = [];
-                for(let i=0; i<posAttr.count; i++) {
-                    const y = Math.abs(Math.min(0, posAttr.getY(i))); 
-                    const exactIndex = (y / legLength) * boneCount;
-                    let bone1 = Math.floor(exactIndex); let bone2 = bone1 + 1;
-                    let weight2 = exactIndex - bone1; let weight1 = 1 - weight2;
-                    if (bone1 >= boneCount) { bone1 = boneCount; weight1 = 1; weight2 = 0; bone2 = 0; }
-                    if (bone2 > boneCount) bone2 = boneCount;
-                    skinIndices.push(bone1, bone2, 0, 0); skinWeights.push(weight1, weight2, 0, 0);
-                }
-                legGeo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndices, 4));
-                legGeo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeights, 4));
-                
-                const legMesh = new THREE.SkinnedMesh(legGeo, legSkinMat);
-                legMesh.add(bones[0]); legMesh.bind(skeleton); legMesh.castShadow = true; legGrp.add(legMesh);
-                
-                const paw = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), whiteMat); 
-                paw.position.set(0, 0, 0.08); paw.scale.set(1, 0.6, 1.2); paw.castShadow = true; 
-                bones[boneCount].add(paw); catBody.add(legGrp); 
-                
-                return { root: bones[0], knee: bones[1] };
-            }
-
-            legFL = createLeg(0.5, 0.8); legFR = createLeg(-0.5, 0.8);
-            legBL = createLeg(0.5, -0.8); legBR = createLeg(-0.5, -0.8);
-
-            // 🐾 4. 柔軟貓尾巴
-            catTailGrp = new THREE.Group(); catTailGrp.position.set(0, 0.5, -1.1); catTailGrp.rotation.x = -0.4; 
-            catBody.add(catTailGrp);
-            
-            const tailLength = 2.5; const tailBoneCount = 8;
-            catTailBones = []; let prevTBone = new THREE.Bone(); prevTBone.position.y = 0; catTailBones.push(prevTBone);
-            for(let i=1; i<=tailBoneCount; i++) {
-                const bone = new THREE.Bone(); bone.position.y = tailLength / tailBoneCount;
-                prevTBone.add(bone); catTailBones.push(bone); prevTBone = bone;
-            }
-            const tailSkeleton = new THREE.Skeleton(catTailBones);
-            const tailGeo = new THREE.CylinderGeometry(0.04, 0.16, tailLength, 16, 30);
-            tailGeo.translate(0, tailLength / 2, 0); 
-            
-            const tPosAttr = tailGeo.attributes.position; const tSkinIndices = []; const tSkinWeights = [];
-            for(let i=0; i<tPosAttr.count; i++) {
-                const y = Math.max(0, tPosAttr.getY(i)); 
-                const exactIndex = (y / tailLength) * tailBoneCount;
-                let bone1 = Math.floor(exactIndex); let bone2 = bone1 + 1;
-                let weight2 = exactIndex - bone1; let weight1 = 1 - weight2;
-                if (bone1 >= tailBoneCount) { bone1 = tailBoneCount; weight1 = 1; weight2 = 0; bone2 = 0; }
-                if (bone2 > tailBoneCount) bone2 = tailBoneCount;
-                tSkinIndices.push(bone1, bone2, 0, 0); tSkinWeights.push(weight1, weight2, 0, 0);
-            }
-            tailGeo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(tSkinIndices, 4));
-            tailGeo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(tSkinWeights, 4));
-            
-            const tailSkinMat = new THREE.MeshStandardMaterial({ map: catMat.map, roughness: 0.9, skinning: true });
-            const tailMesh = new THREE.SkinnedMesh(tailGeo, tailSkinMat);
-            tailMesh.add(catTailBones[0]); tailMesh.bind(tailSkeleton); tailMesh.castShadow = true; catTailGrp.add(tailMesh);
-            
-            const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), catMat);
-            catTailBones[tailBoneCount].add(tailTip);
-            
-            setCatState('idle'); // 啟動貓咪狀態
+    function createBookcase(x, z) {
+        const shelfGroup = new THREE.Group(); shelfGroup.position.set(x, 15, z); scene.add(shelfGroup); const shelfMat = new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.8});
+        const shelfBack = new THREE.Mesh(new THREE.BoxGeometry(22, 30, 0.5), shelfMat); shelfGroup.add(shelfBack); const sideGeo = new THREE.BoxGeometry(0.5, 30, 6);
+        const leftSide = new THREE.Mesh(sideGeo, shelfMat); leftSide.position.set(-11, 0, -2.5); leftSide.castShadow = true; shelfGroup.add(leftSide); const rightSide = new THREE.Mesh(sideGeo, shelfMat); rightSide.position.set(11, 0, -2.5); rightSide.castShadow = true; shelfGroup.add(rightSide);
+        const topBotGeo = new THREE.BoxGeometry(22, 0.5, 6); const topBoard = new THREE.Mesh(topBotGeo, shelfMat); topBoard.position.set(0, 15, -2.5); topBoard.castShadow = true; shelfGroup.add(topBoard); const botBoard = new THREE.Mesh(topBotGeo, shelfMat); botBoard.position.set(0, -15, -2.5); botBoard.castShadow = true; shelfGroup.add(botBoard);
+        for(let sy = -10; sy <= 10; sy += 6.5) {
+            const shelfBoard = new THREE.Mesh(new THREE.BoxGeometry(21.5, 0.5, 5), shelfMat); shelfBoard.position.set(0, sy, -2.5); shelfBoard.castShadow = true; shelfGroup.add(shelfBoard);
+            const bookColors = [0x8b3a3a, 0x3a5f8b, 0x4f8b3a, 0x8b6b3a, 0x222222, 0xdddddd]; let bx = -10;
+            while(bx < 10) { let bw = Math.random() * 0.8 + 0.3; let bh = Math.random() * 2.5 + 3; if(bx + bw > 10) break; const b = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.05, bh, 4), new THREE.MeshStandardMaterial({color: bookColors[Math.floor(Math.random()*bookColors.length)], roughness: 0.7})); if(Math.random() > 0.7) { b.rotation.z = (Math.random() - 0.5) * 0.3; bx += 0.4; } b.position.set(bx + bw/2, sy + bh/2 + 0.25, -2.5); b.castShadow = true; shelfGroup.add(b); bx += bw; }
         }
+    }
+    createBookcase(-25, 59); createBookcase(0, 59); createBookcase(25, 59);
 
-        function buildPlantIn3D(type, growth, wilt) {
-            if (plantGroup) { desk.remove(plantGroup); interactables = interactables.filter(i => !(i.userData && i.userData.type === 'plant')); }
-            plantGroup = new THREE.Group(); plantGroup.position.set(0, 8.5, -3); desk.add(plantGroup);
-            const hitBox = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 4), new THREE.MeshBasicMaterial({visible: false})); hitBox.position.y = 2.5; hitBox.userData = {type: 'plant'}; plantGroup.add(hitBox); interactables.push(hitBox);
-            
-            const pot = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.9, 1.6, 32), new THREE.MeshStandardMaterial({color: 0xd4a373, roughness: 0.9})); pot.position.y=0.8; pot.castShadow=true; plantGroup.add(pot);
-            const dirt = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, 0.05, 32), new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 1.0})); dirt.position.y=1.61; plantGroup.add(dirt);
-            
-            const isDead = wilt >= 7; const scale = 0.1 + (growth / 100) * 0.15; const wiltFactor = isDead ? 1 : wilt / 7;
-            const leafColor = isDead ? new THREE.Color(0x5d4037) : new THREE.Color(0x4c7c2b).lerp(new THREE.Color(0x8d6e63), wiltFactor);
-            const mat = new THREE.MeshStandardMaterial({color: leafColor, roughness: 0.9, side: THREE.DoubleSide}); const plantBody = new THREE.Group(); plantBody.position.y = 1.6; plantGroup.add(plantBody);
+    woodMat = new THREE.MeshStandardMaterial({ map: createWoodTexture(), roughness: 0.6 });
+    desk = new THREE.Group(); scene.add(desk);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(28, 0.8, 14), woodMat); top.position.y = 8; top.receiveShadow = true; top.castShadow = true; desk.add(top);
+    const legGeo = new THREE.CylinderGeometry(0.4, 0.3, 8, 16); [[-12,-5],[12,-5],[-12,5],[12,5]].forEach(pos => { const leg = new THREE.Mesh(legGeo, woodMat); leg.position.set(pos[0], 4, pos[1]); leg.castShadow = true; leg.receiveShadow = true; desk.add(leg); });
 
-            if (type === 1) { 
-                const count = Math.floor(growth / 8) + 3; const leafGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.05, 16); 
-                for(let i=0; i<count; i++) { const stemGrp = new THREE.Group(); const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2), mat); stem.position.y = 1; stem.castShadow = true; stemGrp.add(stem); const leaf = new THREE.Mesh(leafGeo, mat); leaf.position.y = 2; leaf.rotation.x = Math.PI / 2; leaf.scale.set(1, 1, 1.2); leaf.castShadow = true; stemGrp.add(leaf); let dropAngle = isDead ? (Math.PI/1.6) : (wiltFactor * Math.PI/4 + 0.2); stemGrp.rotation.x = dropAngle; stemGrp.rotation.y = i * 2.4; if(isDead) stemGrp.scale.setScalar(scale * 0.8); else stemGrp.scale.setScalar(scale * (0.8 + i*0.05)); plantBody.add(stemGrp); }
-            } else if (type === 2) { 
-                const count = Math.floor(growth / 4) + 12; const leafGeo = new THREE.ConeGeometry(0.6, 1.8, 12); leafGeo.translate(0, 0.9, 0); 
-                for(let i=0; i<count; i++) { const leaf = new THREE.Mesh(leafGeo, mat); const angle = i * 2.39996; const radius = i * 0.05; leaf.rotation.y = -angle; let bend = Math.PI/2 - (Math.PI/2) / (1 + i*0.15); if(isDead) bend += Math.PI/4; leaf.rotation.x = bend; leaf.position.x = Math.cos(angle) * radius * scale; leaf.position.z = Math.sin(angle) * radius * scale; leaf.position.y = (count - i) * 0.02 * scale; leaf.scale.set(scale, scale, scale*0.5); leaf.castShadow=true; plantBody.add(leaf); }
-            } else if (type === 3) { 
-                const trunkMat = new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 1.0}); const bonsaiGrp = new THREE.Group();
-                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 3, 8), trunkMat); trunk.position.y = 1.5; trunk.rotation.z = 0.3; trunk.rotation.x = 0.2; trunk.castShadow = true; bonsaiGrp.add(trunk);
-                const crown = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), mat); crown.position.set(-0.5, 3.2, -0.5); crown.scale.set(1, 0.6, 1); crown.castShadow = true; bonsaiGrp.add(crown);
-                const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 1.5), trunkMat); branch.position.set(0.5, 1.5, 0); branch.rotation.z = -0.6; branch.castShadow = true; bonsaiGrp.add(branch);
-                const crown2 = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 16), mat); crown2.position.set(1.2, 2.0, 0); crown2.scale.set(1, 0.6, 1); crown2.castShadow = true; bonsaiGrp.add(crown2);
-                if (isDead) { bonsaiGrp.scale.setScalar(scale * 1.2); crown.scale.set(0.8, 0.3, 0.8); crown2.scale.set(0.8, 0.3, 0.8); crown.position.y -= 0.4; crown2.position.y -= 0.2; } else { bonsaiGrp.scale.setScalar(scale * 1.6); } plantBody.add(bonsaiGrp);
-            } else if (type === 4) { 
-                const stemCount = Math.floor(growth / 10) + 4; const purpColor = isDead ? new THREE.Color(0x6b5b6b) : new THREE.Color(0x9b7bc6).lerp(new THREE.Color(0x8d6e63), wiltFactor); const flowerMat = new THREE.MeshStandardMaterial({color: purpColor, roughness: 0.8});
-                for(let i=0; i<stemCount; i++) { const stemGrp = new THREE.Group(); const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.5), mat); stem.position.y = 1.25; stem.castShadow = true; stemGrp.add(stem); const flower = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.2, 8), flowerMat); flower.position.y = 3.0; flower.castShadow = true; stemGrp.add(flower); stemGrp.rotation.x = (Math.random() - 0.5) * 0.4; stemGrp.rotation.z = (Math.random() - 0.5) * 0.4; if (isDead) stemGrp.rotation.x += Math.PI/2.5; stemGrp.scale.setScalar(scale * 1.3); plantBody.add(stemGrp); }
-            } else if (type === 5) { 
-                const cacMat = new THREE.MeshStandardMaterial({color: leafColor, roughness: 0.9}); const mainGrp = new THREE.Group();
-                const body = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 2.5, 16), cacMat); body.castShadow = true; mainGrp.add(body);
-                const capTop = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16), cacMat); capTop.position.y = 1.25; capTop.castShadow = true; mainGrp.add(capTop);
-                const capBot = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16), cacMat); capBot.position.y = -1.25; capBot.castShadow = true; mainGrp.add(capBot);
-                if (growth > 10) { const armGrp = new THREE.Group(); const armBody = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.0, 16), cacMat); armBody.castShadow = true; armGrp.add(armBody); const armTop = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), cacMat); armTop.position.y = 0.5; armTop.castShadow = true; armGrp.add(armTop); const armBot = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), cacMat); armBot.position.y = -0.5; armBot.castShadow = true; armGrp.add(armBot); armGrp.position.set(1.1, 0.2, 0); armGrp.rotation.z = -0.6; mainGrp.add(armGrp); }
-                if (growth > 40) { const armGrp2 = new THREE.Group(); const armBody2 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.8, 16), cacMat); armBody2.castShadow = true; armGrp2.add(armBody2); const armTop2 = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), cacMat); armTop2.position.y = 0.4; armTop2.castShadow = true; armGrp2.add(armTop2); const armBot2 = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), cacMat); armBot2.position.y = -0.4; armBot2.castShadow = true; armGrp2.add(armBot2); armGrp2.position.set(-1.0, 0.6, 0); armGrp2.rotation.z = 0.8; mainGrp.add(armGrp2); }
-                mainGrp.position.y = 1.5 * scale; if(isDead) { mainGrp.scale.set(scale*0.8, scale*0.8, scale*0.8); mainGrp.rotation.z = 0.8; mainGrp.position.x = 1.5 * scale; } else { mainGrp.scale.setScalar(scale); } plantBody.add(mainGrp);
-            }
+    chairGroup = new THREE.Group(); chairGroup.position.set(0, 0, 11); scene.add(chairGroup);
+    const seatGeo = new THREE.CylinderGeometry(2.5, 2.5, 1.0, 32); const cushionMat = new THREE.MeshStandardMaterial({color: 0x2b4c3f, roughness: 0.9, metalness: 0.1});
+    const seat = new THREE.Mesh(seatGeo, cushionMat); seat.position.y = 4.0; seat.castShadow = true; seat.receiveShadow = true; chairGroup.add(seat);
+    const cLegGeo = new THREE.CylinderGeometry(0.2, 0.1, 4.0); const legMat = new THREE.MeshStandardMaterial({color: 0xdaa520, metalness: 0.8, roughness: 0.3});
+    [[-1.5, 2.0, -1.5], [1.5, 2.0, -1.5], [-1.5, 2.0, 1.5], [1.5, 2.0, 1.5]].forEach(pos => { const leg = new THREE.Mesh(cLegGeo, legMat); leg.position.set(...pos); leg.castShadow = true; chairGroup.add(leg); });
+    
+    // 椅子的 HitBox，設定為可拖曳
+    const chairHitBox = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 6), new THREE.MeshBasicMaterial({visible: false}));
+    chairHitBox.position.y = 2.5; chairHitBox.userData = {type: 'chair'}; chairGroup.add(chairHitBox);
+
+    leftDrawer = createHollowDrawer({type: 'replies'}); leftDrawer.position.set(-5.5, 6, 0); desk.add(leftDrawer);
+    rightDrawer = createHollowDrawer({type: 'inbox'}); rightDrawer.position.set(5.5, 6, 0); desk.add(rightDrawer);
+    
+    const knobGeo = new THREE.SphereGeometry(0.5, 32, 32); 
+    const knobMat = new THREE.MeshStandardMaterial({color:0x555555, metalness:0.8, roughness:0.2});
+    const knobL = new THREE.Mesh(knobGeo, knobMat); knobL.position.z = 6.05; leftDrawer.add(knobL); 
+    const knobR = new THREE.Mesh(knobGeo, knobMat); knobR.position.z = 6.05; rightDrawer.add(knobR);
+    
+    indicatorLeft = createFloatingLetter(); indicatorLeft.position.set(-5.5, 6.5, 10); indicatorLeft.rotation.set(-0.1, 0, 0.05); indicatorLeft.visible = false; desk.add(indicatorLeft);
+    indicatorRight = createFloatingLetter(); indicatorRight.position.set(5.5, 6.5, 10); indicatorRight.rotation.set(-0.1, 0, -0.05); indicatorRight.visible = false; desk.add(indicatorRight);
+    book = new THREE.Group(); book.position.set(8, 8.6, 2); book.rotation.y = -0.2; book.userData = {type: 'log'}; desk.add(book);
+    const bookPages = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.6, 5.2), new THREE.MeshStandardMaterial({color:0xffffff})); bookPages.castShadow = true; book.add(bookPages);
+    const bookCover = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.8, 5.6), new THREE.MeshStandardMaterial({map: createCoverTexture("", "#8b7355")})); bookCover.castShadow = true; book.add(bookCover);
+
+    clipboard = new THREE.Group(); clipboard.position.set(-8, 8.55, 1); clipboard.rotation.y = 0.15; clipboard.userData = {type: 'tasks'}; desk.add(clipboard);
+    const clipBoardBase = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.1, 6), new THREE.MeshStandardMaterial({map: createWoodTexture()})); clipBoardBase.castShadow = true; clipboard.add(clipBoardBase);
+    const paper = new THREE.Mesh(new THREE.BoxGeometry(4, 0.12, 5.5), new THREE.MeshStandardMaterial({color:0xffffff})); paper.position.y=0.05; clipboard.add(paper);
+    const clip = new THREE.Mesh(new THREE.BoxGeometry(2, 0.3, 0.5), new THREE.MeshStandardMaterial({color:0xaaaaaa, metalness:0.8})); clip.position.set(0, 0.2, -2.5); clipboard.add(clip);
+
+    indicatorTasks = createFloatingLetter(); indicatorTasks.position.set(-8, 9.5, 1); indicatorTasks.rotation.set(-0.1, 0.15, 0); indicatorTasks.visible = false; desk.add(indicatorTasks);
+    
+    wateringCan = new THREE.Group(); wateringCan.position.set(-11, 8.5, -3); wateringCan.rotation.y = Math.PI/4; wateringCan.userData = {type: 'water'}; desk.add(wateringCan);
+    const canBody = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1, 1.8, 16), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})); canBody.position.y = 0.9; canBody.castShadow = true; wateringCan.add(canBody);
+    const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, 2.5), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})); spout.position.set(1.2, 0.8, 0); spout.rotation.z = -Math.PI/3; spout.castShadow = true; wateringCan.add(spout);
+    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.1, 8, 16), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})); handle.rotation.set(0, 0, 0); handle.position.set(-0.8, 0.9, 0); handle.castShadow = true; wateringCan.add(handle);
+    dummySpoutTip = new THREE.Object3D(); dummySpoutTip.position.set(0, 1.3, 0); spout.add(dummySpoutTip);
+
+    const cpt = new THREE.Mesh(new THREE.PlaneGeometry(36, 24), new THREE.MeshStandardMaterial({map: createCarpetTexture(), roughness: 1.0}));
+    cpt.rotation.x = -Math.PI/2; cpt.position.set(0, 0.05, 8); cpt.receiveShadow = true; scene.add(cpt);
+    
+    tcGrp = new THREE.Group(); tcGrp.position.set(-16, 2.5, 6); scene.add(tcGrp);
+    const tcBody = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 1.4, 5, 20, 1, true), new THREE.MeshStandardMaterial({color: 0x7a7a7a, metalness: 0.6, roughness: 0.4, side: THREE.DoubleSide}));
+    tcBody.castShadow = true; tcGrp.add(tcBody);
+    const tcBot = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.2, 20), new THREE.MeshStandardMaterial({color: 0x7a7a7a, metalness: 0.6, roughness: 0.4}));
+    tcBot.position.y = -2.4; tcGrp.add(tcBot);
+
+    // 垃圾桶的 HitBox，設定為可拖曳
+    const tcHitBox = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 6), new THREE.MeshBasicMaterial({visible: false}));
+    tcHitBox.position.y = 0; tcHitBox.userData = {type: 'trash'}; tcGrp.add(tcHitBox);
+
+    const curtainMat = new THREE.MeshStandardMaterial({color: 0x8f9fa6, roughness: 0.9, side: THREE.DoubleSide});
+    function createCurtain(px) {
+        const cGrp = new THREE.Group();
+        for(let i=0; i<6; i++) {
+            const fold = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 38, 12), curtainMat);
+            fold.position.set((i-2.5)*1.2, 0, (i%2)*0.6); fold.scale.z = 0.4; fold.castShadow = true; cGrp.add(fold);
         }
+        cGrp.position.set(px, 19, -16.5); scene.add(cGrp);
+    }
+    createCurtain(-18); createCurtain(18);
 
+    const shGrp = new THREE.Group(); shGrp.position.set(59.5, 20, -5); shGrp.rotation.y = -Math.PI/2; scene.add(shGrp);
+    const sh1 = new THREE.Mesh(new THREE.BoxGeometry(12, 0.6, 2.5), woodMat); sh1.position.set(0, 4, 0); sh1.castShadow = true; shGrp.add(sh1);
+    const sh2 = new THREE.Mesh(new THREE.BoxGeometry(12, 0.6, 2.5), woodMat); sh2.position.set(0, -2, 0); sh2.castShadow = true; shGrp.add(sh2);
+    const dec1 = new THREE.Mesh(new THREE.BoxGeometry(1, 3, 2), new THREE.MeshStandardMaterial({color: 0x5a6b5d})); dec1.position.set(-4, 5.8, 0); dec1.castShadow=true; shGrp.add(dec1);
+    const dec2 = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2, 2), new THREE.MeshStandardMaterial({color: 0x8c7a6b})); dec2.position.set(3, 5.3, 0); dec2.castShadow=true; shGrp.add(dec2);
+    const dec3 = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 2), new THREE.MeshStandardMaterial({color: 0xdddddd})); dec3.position.set(2, -0.7, 0); dec3.castShadow=true; shGrp.add(dec3);
+
+    const clockGrp = new THREE.Group(); clockGrp.position.set(59.5, 28, 15); clockGrp.rotation.y = -Math.PI/2; scene.add(clockGrp);
+    const clkBase = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 0.6, 32), new THREE.MeshStandardMaterial({color: 0x2c3e50})); clkBase.rotation.x = Math.PI/2; clkBase.castShadow = true; clockGrp.add(clkBase);
+    const clkFace = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 7.4), new THREE.MeshBasicMaterial({map: createClockTexture()})); clkFace.position.z = 0.31; clockGrp.add(clkFace);
+    const handMat = new THREE.MeshBasicMaterial({color: 0x333333}); const secHandMat = new THREE.MeshBasicMaterial({color: 0xc25953});
+    clockHourHand = new THREE.Group(); clockHourHand.position.z = 0.35; const hHand = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.8, 0.05), handMat); hHand.position.y = 0.9; clockHourHand.add(hHand); clockGrp.add(clockHourHand);
+    clockMinHand = new THREE.Group(); clockMinHand.position.z = 0.38; const mHand = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.8, 0.05), handMat); mHand.position.y = 1.4; clockMinHand.add(mHand); clockGrp.add(clockMinHand);
+    clockSecHand = new THREE.Group(); clockSecHand.position.z = 0.41; const sHand = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.2, 0.05), secHandMat); sHand.position.y = 1.0; clockSecHand.add(sHand); clockGrp.add(clockSecHand);
+
+    const rackGrp = new THREE.Group(); rackGrp.position.set(-56, 0, 30); scene.add(rackGrp);
+    const rPole = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 22, 16), woodMat); rPole.position.y = 11; rPole.castShadow = true; rackGrp.add(rPole);
+    const rBase = new THREE.Mesh(new THREE.CylinderGeometry(3, 3.5, 0.6, 32), woodMat); rBase.position.y = 0.3; rBase.castShadow = true; rackGrp.add(rBase);
+    for(let i=0; i<8; i++) { 
+        const piv = new THREE.Group(); piv.position.y = 10 + i * 1.4; piv.rotation.y = i * (Math.PI * 0.75); 
+        const hk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.5), woodMat); hk.position.set(0.8, 0.8, 0); hk.rotation.z = -Math.PI/4; hk.castShadow = true; piv.add(hk); rackGrp.add(piv); 
+    }
+    
+    const umbGrp = new THREE.Group(); umbGrp.position.set(-55, 0, 38); scene.add(umbGrp); 
+    const uBody = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.2, 6, 16, 1, true), new THREE.MeshStandardMaterial({color: 0x2c3e50, roughness: 0.8, side: THREE.DoubleSide})); uBody.position.y = 3; uBody.castShadow = true; umbGrp.add(uBody);
+    const uBot = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.2, 16), new THREE.MeshStandardMaterial({color: 0x2c3e50})); uBot.position.y = 0.1; umbGrp.add(uBot);
+    const umb = new THREE.Group(); umb.rotation.set(0.15, 0, 0.2); umbGrp.add(umb);
+    const uStick = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 10), new THREE.MeshStandardMaterial({color: 0xaaaaaa})); uStick.position.set(0, 5, 0); umb.add(uStick);
+    const uFab = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 1.0, 5), new THREE.MeshStandardMaterial({color: 0x3b5998})); uFab.position.set(0, 4, 0); umb.add(uFab);
+    const uHan = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.1, 8, 16, Math.PI), new THREE.MeshStandardMaterial({color: 0x111111})); uHan.position.set(0.4, 10, 0); umb.add(uHan);
+
+    sceneryGroup = new THREE.Group(); sceneryGroup.position.set(0, -15, -50); scene.add(sceneryGroup);
+    const buildingTex = createBuildingTexture();
+    const bMat = new THREE.MeshStandardMaterial({color:0x778899, roughness:0.8, map: buildingTex, emissiveMap: buildingTex, emissive: 0xffffee, emissiveIntensity: 0.0}); 
+    const fixedBuildings = [ {x: -35, z: -15, h: 55}, {x: -20, z: -20, h: 65}, {x: -8, z: -12, h: 45}, {x: 5, z: -18, h: 58}, {x: 18, z: -14, h: 70}, {x: 32, z: -22, h: 50}, {x: 45, z: -16, h: 62}, {x: -50, z: -18, h: 48} ];
+    fixedBuildings.forEach(bd => { const b = new THREE.Mesh(new THREE.BoxGeometry(8, bd.h, 8), bMat); b.position.set(bd.x, bd.h/2 - 5, bd.z); b.castShadow = true; b.receiveShadow = true; sceneryGroup.add(b); animScenery.buildings.push(b); });
+    const road = new THREE.Mesh(new THREE.PlaneGeometry(120, 8), new THREE.MeshStandardMaterial({color:0x333333})); road.rotation.x = -Math.PI/2; road.position.set(0, -4.9, 0); road.receiveShadow=true; sceneryGroup.add(road);
+    for(let i=0; i<6; i++) { const c = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 2.5), new THREE.MeshStandardMaterial({color: Math.random()>0.5?0xff3333:0xeeeeee, roughness:0.4})); c.position.set((Math.random()-0.5)*80, -4.6, (Math.random()-0.5)*4); c.castShadow = true; c.userData={speed: (Math.random()*0.3+0.15) * (Math.random()>0.5?1:-1)}; sceneryGroup.add(c); animScenery.cars.push(c); }
+    const treeMat = new THREE.MeshStandardMaterial({color: 0x2d4c1e, roughness: 0.9}); const trunkMat = new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 0.9});
+    for (let i = -50; i <= 50; i += 15) { if (Math.abs(i) < 5) continue; [[-7], [7]].forEach(pos => { const t = new THREE.Group(); const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 3), trunkMat); tr.position.y = 1.5; tr.castShadow = true; t.add(tr); const lf = new THREE.Mesh(new THREE.ConeGeometry(2.5, 6, 8), treeMat); lf.position.y = 4.5; lf.castShadow = true; t.add(lf); t.position.set(i + (Math.random()-0.5)*3, -4.9, pos[0]); sceneryGroup.add(t); }); }
+
+    // 加入可點擊與互動的物件清單
+    interactables = [leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitBox, chairHitBox];
+    
+    // 貓咪部分...
+    function createFurTexture(baseColor, highlight, shadow) {
+        const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
+        ctx.fillStyle = baseColor; ctx.fillRect(0,0,512,512);
+        for(let i=0; i<35000; i++) {
+            ctx.fillStyle = Math.random() > 0.5 ? highlight : shadow; ctx.beginPath();
+            ctx.ellipse(Math.random()*512, Math.random()*512, Math.random()*0.6+0.2, Math.random()*6+4, Math.random()*0.2-0.1, 0, Math.PI*2); ctx.fill();
+        }
+        const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2, 2); return tex;
+    }
+    const orangeFur = createFurTexture('#d48035', 'rgba(255,255,255,0.15)', 'rgba(160,70,20,0.2)');
+    const whiteFur = createFurTexture('#f0f0f0', 'rgba(255,255,255,0.8)', 'rgba(200,200,200,0.3)');
+    const catMat = new THREE.MeshStandardMaterial({map: orangeFur, roughness: 0.9, bumpMap: orangeFur, bumpScale: 0.02});
+    const whiteMat = new THREE.MeshStandardMaterial({map: whiteFur, roughness: 0.9, bumpMap: whiteFur, bumpScale: 0.02});
+
+    catGrp = new THREE.Group(); catGrp.position.set(0, 0, 25); scene.add(catGrp);
+    catBody = new THREE.Group(); catBody.position.y = 1.6; catGrp.add(catBody);
+    
+    // 貓咪的 HitBox，設定為可拖曳
+    const catHitBox = new THREE.Mesh(new THREE.BoxGeometry(3.5, 3.5, 3.5), new THREE.MeshBasicMaterial({visible: false}));
+    catHitBox.position.y = 1.0; catHitBox.userData = {type: 'cat'}; catGrp.add(catHitBox);
+    interactables.push(catHitBox);
+
+    const bodyMesh = new THREE.Mesh(new THREE.SphereGeometry(1.2, 32, 32), catMat); bodyMesh.scale.set(0.8, 0.8, 1.4); bodyMesh.castShadow = true; catBody.add(bodyMesh);
+    const belly = new THREE.Mesh(new THREE.SphereGeometry(1.15, 32, 32), whiteMat); belly.scale.set(0.75, 0.75, 1.35); belly.position.y = -0.15; catBody.add(belly);
+
+    catHeadGrp = new THREE.Group(); catHeadGrp.position.set(0, 0.6, 1.3); catBody.add(catHeadGrp);
+    const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.85, 32, 32), catMat); headMesh.castShadow = true; catHeadGrp.add(headMesh);
+    const snout = new THREE.Mesh(new THREE.SphereGeometry(0.35, 24, 24), whiteMat); snout.position.set(0, -0.2, 0.7); catHeadGrp.add(snout); 
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 16), new THREE.MeshStandardMaterial({color: 0xffaaaa, roughness: 0.4})); nose.position.set(0, 0.02, 0.95); catHeadGrp.add(nose); 
+    const eyeMat = new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.1, metalness: 0.8}); 
+    const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), eyeMat); eyeL.position.set(0.35, 0.15, 0.65); catHeadGrp.add(eyeL);
+    const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), eyeMat); eyeR.position.set(-0.35, 0.15, 0.65); catHeadGrp.add(eyeR);
+    const earGeo = new THREE.ConeGeometry(0.28, 0.6, 16); earGeo.translate(0, 0.3, 0);
+    const earL = new THREE.Mesh(earGeo, catMat); earL.position.set(0.4, 0.5, 0); earL.rotation.set(-0.2, 0, -0.3); catHeadGrp.add(earL);
+    const earR = new THREE.Mesh(earGeo, catMat); earR.position.set(-0.4, 0.5, 0); earR.rotation.set(-0.2, 0, 0.3); catHeadGrp.add(earR);
+
+    const legSkinMat = new THREE.MeshStandardMaterial({ map: catMat.map, roughness: 0.9, skinning: true });
+    function createLeg(x, z) {
+        const legGrp = new THREE.Group(); legGrp.position.set(x, 0, z);
+        const legLength = 1.2; const boneCount = 2; const bones = []; let prevBone = new THREE.Bone(); prevBone.position.y = 0; bones.push(prevBone);
+        for(let i=1; i<=boneCount; i++) { const bone = new THREE.Bone(); bone.position.y = -legLength / boneCount; prevBone.add(bone); bones.push(bone); prevBone = bone; }
+        const skeleton = new THREE.Skeleton(bones); const legGeo = new THREE.CylinderGeometry(0.25, 0.18, legLength, 16, 10); legGeo.translate(0, -legLength / 2, 0);
+        const posAttr = legGeo.attributes.position; const skinIndices = []; const skinWeights = [];
+        for(let i=0; i<posAttr.count; i++) {
+            const y = Math.abs(Math.min(0, posAttr.getY(i))); const exactIndex = (y / legLength) * boneCount;
+            let bone1 = Math.floor(exactIndex); let bone2 = bone1 + 1; let weight2 = exactIndex - bone1; let weight1 = 1 - weight2;
+            if (bone1 >= boneCount) { bone1 = boneCount; weight1 = 1; weight2 = 0; bone2 = 0; } if (bone2 > boneCount) bone2 = boneCount;
+            skinIndices.push(bone1, bone2, 0, 0); skinWeights.push(weight1, weight2, 0, 0);
+        }
+        legGeo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(skinIndices, 4)); legGeo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(skinWeights, 4));
+        const legMesh = new THREE.SkinnedMesh(legGeo, legSkinMat); legMesh.add(bones[0]); legMesh.bind(skeleton); legMesh.castShadow = true; legGrp.add(legMesh);
+        const paw = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), whiteMat); paw.position.set(0, 0, 0.08); paw.scale.set(1, 0.6, 1.2); paw.castShadow = true; bones[boneCount].add(paw); catBody.add(legGrp); 
+        return { root: bones[0], knee: bones[1] };
+    }
+
+    legFL = createLeg(0.5, 0.8); legFR = createLeg(-0.5, 0.8); legBL = createLeg(0.5, -0.8); legBR = createLeg(-0.5, -0.8);
+
+    catTailGrp = new THREE.Group(); catTailGrp.position.set(0, 0.5, -1.1); catTailGrp.rotation.x = -0.4; catBody.add(catTailGrp);
+    const tailLength = 2.5; const tailBoneCount = 8; catTailBones = []; let prevTBone = new THREE.Bone(); prevTBone.position.y = 0; catTailBones.push(prevTBone);
+    for(let i=1; i<=tailBoneCount; i++) { const bone = new THREE.Bone(); bone.position.y = tailLength / tailBoneCount; prevTBone.add(bone); catTailBones.push(bone); prevTBone = bone; }
+    const tailSkeleton = new THREE.Skeleton(catTailBones); const tailGeo = new THREE.CylinderGeometry(0.04, 0.16, tailLength, 16, 30); tailGeo.translate(0, tailLength / 2, 0); 
+    const tPosAttr = tailGeo.attributes.position; const tSkinIndices = []; const tSkinWeights = [];
+    for(let i=0; i<tPosAttr.count; i++) {
+        const y = Math.max(0, tPosAttr.getY(i)); const exactIndex = (y / tailLength) * tailBoneCount;
+        let bone1 = Math.floor(exactIndex); let bone2 = bone1 + 1; let weight2 = exactIndex - bone1; let weight1 = 1 - weight2;
+        if (bone1 >= tailBoneCount) { bone1 = tailBoneCount; weight1 = 1; weight2 = 0; bone2 = 0; } if (bone2 > tailBoneCount) bone2 = tailBoneCount;
+        tSkinIndices.push(bone1, bone2, 0, 0); tSkinWeights.push(weight1, weight2, 0, 0);
+    }
+    tailGeo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(tSkinIndices, 4)); tailGeo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(tSkinWeights, 4));
+    const tailSkinMat = new THREE.MeshStandardMaterial({ map: catMat.map, roughness: 0.9, skinning: true });
+    const tailMesh = new THREE.SkinnedMesh(tailGeo, tailSkinMat); tailMesh.add(catTailBones[0]); tailMesh.bind(tailSkeleton); tailMesh.castShadow = true; catTailGrp.add(tailMesh);
+    const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), catMat); catTailBones[tailBoneCount].add(tailTip);
+    
+    setCatState('idle');
+}
+
+        
+      function buildPlantIn3D(type, growth, wilt) {
+    if (plantGroup) { desk.remove(plantGroup); interactables = interactables.filter(i => !(i.userData && i.userData.type === 'plant')); }
+    plantGroup = new THREE.Group(); plantGroup.position.set(0, 8.5, -3); desk.add(plantGroup);
+    
+    // 如果有舊的儲存位置，則繼承之
+    try { const pos = JSON.parse(localStorage.getItem('roomObjectPositions')); if(pos && pos.plant) plantGroup.position.set(pos.plant.x, 8.5, pos.plant.z); } catch(e){}
+
+    const hitBox = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 4), new THREE.MeshBasicMaterial({visible: false})); hitBox.position.y = 2.5; hitBox.userData = {type: 'plant'}; plantGroup.add(hitBox); interactables.push(hitBox);
+    
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.9, 1.6, 32), new THREE.MeshStandardMaterial({color: 0xd4a373, roughness: 0.9})); pot.position.y=0.8; pot.castShadow=true; plantGroup.add(pot);
+    const dirt = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, 0.05, 32), new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 1.0})); dirt.position.y=1.61; plantGroup.add(dirt);
+    
+    const isDead = wilt >= 7; const scale = 0.1 + (growth / 100) * 0.15; const wiltFactor = isDead ? 1 : wilt / 7;
+    const leafColor = isDead ? new THREE.Color(0x5d4037) : new THREE.Color(0x4c7c2b).lerp(new THREE.Color(0x8d6e63), wiltFactor);
+    const mat = new THREE.MeshStandardMaterial({color: leafColor, roughness: 0.9, side: THREE.DoubleSide}); const plantBody = new THREE.Group(); plantBody.position.y = 1.6; plantGroup.add(plantBody);
+
+    if (type === 1) { 
+        const count = Math.floor(growth / 8) + 3; const leafGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.05, 16); 
+        for(let i=0; i<count; i++) { const stemGrp = new THREE.Group(); const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2), mat); stem.position.y = 1; stem.castShadow = true; stemGrp.add(stem); const leaf = new THREE.Mesh(leafGeo, mat); leaf.position.y = 2; leaf.rotation.x = Math.PI / 2; leaf.scale.set(1, 1, 1.2); leaf.castShadow = true; stemGrp.add(leaf); let dropAngle = isDead ? (Math.PI/1.6) : (wiltFactor * Math.PI/4 + 0.2); stemGrp.rotation.x = dropAngle; stemGrp.rotation.y = i * 2.4; if(isDead) stemGrp.scale.setScalar(scale * 0.8); else stemGrp.scale.setScalar(scale * (0.8 + i*0.05)); plantBody.add(stemGrp); }
+    } else if (type === 2) { 
+        const count = Math.floor(growth / 4) + 12; const leafGeo = new THREE.ConeGeometry(0.6, 1.8, 12); leafGeo.translate(0, 0.9, 0); 
+        for(let i=0; i<count; i++) { const leaf = new THREE.Mesh(leafGeo, mat); const angle = i * 2.39996; const radius = i * 0.05; leaf.rotation.y = -angle; let bend = Math.PI/2 - (Math.PI/2) / (1 + i*0.15); if(isDead) bend += Math.PI/4; leaf.rotation.x = bend; leaf.position.x = Math.cos(angle) * radius * scale; leaf.position.z = Math.sin(angle) * radius * scale; leaf.position.y = (count - i) * 0.02 * scale; leaf.scale.set(scale, scale, scale*0.5); leaf.castShadow=true; plantBody.add(leaf); }
+    } else if (type === 3) { 
+        const trunkMat = new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 1.0}); const bonsaiGrp = new THREE.Group();
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 3, 8), trunkMat); trunk.position.y = 1.5; trunk.rotation.z = 0.3; trunk.rotation.x = 0.2; trunk.castShadow = true; bonsaiGrp.add(trunk);
+        const crown = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), mat); crown.position.set(-0.5, 3.2, -0.5); crown.scale.set(1, 0.6, 1); crown.castShadow = true; bonsaiGrp.add(crown);
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 1.5), trunkMat); branch.position.set(0.5, 1.5, 0); branch.rotation.z = -0.6; branch.castShadow = true; bonsaiGrp.add(branch);
+        const crown2 = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 16), mat); crown2.position.set(1.2, 2.0, 0); crown2.scale.set(1, 0.6, 1); crown2.castShadow = true; bonsaiGrp.add(crown2);
+        if (isDead) { bonsaiGrp.scale.setScalar(scale * 1.2); crown.scale.set(0.8, 0.3, 0.8); crown2.scale.set(0.8, 0.3, 0.8); crown.position.y -= 0.4; crown2.position.y -= 0.2; } else { bonsaiGrp.scale.setScalar(scale * 1.6); } plantBody.add(bonsaiGrp);
+    } else if (type === 4) { 
+        const stemCount = Math.floor(growth / 10) + 4; const purpColor = isDead ? new THREE.Color(0x6b5b6b) : new THREE.Color(0x9b7bc6).lerp(new THREE.Color(0x8d6e63), wiltFactor); const flowerMat = new THREE.MeshStandardMaterial({color: purpColor, roughness: 0.8});
+        for(let i=0; i<stemCount; i++) { const stemGrp = new THREE.Group(); const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.5), mat); stem.position.y = 1.25; stem.castShadow = true; stemGrp.add(stem); const flower = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.2, 8), flowerMat); flower.position.y = 3.0; flower.castShadow = true; stemGrp.add(flower); stemGrp.rotation.x = (Math.random() - 0.5) * 0.4; stemGrp.rotation.z = (Math.random() - 0.5) * 0.4; if (isDead) stemGrp.rotation.x += Math.PI/2.5; stemGrp.scale.setScalar(scale * 1.3); plantBody.add(stemGrp); }
+    } else if (type === 5) { 
+        const cacMat = new THREE.MeshStandardMaterial({color: leafColor, roughness: 0.9}); const mainGrp = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 2.5, 16), cacMat); body.castShadow = true; mainGrp.add(body);
+        const capTop = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16), cacMat); capTop.position.y = 1.25; capTop.castShadow = true; mainGrp.add(capTop);
+        const capBot = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16), cacMat); capBot.position.y = -1.25; capBot.castShadow = true; mainGrp.add(capBot);
+        if (growth > 10) { const armGrp = new THREE.Group(); const armBody = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.0, 16), cacMat); armBody.castShadow = true; armGrp.add(armBody); const armTop = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), cacMat); armTop.position.y = 0.5; armTop.castShadow = true; armGrp.add(armTop); const armBot = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), cacMat); armBot.position.y = -0.5; armBot.castShadow = true; armGrp.add(armBot); armGrp.position.set(1.1, 0.2, 0); armGrp.rotation.z = -0.6; mainGrp.add(armGrp); }
+        if (growth > 40) { const armGrp2 = new THREE.Group(); const armBody2 = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.8, 16), cacMat); armBody2.castShadow = true; armGrp2.add(armBody2); const armTop2 = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), cacMat); armTop2.position.y = 0.4; armTop2.castShadow = true; armGrp2.add(armTop2); const armBot2 = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16), cacMat); armBot2.position.y = -0.4; armBot2.castShadow = true; armGrp2.add(armBot2); armGrp2.position.set(-1.0, 0.6, 0); armGrp2.rotation.z = 0.8; mainGrp.add(armGrp2); }
+        mainGrp.position.y = 1.5 * scale; if(isDead) { mainGrp.scale.set(scale*0.8, scale*0.8, scale*0.8); mainGrp.rotation.z = 0.8; mainGrp.position.x = 1.5 * scale; } else { mainGrp.scale.setScalar(scale); } plantBody.add(mainGrp);
+    }
+}
         function updateDrawerIndicators(repliesUnread, inboxUnread) {
             if(indicatorLeft) indicatorLeft.visible = repliesUnread;
             if(indicatorRight) indicatorRight.visible = inboxUnread;
@@ -2381,130 +2332,158 @@ indicatorLeft = createFloatingLetter(); indicatorLeft.position.set(-5.5, 6.5, 10
         // 建立一個代表桌面的隱形平面 (高度約為 y=8.5)
         let deskPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -8.5); 
 
-        function onPointerDown(e) {
-            if(document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
-            pointerDownPos.x = e.clientX; pointerDownPos.y = e.clientY;
+       function onPointerDown(e) {
+    if(document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
+    pointerDownPos.x = e.clientX; pointerDownPos.y = e.clientY;
 
-            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-            raycaster.setFromCamera(mouse, camera);
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
 
-            const intersects = raycaster.intersectObjects(interactables, true);
-            if(intersects.length > 0) {
-                let obj = intersects[0].object;
-                while(obj.parent && !obj.userData.type) obj = obj.parent;
-                const type = obj.userData.type;
+    const intersects = raycaster.intersectObjects(interactables, true);
+    if(intersects.length > 0) {
+        let obj = intersects[0].object;
+        while(obj.parent && !obj.userData.type) obj = obj.parent;
+        const type = obj.userData.type;
 
-                // 只有桌面上的這四類物件允許拖曳 (抽屜等不可拖曳)
-                if(['log', 'tasks', 'water', 'plant'].includes(type)) {
-                    // 植物的 hitBox 是子物件，需要往上抓到整個 plantGroup
-                    let targetObj = (type === 'plant') ? obj.parent : obj;
-
-                    // 啟動長按判定 (300毫秒不動則視為拖曳)
-                    dragTimer = setTimeout(() => {
-                        isDragging = true;
-                        dragTarget = targetObj;
-                        controls.enabled = false; // 拖曳時暫停畫面旋轉
-                        document.body.style.cursor = 'grabbing';
-
-                        // 記錄物件原本的高度
-                        if(dragTarget.userData.originalY === undefined) {
-                            dragTarget.userData.originalY = dragTarget.position.y;
-                        }
-
-                        // 輕微浮起並放大，提供「抓起來」的視覺回饋
-                        gsap.to(dragTarget.position, { y: dragTarget.userData.originalY + 1.2, duration: 0.2 });
-
-                        // 記錄抓取點的偏移量，讓物件不會瞬間瞬移到滑鼠中心
-                        let intersectPoint = new THREE.Vector3();
-                        raycaster.ray.intersectPlane(deskPlane, intersectPoint);
-                        if(intersectPoint) {
-                            dragOffset.copy(intersectPoint).sub(dragTarget.position);
-                        }
-                    }, 300);
-                }
-            }
-        }
-
-        function onPointerMove(e) {
-            if(document.querySelector('.room-modal[style*="flex"]')) return;
-            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-
-            // 如果還沒觸發長按，且滑鼠移動超過誤差值，則取消長按 (視為視角旋轉)
-            if(dragTimer && !isDragging) {
-                if(Math.abs(e.clientX - pointerDownPos.x) > 5 || Math.abs(e.clientY - pointerDownPos.y) > 5) {
-                    clearTimeout(dragTimer); 
-                    dragTimer = null;
-                }
+        if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat'].includes(type)) {
+            let targetObj = obj;
+            // 如果是群組物件，抓取其上層主體
+            if(type === 'plant' || type === 'trash' || type === 'chair' || type === 'cat') {
+                targetObj = obj.parent; 
             }
 
-            // === 拖曳邏輯 ===
-            if(isDragging && dragTarget) {
-                raycaster.setFromCamera(mouse, camera);
+            dragTimer = setTimeout(() => {
+                isDragging = true;
+                dragTarget = targetObj;
+                dragTarget.userData.dragType = type;
+                controls.enabled = false;
+                document.body.style.cursor = 'grabbing';
+
+                if(dragTarget.userData.originalY === undefined) {
+                    dragTarget.userData.originalY = dragTarget.position.y;
+                }
+
+                gsap.to(dragTarget.position, { y: dragTarget.userData.originalY + 1.2, duration: 0.2 });
+
+                let plane = (['log', 'tasks', 'water', 'plant'].includes(type)) ? deskPlane : floorPlane;
                 let intersectPoint = new THREE.Vector3();
-                raycaster.ray.intersectPlane(deskPlane, intersectPoint);
-                
+                raycaster.ray.intersectPlane(plane, intersectPoint);
                 if(intersectPoint) {
-                    let newX = intersectPoint.x - dragOffset.x;
-                    let newZ = intersectPoint.z - dragOffset.z;
-                    
-                    // 【物理限制】設定桌面的邊界，確保物件不會掉下去
-                    // 桌面總寬為28，深為14。限制在 X: -13~13, Z: -6~6
-                    newX = Math.max(-13, Math.min(13, newX));
-                    newZ = Math.max(-6, Math.min(6, newZ));
-
-                    dragTarget.position.x = newX;
-                    dragTarget.position.z = newZ;
+                    dragOffset.copy(intersectPoint).sub(dragTarget.position);
                 }
-                return; // 如果在拖曳，就跳過下方的 Hover 效果
-            }
-
-            // === 一般 Hover 效果 ===
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(interactables, true);
-            document.body.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
+            }, 300);
         }
+    }
+}
 
-        let isDrawerAnimating = false; 
-        function onPointerUp(e) {
-            // 清除長按計時器
-            if(dragTimer) { 
-                clearTimeout(dragTimer); 
-                dragTimer = null; 
+function onPointerMove(e) {
+    if(document.querySelector('.room-modal[style*="flex"]')) return;
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+    if(dragTimer && !isDragging) {
+        if(Math.abs(e.clientX - pointerDownPos.x) > 5 || Math.abs(e.clientY - pointerDownPos.y) > 5) {
+            clearTimeout(dragTimer); 
+            dragTimer = null;
+        }
+    }
+
+    if(isDragging && dragTarget) {
+        const type = dragTarget.userData.dragType;
+        raycaster.setFromCamera(mouse, camera);
+        let intersectPoint = new THREE.Vector3();
+        
+        if(['log', 'tasks', 'water', 'plant'].includes(type)) {
+            raycaster.ray.intersectPlane(deskPlane, intersectPoint);
+            if(intersectPoint) {
+                // 桌子邊界限制
+                let newX = Math.max(-13, Math.min(13, intersectPoint.x - dragOffset.x));
+                let newZ = Math.max(-6, Math.min(6, intersectPoint.z - dragOffset.z));
+                dragTarget.position.x = newX;
+                dragTarget.position.z = newZ;
             }
-
-            // 如果正在拖曳，則放下物件 (加入落地彈跳動畫) 並結束，不觸發點擊事件
-            if(isDragging && dragTarget) {
-                gsap.to(dragTarget.position, { y: dragTarget.userData.originalY, duration: 0.3, ease: "bounce.out" });
-                isDragging = false;
-                dragTarget = null;
-                controls.enabled = true; // 恢復畫面旋轉
-                document.body.style.cursor = 'default';
-                return; 
+        } 
+        else if (['trash', 'chair'].includes(type)) {
+            raycaster.ray.intersectPlane(floorPlane, intersectPoint);
+            if(intersectPoint) {
+                // 地氈邊界限制
+                let newX = Math.max(-18, Math.min(18, intersectPoint.x - dragOffset.x));
+                let newZ = Math.max(-4, Math.min(20, intersectPoint.z - dragOffset.z));
+                dragTarget.position.x = newX;
+                dragTarget.position.z = newZ;
             }
-
-            // === 以下為原本的點擊觸發邏輯 ===
-            if(Math.abs(e.clientX - pointerDownPos.x) > 10 || Math.abs(e.clientY - pointerDownPos.y) > 10) return;
-            if(document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
-            
-            mouse.x = (e.clientX/window.innerWidth)*2-1; mouse.y = -(e.clientY/window.innerHeight)*2+1;
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(interactables, true);
-            if(intersects.length > 0) {
-                let obj = intersects[0].object; while(obj.parent && !obj.userData.type) obj = obj.parent;
-                const type = obj.userData.type;
+        }
+        else if (type === 'cat') {
+            raycaster.ray.intersectPlane(floorPlane, intersectPoint);
+            if(intersectPoint) {
+                let newX = intersectPoint.x - dragOffset.x;
+                let newZ = intersectPoint.z - dragOffset.z;
                 
-                if(type === 'replies' && leftDrawer.position.z <= 0) {
-                    isDrawerAnimating = true; gsap.to(leftDrawer.position, {z: 3.5, duration: 0.5, onComplete: () => { document.getElementById('modal-replies').style.display = 'flex'; isDrawerAnimating = false; }});
-                } else if(type === 'inbox' && rightDrawer.position.z <= 0) {
-                    isDrawerAnimating = true; gsap.to(rightDrawer.position, {z: 3.5, duration: 0.5, onComplete: () => { document.getElementById('modal-inbox').style.display = 'flex'; isDrawerAnimating = false; }});
-                } else if(type === 'log') { gsap.to(book.position, {y: 9, rotationY: 0, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-log').style.display = 'flex'; }});
-                } else if(type === 'tasks') { gsap.to(clipboard.position, {y: 9, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-tasks').style.display = 'flex'; }});
-                } else if(type === 'water') { performWateringAnimation();
-                } else if(type === 'plant') { if (userPlantData && userPlantData.isDead) { showToast("🥀 這盆植物已經枯萎了，請重新挑選一盆吧。"); setTimeout(() => document.getElementById('modal-plant-selector').style.display = 'flex', 1500); } else { showPlantStatus(); } }
+                // 判斷貓咪目前所在的平台
+                if (newX >= -14 && newX <= 14 && newZ >= -7 && newZ <= 7) {
+                    catPlatform = 'desk';
+                    dragTarget.userData.originalY = 8.5;
+                } else if (chairGroup && newX >= chairGroup.position.x - 3 && newX <= chairGroup.position.x + 3 && newZ >= chairGroup.position.z - 3 && newZ <= chairGroup.position.z + 3) {
+                    catPlatform = 'chair';
+                    dragTarget.userData.originalY = 4.5;
+                } else {
+                    catPlatform = 'floor';
+                    dragTarget.userData.originalY = 0;
+                    // 若在地上，則限制在地氈邊界
+                    newX = Math.max(-18, Math.min(18, newX));
+                    newZ = Math.max(-4, Math.min(20, newZ));
+                }
+                
+                dragTarget.position.x = newX;
+                dragTarget.position.z = newZ;
+                dragTarget.position.y = dragTarget.userData.originalY + 1.2;
             }
         }
+        return; 
+    }
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(interactables, true);
+    document.body.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
+}
+
+function onPointerUp(e) {
+    if(dragTimer) { 
+        clearTimeout(dragTimer); 
+        dragTimer = null; 
+    }
+
+    if(isDragging && dragTarget) {
+        gsap.to(dragTarget.position, { y: dragTarget.userData.originalY, duration: 0.3, ease: "bounce.out" });
+        isDragging = false;
+        dragTarget = null;
+        controls.enabled = true; 
+        document.body.style.cursor = 'default';
+        saveObjectPositions(); // 拖曳結束後自動儲存所有位置
+        return; 
+    }
+
+    if(Math.abs(e.clientX - pointerDownPos.x) > 10 || Math.abs(e.clientY - pointerDownPos.y) > 10) return;
+    if(document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
+    
+    mouse.x = (e.clientX/window.innerWidth)*2-1; mouse.y = -(e.clientY/window.innerHeight)*2+1;
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(interactables, true);
+    if(intersects.length > 0) {
+        let obj = intersects[0].object; while(obj.parent && !obj.userData.type) obj = obj.parent;
+        const type = obj.userData.type;
+        
+        if(type === 'replies' && leftDrawer.position.z <= 0) {
+            isDrawerAnimating = true; gsap.to(leftDrawer.position, {z: 3.5, duration: 0.5, onComplete: () => { document.getElementById('modal-replies').style.display = 'flex'; isDrawerAnimating = false; }});
+        } else if(type === 'inbox' && rightDrawer.position.z <= 0) {
+            isDrawerAnimating = true; gsap.to(rightDrawer.position, {z: 3.5, duration: 0.5, onComplete: () => { document.getElementById('modal-inbox').style.display = 'flex'; isDrawerAnimating = false; }});
+        } else if(type === 'log') { gsap.to(book.position, {y: 9, rotationY: 0, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-log').style.display = 'flex'; }});
+        } else if(type === 'tasks') { gsap.to(clipboard.position, {y: 9, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-tasks').style.display = 'flex'; }});
+        } else if(type === 'water') { performWateringAnimation();
+        } else if(type === 'plant') { if (userPlantData && userPlantData.isDead) { showToast("🥀 這盆植物已經枯萎了，請重新挑選一盆吧。"); setTimeout(() => document.getElementById('modal-plant-selector').style.display = 'flex', 1500); } else { showPlantStatus(); } }
+    }
+}
 
         function performWateringAnimation() {
             if (!userPlantData) { document.getElementById('modal-plant-selector').style.display = 'flex'; return; }
@@ -2531,47 +2510,53 @@ indicatorLeft = createFloatingLetter(); indicatorLeft.position.set(-5.5, 6.5, 10
         }
 
     // 🐾 設定貓咪狀態的函數
-        function setCatState(newState) {
-            catState = newState;
-            const allRoots = [legFL.root.rotation, legFR.root.rotation, legBL.root.rotation, legBR.root.rotation];
-            const allKnees = [legFL.knee.rotation, legFR.knee.rotation, legBL.knee.rotation, legBR.knee.rotation];
+       function setCatState(newState) {
+    catState = newState;
+    const allRoots = [legFL.root.rotation, legFR.root.rotation, legBL.root.rotation, legBR.root.rotation];
+    const allKnees = [legFL.knee.rotation, legFR.knee.rotation, legBL.knee.rotation, legBR.knee.rotation];
 
-            if (newState === 'idle') {
-                catTimer = 100 + Math.random() * 200;
-                gsap.to(catBody.scale, {x: 1, y: 1, z: 1, duration: 0.5});
-                gsap.to(catBody.position, {y: 1.6, duration: 0.3});
-                gsap.to(catHeadGrp.rotation, {x: 0, y: 0, z: 0, duration: 0.5});
-                gsap.to(catHeadGrp.position, {y: 0.6, z: 1.3, duration: 0.5});
-                
-                catTailBones.forEach((bone, i) => gsap.to(bone.rotation, {x: i===0 ? 0.2 : 0.15, y: 0, z: 0, duration: 0.5}));
-                
-                // 坐下時：前腿直，後腿微彎
-                gsap.to([legFL.root.rotation, legFR.root.rotation], {x: 0.1, duration: 0.3});
-                gsap.to([legFL.knee.rotation, legFR.knee.rotation], {x: 0, duration: 0.3});
-                gsap.to([legBL.root.rotation, legBR.root.rotation], {x: -0.3, duration: 0.3});
-                gsap.to([legBL.knee.rotation, legBR.knee.rotation], {x: 0.4, duration: 0.3});
-                
-            } else if (newState === 'sleep') {
-                catTimer = 400 + Math.random() * 600;
-                gsap.to(catBody.scale, {x: 1.1, y: 0.8, z: 1.1, duration: 1.0}); 
-                gsap.to(catBody.position, {y: 0.8, duration: 1.0}); 
-                gsap.to(catHeadGrp.rotation, {x: 0.4, y: 0.6, duration: 1.0}); 
-                gsap.to(catHeadGrp.position, {y: 0, z: 1.0, duration: 1.0});
-                
-                catTailBones.forEach((bone, i) => gsap.to(bone.rotation, {x: 0.1, y: 0.3, z: 0, duration: 1.0}));
-                
-                // 農民揣：大腿往內收，膝蓋大彎曲
-                gsap.to(allRoots, {x: -1.0, duration: 1.0});
-                gsap.to(allKnees, {x: 1.5, duration: 1.0}); 
-                
-            } else if (newState === 'walk') {
-                catTarget.set((Math.random()-0.5)*32, 0, 6 + Math.random()*12);
-                gsap.to(catBody.scale, {x: 1, y: 1, z: 1, duration: 0.3});
-                gsap.to(catBody.position, {y: 1.6, duration: 0.3});
-                
-                catTailBones.forEach((bone, i) => gsap.to(bone.rotation, {x: i===0 ? 0.6 : -0.08, duration: 0.3}));
-            }
+    if (newState === 'idle') {
+        catTimer = 100 + Math.random() * 200;
+        gsap.to(catBody.scale, {x: 1, y: 1, z: 1, duration: 0.5});
+        gsap.to(catBody.position, {y: 1.6, duration: 0.3});
+        gsap.to(catHeadGrp.rotation, {x: 0, y: 0, z: 0, duration: 0.5});
+        gsap.to(catHeadGrp.position, {y: 0.6, z: 1.3, duration: 0.5});
+        
+        catTailBones.forEach((bone, i) => gsap.to(bone.rotation, {x: i===0 ? 0.2 : 0.15, y: 0, z: 0, duration: 0.5}));
+        
+        gsap.to([legFL.root.rotation, legFR.root.rotation], {x: 0.1, duration: 0.3});
+        gsap.to([legFL.knee.rotation, legFR.knee.rotation], {x: 0, duration: 0.3});
+        gsap.to([legBL.root.rotation, legBR.root.rotation], {x: -0.3, duration: 0.3});
+        gsap.to([legBL.knee.rotation, legBR.knee.rotation], {x: 0.4, duration: 0.3});
+        
+    } else if (newState === 'sleep') {
+        catTimer = 400 + Math.random() * 600;
+        gsap.to(catBody.scale, {x: 1.1, y: 0.8, z: 1.1, duration: 1.0}); 
+        gsap.to(catBody.position, {y: 0.8, duration: 1.0}); 
+        gsap.to(catHeadGrp.rotation, {x: 0.4, y: 0.6, duration: 1.0}); 
+        gsap.to(catHeadGrp.position, {y: 0, z: 1.0, duration: 1.0});
+        
+        catTailBones.forEach((bone, i) => gsap.to(bone.rotation, {x: 0.1, y: 0.3, z: 0, duration: 1.0}));
+        
+        gsap.to(allRoots, {x: -1.0, duration: 1.0});
+        gsap.to(allKnees, {x: 1.5, duration: 1.0}); 
+        
+    } else if (newState === 'walk') {
+        // 依照所在平台生成目標位置
+        if (catPlatform === 'desk') {
+            catTarget.set((Math.random()-0.5)*24, 0, (Math.random()-0.5)*10);
+        } else if (catPlatform === 'chair' && chairGroup) {
+            catTarget.set(chairGroup.position.x + (Math.random()-0.5)*4, 0, chairGroup.position.z + (Math.random()-0.5)*4);
+        } else {
+            catTarget.set((Math.random()-0.5)*32, 0, 8 + (Math.random()-0.5)*16);
         }
+        
+        gsap.to(catBody.scale, {x: 1, y: 1, z: 1, duration: 0.3});
+        gsap.to(catBody.position, {y: 1.6, duration: 0.3});
+        
+        catTailBones.forEach((bone, i) => gsap.to(bone.rotation, {x: i===0 ? 0.6 : -0.08, duration: 0.3}));
+    }
+}
         // 🐾 貓咪每幀更新邏輯
        // 🐾 貓咪每幀更新邏輯 (修訂版：步伐更大、前腿向前伸展更自然)
         function updateCat() {
@@ -2640,36 +2625,32 @@ indicatorLeft = createFloatingLetter(); indicatorLeft.position.set(-5.5, 6.5, 10
         }
         
         function animateRoom() {
-            requestAnimationFrame(animateRoom); if(controls) controls.update();
-            animScenery.cars.forEach(c => { c.position.x += c.userData.speed; if(c.position.x > 60) c.position.x = -60; else if(c.position.x < -60) c.position.x = 60; });
-  if(indicatorLeft && indicatorLeft.visible) { indicatorLeft.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorLeft.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
-            if(indicatorRight && indicatorRight.visible) { indicatorRight.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorRight.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
-            
-            // 【新增】任務板上方信封的漂浮動畫
-            if(indicatorTasks && indicatorTasks.visible) { 
-                indicatorTasks.position.y = 9.5 + Math.sin(Date.now()*0.003)*0.2; 
-                indicatorTasks.rotation.y = 0.15 + Math.sin(Date.now()*0.002)*0.2; 
-            }
-            // 獲取實時香港時間 (UTC+8) 並轉動指針
-            if(clockHourHand && clockMinHand && clockSecHand) {
-                const now = new Date();
-                const hkTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (8 * 3600000));
-                
-                const hours = hkTime.getHours();
-                const minutes = hkTime.getMinutes();
-                const seconds = hkTime.getSeconds();
-                const millis = hkTime.getMilliseconds();
-                
-                // 計算旋轉弧度，負數是因為順時鐘旋轉在 Z 軸為負
-                clockSecHand.rotation.z = -(seconds + millis / 1000) * (Math.PI * 2 / 60);
-                clockMinHand.rotation.z = -(minutes + seconds / 60) * (Math.PI * 2 / 60);
-                clockHourHand.rotation.z = -((hours % 12) + minutes / 60) * (Math.PI * 2 / 12);
-            }
+    requestAnimationFrame(animateRoom); if(controls) controls.update();
+    animScenery.cars.forEach(c => { c.position.x += c.userData.speed; if(c.position.x > 60) c.position.x = -60; else if(c.position.x < -60) c.position.x = 60; });
+    if(indicatorLeft && indicatorLeft.visible) { indicatorLeft.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorLeft.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
+    if(indicatorRight && indicatorRight.visible) { indicatorRight.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorRight.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
+    
+    // 【修改點】讓任務板上方的懸浮信件隨時跟隨任務板移動
+    if(indicatorTasks && indicatorTasks.visible && clipboard) { 
+        indicatorTasks.position.x = clipboard.position.x;
+        indicatorTasks.position.z = clipboard.position.z;
+        indicatorTasks.position.y = clipboard.position.y + 1.0 + Math.sin(Date.now()*0.003)*0.2; 
+        indicatorTasks.rotation.y = 0.15 + Math.sin(Date.now()*0.002)*0.2; 
+    }
+    
+    if(clockHourHand && clockMinHand && clockSecHand) {
+        const now = new Date();
+        const hkTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (8 * 3600000));
+        const hours = hkTime.getHours(); const minutes = hkTime.getMinutes(); const seconds = hkTime.getSeconds(); const millis = hkTime.getMilliseconds();
+        clockSecHand.rotation.z = -(seconds + millis / 1000) * (Math.PI * 2 / 60);
+        clockMinHand.rotation.z = -(minutes + seconds / 60) * (Math.PI * 2 / 60);
+        clockHourHand.rotation.z = -((hours % 12) + minutes / 60) * (Math.PI * 2 / 12);
+    }
 
-          updateCat(); // 🐾 呼叫貓咪動畫運算邏輯
+    updateCat();
 
-            if(renderer && scene && camera) renderer.render(scene, camera);
-        }
+    if(renderer && scene && camera) renderer.render(scene, camera);
+}
 
         document.addEventListener("DOMContentLoaded", () => {
             const q = document.getElementById('log-question'); const c = document.getElementById('log-content');
