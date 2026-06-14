@@ -4591,34 +4591,47 @@ function showGachaAnim(itemId) {
         let originalObj = null;
         scene.traverse(child => { if (child.userData && child.userData.itemId === itemId) originalObj = child; });
         
-        if (originalObj) {
-            // 創建一個安全包裝盒，確保內部相對位置不變
+      if (originalObj) {
             const wrapper = new THREE.Group();
             const cloneObj = originalObj.clone();
             
-            // 👇 1. 加入這一行，強制讓複製出來的模型及其所有零件現形！
-            cloneObj.traverse(node => { node.visible = true; });
+            // 1. 強制現形，但過濾掉透明的碰撞框(HitBox)，避免影響體積計算
+            cloneObj.traverse(node => { 
+                node.visible = true; 
+                if (node.material && node.material.visible === false) {
+                    node.visible = false; 
+                }
+            });
             
-            // 👇 2. 將下面這行裡的 originalObj 改成 cloneObj，計算大小才會準確
-            const box = new THREE.Box3().setFromObject(cloneObj); 
+            // 2. 拔除原本在房間裡的座標與旋轉，把它當作全新的物件
+            cloneObj.position.set(0, 0, 0);
+            cloneObj.rotation.set(0, 0, 0);
+            cloneObj.scale.set(1, 1, 1);
             
+            // 先加進 wrapper 確保它在座標系中
+            wrapper.add(cloneObj);
+            
+            // 3. 重新計算它「歸零後」的真實體積與中心點
+            const box = new THREE.Box3().setFromObject(wrapper); 
             const center = box.getCenter(new THREE.Vector3());
             const size = box.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z);
             
-            // 安全地將複製體居中
-            cloneObj.position.set(-center.x, -center.y, -center.z);
-            wrapper.add(cloneObj);
+            // 4. 將物件的中心點精準平移到正中央 (0,0,0)
+            cloneObj.position.x = -center.x;
+            cloneObj.position.y = -center.y;
+            cloneObj.position.z = -center.z;
+            
             gachaGroup.add(wrapper);
             
-            // 智慧相機：根據物品真實大小拉遠相機，不再粗暴縮小物品
+            // 5. 智慧相機：根據物品真實大小拉遠相機
             let dist = Math.max(maxDim * 1.5, 5);
             if (itemId === 'carpet') {
-                gachaCam.position.set(0, dist, 0.1); // 地氈由上方往下看
-            } else if (itemId.includes('bookcase') || itemId.includes('painting') || itemId === 'clock') {
-                gachaCam.position.set(0, 0, dist); // 書櫃/畫作由正面看
+                gachaCam.position.set(0, dist, 0.1); 
+            } else if (itemId.includes('bookcase') || itemId.includes('painting') || itemId === 'clock' || itemId === 'rack') {
+                gachaCam.position.set(0, 0, dist); 
             } else {
-                gachaCam.position.set(dist * 0.6, dist * 0.4, dist); // 其他斜角看
+                gachaCam.position.set(dist * 0.6, dist * 0.4, dist); 
             }
             gachaCam.lookAt(0, 0, 0);
         }
