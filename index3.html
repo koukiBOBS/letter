@@ -1996,11 +1996,33 @@ function closeDrawAnim() {
         function setDefaultCamera() { if (window.innerWidth < 768) { camera.position.set(0, 26, 48); } else { camera.position.set(0, 22, 45); } controls.target.set(0, 7, 0); }
 
       function buildRoomEnvironment() {
-    hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); scene.add(hemiLight);
-    dirLight = new THREE.DirectionalLight(0xffeedd, 1.2); dirLight.position.set(20, 30, -70); dirLight.target.position.set(0, 0, 0);
-    dirLight.castShadow = true; dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048; dirLight.shadow.camera.left = -40; dirLight.shadow.camera.right = 40; dirLight.shadow.camera.top = 40; dirLight.shadow.camera.bottom = -40; dirLight.shadow.bias = -0.0005;
-    scene.add(dirLight); scene.add(dirLight.target);
-    const pointLight = new THREE.PointLight(0xffe8c4, 0.4, 20); pointLight.position.set(-5, 15, 10); scene.add(pointLight);
+    hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); 
+    scene.add(hemiLight);
+    
+    // 1. 調整光源位置：讓陽光從窗外稍微偏右上方照進來，角度更自然
+    dirLight = new THREE.DirectionalLight(0xffeedd, 1.2); 
+    dirLight.position.set(25, 38, -60); 
+    dirLight.target.position.set(0, 0, 5); // 讓光束對準房間稍微靠前的位置
+    
+    dirLight.castShadow = true; 
+    dirLight.shadow.mapSize.width = 2048; 
+    dirLight.shadow.mapSize.height = 2048; 
+    
+    // 2. 縮小陰影相機的範圍，讓 2048 的像素更集中在房間內，提高陰影清晰度
+    dirLight.shadow.camera.left = -30; 
+    dirLight.shadow.camera.right = 30; 
+    dirLight.shadow.camera.top = 30; 
+    dirLight.shadow.camera.bottom = -30; 
+    
+    // 3. 【關鍵修復】解決桌面上的奇怪斑馬紋 (Shadow Acne)
+    dirLight.shadow.bias = -0.0001;        // 減少基礎偏移量
+    dirLight.shadow.normalBias = 0.05;     // 加入法線偏移，完美解決平面自我遮擋的黑線問題
+    
+    // 4. 【關鍵修復】讓陰影邊緣變得柔和，更像真實穿透玻璃的陽光
+    dirLight.shadow.radius = 2.5; 
+
+    scene.add(dirLight); 
+    scene.add(dirLight.target);
 
     const lampGroup = new THREE.Group(); lampGroup.position.set(0, 39, 21); scene.add(lampGroup);
     const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 1, 32), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.5})); lampGroup.add(lampBase);
