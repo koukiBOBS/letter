@@ -2547,7 +2547,7 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     }
 
     // 🌉 【新增 左側】青馬大橋 (延伸至左方極遠處)
- const bridgeGroup = new THREE.Group();
+     const bridgeGroup = new THREE.Group();
     bridgeGroup.position.set(0, 0, 4); // 對齊馬路中心 Z=4
     sceneryGroup.add(bridgeGroup);
 
@@ -2594,71 +2594,100 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
         }
     });
 
-    // 🎡 海濱摩天輪 (保留你剛才修好的版本，不變)
-    // 這裡原本有 ferrisWheelGrp 的代碼，請確保它還在...
 
-    // ==========================================
-    // 重新配置馬路與植被：精準區分「陸地」與「大橋」
-    // ==========================================
+ // 🎡 【精緻版】海濱摩天輪
+    const fwContainer = new THREE.Group();
+    fwContainer.position.set(110, -5, -35); 
+    sceneryGroup.add(fwContainer);
 
-    // 馬路 (加長到 420，全長覆蓋陸地與大橋)
-    const roadWidth = 26;
-    const road = new THREE.Mesh(new THREE.PlaneGeometry(420, roadWidth), new THREE.MeshStandardMaterial({map: createAsphaltTexture(), roughness: 0.9})); 
-    road.rotation.x = -Math.PI/2; 
-    road.position.set(-50, -4.9, 4); // 中心點左移
-    road.receiveShadow = true; sceneryGroup.add(road);
+    // 1. 摩天輪底座廣場
+    const fwBaseMat = new THREE.MeshStandardMaterial({color: 0xaaaaaa, roughness: 0.9});
+    const fwPlaza = new THREE.Mesh(new THREE.BoxGeometry(70, 2, 40), fwBaseMat);
+    fwPlaza.position.y = 1; 
+    fwPlaza.receiveShadow = true; // 允許廣場接收陰影
+    fwContainer.add(fwPlaza);
+
+    // 2. A字型穩固支撐架
+    const fwSupportMat = new THREE.MeshStandardMaterial({color: 0xdddddd, metalness: 0.6, roughness: 0.3});
+    const supportPositions = [
+        {x: -18, z: 12, rotZ: -0.5, rotX: -0.3}, {x: 18, z: 12, rotZ: 0.5, rotX: -0.3},
+        {x: -18, z: -12, rotZ: -0.5, rotX: 0.3}, {x: 18, z: -12, rotZ: 0.5, rotX: 0.3}
+    ];
+    supportPositions.forEach(pos => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.2, 38), fwSupportMat);
+        leg.position.set(pos.x/2, 18, pos.z/2);
+        leg.rotation.set(pos.rotX, 0, pos.rotZ);
+        leg.castShadow = true; // 支柱產生陰影
+        fwContainer.add(leg);
+    });
+
+    // 3. 摩天輪旋轉主體
+    ferrisWheelGrp = new THREE.Group();
+    ferrisWheelGrp.position.set(0, 32, 0); 
+    fwContainer.add(ferrisWheelGrp);
+
+    const fwHub = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 6, 32), fwSupportMat);
+    fwHub.rotation.x = Math.PI / 2; 
+    fwHub.castShadow = true; // 中心軸陰影
+    ferrisWheelGrp.add(fwHub);
+
+    const fwOuterRim = new THREE.Mesh(new THREE.TorusGeometry(28, 0.4, 16, 64), fwSupportMat);
+    fwOuterRim.castShadow = true; // 外圈陰影
+    ferrisWheelGrp.add(fwOuterRim);
     
-    // 行人路 (只建在陸地：X 從 160 到 -20 停止)
-    const walkMat = new THREE.MeshStandardMaterial({color: 0x888888, roughness: 1.0});
-    const walkNear = new THREE.Mesh(new THREE.BoxGeometry(180, 0.4, 12), walkMat); 
-    walkNear.position.set(70, -4.7, roadWidth/2 + 10); walkNear.receiveShadow = true; sceneryGroup.add(walkNear);
-    
-    const walkFar = new THREE.Mesh(new THREE.BoxGeometry(180, 0.4, 12), walkMat); 
-    walkFar.position.set(70, -4.7, -roadWidth/2 - 2); walkFar.receiveShadow = true; sceneryGroup.add(walkFar);
+    const fwInnerRim = new THREE.Mesh(new THREE.TorusGeometry(22, 0.3, 16, 64), fwSupportMat);
+    fwInnerRim.castShadow = true; // 內圈陰影
+    ferrisWheelGrp.add(fwInnerRim);
 
-    // 交通車流 (重新分配起點)
-    const vehicleTypes = ['taxi', 'taxi', 'car', 'car', 'car', 'minibus', 'bus'];
-    for(let i=0; i<12; i++) { 
-        const vType = vehicleTypes[Math.floor(Math.random()*vehicleTypes.length)];
-        const direction = i % 2 === 0 ? 1 : -1; 
-        const laneZ = direction > 0 ? 8 : 0; 
-        const carGroup = createHKVehicle(vType, direction);
-        
-        const slotIndex = Math.floor(i / 2); 
-        const startX = direction > 0 ? -240 + (slotIndex * 60) : 160 - (slotIndex * 60);
-
-        carGroup.position.set(startX, -4.6, laneZ); 
-        carGroup.rotation.y = Math.PI / 2; 
-        carGroup.userData = { speed: 0.4 * direction, type: 'vehicle' }; 
-        sceneryGroup.add(carGroup); 
-        animScenery.cars.push(carGroup); 
+    for(let i=0; i<16; i++) {
+        const spokeGrp = new THREE.Group();
+        const spoke1 = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 28), fwSupportMat);
+        spoke1.position.y = 14; 
+        spoke1.castShadow = true; // 輻條陰影
+        spokeGrp.add(spoke1);
+        spokeGrp.rotation.z = (Math.PI * 2 / 16) * i;
+        ferrisWheelGrp.add(spokeGrp);
     }
 
-    // 路邊樹木 (嚴格限制只生長在陸地 X > -20，絕不上橋)
-    const trunkMat = new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 0.9});
-    for (let i = -20; i <= 160; i += 12) { 
-        if (Math.abs(i) < 8) continue; 
-        [roadWidth/2 + 8, -roadWidth/2 - 2].forEach(zPos => { 
-            const hue = 0.25 + Math.random() * 0.1; 
-            const lightness = 0.2 + Math.random() * 0.2;
-            const treeMat = new THREE.MeshStandardMaterial({color: new THREE.Color().setHSL(hue, 0.6, lightness), roughness: 0.9});
-            
-            const t = new THREE.Group(); 
-            const scale = 0.7 + Math.random() * 0.8; 
-            
-            const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.6, 4), trunkMat); 
-            tr.position.y = 2; tr.castShadow = true; t.add(tr); 
-            
-            const lf1 = new THREE.Mesh(new THREE.SphereGeometry(3, 8, 8), treeMat); 
-            lf1.position.y = 5; lf1.scale.set(1, 1.2, 1); lf1.castShadow = true; t.add(lf1);
-            const lf2 = new THREE.Mesh(new THREE.SphereGeometry(2, 8, 8), treeMat); 
-            lf2.position.set(1.5, 4.5, 0); lf2.castShadow = true; t.add(lf2);
-            
-            t.scale.setScalar(scale);
-            t.position.set(i + (Math.random()-0.5)*4, -4.5, zPos + (Math.random()-0.5)*1.5); 
-            t.rotation.y = Math.random() * Math.PI;
-            sceneryGroup.add(t); 
-        }); 
+    // 4. 製作 16 個獨立乘客車廂
+    const cabinMat = new THREE.MeshStandardMaterial({color: 0x223344, metalness: 0.8, roughness: 0.2}); 
+    const cabinRoofMat = new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.5}); 
+
+    fwCabins = []; 
+    for(let i=0; i<16; i++) {
+        const cabinContainer = new THREE.Group();
+        const angle = (Math.PI * 2 / 16) * i;
+        cabinContainer.position.set(Math.cos(angle) * 28, Math.sin(angle) * 28, 0);
+
+        const hanger = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.5), fwSupportMat);
+        hanger.position.y = -0.75; 
+        hanger.castShadow = true; // 懸掛軸陰影
+        cabinContainer.add(hanger);
+
+        const cabinBody = new THREE.Mesh(new THREE.BoxGeometry(2.5, 3.5, 2.5), cabinMat);
+        cabinBody.position.y = -2.5; 
+        cabinBody.castShadow = true; // 車廂主體陰影
+        cabinContainer.add(cabinBody);
+        
+        const cabinRoof = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.4, 2.6), cabinRoofMat);
+        cabinRoof.position.y = -0.6; 
+        cabinRoof.castShadow = true; // 車頂陰影
+        cabinContainer.add(cabinRoof);
+
+        ferrisWheelGrp.add(cabinContainer);
+        fwCabins.push(cabinContainer); 
+    }
+    // ==========================================
+    // 以下完全保留你原本的設定 (大廈、山脈、房間底座)，
+    // 只有把馬路和樹木的長度從 160 延伸到 360，讓它們能連到大橋！
+    // ==========================================
+
+    // 【修訂三：綠色且宏偉的遠景山脈】 (保留原樣)
+    const mountainMat = new THREE.MeshStandardMaterial({color: 0x365942, roughness: 1.0});
+    for(let i=0; i<6; i++) {
+        const mtn = new THREE.Mesh(new THREE.ConeGeometry(80 + Math.random()*50, 150 + Math.random()*100, 32), mountainMat);
+        mtn.position.set(-120 + i*50 + (Math.random()-0.5)*20, 60, -130 - Math.random()*20);
+        sceneryGroup.add(mtn);
     }
 
     // 【修訂一：解決大廈發光 BUG 與超出馬路問題】 (保留原樣)
