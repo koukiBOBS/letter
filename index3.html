@@ -2281,11 +2281,11 @@ function createCloudTexture() {
             }
             const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
         }
-        function createPainting(x, y, z, url, aspect, itemId) {
+       function createPainting(x, y, z, url, aspect, itemId) {
         const frameGroup = new THREE.Group(); 
         frameGroup.position.set(x, y, z); 
         
-        // 【修正】直接在這裡貼上 ID 並預設隱藏
+        // 貼上 ID 標籤，並強制預設隱藏！
         if(itemId) {
             frameGroup.userData = { itemId: itemId };
             frameGroup.visible = false;
@@ -2316,11 +2316,14 @@ function createCloudTexture() {
         });
     }
 
-    // 直接傳入 ID 標籤
     createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0, 'painting_1'); 
     createPainting(-26, 17, -16.7, '畫二.jpeg', 2048 / 1365, 'painting_2'); 
     createPainting(26, 17, -16.7, '畫三.jpeg', 1.0, 'painting_3'); 
     createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224, 'painting_4');
+
+
+
+        
         function createFloorTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 1024; const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#f7f6f2'; ctx.fillRect(0, 0, 1024, 1024);
@@ -2803,11 +2806,11 @@ const p4 = createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224); if(p4) p4.
     const acVent = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1, 14), new THREE.MeshStandardMaterial({color: 0x111111})); acVent.position.set(-0.1, -2, 0); acGroup.add(acVent);
 
 // 替換原本的 createBookcase 與底下的呼叫
-    function createBookcase(x, z, itemId) {
+  function createBookcase(x, z, itemId) {
         const shelfGroup = new THREE.Group(); 
         shelfGroup.position.set(x, 15, z); 
         
-        // 【修正】直接在這裡貼上 ID 並預設隱藏
+        // 貼上 ID 標籤，並強制預設隱藏！
         if(itemId) {
             shelfGroup.userData = { itemId: itemId };
             shelfGroup.visible = false; 
@@ -2824,12 +2827,9 @@ const p4 = createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224); if(p4) p4.
             while(bx < 10) { let bw = Math.random() * 0.8 + 0.3; let bh = Math.random() * 2.5 + 3; if(bx + bw > 10) break; const b = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.05, bh, 4), new THREE.MeshStandardMaterial({color: bookColors[Math.floor(Math.random()*bookColors.length)], roughness: 0.7})); if(Math.random() > 0.7) { b.rotation.z = (Math.random() - 0.5) * 0.3; bx += 0.4; } b.position.set(bx + bw/2, sy + bh/2 + 0.25, -2.5); b.castShadow = true; shelfGroup.add(b); bx += bw; }
         }
     }
-    
-    // 直接傳入 ID 標籤
     createBookcase(-25, 59, 'bookcase_1'); 
     createBookcase(0, 59, 'bookcase_2'); 
     createBookcase(25, 59, 'bookcase_3');
-
 
 
 
@@ -3578,8 +3578,8 @@ function setEnvironmentPhase(phaseStr) {
         
       // --- 拖曳與點擊系統全域變數 ---
         let pointerDownPos = { x: 0, y: 0 };
-        let dragTimer = null;       // 長按計時器
-        let isDragging = false;     // 是否正在拖曳
+     var dragTimer = null;
+var isDrawerAnimating = false;
         let dragTarget = null;      // 正在拖曳的目標
         let dragOffset = new THREE.Vector3(); // 滑鼠與物件中心的偏移量
         // 建立一個代表桌面的隱形平面 (高度約為 y=8.5)
