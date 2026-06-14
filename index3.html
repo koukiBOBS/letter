@@ -2216,7 +2216,7 @@ function closeDrawAnim() {
         
        function initRoomScene() {
     const container = document.getElementById('room-canvas-container');
-    scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0xc5c1bc, 0.015);
+    scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0xc5c1bc, 0.010);
     camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
     renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.outputEncoding = THREE.sRGBEncoding;
@@ -2439,7 +2439,7 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
         new THREE.MeshStandardMaterial({map: createCarpetTexture(), roughness: 1.0})
     );
     cpt.rotation.x = -Math.PI/2; 
-    cpt.position.set(0, 0.05, 8); // 高度設為 0.05，微微浮在貼地(y=0)的地板上方避免破圖
+    cpt.position.set(0, 0.26, 8); // 高度設為 0.05，微微浮在貼地(y=0)的地板上方避免破圖
     cpt.receiveShadow = true; 
     scene.add(cpt);
     
