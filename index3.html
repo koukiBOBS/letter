@@ -1122,7 +1122,11 @@ function renderTasks() {
                 if(d) rMap[d] = l; // 改為儲存完整 record
             });
             
-            if (readingTasks.length === 0) rGrid.innerHTML = '<div class="empty-state"><p>目前尚未設定閱讀任務。</p></div>';
+          // 過濾出所有自由撰寫的紀錄
+            const freeReadingLetters = readingLetters.filter(l => l.taskIndex === 'free');
+            if (readingTasks.length === 0 && freeReadingLetters.length === 0) {
+                rGrid.innerHTML = '<div class="empty-state"><p>目前尚未有閱讀任務與自由撰寫紀錄。</p></div>';
+            }
             readingTasks.forEach((dateStr, i) => {
                 const unlocked = new Date().setHours(0,0,0,0) >= new Date(dateStr).setHours(0,0,0,0);
                 const done = submittedReadingDates.includes(dateStr);
@@ -1143,6 +1147,27 @@ function renderTasks() {
                     } else alert("時空未到，尚未開放。");
                 }; rGrid.appendChild(el);
             });
+
+// --- 渲染「自由撰寫」的紀錄卡片 ---
+            freeReadingLetters.forEach((l) => {
+                const el = document.createElement('div'); 
+                el.className = `task-card completed`; // 自由撰寫一定是已完成寄出的狀態
+                
+                // 擷取寄出日期與書名
+                const d = new Date(l.timestamp);
+                const dateText = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+                let shortTitle = l.bookTitle.length > 8 ? l.bookTitle.substring(0, 8) + '...' : l.bookTitle;
+                
+                // 設定卡片版面 (與常規任務保持一致)
+                el.innerHTML = `<span class="task-num">✨ 自由分享</span><span class="task-date">《${escapeHtml(shortTitle)}》<br>${dateText} 寄出</span>`;
+                
+                // 點擊卡片直接開啟信紙介面
+                el.onclick = () => {
+                    openChatModal(l.id);
+                }; 
+                rGrid.appendChild(el);
+            });
+            
 
            // 2. 渲染隨機任務
              const submittedRandomDates = randSubs.map(s => s.taskDate);
