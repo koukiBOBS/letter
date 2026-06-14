@@ -2482,11 +2482,24 @@ function onPointerDown(e) {
             }, 300);
         } 
         else if (type === 'curtain') {
-            // 窗簾判定觸發稍微快一點，且不用提起來
             dragTimer = setTimeout(() => {
                 isDragging = true;
                 dragTarget = obj; 
                 dragTarget.userData.dragType = type;
+                // 記錄玩家抓取的是「左邊」還是「右邊」的窗簾
+                dragTarget.userData.curtainSide = obj.userData.side; 
+                
+                // 計算滑鼠抓取的偏移量，避免拉動瞬間窗簾跳躍
+                let curtainPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 16.5);
+                let intersectPoint = new THREE.Vector3();
+                raycaster.ray.intersectPlane(curtainPlane, intersectPoint);
+                if(intersectPoint) {
+                    let expectedX = (obj.userData.side === 'left') ? (-15 * curtainRatio) : (15 * curtainRatio);
+                    dragOffset.x = intersectPoint.x - expectedX; 
+                } else {
+                    dragOffset.x = 0;
+                }
+
                 controls.enabled = false;
                 document.body.style.cursor = 'ew-resize';
             }, 150);
@@ -2559,12 +2572,25 @@ function onPointerMove(e) {
             }
         }
         else if (type === 'curtain') {
-            // 窗簾左右拖拉：滑鼠 X 越靠近 0 越閉合
             let curtainPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 16.5);
             raycaster.ray.intersectPlane(curtainPlane, intersectPoint);
             if (intersectPoint) {
-                let r = Math.abs(intersectPoint.x) / 15;
-                curtainRatio = Math.max(0, Math.min(1, r));
+                let targetX = intersectPoint.x - dragOffset.x;
+                let side = dragTarget.userData.curtainSide;
+                let r;
+                
+                // 根據抓取的分別是左窗簾還是右窗簾來嚴格限制範圍
+                if (side === 'left') {
+                    // 左窗簾：0 是全閉，-15 是全開。限制滑鼠目標只能在 -15 到 0 之間。
+                    let clampedX = Math.max(-15, Math.min(0, targetX));
+                    r = Math.abs(clampedX) / 15;
+                } else {
+                    // 右窗簾：0 是全閉，15 是全開。限制滑鼠目標只能在 0 到 15 之間。
+                    let clampedX = Math.max(0, Math.min(15, targetX));
+                    r = clampedX / 15;
+                }
+                
+                curtainRatio = r;
                 applyCurtainRatio();
             }
         }
