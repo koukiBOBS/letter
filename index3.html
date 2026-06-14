@@ -2547,53 +2547,34 @@ createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0);
     }
 
     // 🌉 【新增 左側】青馬大橋 (延伸至左方極遠處)
-     const bridgeGroup = new THREE.Group();
-    bridgeGroup.position.set(0, 0, 4); // 對齊馬路中心 Z=4
+    const bridgeGroup = new THREE.Group();
+    bridgeGroup.position.set(-140, 0, 4); // 與馬路對齊，放在極左側
     sceneryGroup.add(bridgeGroup);
 
     const towerMat = new THREE.MeshStandardMaterial({color: 0xd0d4d9, roughness: 0.6});
     const cableMat = new THREE.MeshStandardMaterial({color: 0x333333, roughness: 0.5});
-    const deckMat = new THREE.MeshStandardMaterial({color: 0x666b70, roughness: 0.8}); // 橋面底座材質
 
-    // 1. 建造厚實的實體橋面 (擋住海水，支撐馬路)
-    // 橋面長度 240，從岸邊 (X=-20) 一直延伸到海的盡頭 (X=-260)
-    const bridgeDeck = new THREE.Mesh(new THREE.BoxGeometry(240, 1.2, 30), deckMat);
-    bridgeDeck.position.set(-140, -5.5, 0); // 緊貼在馬路正下方
-    bridgeDeck.castShadow = true; bridgeDeck.receiveShadow = true;
-    bridgeGroup.add(bridgeDeck);
-
-    // 2. 建造兩座巨型 H 型橋塔
-    [-70, -170].forEach(towerX => {
-        const t1 = new THREE.Mesh(new THREE.BoxGeometry(8, 90, 6), towerMat); t1.position.set(towerX, 25, -13); bridgeGroup.add(t1);
-        const t2 = new THREE.Mesh(new THREE.BoxGeometry(8, 90, 6), towerMat); t2.position.set(towerX, 25, 13); bridgeGroup.add(t2);
-        const cross1 = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 26), towerMat); cross1.position.set(towerX, 45, 0); bridgeGroup.add(cross1);
-        const cross2 = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 26), towerMat); cross2.position.set(towerX, -2, 0); bridgeGroup.add(cross2);
+    // 建造大橋 H型 橋塔
+    [-30, -130].forEach(towerX => {
+        const t1 = new THREE.Mesh(new THREE.BoxGeometry(8, 90, 6), towerMat); t1.position.set(towerX, 25, -12); bridgeGroup.add(t1);
+        const t2 = new THREE.Mesh(new THREE.BoxGeometry(8, 90, 6), towerMat); t2.position.set(towerX, 25, 12); bridgeGroup.add(t2);
+        const cross1 = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 24), towerMat); cross1.position.set(towerX, 45, 0); bridgeGroup.add(cross1);
+        const cross2 = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 24), towerMat); cross2.position.set(towerX, -2, 0); bridgeGroup.add(cross2);
     });
 
-    // 3. 建造真實物理弧度的懸索與垂直吊索
-    [-13, 13].forEach(zPos => {
-        // 主跨段 (兩座橋塔之間)
-        const mainCurve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(-70, 45, zPos), new THREE.Vector3(-120, -15, zPos), new THREE.Vector3(-170, 45, zPos));
-        const mainTube = new THREE.Mesh(new THREE.TubeGeometry(mainCurve, 32, 1.0, 8, false), cableMat);
-        bridgeGroup.add(mainTube);
-
-        // 右側拉索 (連接陸地)
-        const rightCurve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(-20, -5, zPos), new THREE.Vector3(-45, 20, zPos), new THREE.Vector3(-70, 45, zPos));
-        const rightTube = new THREE.Mesh(new THREE.TubeGeometry(rightCurve, 16, 1.0, 8, false), cableMat);
-        bridgeGroup.add(rightTube);
-
-        // 主跨段的垂直吊索
-        for(let i=0.05; i<1; i+=0.05) {
-            let pt = mainCurve.getPoint(i);
+    // 建造大橋懸索
+    [-12, 12].forEach(zPos => {
+        const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(20, 45, zPos), new THREE.Vector3(-80, -5, zPos), new THREE.Vector3(-180, 45, zPos));
+        const tubeGeo = new THREE.TubeGeometry(curve, 64, 1.2, 8, false);
+        const cable = new THREE.Mesh(tubeGeo, cableMat); bridgeGroup.add(cable);
+        for(let i=0; i<=1; i+=0.05) {
+            let pt = curve.getPoint(i);
             if(pt.y > -4) {
                 let suspender = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, pt.y + 5), cableMat);
-                // 精準計算吊索中心點，讓它完美連接鋼纜與橋面
-                suspender.position.set(pt.x, (pt.y - 5) / 2, pt.z); 
-                bridgeGroup.add(suspender);
+                suspender.position.set(pt.x, (pt.y - 5)/2 - 5, pt.z); bridgeGroup.add(suspender);
             }
         }
     });
-
 
  // 🎡 【精緻版】海濱摩天輪
     const fwContainer = new THREE.Group();
@@ -3510,10 +3491,10 @@ function isCatColliding(x, z) {
     if(controls) controls.update();
     
     // 1. 車輛邏輯：擴大行駛邊界到 180，讓車可以開上大橋再消失
-   animScenery.cars.forEach(c => { 
+    animScenery.cars.forEach(c => { 
         c.position.x += c.userData.speed; 
-        if(c.position.x > 180) c.position.x = -260; // 駛離大橋盡頭
-        else if(c.position.x < -260) c.position.x = 180; 
+        if(c.position.x > 180) c.position.x = -180; 
+        else if(c.position.x < -180) c.position.x = 180; 
     });
 
   // 2. 🎡 讓摩天輪緩慢轉動，且車廂保持垂直！
