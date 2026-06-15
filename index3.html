@@ -2728,8 +2728,10 @@ function returnToRoom() {
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
     // 退回室內的鏡頭動畫
+const roomFov = isTouchDevice ? 70 : 50;
+    // 退回室內的鏡頭動畫
     gsap.to(camera.position, { x: roomCameraBackup.cp.x, y: roomCameraBackup.cp.y, z: roomCameraBackup.cp.z, duration: 1.8, ease: "power2.inOut" });
-    gsap.to(camera, { fov: 50, duration: 1.8, ease: "power2.inOut", onUpdate: () => camera.updateProjectionMatrix() });
+    gsap.to(camera, { fov: roomFov, duration: 1.8, ease: "power2.inOut", onUpdate: () => camera.updateProjectionMatrix() });
     gsap.to(controls.target, { 
         x: roomCameraBackup.ct.x, y: roomCameraBackup.ct.y, z: roomCameraBackup.ct.z, 
         duration: 1.8, 
@@ -3334,7 +3336,9 @@ function closeDrawAnim() {
     const container = document.getElementById('room-canvas-container');
     scene = new THREE.Scene(); 
     scene.fog = new THREE.FogExp2(0xc5c1bc, 0.010);
-    camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+   const roomFov = window.innerWidth <= 768 ? 70 : 50;
+const roomFov = isTouchDevice ? 70 : 50;
+camera = new THREE.PerspectiveCamera(roomFov, window.innerWidth/window.innerHeight, 0.1, 1000);
     
   renderer = new THREE.WebGLRenderer({
         antialias: true,
