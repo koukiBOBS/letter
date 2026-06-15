@@ -5374,7 +5374,7 @@ function acceptBankruptcy() {
  
 
  
-   window.isKnobDragging = false;
+ window.isKnobDragging = false;
     let currentSnappedAngle = -1;
     function handleKnobMove(e) {
         if(!window.isKnobDragging || isAtBalcony) return;
@@ -5387,26 +5387,33 @@ function acceptBankruptcy() {
         let rad = Math.atan2(clientY - centerY, clientX - centerX);
         let deg = (rad * 180 / Math.PI) + 90;
         if(deg < 0) deg += 360;
-        // 磁吸至最近的 45 度角 (即 8 個段位)
+        // 磁吸至最近的 45 度角
         let snappedDeg = Math.round(deg / 45) * 45;
         if(snappedDeg === 360) snappedDeg = 0;
-        // 如果角度改變了，觸發相機平滑轉場
         if (currentSnappedAngle !== snappedDeg) {
             currentSnappedAngle = snappedDeg;
             
-            // 👇 讓旋鈕 UI 立刻轉到對應的段位
             const knobDial = document.getElementById('knob-dial');
-            if (knobDial) knobDial.style.transform = `rotate(${snappedDeg}deg)`;
+            if (knobDial) {
+                // 👇 加入「短路徑」演算法，防止整圈旋轉
+                let currentDeg = parseFloat(knobDial.getAttribute('data-deg')) || 0;
+                let diff = snappedDeg - (currentDeg % 360);
+                
+                // 強制將角度差限縮在 -180 到 180 之間 (尋找最短路徑)
+                diff = ((diff + 540) % 360) - 180;
+                let newDeg = currentDeg + diff;
+                
+                knobDial.setAttribute('data-deg', newDeg); // 記憶當前連續角度
+                knobDial.style.transform = `rotate(${newDeg}deg)`;
+            }
  
             const preset = camPresets.find(p => p.angle === snappedDeg);
             if (preset) {
-                // 暫時解鎖保護限制，讓鏡頭能360度環繞
                 if (controls) {
                     controls.minAzimuthAngle = -Infinity;
                     controls.maxAzimuthAngle = Infinity;
                     controls.minPolarAngle = 0;
                 }
-                
                 gsap.to(camera.position, { x: preset.cp.x, y: preset.cp.y, z: preset.cp.z, duration: 1.2, ease: "power2.inOut" });
                 gsap.to(controls.target, {
                     x: preset.ct.x, y: preset.ct.y, z: preset.ct.z,
