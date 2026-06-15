@@ -3460,8 +3460,8 @@ function buildRoomEnvironment() {
     dirLight.shadow.camera.bottom = -80; 
     dirLight.shadow.camera.far = 150;     // 縮短光線投射極限
     
-    dirLight.shadow.bias = -0.001;        
-    dirLight.shadow.normalBias = 0.08;     
+   dirLight.shadow.bias = -0.002;        // 加深偏移
+dirLight.shadow.normalBias = 0.15;    // 👈 將 0.08 改為 0.15，消除牆上條紋
     // 👇 3. 稍微增加柔化半徑，讓邊緣更自然 (掩飾任何殘留的鋸齒)
     dirLight.shadow.radius = isTouchDevice ? 3 : 2.5;          
 
@@ -3476,8 +3476,8 @@ function buildRoomEnvironment() {
     ceilingLight.castShadow = false; 
     ceilingLight.shadow.mapSize.width = 1024; 
     ceilingLight.shadow.mapSize.height = 1024; 
-    ceilingLight.shadow.bias = -0.002;           // 微調室內燈陰影偏移
-    ceilingLight.shadow.normalBias = 0.08;       // 【關鍵修復】增加室內燈法線偏移，讓牆壁恢復平整
+  ceilingLight.shadow.bias = -0.004;           // 加深偏移
+ceilingLight.shadow.normalBias = 0.15;       // 👈 將 0.08 改為 0.15，消除牆上條紋
     ceilingLight.shadow.radius = 4; 
     scene.add(ceilingLight);
 
