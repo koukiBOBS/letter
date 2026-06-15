@@ -3796,13 +3796,22 @@ interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitB
     balconyGrp.add(bFloor);
 
     // 鐵藝欄杆
-    const ironMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.8, roughness: 0.4 });
+  const ironMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.8, roughness: 0.4 });
+    
     const topRail = new THREE.Mesh(new THREE.BoxGeometry(30, 0.4, 0.4), ironMat);
-    topRail.position.set(0, 8.5, -3.8); balconyGrp.add(topRail);
+    topRail.position.set(0, 8.5, -3.8);
+    topRail.castShadow = true; // 👈 補上這行：讓頂部主欄杆產生陰影
+    balconyGrp.add(topRail);
+    
     const sideRailL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 8), ironMat);
-    sideRailL.position.set(-14.8, 8.5, 0); balconyGrp.add(sideRailL);
+    sideRailL.position.set(-14.8, 8.5, 0);
+    sideRailL.castShadow = true; // 👈 補上這行：讓左側邊緣欄杆產生陰影
+    balconyGrp.add(sideRailL);
+    
     const sideRailR = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 8), ironMat);
-    sideRailR.position.set(14.8, 8.5, 0); balconyGrp.add(sideRailR);
+    sideRailR.position.set(14.8, 8.5, 0);
+    sideRailR.castShadow = true; // 👈 補上這行：讓右側邊緣欄杆產生陰影
+    balconyGrp.add(sideRailR);
     
     // 欄杆立柱
    // 欄杆立柱 (正面)
