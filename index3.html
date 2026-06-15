@@ -6047,6 +6047,7 @@ function acceptBankruptcy() {
 
 // 👇 移動端實時視角旋鈕與攝影機控制 (完美軌跡、廣角與方向修復版) 👇
 // 👇 移動端實時視角旋鈕與攝影機控制 (動態圓心切換、絕對防穿牆、廣角鎖定版) 👇
+// 👇 移動端實時視角旋鈕與攝影機控制 (動態圓心切換、絕對防穿牆、8方位精準鎖定版) 👇
 (function initCameraKnob() {
     const knob = document.getElementById('mobile-cam-knob');
     if(!knob) return;
@@ -6103,15 +6104,17 @@ function acceptBankruptcy() {
                 const startTy = controls.target.y;
                 const startTz = controls.target.z;
 
-                // 5. 🎯 設定目標圓心 (Target)
-                let endTx = 0, endTy = 7, endTz = 0; // 預設上半部：看書桌
+                // 5. 🎯 設定目標圓心 (Target) - 細緻定義 8 個方位的完美對焦中心
+                let endTx = 0, endTy = 7, endTz = 0; // 預設看書桌
                 
-                // 下半部 (135, 180, -135度) -> 圓心放得更後，正對中央書櫃前一點
-                if (Math.abs(snappedDeg) === 135 || Math.abs(snappedDeg) === 180) {
-                    endTx = 0;
-                    endTy = 14; 
-                    endTz = 52; // 書櫃實體在 Z=59，圓心放在 52 完美特寫
-                }
+                if (snappedDeg === 0) { endTx = 0; endTy = 7; endTz = 0; } // 上：正看書桌
+                else if (snappedDeg === 45) { endTx = 22; endTy = 10; endTz = 15; } // 右上：書桌右側與時鐘
+                else if (snappedDeg === 90) { endTx = 38; endTy = 12; endTz = 25; } // 右：正看鋼琴
+                else if (snappedDeg === 135) { endTx = 25; endTy = 14; endTz = 45; } // 右下：右側書櫃
+                else if (Math.abs(snappedDeg) === 180) { endTx = 0; endTy = 14; endTz = 45; } // 下：中央書櫃 (圓心在 Z=45，書櫃前方)
+                else if (snappedDeg === -135) { endTx = -25; endTy = 14; endTz = 45; } // 左下：左側書櫃
+                else if (snappedDeg === -90) { endTx = -38; endTy = 10; endTz = 25; } // 左：掛衣架與趟門
+                else if (snappedDeg === -45) { endTx = -22; endTy = 10; endTz = 15; } // 左上：左側畫作
 
                 // 6. 旋鈕方向映射 (向下拉 = 相機繞到前方，視角轉向後方)
                 const targetAzimuth = -snappedDeg * (Math.PI / 180);
@@ -6137,27 +6140,24 @@ function acceptBankruptcy() {
                         let currentTy = startTy + (endTy - startTy) * p;
                         let currentTz = startTz + (endTz - startTz) * p;
 
-                        // B. 根據鎖死的廣角 (r)，計算相機「理論上」的座標
+                        // B. 根據鎖死的廣角 (r)，計算相機「理論上」的坐標
                         let idealCamX = currentTx + r * Math.sin(polar) * Math.sin(currentAz);
                         let idealCamZ = currentTz + r * Math.sin(polar) * Math.cos(currentAz);
                         let idealCamY = currentTy + r * Math.cos(polar);
 
-                        // C. 🛑 物理防穿牆碰撞系統：限制相機絕對不能越過牆壁與書櫃！
-                        // 左右牆界線: -50 ~ 50
-                        // 書櫃牆界線: 50 (書櫃實體在59，50絕對安全不穿模)
-                        // 玻璃門界線: -14 (窗戶實體在-18)
-                        let clampedCamX = Math.max(-50, Math.min(50, idealCamX));
-                        let clampedCamY = Math.max(2, Math.min(38, idealCamY));
-                        let clampedCamZ = Math.max(-14, Math.min(50, idealCamZ));
+                        // C. 🛑 絕對物理防穿牆系統 (核心修復區)
+                        // 房間真實邊界 X:-60~60, Z:-18~60。
+                        // 我們把邊界大幅往內縮，確保任何角度都不會拍到牆外或卡進家具側面的死角縫隙。
+                        // Z 軸最大鎖在 46，完美避開 Z=59 的書櫃，且保持漂亮的觀看距離。
+                        let clampedCamX = Math.max(-42, Math.min(42, idealCamX));
+                        let clampedCamY = Math.max(3, Math.min(36, idealCamY));
+                        let clampedCamZ = Math.max(-10, Math.min(46, idealCamZ));
 
-                        // D. 🔄 反向推算圓心：如果相機撞牆被卡住了，我們就滑動圓心來維持「廣角不變」
-                        let finalTx = clampedCamX - r * Math.sin(polar) * Math.sin(currentAz);
-                        let finalTz = clampedCamZ - r * Math.sin(polar) * Math.cos(currentAz);
-                        let finalTy = clampedCamY - r * Math.cos(polar);
-
-                        // E. 應用最終安全座標
+                        // D. 應用最終安全坐標並更新 OrbitControls
+                        // (放棄原先反推 Target 的邏輯，讓 Target 準確到達你想看的地方。
+                        // 如果相機撞牆被 clamped 擋住，焦距 r 會自然縮短，形成完美的「物理暫停貼牆」手感)
                         camera.position.set(clampedCamX, clampedCamY, clampedCamZ);
-                        controls.target.set(finalTx, finalTy, finalTz);
+                        controls.target.set(currentTx, currentTy, currentTz);
                         
                         camera.lookAt(controls.target);
                         controls.update();
