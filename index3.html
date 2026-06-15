@@ -5220,7 +5220,7 @@ function animateRoom() {
         cameraFrustum.setFromProjectionMatrix(cameraViewProjectionMatrix);
     }
  
-// 🔄 實時指南針 (支援雙視角鏡像反轉)
+// 🔄 實時指南針 (支援原地轉身的鏡像反轉)
     const knobDial = document.getElementById('knob-dial');
     if (knobDial && camera && controls && !window.isKnobDragging) {
         const dx = controls.target.x - camera.position.x;
@@ -6060,7 +6060,6 @@ function acceptBankruptcy() {
 
 
 // 👇 移動端實時視角旋鈕與攝影機控制 (完美軌跡、廣角與方向修復版) 👇
-// 👇 移動端實時視角旋鈕與攝影機控制 (長按雙模式、鏡像運鏡、絕對防穿牆版) 👇
 (function initCameraKnob() {
     const knob = document.getElementById('mobile-cam-knob');
     if(!knob) return;
@@ -6091,10 +6090,10 @@ function acceptBankruptcy() {
         
         window.isKnobDragging = false; 
         currentSnappedAngle = null; 
-        applyKnobAngle(0); // 切換後強制歸位到正上方 (0度)
+        applyKnobAngle(0); // 切換後強制歸位到該模式的正前方
     }
 
-    // --- 執行完美定點運鏡 ---
+    // --- 執行「原地轉向」運鏡 ---
     function applyKnobAngle(snappedDeg) {
         if (currentSnappedAngle === snappedDeg) return;
         currentSnappedAngle = snappedDeg;
@@ -6103,56 +6102,64 @@ function acceptBankruptcy() {
         if (knobDial) knobDial.style.transform = `rotate(${snappedDeg}deg)`;
 
         if (controls && camera) {
-            // 1. 記錄目前的廣角縮放程度 (r)
+            // 1. 記錄目前的廣角縮放距離 (r)
             const currentDx = camera.position.x - controls.target.x;
             const currentDy = camera.position.y - controls.target.y;
             const currentDz = camera.position.z - controls.target.z;
             let r = Math.sqrt(currentDx*currentDx + currentDy*currentDy + currentDz*currentDz);
-            r = Math.max(15, Math.min(45, r)); // 限制安全縮放距離，防穿模
+            r = Math.max(15, Math.min(45, r)); // 限制安全距離
 
-            let baseTx, baseTy, baseTz, baseCx, baseCy, baseCz;
+            // 2. 固定圓心站立點 (Camera Base)
+            const baseCx = 0, baseCy = 16, baseCz = 20;
+            let baseTx = 0, baseTy = 16, baseTz = 0; // 看向的目標點
 
-            // 2. 🎯 3D 遊戲級定點鏡頭 (Target: 看哪裡 / Cam: 相機在哪裡)
+            // 3. 🎯 根據模式與角度設定目標點 (Target)
             if (window.knobMode === 1) { 
-                // ⚪ 模式一：面向窗戶 (0:窗, 90:右牆鋼琴, -90:左牆趟門)
+                // ⚪ 模式一：面向窗戶 (-Z)
                 if (snappedDeg === 0) { 
-                    baseTx=0; baseTy=7; baseTz=0; baseCx=0; baseCy=18; baseCz=30; 
+                    baseTx=0; baseTy=10; baseTz=-10; 
                 } else if (snappedDeg === 45) { 
-                    baseTx=25; baseTy=8; baseTz=5; baseCx=-15; baseCy=18; baseCz=25; 
+                    baseTx=25; baseTy=10; baseTz=-5; 
                 } else if (snappedDeg === 90) { 
-                    baseTx=45; baseTy=10; baseTz=15; baseCx=-20; baseCy=16; baseCz=15; 
+                    baseTx=50; baseTy=10; baseTz=20; // 右邊是鋼琴
                 } else if (snappedDeg === -45) { 
-                    baseTx=-25; baseTy=8; baseTz=5; baseCx=15; baseCy=18; baseCz=25; 
+                    baseTx=-25; baseTy=10; baseTz=-5; 
                 } else if (snappedDeg === -90) { 
-                    baseTx=-45; baseTy=10; baseTz=15; baseCx=20; baseCy=16; baseCz=15; 
+                    baseTx=-50; baseTy=10; baseTz=20; // 左邊是掛衣架
                 }
             } else { 
-                // 🟤 模式二：面向書櫃 (轉身180度！ 0:書櫃, 90:右邊掛衣架, -90:左邊鋼琴)
+                // 🟤 模式二：轉身面向書櫃 (+Z)
                 if (snappedDeg === 0) { 
-                    baseTx=0; baseTy=15; baseTz=50; baseCx=0; baseCy=18; baseCz=15; 
+                    baseTx=0; baseTy=14; baseTz=55; // 正前方看書櫃
                 } else if (snappedDeg === 45) { 
-                    baseTx=-25; baseTy=14; baseTz=45; baseCx=15; baseCy=18; baseCz=15; 
+                    baseTx=-25; baseTy=12; baseTz=50; // 向右望：看向掛衣架那側的角落
                 } else if (snappedDeg === 90) { 
-                    baseTx=-45; baseTy=10; baseTz=30; baseCx=20; baseCy=16; baseCz=30; 
+                    baseTx=-50; baseTy=10; baseTz=20; // 右邊是掛衣架 (與模式一完全相反)
                 } else if (snappedDeg === -45) { 
-                    baseTx=25; baseTy=14; baseTz=45; baseCx=-15; baseCy=18; baseCz=15; 
+                    baseTx=25; baseTy=12; baseTz=50;  // 向左望：看向鋼琴那側的角落
                 } else if (snappedDeg === -90) { 
-                    baseTx=45; baseTy=10; baseTz=30; baseCx=-20; baseCy=16; baseCz=30; 
+                    baseTx=50; baseTy=10; baseTz=20;  // 左邊是鋼琴 (與模式一完全相反)
                 }
             }
 
-            // 3. 結合目標方位與目前的廣角 (r)，計算最終安全座標
+            // 4. 根據「目標點到圓心」的向量，乘上玩家目前的廣角 (r)，算出相機最終位置
             const dirX = baseCx - baseTx;
             const dirY = baseCy - baseTy;
             const dirZ = baseCz - baseTz;
             const dirLen = Math.sqrt(dirX*dirX + dirY*dirY + dirZ*dirZ);
             
-            const endCamX = baseTx + (dirX / dirLen) * r;
-            const endCamY = baseTy + (dirY / dirLen) * r;
-            const endCamZ = baseTz + (dirZ / dirLen) * r;
+            const idealCamX = baseTx + (dirX / dirLen) * r;
+            const idealCamY = baseTy + (dirY / dirLen) * r;
+            const idealCamZ = baseTz + (dirZ / dirLen) * r;
 
-            // 4. GSAP 平滑運鏡
-            gsap.to(camera.position, { x: endCamX, y: endCamY, z: endCamZ, duration: 0.8, ease: "power2.inOut" });
+            // 5. 🛑 絕對物理防穿牆結界
+            // 嚴格限制相機的活動範圍，保證不會退到書櫃裡面或穿破牆壁
+            const clampedCamX = Math.max(-45, Math.min(45, idealCamX));
+            const clampedCamY = Math.max(3, Math.min(36, idealCamY));
+            const clampedCamZ = Math.max(-10, Math.min(45, idealCamZ));
+
+            // 6. GSAP 平滑運鏡
+            gsap.to(camera.position, { x: clampedCamX, y: clampedCamY, z: clampedCamZ, duration: 0.8, ease: "power2.inOut" });
             gsap.to(controls.target, { 
                 x: baseTx, y: baseTy, z: baseTz, 
                 duration: 0.8, ease: "power2.inOut", 
@@ -6217,7 +6224,6 @@ function acceptBankruptcy() {
         if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
     });
 })();
-
 
 // 新增或替換這個函數，專門用來渲染漂亮的索書卡
 function renderMyLogs() {
