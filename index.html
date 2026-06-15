@@ -6782,122 +6782,136 @@ window.toggleReadingLog = function() {
 // 並且在 initApp() 的最後面，加上這行：
 // renderMyLogs();
 
-        /* =====================================================================
- * 🌟 終極扭蛋模組：50種真實消耗品、實體桌面擺放、時效消失系統
+   /* =====================================================================
+ * 🌟 終極扭蛋模組：高精度幾何演算、實體動態特效、時效消失系統
  * ===================================================================== */
 (function initGachaExpansion() {
-    // 1. 定義 50 種截然不同的消耗品 (名稱, 描述, 顏色, 類型, 時效分鐘)
+    // 1. 50 種消耗品 (名稱, 描述, 顏色, 類型, 時效分鐘, 容器材質種類)
     const RAW_ITEMS = [
-        // ☕ 飲品類 (出現於桌子左側) - 60分鐘
-        ['美式黑咖啡', '提神醒腦的深焙咖啡，醇厚微苦。', 0x3b2818, 'drink', 60],
-        ['焦糖瑪奇朵', '甜膩溫暖的焦糖香氣，帶來幸福感。', 0xd4a373, 'drink', 60],
-        ['宇治抹茶', '翠綠的茶湯，帶著清新的回甘。', 0x6b8e23, 'drink', 60],
-        ['伯爵紅茶', '散發著淡淡的佛手柑優雅香氣。', 0x8b4513, 'drink', 60],
-        ['熱牛奶', '睡前喝一杯，能帶來平靜的好夢。', 0xffffff, 'drink', 60],
-        ['洋甘菊茶', '安神放鬆的淡黃色花草茶。', 0xffe4b5, 'drink', 60],
-        ['玫瑰花茶', '漂浮著花瓣的浪漫粉色茶飲。', 0xffb6c1, 'drink', 60],
-        ['熱可可', '濃郁的巧克力，溫暖手心與心靈。', 0x5c4033, 'drink', 60],
-        ['鮮榨橙汁', '酸甜可口，充滿活力的果汁。', 0xffa500, 'drink', 60],
-        ['冰檸檬茶', '清涼解渴，帶著一片檸檬。', 0xd2b48c, 'drink', 60],
-        // 🍰 茶點類 (出現於桌子右側) - 60分鐘
-        ['草莓馬卡龍', '精緻的法式甜點，口感外酥內軟。', 0xff69b4, 'snack', 60],
-        ['巧克力曲奇', '經典的酥脆餅乾，夾雜巧克力豆。', 0x6b4226, 'snack', 60],
-        ['抹茶瑪德蓮', '貝殼形狀的日式風味小蛋糕。', 0x556b2f, 'snack', 60],
-        ['藍莓果塔', '鋪滿新鮮藍莓的法式水果塔。', 0x483d8b, 'snack', 60],
-        ['檸檬磅蛋糕', '扎實且帶有清香的厚切蛋糕。', 0xfffacd, 'snack', 60],
-        ['焦糖烤布丁', '滑嫩的布丁配上微苦焦糖。', 0xffd700, 'snack', 60],
-        ['法式牛角包', '牛油香氣四溢的酥脆麵包。', 0xdaa520, 'snack', 60],
-        ['草莓甜甜圈', '撒著糖霜與彩色巧克力的甜甜圈。', 0xffa07a, 'snack', 60],
-        ['黑森林蛋糕', '櫻桃與巧克力的完美結合。', 0x2f4f4f, 'snack', 60],
-        ['薄荷薄片', '清新的小糖果，帶來涼爽感。', 0x98fb98, 'snack', 60],
-        // 🕯️ 香薰與蠟燭 (出現於桌子左後方) - 120分鐘 (會發光)
-        ['薰衣草蠟燭', '散發著安眠的紫色光芒與香氣。', 0x9370db, 'candle', 120],
-        ['玫瑰香薰燭', '帶著浪漫氣息的溫暖紅光。', 0xdc143c, 'candle', 120],
-        ['香草鮮奶蠟燭', '溫暖的乳白色微光，令人安心。', 0xfdf5e6, 'candle', 120],
-        ['檀木線香', '沉穩的木質調香氣，適合靜心閱讀。', 0x8b4513, 'candle', 120],
-        ['海風蠟燭', '清爽的藍色燭光，彷彿聽見海浪。', 0x4682b4, 'candle', 120],
-        ['琥珀蠟燭', '古老的金色光芒，充滿年代感。', 0xffbf00, 'candle', 120],
-        ['青蘋果蠟燭', '充滿活力的淺綠色光芒。', 0x9acd32, 'candle', 120],
-        ['雪松香薰', '冷冽的森林氣息，提神醒腦。', 0x2e8b57, 'candle', 120],
-        ['肉桂蘋果蠟燭', '冬日裡的溫暖香氣，驅散寒意。', 0xd2691e, 'candle', 120],
-        ['晚香玉蠟燭', '優雅而神祕的白光。', 0xfff8dc, 'candle', 120],
-        // 🔮 桌上擺件 (出現於桌子右後方) - 180分鐘
-        ['祈福紙鶴', '親手摺疊，帶來好運的白色紙鶴。', 0xffffff, 'ornament', 180],
-        ['水晶蘋果', '折射著七彩光芒的玻璃藝品。', 0xff0000, 'ornament', 180],
-        ['木雕小貓', '一隻慵懶的木頭貓咪雕像。', 0xdeb887, 'ornament', 180],
-        ['復古沙漏', '沙粒緩緩流下，紀錄靜謐時光。', 0xcd853f, 'ornament', 180],
-        ['星空雪花球', '搖一搖會有星星落下的玻璃球。', 0x191970, 'ornament', 180],
-        ['迷你地球儀', '可以撥動旋轉的黃銅小地球儀。', 0x4169e1, 'ornament', 180],
-        ['陶瓷知更鳥', '精緻的青藍色陶瓷工藝品。', 0x87ceeb, 'ornament', 180],
-        ['黃銅指南針', '指引方向的老舊航海指南針。', 0xb8860b, 'ornament', 180],
-        ['白水晶柱', '充滿純粹能量的天然原石。', 0xdadbd5, 'ornament', 180],
-        ['達拉木馬', '瑞典傳統的紅色彩繪木馬。', 0xff4500, 'ornament', 180],
-        // 🌷 花卉與植栽 (出現於桌子最右側) - 1440分鐘 (24小時)
-        ['單支紅玫瑰', '插在細口瓶中的鮮豔玫瑰，象徵熱情。', 0xff0000, 'plant', 1440],
-        ['向日葵', '充滿陽光氣息的明亮花朵。', 0xffd700, 'plant', 1440],
-        ['純白鬱金香', '優雅而高貴的春日之花。', 0xffffff, 'plant', 1440],
-        ['迷你仙人球', '生機勃勃的帶刺綠色小圓球。', 0x32cd32, 'plant', 1440],
-        ['粉嫩多肉', '厚實可愛的粉綠色多肉植物。', 0x66cdaa, 'plant', 1440],
-        ['滿天星', '像星星般細碎的白色小花束。', 0xf0f8ff, 'plant', 1440],
-        ['藍色紫陽花', '帶有雨季氣息的繡球花。', 0x4169e1, 'plant', 1440],
-        ['粉色康乃馨', '溫柔而慈愛的層疊花瓣。', 0xffb6c1, 'plant', 1440],
-        ['黃金葛插水', '在玻璃瓶中生根的翠綠葉片。', 0x7cfc00, 'plant', 1440],
-        ['四葉草盆栽', '傳說能帶來幸運的稀有植物。', 0x228b22, 'plant', 1440]
+        // ☕ 飲品類 (附帶熱騰騰的煙霧特效) - 60分鐘
+        ['美式黑咖啡', '提神醒腦的深焙咖啡，醇厚微苦。', 0x24140b, 'drink', 60, 'ceramic_dark'],
+        ['焦糖瑪奇朵', '甜膩溫暖的焦糖香氣，帶來幸福感。', 0xd4a373, 'drink', 60, 'ceramic_white'],
+        ['宇治抹茶', '翠綠的茶湯，帶著清新的回甘。', 0x5a7222, 'drink', 60, 'ceramic_rustic'],
+        ['伯爵紅茶', '散發著淡淡的佛手柑優雅香氣。', 0x722806, 'drink', 60, 'glass'],
+        ['熱牛奶', '睡前喝一杯，能帶來平靜的好夢。', 0xffffff, 'drink', 60, 'ceramic_white'],
+        ['洋甘菊茶', '安神放鬆的淡黃色花草茶。', 0xffdb58, 'drink', 60, 'glass'],
+        ['玫瑰花茶', '漂浮著花瓣的浪漫粉色茶飲。', 0xffb6c1, 'drink', 60, 'glass'],
+        ['熱可可', '濃郁的巧克力，溫暖手心與心靈。', 0x3d2314, 'drink', 60, 'ceramic_dark'],
+        ['鮮榨橙汁', '酸甜可口，充滿活力的果汁。', 0xffa500, 'drink', 60, 'glass'],
+        ['冰檸檬茶', '清涼解渴，帶著一片檸檬。', 0xc98e38, 'drink', 60, 'glass'],
+        // 🍰 茶點類 (帶有精緻陶瓷底盤) - 60分鐘
+        ['草莓馬卡龍', '精緻的法式甜點，口感外酥內軟。', 0xff69b4, 'snack', 60, 'macaron'],
+        ['巧克力曲奇', '經典的酥脆餅乾，夾雜巧克力豆。', 0x5c3a21, 'snack', 60, 'cookie'],
+        ['抹茶瑪德蓮', '貝殼形狀的日式風味小蛋糕。', 0x6b8e23, 'snack', 60, 'cake'],
+        ['藍莓果塔', '鋪滿新鮮藍莓的法式水果塔。', 0x483d8b, 'snack', 60, 'tart'],
+        ['檸檬磅蛋糕', '扎實且帶有清香的厚切蛋糕。', 0xfffacd, 'snack', 60, 'cake'],
+        ['焦糖烤布丁', '滑嫩的布丁配上微苦焦糖。', 0xffd700, 'snack', 60, 'pudding'],
+        ['法式牛角包', '牛油香氣四溢的酥脆麵包。', 0xdaa520, 'snack', 60, 'bread'],
+        ['草莓甜甜圈', '撒著糖霜與彩色巧克力的甜甜圈。', 0xffa07a, 'snack', 60, 'donut'],
+        ['黑森林蛋糕', '櫻桃與巧克力的完美結合。', 0x2f4f4f, 'snack', 60, 'cake'],
+        ['薄荷糖', '清新的小糖果，帶來涼爽感。', 0x98fb98, 'snack', 60, 'candy'],
+        // 🕯️ 香薰與蠟燭 (真實玻璃折射 + 動態閃爍火焰光) - 120分鐘
+        ['薰衣草蠟燭', '散發著安眠的紫色光芒與香氣。', 0x9370db, 'candle', 120, 'glass_jar'],
+        ['玫瑰香薰燭', '帶著浪漫氣息的溫暖紅光。', 0xdc143c, 'candle', 120, 'glass_jar'],
+        ['香草鮮奶蠟燭', '溫暖的乳白色微光，令人安心。', 0xfdf5e6, 'candle', 120, 'ceramic_jar'],
+        ['檀木線香', '沉穩的木質調香氣，適合靜心閱讀。', 0x8b4513, 'candle', 120, 'incense'],
+        ['海風蠟燭', '清爽的藍色燭光，彷彿聽見海浪。', 0x4682b4, 'candle', 120, 'glass_jar'],
+        ['琥珀蠟燭', '古老的金色光芒，充滿年代感。', 0xffbf00, 'candle', 120, 'glass_jar'],
+        ['青蘋果蠟燭', '充滿活力的淺綠色光芒。', 0x9acd32, 'candle', 120, 'glass_jar'],
+        ['雪松香薰', '冷冽的森林氣息，提神醒腦。', 0x2e8b57, 'candle', 120, 'ceramic_jar'],
+        ['肉桂蘋果蠟燭', '冬日裡的溫暖香氣，驅散寒意。', 0xd2691e, 'candle', 120, 'glass_jar'],
+        ['晚香玉蠟燭', '優雅而神祕的白光。', 0xfff8dc, 'candle', 120, 'glass_jar'],
+        // 🔮 桌上擺件 (精緻底座與玻璃球體) - 180分鐘
+        ['祈福紙鶴', '親手摺疊，帶來好運的白色紙鶴。', 0xffffff, 'ornament', 180, 'origami'],
+        ['水晶蘋果', '折射著七彩光芒的玻璃藝品。', 0xff0000, 'ornament', 180, 'crystal'],
+        ['木雕小貓', '一隻慵懶的木頭貓咪雕像。', 0xdeb887, 'ornament', 180, 'wood'],
+        ['復古沙漏', '沙粒緩緩流下，紀錄靜謐時光。', 0xcd853f, 'ornament', 180, 'glass_dome'],
+        ['星空雪花球', '搖一搖會有星星落下的玻璃球。', 0x191970, 'ornament', 180, 'glass_dome'],
+        ['黃銅地球儀', '可以撥動旋轉的黃銅小地球儀。', 0xb8860b, 'ornament', 180, 'metal'],
+        ['陶瓷知更鳥', '精緻的青藍色陶瓷工藝品。', 0x87ceeb, 'ornament', 180, 'ceramic'],
+        ['黃銅指南針', '指引方向的老舊航海指南針。', 0xb8860b, 'ornament', 180, 'metal'],
+        ['白水晶柱', '充滿純粹能量的天然原石。', 0xdadbd5, 'ornament', 180, 'crystal'],
+        ['達拉木馬', '瑞典傳統的紅色彩繪木馬。', 0xff4500, 'ornament', 180, 'wood'],
+        // 🌷 花卉與植栽 (自然曲線莖部與花瓣) - 1440分鐘
+        ['單支紅玫瑰', '插在細口瓶中的鮮豔玫瑰，象徵熱情。', 0xff0000, 'plant', 1440, 'glass_vase'],
+        ['向日葵', '充滿陽光氣息的明亮花朵。', 0xffd700, 'plant', 1440, 'terracotta'],
+        ['純白鬱金香', '優雅而高貴的春日之花。', 0xffffff, 'plant', 1440, 'glass_vase'],
+        ['迷你仙人球', '生機勃勃的帶刺綠色小圓球。', 0x32cd32, 'plant', 1440, 'terracotta'],
+        ['粉嫩多肉', '厚實可愛的粉綠色多肉植物。', 0x66cdaa, 'plant', 1440, 'white_pot'],
+        ['滿天星', '像星星般細碎的白色小花束。', 0xf0f8ff, 'plant', 1440, 'glass_vase'],
+        ['藍色紫陽花', '帶有雨季氣息的繡球花。', 0x4169e1, 'plant', 1440, 'white_pot'],
+        ['粉色康乃馨', '溫柔而慈愛的層疊花瓣。', 0xffb6c1, 'plant', 1440, 'glass_vase'],
+        ['黃金葛插水', '在玻璃瓶中生根的翠綠葉片。', 0x7cfc00, 'plant', 1440, 'glass_vase'],
+        ['四葉草盆栽', '傳說能帶來幸運的稀有植物。', 0x228b22, 'plant', 1440, 'terracotta']
     ];
 
     window.CONSUMABLES = {}; 
     window.userConsumables = {}; 
-    window.activeConsumables = {}; // 記錄桌上正在生效的物品
+    window.activeConsumables = {}; 
+    window.dynamicFxFns = []; // 儲存煙霧與燭光的動態更新函數
     
-    // 產生 50 種消耗品資料庫
+    // 建立通用高級材質庫
+    const MATS = {
+        glass: new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.95, opacity: 1, transparent: true, roughness: 0.05, ior: 1.5, thickness: 0.2 }),
+        ceramic_white: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1, metalness: 0.1 }),
+        ceramic_dark: new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.2, metalness: 0.2 }),
+        ceramic_rustic: new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.8 }),
+        wood: new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.9 }),
+        gold: new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.2 })
+    };
+
     RAW_ITEMS.forEach((item, index) => {
         let id = `gacha_item_${index}`;
         CONSUMABLES[id] = {
-            name: item[0], desc: item[1], color: item[2], type: item[3],
-            duration: item[4], // 分鐘
-            modelGen: getModelGenFunction(item[3])
+            name: item[0], desc: item[1], color: item[2], type: item[3], duration: item[4], style: item[5],
+            modelGen: () => createHighDetailModel(item[3], item[2], item[5])
         };
     });
 
     Object.assign(ITEM_REGISTRY, CONSUMABLES);
 
-    let toyMachineGrp;
-    let deskConsumablesGrp; // 放實體物品的群組
-    let capsulePool = [];
-    let isGachaPlaying = false;
+    let toyMachineGrp, deskConsumablesGrp, capsulePool = [], isGachaPlaying = false;
 
-    // 2. 攔截初始化，自動注入扭蛋機與桌面
+    // 初始化掛載
     const checkRoomInterval = setInterval(() => {
         if (typeof scene !== 'undefined' && typeof desk !== 'undefined') {
             clearInterval(checkRoomInterval);
             deskConsumablesGrp = new THREE.Group();
-            desk.add(deskConsumablesGrp); // 綁在桌子上
+            desk.add(deskConsumablesGrp);
 
             injectConsumableModelsToScene();
             buildToyMachine();
             hijackWalletRender();
             listenConsumablesData();
             
-            // 每 10 秒檢查一次是否有物品過期
-            setInterval(checkExpirations, 10000);
+            setInterval(checkExpirations, 10000); // 檢查過期
+            
+            // 啟動專屬粒子與光影引擎
+            requestAnimationFrame(renderDynamicEffects);
         }
     }, 500);
 
+    // 專屬動態引擎 (煙霧、火焰閃爍)
+    function renderDynamicEffects() {
+        requestAnimationFrame(renderDynamicEffects);
+        if(window.dynamicFxFns.length > 0 && !isRoomPaused()) {
+            const time = Date.now();
+            window.dynamicFxFns.forEach(fn => fn(time));
+        }
+    }
+
     function listenConsumablesData() {
         if(!currentUser) return;
-        // 監聽庫存
         db.ref(`users/${currentUser.uid}/consumables`).on('value', snap => {
             window.userConsumables = snap.val() || {};
             if(document.getElementById('modal-wallet').style.display === 'flex') renderWalletGrid();
         });
-        // 監聽桌上正在生效的物品
         db.ref(`users/${currentUser.uid}/active_consumables`).on('value', snap => {
             window.activeConsumables = snap.val() || {};
             renderDeskConsumables();
         });
     }
 
-    // 3. 處理過期邏輯
     function checkExpirations() {
         if(!currentUser) return;
         const now = Date.now();
@@ -6908,10 +6922,10 @@ window.toggleReadingLog = function() {
                 changed = true;
             }
         });
-        if(changed) renderDeskConsumables(); // 自動移除 3D 模型
+        if(changed) renderDeskConsumables();
     }
 
-    // 4. 將模型渲染到桌面上 (根據使用狀態)
+    // 實體物品擺放座標 (讓各類物品出現在桌上不同角落，互不干擾)
     const POSITIONS = {
         'drink': {x: -11, y: 8.5, z: 2},
         'snack': {x: 10, y: 8.5, z: 4},
@@ -6922,98 +6936,255 @@ window.toggleReadingLog = function() {
 
     function renderDeskConsumables() {
         deskConsumablesGrp.clear();
+        window.dynamicFxFns = []; // 清空舊特效
+        
         Object.keys(window.activeConsumables).forEach(type => {
             const data = window.activeConsumables[type];
-            if (Date.now() > data.expiry) return; // 已過期不顯示
+            if (Date.now() > data.expiry) return; 
             
             const itemId = data.id;
             const itemDef = CONSUMABLES[itemId];
             if (!itemDef) return;
 
-            // 複製隱藏的原始模型
             let originalObj = scene.children.find(c => c.userData && c.userData.itemId === itemId);
             if (originalObj) {
                 let clone = originalObj.clone();
                 clone.visible = true;
                 clone.position.set(POSITIONS[type].x, POSITIONS[type].y, POSITIONS[type].z);
-                // 讓物品稍微面向中心
                 if(type==='drink' || type==='candle') clone.rotation.y = Math.PI/4;
                 if(type==='snack' || type==='plant') clone.rotation.y = -Math.PI/4;
                 
+                // 重新綁定動態特效 (克隆物件時不會複製 userData 裡的函數)
+                if (type === 'drink') attachSteamEffect(clone);
+                if (type === 'candle') attachFlickerEffect(clone);
+
                 deskConsumablesGrp.add(clone);
             }
         });
     }
 
-    // 將所有 50 個模型隱藏放入場景 (為了拍照與複製)
     function injectConsumableModelsToScene() {
         Object.keys(CONSUMABLES).forEach(id => {
             const item = CONSUMABLES[id];
-            const model = item.modelGen(item.color);
+            const model = item.modelGen();
             model.userData.itemId = id;
             model.visible = false;
             scene.add(model);
         });
     }
 
-    /* --- 5 種實體 3D 模型生成器 --- */
-    function getModelGenFunction(type) {
-        if (type === 'drink') return function(color) {
-            const grp = new THREE.Group();
-            const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.5, 1.4, 32), new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.2}));
-            cup.position.y = 0.7; cup.castShadow = true;
-            const handle = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.1, 8, 16), new THREE.MeshStandardMaterial({color: 0xffffff}));
-            handle.position.set(0.7, 0.7, 0); handle.rotation.y = Math.PI/2;
-            const liquid = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 1.3, 32), new THREE.MeshStandardMaterial({color: color, roughness:0.2}));
-            liquid.position.y = 0.72;
-            grp.add(cup, handle, liquid);
-            return grp;
-        };
-        if (type === 'snack') return function(color) {
-            const grp = new THREE.Group();
-            const plate = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.0, 0.1, 32), new THREE.MeshStandardMaterial({color: 0xf0f0f0}));
-            plate.position.y = 0.05; plate.castShadow = true;
-            const food = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.3, 16, 32), new THREE.MeshStandardMaterial({color: color, roughness:0.8}));
-            food.rotation.x = Math.PI/2; food.position.y = 0.4; food.castShadow = true;
-            grp.add(plate, food);
-            return grp;
-        };
-        if (type === 'candle') return function(color) {
-            const grp = new THREE.Group();
-            const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 1.4, 16), new THREE.MeshPhysicalMaterial({transmission:0.9, opacity:1, transparent:true, roughness:0.1}));
-            jar.position.y = 0.7; jar.castShadow = true;
-            const wax = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.8, 16), new THREE.MeshStandardMaterial({color: color, roughness:0.5}));
-            wax.position.y = 0.45;
-            const flame = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 8), new THREE.MeshBasicMaterial({color: 0xffdd00}));
-            flame.position.y = 1.0;
-            const light = new THREE.PointLight(color, 0.6, 6); // 會發光的蠟燭！
-            light.position.y = 1.5;
-            grp.add(jar, wax, flame, light);
-            return grp;
-        };
-        if (type === 'ornament') return function(color) {
-            const grp = new THREE.Group();
-            const base = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.2, 16), new THREE.MeshStandardMaterial({color: 0x5c4033}));
-            base.position.y = 0.1; base.castShadow = true;
-            const art = new THREE.Mesh(new THREE.OctahedronGeometry(0.7), new THREE.MeshStandardMaterial({color: color, metalness:0.8, roughness:0.2}));
-            art.position.y = 1.0; art.castShadow = true;
-            grp.add(base, art);
-            return grp;
-        };
-        if (type === 'plant') return function(color) {
-            const grp = new THREE.Group();
-            const vase = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 1.5, 16), new THREE.MeshPhysicalMaterial({transmission:0.9, roughness:0.1, transparent:true}));
-            vase.position.y = 0.75; vase.castShadow = true;
-            const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2), new THREE.MeshStandardMaterial({color: 0x228b22}));
-            stem.position.y = 1.5;
-            const flower = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshStandardMaterial({color: color}));
-            flower.position.y = 2.5; flower.scale.y = 0.8;
-            grp.add(vase, stem, flower);
-            return grp;
-        };
+    /* =================================================================
+     * 🎨 高級程序化生成 (High-Detail Procedural Generation)
+     * ================================================================= */
+    function createHighDetailModel(type, colorHex, style) {
+        const grp = new THREE.Group();
+
+        if (type === 'drink') {
+            // 1. 車床幾何生成真實弧度的杯子與碟子
+            const isGlass = style === 'glass';
+            const cupMat = isGlass ? MATS.glass : MATS[style] || MATS.ceramic_white;
+            
+            // 碟子
+            const saucerPts = [new THREE.Vector2(0,0), new THREE.Vector2(1.0, 0.05), new THREE.Vector2(1.5, 0.2), new THREE.Vector2(1.6, 0.25)];
+            const saucer = new THREE.Mesh(new THREE.LatheGeometry(saucerPts, 32), cupMat);
+            saucer.castShadow = true; saucer.receiveShadow = true;
+            grp.add(saucer);
+
+            // 杯身
+            const cupPts = [];
+            for(let i=0; i<=10; i++) cupPts.push(new THREE.Vector2(0.6 + Math.sin(i*0.1)*0.4, i*0.15 + 0.1));
+            const cup = new THREE.Mesh(new THREE.LatheGeometry(cupPts, 32), cupMat);
+            cup.castShadow = true; grp.add(cup);
+
+            // 杯耳
+            const handle = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.1, 16, 32), cupMat);
+            handle.position.set(1.0, 0.9, 0); handle.rotation.y = Math.PI/2;
+            grp.add(handle);
+
+            // 液體 (稍微比杯子小一點)
+            const liqPts = [];
+            for(let i=0; i<=8; i++) liqPts.push(new THREE.Vector2(0.58 + Math.sin(i*0.1)*0.38, i*0.15 + 0.11));
+            liqPts.push(new THREE.Vector2(0, 8*0.15 + 0.11)); // 封頂
+            const liqMat = new THREE.MeshStandardMaterial({color: colorHex, roughness: 0.1});
+            if(isGlass) { liqMat.transparent = true; liqMat.opacity = 0.8; }
+            const liquid = new THREE.Mesh(new THREE.LatheGeometry(liqPts, 32), liqMat);
+            grp.add(liquid);
+
+            // 湯匙 (金屬)
+            const spoon = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.02, 1.8), MATS.gold);
+            spoon.position.set(-0.8, 0.2, 0.8); spoon.rotation.x = Math.PI/2; spoon.rotation.z = 0.5;
+            grp.add(spoon);
+
+            // 預留煙霧發射器
+            const steamEmitter = new THREE.Group();
+            steamEmitter.position.y = 1.6;
+            steamEmitter.name = "steamEmitter";
+            grp.add(steamEmitter);
+        }
+
+        else if (type === 'snack') {
+            // 精緻陶瓷托盤
+            const platePts = [new THREE.Vector2(0,0), new THREE.Vector2(1.5, 0.1), new THREE.Vector2(2.0, 0.3), new THREE.Vector2(2.2, 0.4)];
+            const plate = new THREE.Mesh(new THREE.LatheGeometry(platePts, 32), MATS.ceramic_white);
+            plate.castShadow = true; plate.receiveShadow = true;
+            grp.add(plate);
+
+            const foodMat = new THREE.MeshStandardMaterial({color: colorHex, roughness: 0.8});
+            let food;
+            if(style === 'donut' || style === 'macaron') {
+                food = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.3, 16, 32), foodMat);
+                food.rotation.x = Math.PI/2; food.position.y = 0.4;
+            } else if (style === 'cake') {
+                food = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.8, 3), foodMat); // 三角切片
+                food.position.y = 0.5; food.rotation.y = -Math.PI/2;
+            } else {
+                food = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.7, 0.5, 16), foodMat); // 塔類
+                food.position.y = 0.35;
+            }
+            food.castShadow = true;
+            grp.add(food);
+        }
+
+        else if (type === 'candle') {
+            const isGlass = style === 'glass_jar';
+            const jarMat = isGlass ? MATS.glass : MATS.ceramic_white;
+            
+            // 玻璃/陶瓷罐
+            const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 1.6, 32, 1, true), jarMat);
+            jar.position.y = 0.8; jar.castShadow = !isGlass;
+            grp.add(jar);
+            // 罐底
+            const jarBot = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.1, 32), jarMat);
+            jarBot.position.y = 0.05; grp.add(jarBot);
+
+            // 蠟質 (半透明)
+            const waxMat = new THREE.MeshStandardMaterial({color: colorHex, roughness: 0.4, transparent: true, opacity: 0.9});
+            const wax = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 1.0, 32), waxMat);
+            wax.position.y = 0.55;
+            grp.add(wax);
+
+            // 燭芯與火焰
+            const wick = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3), new THREE.MeshStandardMaterial({color: 0x111111}));
+            wick.position.y = 1.2; grp.add(wick);
+            
+            const flame = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.4, 16), new THREE.MeshBasicMaterial({color: 0xffddaa}));
+            flame.position.y = 1.45;
+            flame.name = "candleFlame"; // 供閃爍特效抓取
+            grp.add(flame);
+
+            // 真實光源
+            const light = new THREE.PointLight(colorHex, 0.8, 15);
+            light.position.y = 1.8;
+            light.name = "candleLight";
+            grp.add(light);
+        }
+
+        else if (type === 'ornament') {
+            const base = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.3, 0.3, 32), MATS.wood);
+            base.position.y = 0.15; base.castShadow = true; grp.add(base);
+
+            const artMat = new THREE.MeshStandardMaterial({color: colorHex, roughness: 0.3, metalness: 0.5});
+            let art;
+            if(style === 'glass_dome') {
+                const dome = new THREE.Mesh(new THREE.SphereGeometry(1.1, 32, 32, 0, Math.PI*2, 0, Math.PI/2), MATS.glass);
+                dome.scale.y = 1.2; dome.position.y = 0.3; grp.add(dome);
+                art = new THREE.Mesh(new THREE.OctahedronGeometry(0.5), artMat);
+            } else if (style === 'crystal') {
+                art = new THREE.Mesh(new THREE.ConeGeometry(0.6, 2, 6), new THREE.MeshPhysicalMaterial({color: colorHex, transmission:0.9, roughness:0.1, ior:2.0}));
+            } else {
+                art = new THREE.Mesh(new THREE.TorusKnotGeometry(0.4, 0.15, 64, 16), artMat);
+            }
+            art.position.y = 1.2; art.castShadow = true;
+            grp.add(art);
+        }
+
+        else if (type === 'plant') {
+            const isGlass = style === 'glass_vase';
+            const potMat = isGlass ? MATS.glass : (style==='white_pot' ? MATS.ceramic_white : MATS.ceramic_rustic);
+            
+            // 花瓶/盆器
+            const potPts = isGlass ? 
+                [new THREE.Vector2(0,0), new THREE.Vector2(0.6,0), new THREE.Vector2(0.8,0.5), new THREE.Vector2(0.4, 1.5), new THREE.Vector2(0.5, 1.8)] :
+                [new THREE.Vector2(0,0), new THREE.Vector2(0.6,0), new THREE.Vector2(0.8,1.2), new THREE.Vector2(0.9,1.2)];
+            const pot = new THREE.Mesh(new THREE.LatheGeometry(potPts, 32), potMat);
+            pot.castShadow = !isGlass;
+            grp.add(pot);
+
+            // 泥土/水
+            const fillMat = isGlass ? new THREE.MeshStandardMaterial({color:0xaaccff, transparent:true, opacity:0.6}) : new THREE.MeshStandardMaterial({color:0x3e2723});
+            const fill = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.5, 1.0, 32), fillMat);
+            fill.position.y = 0.6; grp.add(fill);
+
+            // 自然彎曲的植物莖部 (BezierCurve)
+            const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0.5, 2, 0.5), new THREE.Vector3(0.2, 3.5, 0));
+            const stem = new THREE.Mesh(new THREE.TubeGeometry(curve, 20, 0.05, 8, false), new THREE.MeshStandardMaterial({color: 0x228b22}));
+            stem.castShadow = true; grp.add(stem);
+
+            // 花朵
+            const flower = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshStandardMaterial({color: colorHex, roughness: 0.9}));
+            flower.position.copy(curve.getPoint(1.0)); // 放在莖部頂端
+            flower.castShadow = true;
+            grp.add(flower);
+        }
+
+        return grp;
     }
 
-    // 5. 建造超逼真的 3D 扭蛋機
+    // --- 動態特效綁定函數 ---
+    function attachSteamEffect(drinkGrp) {
+        const emitter = drinkGrp.getObjectByName("steamEmitter");
+        if(!emitter) return;
+        
+        // 建立三個獨立的半透明蒸氣塊
+        const steams = [];
+        const steamMat = new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0, depthWrite: false});
+        for(let i=0; i<3; i++) {
+            const s = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.6), steamMat.clone());
+            s.position.y = i * 0.4;
+            emitter.add(s);
+            steams.push({mesh: s, offset: i * Math.PI}); // offset 用來錯開時間
+        }
+
+        window.dynamicFxFns.push((time) => {
+            steams.forEach(s => {
+                // 讓煙霧永遠面向鏡頭 (Billboard effect)
+                if(typeof camera !== 'undefined') s.mesh.lookAt(camera.position);
+                
+                // 向上飄移並左右搖擺
+                let t = (time * 0.001) + s.offset;
+                s.mesh.position.y = (t % 2.0); // 高度 0 到 2
+                s.mesh.position.x = Math.sin(t * 3) * 0.2;
+                
+                // 淡入淡出 (中間最濃，兩端消失)
+                let life = s.mesh.position.y / 2.0; 
+                s.mesh.material.opacity = Math.max(0, Math.sin(life * Math.PI) * 0.4);
+                
+                // 隨時間放大
+                s.mesh.scale.setScalar(1.0 + life * 1.5);
+            });
+        });
+    }
+
+    function attachFlickerEffect(candleGrp) {
+        const flame = candleGrp.getObjectByName("candleFlame");
+        const light = candleGrp.getObjectByName("candleLight");
+        if(!flame || !light) return;
+
+        window.dynamicFxFns.push((time) => {
+            // 火光閃爍演算法 (Perlin noise like)
+            const noise = Math.sin(time * 0.01) * 0.5 + Math.sin(time * 0.034) * 0.3 + Math.sin(time * 0.1) * 0.2;
+            
+            // 光源亮度跳動
+            light.intensity = 0.8 + noise * 0.2;
+            
+            // 火焰形狀微微扭動
+            flame.scale.x = 1.0 + noise * 0.1;
+            flame.scale.z = 1.0 + noise * 0.1;
+            flame.scale.y = 1.0 + Math.sin(time * 0.05) * 0.1;
+        });
+    }
+
+    // 6. 建造復古扭蛋機
     function buildToyMachine() {
         toyMachineGrp = new THREE.Group();
         toyMachineGrp.position.set(-45, 0, 20); 
@@ -7043,223 +7214,7 @@ window.toggleReadingLog = function() {
         dome.position.y = 7;
         toyMachineGrp.add(dome);
 
-        const topCap = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 3.5, 1.5, 32), baseMat);
-        topCap.position.y = 11.2; topCap.castShadow = true;
-        toyMachineGrp.add(topCap);
-
-        const capGeo = new THREE.SphereGeometry(0.6, 16, 16);
-        for(let i=0; i<30; i++) {
-            // 從 50 種消耗品隨機取色填充扭蛋機
-            const randItem = RAW_ITEMS[Math.floor(Math.random()*RAW_ITEMS.length)];
-            const cMat = new THREE.MeshStandardMaterial({color: randItem[2], roughness: 0.3, metalness: 0.1});
-            const cap = new THREE.Mesh(capGeo, cMat);
-            cap.position.set((Math.random()-0.5)*4, 7.6 + Math.random()*2.5, (Math.random()-0.5)*4);
-            cap.userData.origPos = cap.position.clone();
-            capsulePool.push(cap);
-            toyMachineGrp.add(cap);
-        }
-
-        const hitBox = new THREE.Mesh(new THREE.BoxGeometry(8, 14, 8), new THREE.MeshBasicMaterial({visible: false}));
-        hitBox.position.y = 6;
-        hitBox.userData = { type: 'toy_machine' };
-        toyMachineGrp.add(hitBox);
-        interactables.push(hitBox);
-
-        const mLight = new THREE.PointLight(0xffffee, 0.5, 10);
-        mLight.position.set(0, 9, 0);
-        toyMachineGrp.add(mLight);
-    }
-
-    // 攔截點擊扭蛋機
-    window.addEventListener('pointerup', (e) => {
-        if(Math.abs(e.clientX - pointerDownPos.x) > 10 || Math.abs(e.clientY - pointerDownPos.y) > 10) return;
-        if(isRoomPaused() || isGachaPlaying) return;
-        
-        raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(interactables, true).filter(h => {
-            let curr = h.object; while(curr) { if(curr.visible===false) return false; curr = curr.parent; } return true;
-        });
-
-        if (intersects.length > 0) {
-            let obj = intersects[0].object;
-            while(obj.parent && !obj.userData.type) obj = obj.parent;
-            if (obj.userData.type === 'toy_machine') playToyMachineAnim();
-        }
-    });
-
-    // 扭蛋運鏡與開獎
-    function playToyMachineAnim() {
-        if (userPoints < 500) return showToast("🪙 積分不足 500，無法抽取。");
-        if (!confirm("確定要消耗 500 積分轉動一次扭蛋機嗎？")) return;
-
-        isGachaPlaying = true;
-        userPoints -= 500;
-        db.ref(`users/${currentUser.uid}/points`).set(userPoints);
-        document.getElementById('user-points-text').innerText = userPoints;
-
-        const keys = Object.keys(CONSUMABLES);
-        const wonId = keys[Math.floor(Math.random() * keys.length)];
-        
-        controls.enabled = false;
-        const backupPos = camera.position.clone();
-        const backupTarget = controls.target.clone();
-        const knob = toyMachineGrp.getObjectByName('gachaKnob');
-        
-        const tl = gsap.timeline();
-        tl.to(camera.position, {x: -38, y: 5, z: 27, duration: 1.5, ease: "power2.inOut"})
-          .to(controls.target, {x: -45, y: 4, z: 20, duration: 1.5, ease: "power2.inOut", onUpdate: () => controls.update()}, "<")
-          .to(knob.rotation, {x: knob.rotation.x + Math.PI*2, duration: 0.8, ease: "back.out(1.5)"})
-          .call(() => {
-              capsulePool.forEach(cap => {
-                  gsap.to(cap.position, {
-                      y: cap.userData.origPos.y + Math.random()*2, x: cap.userData.origPos.x + (Math.random()-0.5), z: cap.userData.origPos.z + (Math.random()-0.5),
-                      duration: 0.1, yoyo: true, repeat: 9
-                  });
-              });
-          })
-          .to({}, {duration: 1.0}) 
-          .call(() => {
-              const fallCap = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 16), new THREE.MeshStandardMaterial({color: CONSUMABLES[wonId].color, roughness: 0.2, metalness: 0.5}));
-              fallCap.position.set(0, 1.5, 2.5);
-              toyMachineGrp.add(fallCap);
-              
-              gsap.to(fallCap.position, {z: 4, y: 0.6, duration: 0.8, ease: "bounce.out", onComplete: () => {
-                  setTimeout(() => {
-                      toyMachineGrp.remove(fallCap);
-                      gsap.to(camera.position, {x: backupPos.x, y: backupPos.y, z: backupPos.z, duration: 1});
-                      gsap.to(controls.target, {x: backupTarget.x, y: backupTarget.y, z: backupTarget.z, duration: 1, onUpdate: () => controls.update(), onComplete: () => {
-                          controls.enabled = true;
-                          isGachaPlaying = false;
-                          
-                          let currentQty = window.userConsumables[wonId] || 0;
-                          db.ref(`users/${currentUser.uid}/consumables/${wonId}`).set(currentQty + 1);
-                          showGachaAnim(wonId); 
-                      }});
-                  }, 500);
-              }});
-          });
-    }
-
-    // 6. 覆寫錢包 UI：顯示盲盒、持有物品，以及正在桌上的物品狀態
-    function hijackWalletRender() {
-        const originalRenderWalletGrid = window.renderWalletGrid;
-        window.renderWalletGrid = function() {
-            originalRenderWalletGrid(); 
-            const grid = document.getElementById('collection-grid');
-            const divider = document.createElement('div');
-            divider.style.gridColumn = "1 / -1";
-            divider.innerHTML = `<h3 class="consumable-section-title">🔮 消耗品與盲盒</h3><p style="color:#a38c76; font-size:0.9rem; margin-top:-10px; margin-bottom:20px;">使用後實體將出現於書桌上陪伴你。未知盲盒需透過扭蛋機解鎖。</p>`;
-            grid.appendChild(divider);
-
-            Object.keys(CONSUMABLES).forEach(id => {
-                const item = CONSUMABLES[id];
-                const qty = window.userConsumables[id] || 0;
-                const activeData = window.activeConsumables[item.type];
-                const isActive = activeData && activeData.id === id; // 檢查這個物品是否正在桌上
-
-                const card = document.createElement('div');
-                if (qty <= 0 && !isActive) {
-                    card.className = 'item-card blind-box';
-                    card.innerHTML = `<div class="blind-box-icon">🎁</div><h4 style="color:#7d5a40;">未知盲盒</h4><p style="color:#5a402d;">需從扭蛋機抽取</p>`;
-                } else {
-                    card.className = 'item-card';
-                    let imgSrc = getOrRenderItemSnapshot(id);
-                    
-                    // 計算倒數時間文字
-                    let statusHtml = '';
-                    let btnHtml = '';
-                    if (isActive) {
-                        let minsLeft = Math.ceil((activeData.expiry - Date.now()) / 60000);
-                        if(minsLeft > 0) {
-                            statusHtml = `<div class="active-item-status">✨ 放置於桌上 (${minsLeft} 分鐘後消失)</div>`;
-                        }
-                    } else if (qty > 0) {
-                        btnHtml = `<button class="btn-use-item" onclick="triggerConsumableEffect('${id}')">放置於桌上</button>`;
-                    }
-
-                    card.innerHTML = `
-                        <div class="item-qty-badge">x ${qty}</div>
-                        <img src="${imgSrc}" style="height:100px; object-fit:contain; margin-bottom:10px;">
-                        <h4>${item.name}</h4>
-                        <p>${item.desc}</p>
-                        ${statusHtml}
-                        ${btnHtml}
-                    `;
-                }
-                grid.appendChild(card);
-            });
-        };
-    }
-
-    function getOrRenderItemSnapshot(id) {
-        if (window.itemSnapshots && window.itemSnapshots[id]) return window.itemSnapshots[id];
-        let targetObj = scene.children.find(c => c.userData && c.userData.itemId === id);
-        if(!targetObj || !window.offscreenRenderer) return '';
-        
-        const visibilities = new Map();
-        scene.traverse(node => { visibilities.set(node, node.visible); node.visible = false; });
-        targetObj.visible = true;
-        scene.traverse(node => { if(node.isLight) { node.visible = true; if(node.target) node.target.visible = true; }});
-        
-        const snapCam = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-        snapCam.position.set(0, 5, 8); snapCam.lookAt(0,1,0); // 微調視角
-        
-        window.offscreenRenderer.render(scene, snapCam);
-        const dataUrl = window.offscreenRenderer.domElement.toDataURL("image/png");
-        if(window.itemSnapshots) window.itemSnapshots[id] = dataUrl;
-        
-        scene.traverse(node => { if(visibilities.has(node)) node.visible = visibilities.get(node); });
-        return dataUrl;
-    }
-
-    // 7. 使用消耗品並將 3D 模型放置到書桌上
-    window.triggerConsumableEffect = function(id) {
-        let currentQty = window.userConsumables[id] || 0;
-        if (currentQty <= 0) return;
-
-        const item = CONSUMABLES[id];
-        
-        // 1. 扣除庫存
-        db.ref(`users/${currentUser.uid}/consumables/${id}`).set(currentQty - 1);
-        
-        // 2. 寫入桌上生效狀態 (同類型會互相覆蓋，防止桌子爆滿)
-        const expiryTime = Date.now() + item.duration * 60000;
-        db.ref(`users/${currentUser.uid}/active_consumables/${item.type}`).set({ id: id, expiry: expiryTime });
-
-        // 3. UI 回饋
-        closeRoomModal(null, 'modal-wallet');
-        
-        const msgs = {
-            'drink': `一杯熱騰騰的${item.name}已放在左側桌面上。`,
-            'snack': `一份精緻的${item.name}已放在右側桌面上。`,
-            'candle': `您點燃了${item.name}，微光搖曳。`,
-            'ornament': `您將${item.name}擺放在桌上作為裝飾。`,
-            'plant': `一盆${item.name}為桌面增添了生機。`
-        };
-        showToast(`✨ ${msgs[item.type]}`);
-
-        // 4. 滿版粒子特效
-        if(!document.getElementById('use-effect-overlay')) {
-            const overlay = document.createElement('div');
-            overlay.id = 'use-effect-overlay';
-            document.body.appendChild(overlay);
-        }
-        const fxOverlay = document.getElementById('use-effect-overlay');
-        fxOverlay.style.display = 'block';
-        for(let i=0; i<30; i++) {
-            const p = document.createElement('div');
-            p.className = 'magic-particle';
-            p.style.left = (Math.random() * 100) + 'vw';
-            p.style.top = (50 + Math.random() * 50) + 'vh';
-            p.style.background = '#' + item.color.toString(16).padStart(6, '0');
-            p.style.animationDelay = (Math.random() * 0.4) + 's';
-            fxOverlay.appendChild(p);
-            setTimeout(() => p.remove(), 1600);
-        }
-        setTimeout(() => { fxOverlay.style.display = 'none'; }, 2000);
-    };
-
-})();
+        const topCap = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 3.5, 1.5, 32), baseMat);     
         
         
     </script>
