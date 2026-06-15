@@ -4316,30 +4316,29 @@ function setEnvironmentPhase(phaseStr) {
         
         function onWinResize() { if(!camera) return; camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
         
-      // --- 拖曳與點擊系統全域變數 ---
-        let pointerDownPos = { x: 0, y: 0 };
-        let dragTimer = null;       // 長按計時器
-        let isDragging = false;     // 是否正在拖曳
-        let dragTarget = null;      // 正在拖曳的目標
-        let dragOffset = new THREE.Vector3(); // 滑鼠與物件中心的偏移量
-        // 建立一個代表桌面的隱形平面 (高度約為 y=8.5)
-        let deskPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -8.5); 
+    // ==========================================
+// --- 拖曳與點擊系統 (完整修復版) ---
+// ==========================================
+let pointerDownPos = { x: 0, y: 0 };
+let dragTimer = null;       // 長按計時器
+let isDragging = false;     // 是否正在拖曳
+let dragTarget = null;      // 正在拖曳的目標
+let dragOffset = new THREE.Vector3(); // 滑鼠與物件中心的偏移量
+let deskPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -8.5); 
+let isDrawerAnimating = false; 
 
-      let isDrawerAnimating = false; // <--- 加入這一行
-
-// 👇 【新增】過濾掉所有自身或父群組處於「隱藏狀態」的物件
+// 👇 過濾掉所有自身或父群組處於「隱藏狀態」的物件
 function getValidIntersects() {
     return raycaster.intersectObjects(interactables, true).filter(hit => {
         let curr = hit.object;
         while(curr) { 
-            if(curr.visible === false) return false; // 如果有任何一層是隱藏的，就忽略它
+            if(curr.visible === false) return false; 
             curr = curr.parent; 
         }
         return true;
     });
 }
 
-        
 function onPointerDown(e) {
     if(document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
     pointerDownPos.x = e.clientX; pointerDownPos.y = e.clientY;
@@ -4348,7 +4347,7 @@ function onPointerDown(e) {
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
 
-const intersects = getValidIntersects();
+    const intersects = getValidIntersects();
     if(intersects.length > 0) {
         let obj = intersects[0].object;
         while(obj.parent && !obj.userData.type) obj = obj.parent;
@@ -4390,10 +4389,8 @@ const intersects = getValidIntersects();
                 isDragging = true;
                 dragTarget = obj; 
                 dragTarget.userData.dragType = type;
-                // 記錄玩家抓取的是「左邊」還是「右邊」的窗簾
                 dragTarget.userData.curtainSide = obj.userData.side; 
                 
-                // 計算滑鼠抓取的偏移量，避免拉動瞬間窗簾跳躍
                 let curtainPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 16.5);
                 let intersectPoint = new THREE.Vector3();
                 raycaster.ray.intersectPlane(curtainPlane, intersectPoint);
@@ -4408,8 +4405,7 @@ const intersects = getValidIntersects();
                 document.body.style.cursor = 'ew-resize';
             }, 150);
         }
-
-else if (type === 'painting') {
+        else if (type === 'painting') {
             dragTimer = setTimeout(() => {
                 isDragging = true;
                 dragTarget = obj.parent; // 抓取整個畫框群組
@@ -4418,17 +4414,17 @@ else if (type === 'painting') {
                 document.body.style.cursor = 'grabbing';
                 
                 // 抓取時計算滑鼠在畫作上的偏移量與當前牆面法線
-                let hits = raycaster.intersectObject(wallDragMesh);
-                if (hits.length > 0) {
-                    dragOffset.copy(hits[0].point).sub(dragTarget.position);
-                    dragTarget.userData.wallNormal = hits[0].face.normal.clone();
-                } else {
-                    dragOffset.set(0, 0, 0);
+                if (typeof wallDragMesh !== 'undefined') {
+                    let hits = raycaster.intersectObject(wallDragMesh);
+                    if (hits.length > 0) {
+                        dragOffset.copy(hits[0].point).sub(dragTarget.position);
+                        dragTarget.userData.wallNormal = hits[0].face.normal.clone();
+                    } else {
+                        dragOffset.set(0, 0, 0);
+                    }
                 }
             }, 150);
         }
-
-        
     }
 }
 
@@ -4478,7 +4474,7 @@ function onPointerMove(e) {
                     dragTarget.userData.originalY = 8.5;
                     newX = Math.max(-12, Math.min(12, newX));
                     newZ = Math.max(-5.5, Math.min(5.5, newZ));
-                } else if (chairGroup && newX >= chairGroup.position.x - 3 && newX <= chairGroup.position.x + 3 && newZ >= chairGroup.position.z - 3 && newZ <= chairGroup.position.z + 3) {
+                } else if (typeof chairGroup !== 'undefined' && chairGroup && newX >= chairGroup.position.x - 3 && newX <= chairGroup.position.x + 3 && newZ >= chairGroup.position.z - 3 && newZ <= chairGroup.position.z + 3) {
                     catPlatform = 'chair';
                     dragTarget.userData.originalY = 4.5;
                     newX = Math.max(chairGroup.position.x - 1.5, Math.min(chairGroup.position.x + 1.5, newX));
@@ -4488,7 +4484,7 @@ function onPointerMove(e) {
                     dragTarget.userData.originalY = 0;
                     newX = Math.max(-16, Math.min(16, newX));
                     newZ = Math.max(-2, Math.min(18, newZ));
-                    if (isCatColliding(newX, newZ)) return; 
+                    if (typeof isCatColliding === 'function' && isCatColliding(newX, newZ)) return; 
                 }
                 
                 dragTarget.position.x = newX;
@@ -4503,27 +4499,45 @@ function onPointerMove(e) {
                 let targetX = intersectPoint.x - dragOffset.x;
                 let side = dragTarget.userData.curtainSide;
                 let r;
-                
-                // 根據抓取的分別是左窗簾還是右窗簾來嚴格限制範圍
                 if (side === 'left') {
-                    // 左窗簾：0 是全閉，-15 是全開。限制滑鼠目標只能在 -15 到 0 之間。
                     let clampedX = Math.max(-15, Math.min(0, targetX));
                     r = Math.abs(clampedX) / 15;
                 } else {
-                    // 右窗簾：0 是全閉，15 是全開。限制滑鼠目標只能在 0 到 15 之間。
                     let clampedX = Math.max(0, Math.min(15, targetX));
                     r = clampedX / 15;
                 }
-                
                 curtainRatio = r;
-                applyCurtainRatio();
+                if(typeof applyCurtainRatio === 'function') applyCurtainRatio();
+            }
+        }
+        else if (type === 'painting') {
+            if (typeof wallDragMesh !== 'undefined') {
+                let hits = raycaster.intersectObject(wallDragMesh);
+                if (hits.length > 0) {
+                    let hit = hits[0];
+                    let n = hit.face.normal;
+                    
+                    if (dragTarget.userData.wallNormal && n.dot(dragTarget.userData.wallNormal) < 0.9) {
+                        dragOffset.set(0, 0, 0);
+                        dragTarget.userData.wallNormal.copy(n);
+                    }
+                    
+                    let newPos = hit.point.clone().sub(dragOffset);
+                    
+                    if (n.z < -0.5) { newPos.z = hit.point.z; dragTarget.rotation.y = 0; } 
+                    else if (n.z > 0.5) { newPos.z = hit.point.z; dragTarget.rotation.y = Math.PI; } 
+                    else if (n.x < -0.5) { newPos.x = hit.point.x; dragTarget.rotation.y = Math.PI / 2; } 
+                    else if (n.x > 0.5) { newPos.x = hit.point.x; dragTarget.rotation.y = -Math.PI / 2; } 
+                    
+                    dragTarget.position.copy(newPos);
+                }
             }
         }
         return; 
     }
 
     raycaster.setFromCamera(mouse, camera);
-const intersects = getValidIntersects();
+    const intersects = getValidIntersects();
     document.body.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
 }
 
@@ -4545,16 +4559,25 @@ function onPointerUp(e) {
             document.body.style.cursor = 'default';
             return;
         }
+        
+        if (type === 'painting') {
+            if (typeof saveObjectPositions === 'function') saveObjectPositions(); 
+            isDragging = false; 
+            dragTarget = null; 
+            controls.enabled = true; 
+            document.body.style.cursor = 'default';
+            return;
+        }
 
         gsap.to(dragTarget.position, { 
             y: dragTarget.userData.originalY, 
             duration: 0.3, 
             ease: "bounce.out",
             onComplete: () => {
-                saveObjectPositions(); 
+                if (typeof saveObjectPositions === 'function') saveObjectPositions(); 
                 if (type === 'cat') {
                     catTarget.set(droppedObj.position.x, 0, droppedObj.position.z);
-                    setCatState('idle');
+                    if (typeof setCatState === 'function') setCatState('idle');
                 }
             }
         });
@@ -4570,7 +4593,7 @@ function onPointerUp(e) {
     
     mouse.x = (e.clientX/window.innerWidth)*2-1; mouse.y = -(e.clientY/window.innerHeight)*2+1;
     raycaster.setFromCamera(mouse, camera);
- const intersects = getValidIntersects();
+    const intersects = getValidIntersects();
     if(intersects.length > 0) {
         let obj = intersects[0].object; while(obj.parent && !obj.userData.type) obj = obj.parent;
         const type = obj.userData.type;
@@ -4581,28 +4604,26 @@ function onPointerUp(e) {
             isDrawerAnimating = true; gsap.to(rightDrawer.position, {z: 3.5, duration: 0.5, onComplete: () => { document.getElementById('modal-inbox').style.display = 'flex'; isDrawerAnimating = false; }});
         } else if(type === 'log') { gsap.to(book.position, {y: 9, rotationY: 0, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-log').style.display = 'flex'; }});
         } else if(type === 'tasks') { gsap.to(clipboard.position, {y: 9, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-tasks').style.display = 'flex'; }});
-        } else if(type === 'water') { performWateringAnimation();
-       } else if(type === 'plant') { 
+        } else if(type === 'water') { if(typeof performWateringAnimation === 'function') performWateringAnimation();
+        } else if(type === 'plant') { 
             if (userPlantData && userPlantData.isDead) { 
                 showToast("🥀 這盆植物已經枯萎了，請重新挑選一盆吧。"); 
                 setTimeout(() => document.getElementById('modal-plant-selector').style.display = 'flex', 1500); 
             } else { 
-                showPlantStatus(); 
+                if(typeof showPlantStatus === 'function') showPlantStatus(); 
             } 
-        // 👇 新增這三行，讓窗戶可以直接點擊
-       } else if(type === 'window') {
-    if(hasDoorPrivilege) goToBalcony(); else showToast("🚪 露台趟門失修，無法開啟。需收集「通行權」。");
-} else if(type === 'piano') {
-    if(hasPianoPrivilege) openPianoUI(); else showToast("🎹 需要收集「鋼琴彈奏權」才能彈奏。");
-} else if(type === 'wallet') {
-    openWalletUI();
- // 👇 新增這兩行：點擊收音機 👇
+        } else if(type === 'window') {
+            if(hasDoorPrivilege) { if(typeof goToBalcony === 'function') goToBalcony(); } else showToast("🚪 露台趟門失修，無法開啟。需收集「通行權」。");
+        } else if(type === 'piano') {
+            if(hasPianoPrivilege) { if(typeof openPianoUI === 'function') openPianoUI(); } else showToast("🎹 需要收集「鋼琴彈奏權」才能彈奏。");
+        } else if(type === 'wallet') {
+            if(typeof openWalletUI === 'function') openWalletUI();
         } else if(type === 'radio') {
-            toggleRadio();
+            if(typeof toggleRadio === 'function') toggleRadio();
         }
-        
     }
 }
+// ==========================================
 
         // 📻 控制香港電台播放
 function toggleRadio() {
