@@ -2590,7 +2590,7 @@ function applyCurtainRatio() {
 let clouds = []; // 用來存放所有雲朵物件，方便動畫更新
 
 let sea; // 用來控制海浪動畫
-        
+        let balconyOnlyGroup; // 新增：只有出露台才需要渲染的風景群組
   let ferrisWheelGrp; // 摩天輪轉動的主體
 let fwCabins = []; 
 let dummySpoutTip; let indicatorLeft, indicatorRight, indicatorTasks; let interactables = []; let timePhase = 'noon'; let animScenery = { cars: [], buildings: [] };
@@ -2608,6 +2608,9 @@ let roomCameraBackup = { cp: new THREE.Vector3(), ct: new THREE.Vector3() };
 function goToBalcony() {
     if (isAtBalcony) return;
     isAtBalcony = true;
+    
+    // 👇 新增：出露台時，顯示左右宏大風景與海面
+    if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = true;
 
     roomCameraBackup.cp.copy(camera.position);
     roomCameraBackup.ct.copy(controls.target);
@@ -2659,7 +2662,10 @@ function returnToRoom() {
         onUpdate: () => controls.update(),
         onComplete: () => {
             // 👇 動畫結束完全進入室內後，才重新鎖死抬頭角度
-            controls.minPolarAngle = 1.15; 
+     controls.minPolarAngle = 1.15; 
+            
+            // 👇 新增：回到室內後，徹底隱藏室外不必要的耗能風景
+            if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = false;
         }
     });
 
@@ -3304,8 +3310,10 @@ function buildRoomEnvironment() {
     dirLight.target.position.set(0, 0, 0); 
     
     dirLight.castShadow = true; 
-   dirLight.shadow.mapSize.width = 4096; 
-    dirLight.shadow.mapSize.height = 4096;
+// 手機版降低陰影解析度，大幅提升流暢度
+    const isMobile = window.innerWidth <= 768;
+    dirLight.shadow.mapSize.width = isMobile ? 1024 : 2048; 
+    dirLight.shadow.mapSize.height = isMobile ? 1024 : 2048;
     
   // 大幅擴張陰影攝影機的照射範圍，把室外的遠景也包覆進來
     dirLight.shadow.camera.left = -200;   // 涵蓋左側的大橋與馬路
@@ -3830,17 +3838,23 @@ const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.a
 
     
     // === 重建窗外宏大場景 ===
- sceneryGroup = new THREE.Group(); 
+// === 重建窗外宏大場景 ===
+    sceneryGroup = new THREE.Group(); 
     sceneryGroup.position.set(0, -15, -50); 
     scene.add(sceneryGroup);
 
-   const seaMat = new THREE.MeshStandardMaterial({color: 0x1a3b5c, roughness: 0.1, metalness: 0.8, flatShading: true});
+    // 👇 新增這個群組，並預設隱藏
+    balconyOnlyGroup = new THREE.Group();
+    balconyOnlyGroup.visible = false; 
+    sceneryGroup.add(balconyOnlyGroup);
+
+    const seaMat = new THREE.MeshStandardMaterial({color: 0x1a3b5c, roughness: 0.1, metalness: 0.8, flatShading: true});
     
     // 將平面切分成 80x40 的網格，產生足夠多的「頂點」來製造波浪
     sea = new THREE.Mesh(new THREE.PlaneGeometry(800, 400, 80, 40), seaMat);
     sea.rotation.x = -Math.PI/2; 
     sea.position.set(0, -12, -20); // 放在馬路與地基下方
-    sceneryGroup.add(sea);
+    balconyOnlyGroup.add(sea); // 👈 修改：加入 balconyOnlyGroup
 
     // 儲存海面原始的頂點高度，方便稍後做波浪運算
     sea.userData.originalZ = [];
@@ -3852,7 +3866,7 @@ const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.a
     // 🌉 【新增 左側】青馬大橋 (延伸至左方極遠處)
     const bridgeGroup = new THREE.Group();
     bridgeGroup.position.set(-140, 0, 4); // 與馬路對齊，放在極左側
-    sceneryGroup.add(bridgeGroup);
+    balconyOnlyGroup.add(bridgeGroup); // 👈 修改：加入 balconyOnlyGroup
 
     const towerMat = new THREE.MeshStandardMaterial({color: 0xd0d4d9, roughness: 0.6});
     const cableMat = new THREE.MeshStandardMaterial({color: 0x333333, roughness: 0.5});
@@ -3882,7 +3896,7 @@ const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.a
  // 🎡 【精緻版】海濱摩天輪
     const fwContainer = new THREE.Group();
     fwContainer.position.set(110, -5, -35); 
-    sceneryGroup.add(fwContainer);
+     balconyOnlyGroup.add(fwContainer); // 👈 修改：加入 balconyOnlyGroup
 
     // 1. 摩天輪底座廣場
     const fwBaseMat = new THREE.MeshStandardMaterial({color: 0xaaaaaa, roughness: 0.9});
@@ -3998,11 +4012,11 @@ const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.a
     // 馬路與行人路 (長度從 160 改為 360，連接大橋)
     const roadWidth = 26;
     const road = new THREE.Mesh(new THREE.PlaneGeometry(360, roadWidth), new THREE.MeshStandardMaterial({map: createAsphaltTexture(), roughness: 0.9})); 
-    road.rotation.x = -Math.PI/2; road.position.set(0, -4.9, 4); road.receiveShadow = true; sceneryGroup.add(road);
+    road.rotation.x = -Math.PI/2; road.position.set(0, -4.9, 4); road.receiveShadow = true;  balconyOnlyGroup.add(road); // 👈 修改
     
     const walkMat = new THREE.MeshStandardMaterial({color: 0x888888, roughness: 1.0});
-    const walkNear = new THREE.Mesh(new THREE.BoxGeometry(360, 0.4, 12), walkMat); walkNear.position.set(0, -4.7, roadWidth/2 + 10); walkNear.receiveShadow = true; sceneryGroup.add(walkNear);
-    const walkFar = new THREE.Mesh(new THREE.BoxGeometry(360, 0.4, 12), walkMat); walkFar.position.set(0, -4.7, -roadWidth/2 - 2); walkFar.receiveShadow = true; sceneryGroup.add(walkFar);
+    const walkNear = new THREE.Mesh(new THREE.BoxGeometry(360, 0.4, 12), walkMat); walkNear.position.set(0, -4.7, roadWidth/2 + 10); walkNear.receiveShadow = true; balconyOnlyGroup.add(walkNear);
+    const walkFar = new THREE.Mesh(new THREE.BoxGeometry(360, 0.4, 12), walkMat); walkFar.position.set(0, -4.7, -roadWidth/2 - 2); walkFar.receiveShadow = true; balconyOnlyGroup.add(walkFar);
 
     // 【修訂二：修正汽車車頭朝向】 (車輛增加到12台，並在更長的馬路上分佈)
     const vehicleTypes = ['taxi', 'taxi', 'car', 'car', 'car', 'minibus', 'bus'];
@@ -4019,7 +4033,7 @@ const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.a
         carGroup.position.set(startX, -4.6, laneZ); 
         carGroup.rotation.y = Math.PI / 2; 
         carGroup.userData = { speed: 0.3 * direction, type: 'vehicle' }; 
-        sceneryGroup.add(carGroup); 
+        balconyOnlyGroup.add(carGroup);
         animScenery.cars.push(carGroup); 
     }
 
@@ -4046,7 +4060,7 @@ const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.a
             t.scale.setScalar(scale);
             t.position.set(i + (Math.random()-0.5)*4, -4.5, zPos + (Math.random()-0.5)*1.5); 
             t.rotation.y = Math.random() * Math.PI;
-            sceneryGroup.add(t); 
+           balconyOnlyGroup.add(t); // 👈 修改
         }); 
     }
 
