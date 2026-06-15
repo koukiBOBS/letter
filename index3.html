@@ -4512,44 +4512,54 @@ else if (type === 'painting') {
                 // 🛑 A. 實體障礙物防穿模 (窗戶、趟門、冷氣機)
                 // ==========================================
                 if (n.z < -0.5) {
-                    // --- 前牆 (包含中央窗戶) ---
+                    // --- 前牆 (包含中央露台玻璃趟門) ---
                     newPos.z = hit.point.z;
                     dragTarget.rotation.y = 0;
-                    newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x)); 
+                    newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
                     
                     const winLeft = -15.5 - halfW - obstacleMargin;
                     const winRight = 15.5 + halfW + obstacleMargin;
-                    if (newPos.x > winLeft && newPos.x < winRight) {
-                        if (Math.abs(newPos.x - winLeft) < Math.abs(newPos.x - winRight)) newPos.x = winLeft;
-                        else newPos.x = winRight;
+                    const winTop = 28.5 + halfH + obstacleMargin; // 👈 補上趟門頂部高度
+                    
+                    if (newPos.y < winTop) {
+                        if (newPos.x > winLeft && newPos.x < winRight) {
+                            // 判斷上、左、右哪邊最短就往哪擠
+                            let distTop = Math.abs(newPos.y - winTop);
+                            let distLeft = Math.abs(newPos.x - winLeft);
+                            let distRight = Math.abs(newPos.x - winRight);
+                            let minDist = Math.min(distTop, distLeft, distRight);
+                            
+                            if (minDist === distTop) newPos.y = winTop; // 推到玻璃門正上方！
+                            else if (minDist === distLeft) newPos.x = winLeft;
+                            else newPos.x = winRight;
+                        }
                     }
                 }
                 else if (n.z > 0.5) {
                     // --- 後牆 (滿版無障礙) ---
                     newPos.z = hit.point.z;
                     dragTarget.rotation.y = Math.PI;
-                    newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x)); 
+                    newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
                 }
                 else if (n.x < -0.5) {
-                    // --- 左牆 (包含出外趟門) ---
+                    // --- 左牆 (包含木門) ---
                     newPos.x = hit.point.x;
                     dragTarget.rotation.y = Math.PI / 2;
-                    newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z)); 
+                    newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
                     
                     const doorLeft = -8.5 - halfW - obstacleMargin;
                     const doorRight = 8.5 + halfW + obstacleMargin;
                     const doorTop = 28.5 + halfH + obstacleMargin;
                     if (newPos.y < doorTop) {
                         if (newPos.z > doorLeft && newPos.z < doorRight) {
-                            // 判斷上、左、右哪邊最短就往哪擠
                             let distTop = Math.abs(newPos.y - doorTop);
                             let distLeft = Math.abs(newPos.z - doorLeft);
                             let distRight = Math.abs(newPos.z - doorRight);
                             let minDist = Math.min(distTop, distLeft, distRight);
                             
-                            if (minDist === distTop) newPos.y = doorTop; 
-                            else if (minDist === distLeft) newPos.z = doorLeft; 
-                            else newPos.z = doorRight; 
+                            if (minDist === distTop) newPos.y = doorTop;
+                            else if (minDist === distLeft) newPos.z = doorLeft;
+                            else newPos.z = doorRight;
                         }
                     }
                 }
@@ -4557,7 +4567,7 @@ else if (type === 'painting') {
                     // --- 右牆 (包含冷氣機) ---
                     newPos.x = hit.point.x;
                     dragTarget.rotation.y = -Math.PI / 2;
-                    newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z)); 
+                    newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
                     
                     const acLeft = -13.5 - halfW - obstacleMargin;
                     const acRight = 3.5 + halfW + obstacleMargin;
@@ -4568,9 +4578,9 @@ else if (type === 'painting') {
                         let distR = Math.abs(newPos.z - acRight);
                         let minDist = Math.min(distBot, distL, distR);
                         
-                        if (minDist === distBot) newPos.y = acBottom; 
-                        else if (minDist === distL) newPos.z = acLeft; 
-                        else newPos.z = acRight; 
+                        if (minDist === distBot) newPos.y = acBottom;
+                        else if (minDist === distL) newPos.z = acLeft;
+                        else newPos.z = acRight;
                     }
                 }
  
