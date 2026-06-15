@@ -6893,195 +6893,185 @@ window.toggleReadingLog = function() {
     }
 
     // 3. 建造極精細的復古八角扭蛋機
-    function buildDetailedGachaMachine() {
-        gachaMachineGrp = new THREE.Group();
-        // 放置於房間左側牆角，面向中心
-        gachaMachineGrp.position.set(-48, 0, 25);
-        gachaMachineGrp.rotation.y = Math.PI / 3;
-        scene.add(gachaMachineGrp);
+function buildDetailedGachaMachine() {
+    gachaMachineGrp = new THREE.Group();
+    // 放置於房間左側牆角，面向中心
+    gachaMachineGrp.position.set(-48, 0, 25);
+    gachaMachineGrp.rotation.y = Math.PI / 3;
+    scene.add(gachaMachineGrp);
 
-        // 材質庫
-        const woodMat = new THREE.MeshStandardMaterial({color: 0x5a2d1e, roughness: 0.8}); // 深紅木
-        const goldMat = new THREE.MeshStandardMaterial({color: 0xd4af37, metalness: 0.9, roughness: 0.3}); // 黃銅
-        const metalMat = new THREE.MeshStandardMaterial({color: 0xaaaaaa, metalness: 0.8, roughness: 0.4}); // 銀鐵
-        const glassMat = new THREE.MeshPhysicalMaterial({color: 0xffffff, transmission: 0.95, opacity: 1, transparent: true, roughness: 0.05, ior: 1.5, thickness: 0.1});
-
-        // 底座 (八角柱)
-        const baseGeo = new THREE.CylinderGeometry(4.5, 4.5, 7, 8);
-        const mBase = new THREE.Mesh(baseGeo, woodMat);
-        mBase.position.y = 3.5; mBase.castShadow = true; mBase.receiveShadow = true;
-        gachaMachineGrp.add(mBase);
-
-        // 投幣金屬面板
-        const coinPanel = new THREE.Mesh(new THREE.BoxGeometry(2.5, 3.5, 0.5), metalMat);
-        coinPanel.position.set(0, 4.5, 4.3);
-        gachaMachineGrp.add(coinPanel);
-
-        // 投幣孔與把手
-        const slot = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.2, 0.2), new THREE.MeshBasicMaterial({color: 0x000000}));
-        slot.position.set(0.6, 5.0, 4.5);
-        gachaMachineGrp.add(slot);
-
-        const knobGrp = new THREE.Group();
-        knobGrp.position.set(-0.3, 4.2, 4.6);
-        knobGrp.name = "gachaKnob";
-        const knobBase = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.2, 16), metalMat);
-        knobBase.rotation.x = Math.PI/2;
-        const knobBar = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.8, 0.3), metalMat);
-        knobGrp.add(knobBase, knobBar);
-        gachaMachineGrp.add(knobGrp);
-
-        // 出物口與金屬擋板
-        const exitHole = new THREE.Mesh(new THREE.BoxGeometry(3.5, 2.5, 0.5), new THREE.MeshBasicMaterial({color: 0x111111}));
-        exitHole.position.set(0, 1.5, 4.3);
-        gachaMachineGrp.add(exitHole);
-        
-        const exitFlap = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.2, 0.1), metalMat);
-        exitFlap.position.set(0, 1.6, 4.5);
-        exitFlap.rotation.x = -0.2; // 微微傾斜的擋板
-        gachaMachineGrp.add(exitFlap);
-
-        // 透明玻璃球罩
-        const dome = new THREE.Mesh(new THREE.SphereGeometry(4.2, 32, 32, 0, Math.PI*2, 0, Math.PI/2), glassMat);
-        dome.position.y = 7;
-        gachaMachineGrp.add(dome);
-
-        // 頂蓋 (金色裝飾與紅木蓋)
-        const capTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.3, 4.3, 0.4, 8), goldMat);
-        capTrim.position.y = 11.2;
-        gachaMachineGrp.add(capTrim);
-        const topCap = new THREE.Mesh(new THREE.SphereGeometry(4.2, 16, 16, 0, Math.PI*2, 0, Math.PI/2), woodMat);
-        topCap.position.y = 11.2; topCap.castShadow = true;
-        gachaMachineGrp.add(topCap);
-        const pinnacle = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 16), goldMat);
-        pinnacle.position.y = 15.6;
-        gachaMachineGrp.add(pinnacle);
-
-        // 內部雙色扭蛋球 (40顆)
-        const colors = [0xdc143c, 0x4169e1, 0x32cd32, 0xffd700, 0xff69b4, 0x8a2be2];
-        const halfSphereGeoTop = new THREE.SphereGeometry(0.7, 16, 16, 0, Math.PI*2, 0, Math.PI/2);
-        const halfSphereGeoBot = new THREE.SphereGeometry(0.7, 16, 16, 0, Math.PI*2, Math.PI/2, Math.PI/2);
-        const clearMat = new THREE.MeshPhysicalMaterial({color: 0xffffff, transmission: 0.8, roughness: 0.1, transparent: true});
-        
-        for(let i=0; i<40; i++) {
-            const capGrp = new THREE.Group();
-            const solidMat = new THREE.MeshStandardMaterial({color: colors[Math.floor(Math.random()*colors.length)], roughness: 0.2, metalness: 0.3});
-            const topHalf = new THREE.Mesh(halfSphereGeoTop, clearMat);
-            const botHalf = new THREE.Mesh(halfSphereGeoBot, solidMat);
-            const ring = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.05, 8, 32), solidMat);
-            ring.rotation.x = Math.PI/2;
-            capGrp.add(topHalf, botHalf, ring);
-
-            capGrp.position.set((Math.random()-0.5)*5, 7.8 + Math.random()*3, (Math.random()-0.5)*5);
-            capGrp.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
-            capGrp.userData.origPos = capGrp.position.clone();
-            capsulePool.push(capGrp);
-            gachaMachineGrp.add(capGrp);
-        }
-
-        // 隱形觸發框
-        const hitBox = new THREE.Mesh(new THREE.BoxGeometry(10, 16, 10), new THREE.MeshBasicMaterial({visible: false}));
-        hitBox.position.y = 8;
-        hitBox.userData = { type: 'quote_gacha' };
-        gachaMachineGrp.add(hitBox);
-        interactables.push(hitBox);
-
-        // 內部打光
-        const mLight = new THREE.PointLight(0xfff5e6, 1.0, 15);
-        mLight.position.set(0, 9, 0);
-        gachaMachineGrp.add(mLight);
-    }
-
-// 4. 攔截點擊：觸發扭蛋機
-    window.addEventListener('pointerup', (e) => {
-        if(Math.abs(e.clientX - pointerDownPos.x) > 10 || Math.abs(e.clientY - pointerDownPos.y) > 10) return;
-        if(isRoomPaused() || isGachaPlaying) return;
-        
-        raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(interactables, true).filter(h => {
-            let curr = h.object; while(curr) { if(curr.visible===false) return false; curr = curr.parent; } return true;
-        });
-
-        if (intersects.length > 0) {
-            let obj = intersects[0].object;
-            while(obj.parent && !obj.userData.type) obj = obj.parent;
-            if (obj.userData.type === 'quote_gacha') playQuoteGachaAnim();
-        }
+    // 💡 升級材質：高質感烤漆復古紅、拉絲黃銅與磨砂銀
+    const redMetalMat = new THREE.MeshStandardMaterial({
+        color: 0x991b1b, // 高雅復古暗紅
+        metalness: 0.7,
+        roughness: 0.18
+    });
+    const goldMat = new THREE.MeshStandardMaterial({
+        color: 0xd4af37, // 黃銅金
+        metalness: 0.85,
+        roughness: 0.15
+    });
+    const darkMetalMat = new THREE.MeshStandardMaterial({
+        color: 0x222222,
+        metalness: 0.8,
+        roughness: 0.4
+    });
+    const silverMat = new THREE.MeshStandardMaterial({
+        color: 0xcccccc, // 磨砂銀
+        metalness: 0.9,
+        roughness: 0.1
+    });
+    const glassMat = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        transmission: 0.95,
+        opacity: 1,
+        transparent: true,
+        roughness: 0.05,
+        ior: 1.5,
+        thickness: 0.15
     });
 
-    // 5. 電影級扭蛋運鏡與開獎動畫
-    function playQuoteGachaAnim() {
-        if (userPoints < 500) return showToast("🪙 積分不足 500，無法抽取。");
-        if (!confirm("確定要消耗 500 積分轉動一次扭蛋機嗎？")) return;
+    // 八角紅金屬底座
+    const baseGeo = new THREE.CylinderGeometry(4.5, 4.5, 7, 8);
+    const mBase = new THREE.Mesh(baseGeo, redMetalMat);
+    mBase.position.y = 3.5; mBase.castShadow = true; mBase.receiveShadow = true;
+    gachaMachineGrp.add(mBase);
 
-        isGachaPlaying = true;
-        userPoints -= 500;
-        db.ref(`users/${currentUser.uid}/points`).set(userPoints);
-        document.getElementById('user-points-text').innerText = userPoints;
+    // 銅金邊框裝飾
+    const baseBottomTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 4.6, 0.4, 8), goldMat);
+    baseBottomTrim.position.y = 0.2;
+    gachaMachineGrp.add(baseBottomTrim);
 
-        const keys = Object.keys(LIT_QUOTES);
-        const wonId = keys[Math.floor(Math.random() * keys.length)];
+    const baseTopTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 4.6, 0.4, 8), goldMat);
+    baseTopTrim.position.y = 6.8;
+    gachaMachineGrp.add(baseTopTrim);
+
+    // 💡 新增：向外延伸的「水平金屬操作台」
+    const ledge = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.4, 1.8), goldMat);
+    ledge.position.set(0, 5.0, 4.0);
+    gachaMachineGrp.add(ledge);
+
+    // 投幣孔金屬面板 (中段下方)
+    const coinPanel = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.2, 0.4), darkMetalMat);
+    coinPanel.position.set(0, 3.0, 4.2);
+    gachaMachineGrp.add(coinPanel);
+
+    // 💡 修正：平躺在平台上、繞 Y 軸作水平旋轉的蝴蝶鑰匙
+    const knobGrp = new THREE.Group();
+    knobGrp.position.set(0, 5.3, 4.0); 
+    knobGrp.name = "gachaKnob";
+    
+    const knobPin = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.6, 16), silverMat);
+    knobPin.position.y = 0.3;
+    knobGrp.add(knobPin);
+
+    const knobWingL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.15, 0.5), silverMat);
+    knobWingL.position.set(0.5, 0.5, 0);
+    const knobWingR = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.15, 0.5), silverMat);
+    knobWingR.position.set(-0.5, 0.5, 0);
+    
+    const knobCap = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.25, 16), goldMat);
+    knobCap.position.y = 0.5;
+    knobGrp.add(knobWingL, knobWingR, knobCap);
+    gachaMachineGrp.add(knobGrp);
+
+    // 投幣口
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.2), new THREE.MeshBasicMaterial({color: 0x000000}));
+    slot.position.set(0, 3.5, 4.45);
+    gachaMachineGrp.add(slot);
+
+    // 出物口與擋板
+    const exitHole = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.2, 0.4), new THREE.MeshBasicMaterial({color: 0x111111}));
+    exitHole.position.set(0, 1.4, 4.2);
+    gachaMachineGrp.add(exitHole);
+    
+    const exitFlap = new THREE.Mesh(new THREE.BoxGeometry(3.0, 2.0, 0.1), silverMat);
+    exitFlap.position.set(0, 1.4, 4.4);
+    exitFlap.rotation.x = -0.25;
+    gachaMachineGrp.add(exitFlap);
+
+    // 玻璃圓頂
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(4.2, 32, 32, 0, Math.PI*2, 0, Math.PI/2), glassMat);
+    dome.position.y = 7;
+    gachaMachineGrp.add(dome);
+
+    // 金屬頂蓋裝飾
+    const topCapTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.3, 4.3, 0.4, 8), goldMat);
+    topCapTrim.position.y = 11.2;
+    gachaMachineGrp.add(topCapTrim);
+
+    const topCap = new THREE.Mesh(new THREE.SphereGeometry(4.2, 16, 16, 0, Math.PI*2, 0, Math.PI/2), redMetalMat);
+    topCap.position.y = 11.2; topCap.castShadow = true;
+    gachaMachineGrp.add(topCap);
+
+    const pinnacle = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 16), goldMat);
+    pinnacle.position.y = 15.6;
+    gachaMachineGrp.add(pinnacle);
+
+    // 💡 重新設計：低飽和度莫蘭迪色扭蛋球 (水晶玻璃 + 內部微型書卷紙軸)
+    const morandiColors = [0x8a9a86, 0xb89088, 0xd0af84, 0x6b8294, 0xd1c7bd, 0xbfa89e];
+    const halfSphereGeoTop = new THREE.SphereGeometry(0.7, 16, 16, 0, Math.PI*2, 0, Math.PI/2);
+    const halfSphereGeoBot = new THREE.SphereGeometry(0.7, 16, 16, 0, Math.PI*2, Math.PI/2, Math.PI/2);
+    
+    // 頂上半球採用磨砂半透明物理材質
+    const frostedGlassMat = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        transmission: 0.9,
+        roughness: 0.25,
+        transparent: true,
+        thickness: 0.05
+    });
+
+    for(let i=0; i<40; i++) {
+        const capGrp = new THREE.Group();
+        const col = morandiColors[Math.floor(Math.random() * morandiColors.length)];
+        const solidMat = new THREE.MeshStandardMaterial({
+            color: col,
+            roughness: 0.3,
+            metalness: 0.1
+        });
         
-        controls.enabled = false;
-        const backupPos = camera.position.clone();
-        const backupTarget = controls.target.clone();
-        const knob = gachaMachineGrp.getObjectByName('gachaKnob');
+        const topHalf = new THREE.Mesh(halfSphereGeoTop, frostedGlassMat);
+        const botHalf = new THREE.Mesh(halfSphereGeoBot, solidMat);
         
-        const tl = gsap.timeline();
+        // 金色中合接縫細線
+        const seam = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.02, 8, 32), goldMat);
+        seam.rotation.x = Math.PI/2;
         
-        // 鏡頭推進，精準鎖定扭蛋機正面
-        tl.to(camera.position, {x: -36, y: 5, z: 32, duration: 1.5, ease: "power2.inOut"})
-          .to(controls.target, {x: -48, y: 4, z: 25, duration: 1.5, ease: "power2.inOut", onUpdate: () => controls.update()}, "<")
-          // 旋轉金屬把手
-          .to(knob.rotation, {x: knob.rotation.x + Math.PI*2, duration: 0.8, ease: "back.out(1.5)"})
-          // 球罩內的扭蛋瘋狂跳動
-          .call(() => {
-              capsulePool.forEach(cap => {
-                  gsap.to(cap.position, {
-                      y: cap.userData.origPos.y + Math.random()*2.5, 
-                      x: cap.userData.origPos.x + (Math.random()-0.5)*1.5, 
-                      z: cap.userData.origPos.z + (Math.random()-0.5)*1.5,
-                      duration: 0.1, yoyo: true, repeat: 9
-                  });
-              });
-          })
-          .to({}, {duration: 1.0}) // 等待跳動完畢
-          // 掉出一顆精緻的實體雙色扭蛋球
-          .call(() => {
-              const capGrp = new THREE.Group();
-              const solidMat = new THREE.MeshStandardMaterial({color: 0x8a2be2, roughness: 0.2, metalness: 0.3});
-              const clearMat = new THREE.MeshPhysicalMaterial({color: 0xffffff, transmission: 0.8, roughness: 0.1, transparent: true});
-              const topHalf = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 16, 0, Math.PI*2, 0, Math.PI/2), clearMat);
-              const botHalf = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 16, 0, Math.PI*2, Math.PI/2, Math.PI/2), solidMat);
-              const ring = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.05, 8, 32), solidMat);
-              ring.rotation.x = Math.PI/2;
-              capGrp.add(topHalf, botHalf, ring);
-              
-              capGrp.position.set(0, 1.6, 3.5);
-              gachaMachineGrp.add(capGrp);
-              
-              // 扭蛋滾出動畫
-              gsap.to(capGrp.position, {z: 5.5, y: 0.7, duration: 0.8, ease: "bounce.out", onComplete: () => {
-                  setTimeout(() => {
-                      gachaMachineGrp.remove(capGrp);
-                      
-                      // 寫入資料庫
-                      db.ref(`users/${currentUser.uid}/quotes/${wonId}`).set(true);
-                      window.userQuotes[wonId] = true;
-                      
-                      // 彈出超文藝的佳句 UI，並傳入退回視角的回調函數
-                      showQuoteUI(wonId, () => {
-                          gsap.to(camera.position, {x: backupPos.x, y: backupPos.y, z: backupPos.z, duration: 1.2, ease: "power2.inOut"});
-                          gsap.to(controls.target, {x: backupTarget.x, y: backupTarget.y, z: backupTarget.z, duration: 1.2, ease: "power2.inOut", onUpdate: () => controls.update(), onComplete: () => {
-                              controls.enabled = true;
-                              isGachaPlaying = false;
-                          }});
-                      });
-                  }, 600);
-              }});
-          });
+        // 內含繫金絲帶之微型卷軸 (文學意象)
+        const scrollGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.8, 8);
+        const scrollMat = new THREE.MeshStandardMaterial({color: 0xfdfaf6, roughness: 0.9});
+        const scroll = new THREE.Mesh(scrollGeo, scrollMat);
+        scroll.position.y = 0.1;
+        scroll.rotation.z = Math.PI / 4;
+        scroll.rotation.x = Math.PI / 8;
+        
+        const ribbonGeo = new THREE.CylinderGeometry(0.13, 0.13, 0.1, 8);
+        const ribbon = new THREE.Mesh(ribbonGeo, goldMat);
+        ribbon.position.y = 0.1;
+        ribbon.rotation.copy(scroll.rotation);
+        
+        capGrp.add(topHalf, botHalf, seam, scroll, ribbon);
+
+        capGrp.position.set((Math.random()-0.5)*5, 7.6 + Math.random()*3, (Math.random()-0.5)*5);
+        capGrp.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+        capGrp.userData.origPos = capGrp.position.clone();
+        capsulePool.push(capGrp);
+        gachaMachineGrp.add(capGrp);
     }
 
+    // 點擊判定框
+    const hitBox = new THREE.Mesh(new THREE.BoxGeometry(10, 16, 10), new THREE.MeshBasicMaterial({visible: false}));
+    hitBox.position.y = 8;
+    hitBox.userData = { type: 'quote_gacha' };
+    gachaMachineGrp.add(hitBox);
+    interactables.push(hitBox);
+
+    // 內部暖黃打光
+    const mLight = new THREE.PointLight(0xfff5e6, 1.2, 15);
+    mLight.position.set(0, 9, 0);
+    gachaMachineGrp.add(mLight);
+}
     // 6. 動態建立超文藝展示視窗 (不需修改原 HTML)
     function createQuoteOverlay() {
         if(document.getElementById('quote-display-overlay')) return;
@@ -7141,9 +7131,19 @@ window.toggleReadingLog = function() {
                 const card = document.createElement('div');
 
                 if (!isOwned) {
-                    card.className = 'quote-card-item locked';
-                    card.innerHTML = `<div style="font-size:2rem; opacity:0.3; margin-bottom:10px;">📜</div><div style="color:#7d5a40; font-family:var(--font-serif);">未知的記憶碎片</div>`;
-                } else {
+                    // 💡 修改：在「未解鎖」狀態下，更換名稱、去除Emoji、升級為高雅稿紙虛線框
+if (!isOwned) {
+    card.className = 'quote-card-item locked';
+    card.style.background = '#e6dfd1'; // 古雅象牙紙張色
+    card.style.border = '1px solid #dcd5c9';
+    card.innerHTML = `
+        <div style="border: 1px dashed #b4a08c; padding: 25px 15px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(139,115,85,0.015);">
+            <div style="width: 20px; height: 1px; background: #c4b8aa; margin-bottom: 10px;"></div>
+            <div style="color: #a48c76; font-family: var(--font-serif); font-size: 0.95rem; letter-spacing: 2px; font-weight: 500;">未知的語錄</div>
+            <div style="width: 20px; height: 1px; background: #c4b8aa; margin-top: 10px;"></div>
+        </div>
+    `;
+} else {
                     const q = LIT_QUOTES[id];
                     card.className = 'quote-card-item';
                     card.innerHTML = `
