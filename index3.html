@@ -6045,71 +6045,78 @@ function acceptBankruptcy() {
 
 
 
-// 👇 新增：移動端 360 度視角旋鈕核心邏輯 👇
-// 👇 移動端 360 度實時視角旋鈕與攝影機控制 👇
+// 👇 移動端實時視角旋鈕與攝影機控制 (完美軌道與邊界修復版) 👇
 (function initCameraKnob() {
     const knob = document.getElementById('mobile-cam-knob');
     if(!knob) return;
  
-    // 重新校準的 8 個絕佳室內視角
-    const camPresets = [
-        { angle: 0,   cp: {x:0, y:26, z:35}, ct: {x:0, y:7, z:0} },     // 北 (正看窗戶與書桌)
-        { angle: 45,  cp: {x:-20, y:22, z:35}, ct: {x:40, y:10, z:10} },// 東北 (看鋼琴與時鐘)
-        { angle: 90,  cp: {x:-25, y:22, z:20}, ct: {x:40, y:15, z:20} },// 東 (正看趟門與鋼琴側)
-        { angle: 135, cp: {x:-20, y:24, z:0}, ct: {x:30, y:15, z:45} }, // 東南 (看右側書櫃)
-        { angle: 180, cp: {x:0, y:24, z:-10}, ct: {x:0, y:15, z:45} },  // 南 (正看滿版書櫃)
-        { angle: 225, cp: {x:20, y:24, z:0}, ct: {x:-30, y:10, z:45} }, // 西南 (看掛衣架與雨傘)
-        { angle: 270, cp: {x:25, y:22, z:20}, ct: {x:-40, y:15, z:20} },// 西 (正看畫作牆面)
-        { angle: 315, cp: {x:20, y:22, z:35}, ct: {x:-40, y:10, z:10} } // 西北 (看左側露台外景)
-    ];
- 
+    window.isKnobDragging = false;
+    let currentSnappedAngle = null;
 
- 
- window.isKnobDragging = false;
-    let currentSnappedAngle = -1;
     function handleKnobMove(e) {
-        if(!window.isKnobDragging || isAtBalcony) return;
+        if(!window.isKnobDragging || (typeof isAtBalcony !== 'undefined' && isAtBalcony)) return;
         const rect = knob.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        // 計算拖曳手勢的角度
-        let rad = Math.atan2(clientY - centerY, clientX - centerX);
-        let deg = (rad * 180 / Math.PI) + 90;
-        if(deg < 0) deg += 360;
-        // 磁吸至最近的 45 度角
+        
+        // 計算拖曳手勢的角度 (上為 0, 右為 90, 下為 180/-180, 左為 -90)
+        let rad = Math.atan2(clientX - centerX, -(clientY - centerY));
+        let deg = rad * (180 / Math.PI);
+
+        // 🛑 核心邊界限制：房間的視角極限就是左牆(-90度)到右牆(90度)
+        // 碰到牆壁就不允許再往下旋轉，物理阻擋！
+        if (deg > 90 && deg <= 180) deg = 90;
+        if (deg < -90 && deg >= -180) deg = -90;
+
+        // 🧲 磁吸至最近的 45 度角 (即完美 8 等份：-90, -45, 0, 45, 90)
         let snappedDeg = Math.round(deg / 45) * 45;
-        if(snappedDeg === 360) snappedDeg = 0;
+
         if (currentSnappedAngle !== snappedDeg) {
             currentSnappedAngle = snappedDeg;
             
+            // 讓 UI 旋鈕的指示器也同步卡在牆壁邊界
             const knobDial = document.getElementById('knob-dial');
             if (knobDial) {
-                // 👇 加入「短路徑」演算法，防止整圈旋轉
-                let currentDeg = parseFloat(knobDial.getAttribute('data-deg')) || 0;
-                let diff = snappedDeg - (currentDeg % 360);
-                
-                // 強制將角度差限縮在 -180 到 180 之間 (尋找最短路徑)
-                diff = ((diff + 540) % 360) - 180;
-                let newDeg = currentDeg + diff;
-                
-                knobDial.setAttribute('data-deg', newDeg); // 記憶當前連續角度
-                knobDial.style.transform = `rotate(${newDeg}deg)`;
+                knobDial.style.transform = `rotate(${snappedDeg}deg)`;
             }
  
-            const preset = camPresets.find(p => p.angle === snappedDeg);
-            if (preset) {
-                if (controls) {
-                    controls.minAzimuthAngle = -Infinity;
-                    controls.maxAzimuthAngle = Infinity;
-                    controls.minPolarAngle = 0;
-                }
-                gsap.to(camera.position, { x: preset.cp.x, y: preset.cp.y, z: preset.cp.z, duration: 1.2, ease: "power2.inOut" });
-                gsap.to(controls.target, {
-                    x: preset.ct.x, y: preset.ct.y, z: preset.ct.z,
-                    duration: 1.2, ease: "power2.inOut",
-                    onUpdate: () => controls.update()
+            if (controls && camera) {
+                // 將相機目前相對於目標的距離轉換為「球體座標」
+                // 這樣能保證 100% 沿著原本的軌道滑動，絕對不改變距離與廣角
+                const spherical = new THREE.Spherical().setFromVector3(
+                    camera.position.clone().sub(controls.target)
+                );
+
+                // 目標角度 (轉為弧度)
+                const targetTheta = snappedDeg * (Math.PI / 180);
+
+                // 🧭 最短路徑演算法：計算角度差並限縮在 -180~180 度之間
+                let diff = targetTheta - spherical.theta;
+                diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+                const finalTheta = spherical.theta + diff;
+
+                // 暫時解除 OrbitControls 的限制以便動畫播放
+                controls.minAzimuthAngle = -Infinity;
+                controls.maxAzimuthAngle = Infinity;
+
+                gsap.killTweensOf(spherical); // 避免連續滑動產生衝突
+                gsap.to(spherical, {
+                    theta: finalTheta,
+                    duration: 0.8,
+                    ease: "power2.out",
+                    onUpdate: () => {
+                        // 動態將球體座標轉回真實 3D 座標
+                        camera.position.setFromSpherical(spherical).add(controls.target);
+                        camera.lookAt(controls.target);
+                        controls.update();
+                    },
+                    onComplete: () => {
+                        // 動畫結束後重新鎖上牆壁限制
+                        controls.minAzimuthAngle = -Math.PI / 2;
+                        controls.maxAzimuthAngle = Math.PI / 2;
+                    }
                 });
             }
         }
@@ -6118,8 +6125,8 @@ function acceptBankruptcy() {
     knob.addEventListener('touchstart', (e) => { window.isKnobDragging = true; handleKnobMove(e); }, {passive: false});
     window.addEventListener('mousemove', handleKnobMove);
     window.addEventListener('touchmove', (e) => { if(window.isKnobDragging) e.preventDefault(); handleKnobMove(e); }, {passive: false});
-    window.addEventListener('mouseup', () => { window.isKnobDragging = false; currentSnappedAngle = -1; });
-    window.addEventListener('touchend', () => { window.isKnobDragging = false; currentSnappedAngle = -1; });
+    window.addEventListener('mouseup', () => { window.isKnobDragging = false; });
+    window.addEventListener('touchend', () => { window.isKnobDragging = false; });
 })();
  
 
