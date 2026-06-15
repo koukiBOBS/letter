@@ -3353,8 +3353,9 @@ function buildRoomEnvironment() {
     dirLight.castShadow = true; 
     
     // 👇 1. 適度提升手機與平板的解析度 (從 1024 提升為 2048)
-    dirLight.shadow.mapSize.width = isTouchDevice ? 2048 : 4096; 
-    dirLight.shadow.mapSize.height = isTouchDevice ? 2048 : 4096;
+   dirLight.shadow.mapSize.width = 4096; 
+    dirLight.shadow.mapSize.height = 4096;
+
     
     // 👇 2. 【關鍵修復】：大幅縮小陰影攝影機的範圍！
     // 讓寶貴的陰影像素只集中在「房間與露台 (-80 到 80)」，放棄渲染極遠處的橋樑陰影。
