@@ -4238,15 +4238,15 @@ interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitB
 // --- 修訂：將中午的光線 (dir) 從純白改為微暖白 ---
 function setEnvironmentPhase(phaseStr) {
     const envPhases = {
-        // 晨：太陽從右側升起。提高 Y 軸高度，讓光線落在地板上，避免照到左側深處的掛衣架
-        dawn: { skyTop: 0x7a8b98, skyBot: 0xd0b8a8, fog: 0xd0b8a8, dir: 0xffe4cc, int: 0.65, windowLight: false, shadow: true, ceilingOn: false, lightPos: {x: 25, y: 20, z: -30} },
- 
-        // 午：正午太陽高掛。將 X 設為 0 (正前方)，Y 大幅提高，讓光線垂直照進窗邊地板，完全避開鋼琴與兩側牆壁
-        noon: { skyTop: 0x40a0d0, skyBot: 0xbae0ff, fog: 0xbae0ff, dir: 0xfff6ea, int: 0.95, windowLight: false, shadow: true, ceilingOn: false, lightPos: {x: 0, y: 35, z: -25} },
- 
-        // 暮：太陽從左側落下。提高 Y 軸高度並調整角度，讓夕陽只灑在中央地板，完全避開右側的鋼琴
-        dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, dir: 0xffaa66, int: 0.8, windowLight: true, shadow: true, ceilingOn: false, lightPos: {x: -25, y: 18, z: -30} },
- 
+        // 晨：降低天空底部與霧氣亮度，避免窗外白茫茫過曝
+        dawn: { skyTop: 0x7a8b98, skyBot: 0xd0b8a8, fog: 0xd0b8a8, dir: 0xffe4cc, int: 0.65, windowLight: false, shadow: true, ceilingOn: false, lightPos: {x: 45, y: 15, z: -50} },
+        
+        // 午：【關鍵修改】將 dir 改為 0xfff6ea (微暖白)，讓陽光有一點點溫度感
+        noon: { skyTop: 0x40a0d0, skyBot: 0xbae0ff, fog: 0xbae0ff, dir: 0xfff6ea, int: 0.95, windowLight: false, shadow: true, ceilingOn: false, lightPos: {x: 35, y: 28, z: -45} }, 
+        
+        // 暮：打開窗簾時不開燈，享受純粹夕陽
+        dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, dir: 0xffaa66, int: 0.8, windowLight: true, shadow: true, ceilingOn: false, lightPos: {x: -45, y: 12, z: -50} }, 
+        
         // 夜：微弱偏藍的月光，夜晚必須強制開燈
         night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x1a2235, dir: 0x404055, int: 0.1, windowLight: true, shadow: false, ceilingOn: true, lightPos: {x: -20, y: 30, z: -40} }
     };
