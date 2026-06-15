@@ -2665,16 +2665,18 @@ function saveObjectPositions() {
     if(clipboard) pos.tasks = {x: clipboard.position.x, z: clipboard.position.z};
     if(wateringCan) pos.water = {x: wateringCan.position.x, z: wateringCan.position.z};
     if(plantGroup) pos.plant = {x: plantGroup.position.x, z: plantGroup.position.z};
-    if(tcGrp) pos.trash = {x: tcGrp.position.x, z: tcGrp.position.z};
-    if(chairGroup) pos.chair = {x: chairGroup.position.x, z: chairGroup.position.z};
-    if(typeof rackGrp !== 'undefined') pos.rack = {x: rackGrp.position.x, z: rackGrp.position.z}; // 👈 新增
-    if(typeof umbGrp !== 'undefined') pos.umbrella = {x: umbGrp.position.x, z: umbGrp.position.z}; // 👈 新增
     if(catGrp) pos.cat = {x: catGrp.position.x, y: catGrp.position.y, z: catGrp.position.z, platform: catPlatform};
     
     pos.paintings = {};
     scene.traverse(c => {
-        if (c.userData && c.userData.itemId && c.userData.itemId.startsWith('painting_')) {
-            pos.paintings[c.userData.itemId] = { x: c.position.x, y: c.position.y, z: c.position.z, ry: c.rotation.y };
+        if (c.userData && c.userData.itemId) {
+            if (c.userData.itemId.startsWith('painting_')) {
+                pos.paintings[c.userData.itemId] = { x: c.position.x, y: c.position.y, z: c.position.z, ry: c.rotation.y };
+            } else if (c.userData.itemId === 'clock') {
+                pos.clock = { x: c.position.x, y: c.position.y, z: c.position.z, ry: c.rotation.y };
+            } else if (['trash', 'chair', 'rack', 'umbrella', 'piano_model', 'piano_bench'].includes(c.userData.itemId)) {
+                pos[c.userData.itemId] = { x: c.position.x, z: c.position.z };
+            }
         }
     });
     localStorage.setItem('roomObjectPositions', JSON.stringify(pos));
@@ -2687,31 +2689,30 @@ function restoreObjectPositions() {
         if(pos.log && book) book.position.set(pos.log.x, 8.6, pos.log.z);
         if(pos.tasks && clipboard) clipboard.position.set(pos.tasks.x, 8.55, pos.tasks.z);
         if(pos.water && wateringCan) wateringCan.position.set(pos.water.x, 8.5, pos.water.z);
-        if(pos.trash && tcGrp) tcGrp.position.set(pos.trash.x, tcGrp.position.y, pos.trash.z);
-        if(pos.chair && chairGroup) chairGroup.position.set(pos.chair.x, chairGroup.position.y, pos.chair.z);
-        if(pos.rack && typeof rackGrp !== 'undefined') rackGrp.position.set(pos.rack.x, rackGrp.position.y, pos.rack.z); // 👈 新增
-        if(pos.umbrella && typeof umbGrp !== 'undefined') umbGrp.position.set(pos.umbrella.x, umbGrp.position.y, pos.umbrella.z); // 👈 新增
         if(pos.cat && catGrp) {
             catPlatform = pos.cat.platform || 'floor';
-            let correctY = 0;
-            if (catPlatform === 'desk') correctY = 8.5;
-            else if (catPlatform === 'chair') correctY = 4.5;
+            let correctY = (catPlatform === 'desk') ? 8.5 : (catPlatform === 'chair') ? 4.5 : 0;
             catGrp.position.set(pos.cat.x, correctY, pos.cat.z);
             catGrp.children.forEach(child => { if (child.userData && child.userData.type === 'cat') child.userData.originalY = correctY; });
         }
         
-        if (pos.paintings) {
-            scene.traverse(c => {
-                if (c.userData && c.userData.itemId && pos.paintings[c.userData.itemId]) {
+        scene.traverse(c => {
+            if (c.userData && c.userData.itemId) {
+                if (c.userData.itemId.startsWith('painting_') && pos.paintings && pos.paintings[c.userData.itemId]) {
                     let savedP = pos.paintings[c.userData.itemId];
                     c.position.set(savedP.x, savedP.y, savedP.z);
                     c.rotation.y = savedP.ry;
+                } else if (c.userData.itemId === 'clock' && pos.clock) {
+                    c.position.set(pos.clock.x, pos.clock.y, pos.clock.z);
+                    c.rotation.y = pos.clock.ry;
+                } else if (['trash', 'chair', 'rack', 'umbrella', 'piano_model', 'piano_bench'].includes(c.userData.itemId) && pos[c.userData.itemId]) {
+                    c.position.x = pos[c.userData.itemId].x;
+                    c.position.z = pos[c.userData.itemId].z;
                 }
-            });
-        }
+            }
+        });
     } catch(e){}
 }
-
 
         
       // 🐾 新增小貓咪的全域變數
@@ -3621,6 +3622,19 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     clockHourHand = new THREE.Group(); clockHourHand.position.z = 0.40; const hHand = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.8, 0.05), handMat); hHand.position.y = 0.9; clockHourHand.add(hHand); clockGrp.add(clockHourHand);
     clockMinHand = new THREE.Group(); clockMinHand.position.z = 0.43; const mHand = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.8, 0.05), handMat); mHand.position.y = 1.4; clockMinHand.add(mHand); clockGrp.add(clockMinHand);
     clockSecHand = new THREE.Group(); clockSecHand.position.z = 0.46; const sHand = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.2, 0.05), secHandMat); sHand.position.y = 1.0; clockSecHand.add(sHand); clockGrp.add(clockSecHand);
+
+
+// 👇 新增：時鐘專屬隱形點擊/碰撞框
+    const clockHitBox = new THREE.Mesh(new THREE.BoxGeometry(8, 8, 2), new THREE.MeshBasicMaterial({visible: false}));
+    clockHitBox.userData = { type: 'clock' };
+    clockGrp.add(clockHitBox);
+    interactables.push(clockHitBox);
+    // 讓碰撞系統知道時鐘的長寬尺寸
+    clockGrp.userData.frameW = 8;
+    clockGrp.userData.frameH = 8;
+
+
+    
     const rackGrp = new THREE.Group(); rackGrp.position.set(-56, 0, 30); scene.add(rackGrp);
     const rPole = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 22, 16), woodMat); rPole.position.y = 11; rPole.castShadow = true; rackGrp.add(rPole);
     const rBase = new THREE.Mesh(new THREE.CylinderGeometry(3, 3.5, 0.6, 32), woodMat); rBase.position.y = 0.3; rBase.castShadow = true; rackGrp.add(rBase);
@@ -3700,6 +3714,14 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
 const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.add(benchGrp);
     const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(7, 0.8, 3), new THREE.MeshStandardMaterial({color: 0x3a1f11, roughness: 0.8})); benchSeat.position.y = 4.5; benchSeat.castShadow=true; benchGrp.add(benchSeat);
     [[-3, 2.25, -1], [3, 2.25, -1], [-3, 2.25, 1], [3, 2.25, 1]].forEach(pos => { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 4.5), pianoGlossy); l.position.set(...pos); l.castShadow=true; benchGrp.add(l); });
+
+
+       // 👇 新增：琴椅專屬隱形點擊/碰撞框
+    const benchHitBox = new THREE.Mesh(new THREE.BoxGeometry(8, 6, 4), new THREE.MeshBasicMaterial({visible: false}));
+    benchHitBox.position.y = 2.5;
+    benchHitBox.userData = { type: 'piano_bench' };
+    benchGrp.add(benchHitBox);
+    interactables.push(benchHitBox);
 
     // 加入隱形 HitBox 以便點擊
     const pianoHitBox = new THREE.Mesh(new THREE.BoxGeometry(20, 16, 12), new THREE.MeshBasicMaterial({visible: false}));
@@ -4311,11 +4333,11 @@ const intersects = getValidIntersects();
         while(obj.parent && !obj.userData.type) obj = obj.parent;
         const type = obj.userData.type;
 
-if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella'].includes(type)) {
+if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella', 'piano', 'piano_bench'].includes(type)) {
     let targetObj = obj;
-    if(['plant', 'trash', 'chair', 'cat', 'rack', 'umbrella'].includes(type)) {
-                targetObj = obj.parent; 
-            }
+    if(['plant', 'trash', 'chair', 'cat', 'rack', 'umbrella', 'piano', 'piano_bench'].includes(type)) {
+        targetObj = obj.parent;
+    }
 
             dragTimer = setTimeout(() => {
                 isDragging = true;
@@ -4366,9 +4388,9 @@ if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella
             }, 150);
         }
 
-        else if (type === 'painting') {
-            dragTimer = setTimeout(() => {
-                isDragging = true;
+      if (['painting', 'clock'].includes(type)) {
+    saveObjectPositions(); // 儲存新位置
+    isDragging = false;
                 dragTarget = obj.parent; // 抓取整個畫框群組
                 dragTarget.userData.dragType = type;
                 controls.enabled = false;
@@ -4417,21 +4439,19 @@ function onPointerMove(e) {
                 dragTarget.position.z = newZ;
             }
         } 
-      else if (['trash', 'chair', 'rack', 'umbrella'].includes(type)) {
+            else if (['trash', 'chair', 'rack', 'umbrella', 'piano', 'piano_bench'].includes(type)) {
             raycaster.ray.intersectPlane(floorPlane, intersectPoint);
             if(intersectPoint) {
                 let newX = intersectPoint.x - dragOffset.x;
                 let newZ = intersectPoint.z - dragOffset.z;
- 
-                // 1. 基本房間牆壁邊界 (防穿牆出界)
-                newX = Math.max(-56, Math.min(56, newX));
-                newZ = Math.max(-14, Math.min(56, newZ));
- 
-                // 定義各自的碰撞半徑
-                const myRadius = (type === 'rack' || type === 'chair') ? 4.5 : 2.5;
- 
+
+                // 根據物件設定各自的防撞半徑
+                let myRadius = 2.5;
+                if (['rack', 'chair', 'piano_bench'].includes(type)) myRadius = 4.5;
+                else if (type === 'piano') myRadius = 11; // 鋼琴體積龐大，賦予巨大半徑
+
                 // ==========================================
-                // 🛑 A. 靜態巨型障礙物防穿模 (AABB 矩形碰撞擠壓)
+                // 🛑 A. 避開靜態巨型障礙物 (AABB 矩形防穿模)
                 // ==========================================
                 function pushOutRect(cx, cz, radius, rx, rz, rw, rd) {
                     let hw = rw / 2, hd = rd / 2;
@@ -4439,9 +4459,8 @@ function onPointerMove(e) {
                     let testZ = cz < rz - hd ? rz - hd : (cz > rz + hd ? rz + hd : cz);
                     let distX = cx - testX, distZ = cz - testZ;
                     let dist = Math.sqrt(distX*distX + distZ*distZ);
- 
+
                     if (dist < radius) {
-                        // 如果滑鼠移動太快導致中心點直接塞進去，強制往最近的邊緣彈出
                         if (dist === 0) {
                             let dL = Math.abs((rx - hw) - cx), dR = Math.abs((rx + hw) - cx);
                             let dT = Math.abs((rz - hd) - cz), dB = Math.abs((rz + hd) - cz);
@@ -4451,47 +4470,39 @@ function onPointerMove(e) {
                             if (m === dT) return { x: cx, z: rz - hd - radius };
                             return { x: cx, z: rz + hd + radius };
                         }
-                        // 否則平滑沿著法線推擠出去
                         return { x: cx + (distX/dist)*(radius-dist), z: cz + (distZ/dist)*(radius-dist) };
                     }
                     return { x: cx, z: cz };
                 }
- 
+
                 // 避開書桌 (中心 0,0, 寬 32, 深 16)
                 let pos = pushOutRect(newX, newZ, myRadius, 0, 0, 32, 16);
                 newX = pos.x; newZ = pos.z;
- 
-                // 避開右側鋼琴 (中心 58.5, 22, 寬 12, 深 22)
-                if (typeof pianoGrp !== 'undefined' && pianoGrp.visible) {
-                    pos = pushOutRect(newX, newZ, myRadius, 58, 22, 12, 22);
-                    newX = pos.x; newZ = pos.z;
-                }
- 
+
                 // 避開後方書櫃 (中心 0, 59, 寬 80, 深 10)
                 pos = pushOutRect(newX, newZ, myRadius, 0, 59, 80, 10);
                 newX = pos.x; newZ = pos.z;
- 
+
                 // ==========================================
-                // 🧲 B. 動態地面家具互相排斥 (圓形碰撞)
+                // 🧲 B. 動態家具互相排斥 (自動滑開不重疊)
                 // ==========================================
-                const floorItems = [
-                    { grp: tcGrp, r: 2.5 },
-                    { grp: chairGroup, r: 4.5 },
-                    { grp: typeof rackGrp !== 'undefined' ? rackGrp : null, r: 4.5 },
-                    { grp: typeof umbGrp !== 'undefined' ? umbGrp : null, r: 2.5 }
-                ];
- 
-                // 執行 2 次迭代，確保 A 推 B，B 也不會陷入牆壁
+                const floorItems = [];
+                scene.traverse(c => {
+                    if (c.userData && c.userData.itemId && c.visible) {
+                        if (['trash', 'umbrella'].includes(c.userData.itemId)) floorItems.push({ grp: c, r: 2.5 });
+                        else if (['chair', 'rack', 'piano_bench'].includes(c.userData.itemId)) floorItems.push({ grp: c, r: 4.5 });
+                        else if (c.userData.itemId === 'piano_model') floorItems.push({ grp: c, r: 11 });
+                    }
+                });
+
                 for (let iter = 0; iter < 2; iter++) {
                     floorItems.forEach(item => {
-                        // 排除自己，並確保目標存在且可見
-                        if (item.grp && dragTarget !== item.grp && item.grp.visible) {
+                        if (item.grp && dragTarget !== item.grp) {
                             let dx = newX - item.grp.position.x;
                             let dz = newZ - item.grp.position.z;
                             let dist = Math.sqrt(dx*dx + dz*dz);
                             let minDist = myRadius + item.r;
- 
-                            // 如果距離太近，產生排斥力滑開
+
                             if (dist < minDist && dist > 0.01) {
                                 let overlap = minDist - dist;
                                 newX += (dx / dist) * overlap;
@@ -4500,70 +4511,16 @@ function onPointerMove(e) {
                         }
                     });
                 }
- 
+
                 // 🛡️ C. 二次確保推擠後不會被擠出房間邊界
                 newX = Math.max(-56, Math.min(56, newX));
                 newZ = Math.max(-14, Math.min(56, newZ));
- 
+
                 dragTarget.position.x = newX;
                 dragTarget.position.z = newZ;
             }
         }
-        else if (type === 'cat') {
-            raycaster.ray.intersectPlane(floorPlane, intersectPoint);
-            if(intersectPoint) {
-                let newX = intersectPoint.x - dragOffset.x;
-                let newZ = intersectPoint.z - dragOffset.z;
-                
-                if (newX >= -14 && newX <= 14 && newZ >= -7 && newZ <= 7) {
-                    catPlatform = 'desk';
-                    dragTarget.userData.originalY = 8.5;
-                    newX = Math.max(-12, Math.min(12, newX));
-                    newZ = Math.max(-5.5, Math.min(5.5, newZ));
-                } else if (chairGroup && newX >= chairGroup.position.x - 3 && newX <= chairGroup.position.x + 3 && newZ >= chairGroup.position.z - 3 && newZ <= chairGroup.position.z + 3) {
-                    catPlatform = 'chair';
-                    dragTarget.userData.originalY = 4.5;
-                    newX = Math.max(chairGroup.position.x - 1.5, Math.min(chairGroup.position.x + 1.5, newX));
-                    newZ = Math.max(chairGroup.position.z - 1.5, Math.min(chairGroup.position.z + 1.5, newZ));
-                } else {
-                    catPlatform = 'floor';
-                    dragTarget.userData.originalY = 0;
-                    newX = Math.max(-16, Math.min(16, newX));
-                    newZ = Math.max(-2, Math.min(18, newZ));
-                    if (isCatColliding(newX, newZ)) return; 
-                }
-                
-                dragTarget.position.x = newX;
-                dragTarget.position.z = newZ;
-                dragTarget.position.y = dragTarget.userData.originalY + 1.2;
-            }
-        }
-        else if (type === 'curtain') {
-            let curtainPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 16.5);
-            raycaster.ray.intersectPlane(curtainPlane, intersectPoint);
-            if (intersectPoint) {
-                let targetX = intersectPoint.x - dragOffset.x;
-                let side = dragTarget.userData.curtainSide;
-                let r;
-                
-                // 根據抓取的分別是左窗簾還是右窗簾來嚴格限制範圍
-                if (side === 'left') {
-                    // 左窗簾：0 是全閉，-15 是全開。限制滑鼠目標只能在 -15 到 0 之間。
-                    let clampedX = Math.max(-15, Math.min(0, targetX));
-                    r = Math.abs(clampedX) / 15;
-                } else {
-                    // 右窗簾：0 是全閉，15 是全開。限制滑鼠目標只能在 0 到 15 之間。
-                    let clampedX = Math.max(0, Math.min(15, targetX));
-                    r = clampedX / 15;
-                }
-                
-                curtainRatio = r;
-                applyCurtainRatio();
-            }
-        }
-
-
-else if (type === 'painting') {
+        else if (['painting', 'clock'].includes(type)) {
             raycaster.setFromCamera(mouse, camera);
             let hits = raycaster.intersectObject(wallDragMesh);
             if (hits.length > 0) {
@@ -4582,8 +4539,8 @@ else if (type === 'painting') {
                 const halfW = dragTarget.userData.frameW / 2;
                 const halfH = dragTarget.userData.frameH / 2;
                 
-                const obstacleMargin = 2.5; // 加大實體物件安全距離
-                const paintingMargin = 1.5;
+                const obstacleMargin = 2.5; 
+                const paintingMargin = 1.5; 
                 const cornerMargin = 2.0;   
                 
                 const safeXMin = -58.7 + halfW + cornerMargin;
@@ -4591,99 +4548,88 @@ else if (type === 'painting') {
                 const safeZMin = -16.7 + halfW + cornerMargin;
                 const safeZMax =  58.7 - halfW - cornerMargin;
                 
-                // 為了讓門上有更多空間，稍微放寬牆壁高度上限
                 const minY = 6 + halfH;
-                const maxY = 38 - halfH; // 原本是 36，稍微提高到 38 充分利用牆面
+                const maxY = 38 - halfH; // 稍微提高天花板上限，讓門上有更多掛畫空間
                 newPos.y = Math.max(minY, Math.min(maxY, newPos.y));
                 
                 // ==========================================
-                // 🛑 A. 實體障礙物防穿模 (智慧深度擠壓演算法)
+                // 🛑 A. 牆面實體障礙物防穿模 (已修復方向反轉 BUG)
                 // ==========================================
-                if (n.z < -0.5) {
-                    // --- 前牆 (包含中央露台玻璃趟門) ---
+                if (n.z > 0.5) { // 👈 【重大修正】前牆(有玻璃門)的法線朝向 +Z
                     newPos.z = hit.point.z;
                     dragTarget.rotation.y = 0;
-                    newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
+                    newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x)); 
                     
                     const winLeft = -15.5 - halfW - obstacleMargin;
                     const winRight = 15.5 + halfW + obstacleMargin;
-                    const winTop = 28.5 + halfH + obstacleMargin;
+                    const winTop = 28.5 + halfH + obstacleMargin; 
                     
-                    // 如果碰到門的區域
                     if (newPos.y < winTop && newPos.x > winLeft && newPos.x < winRight) {
-                        // 判斷：如果把畫推到門上，會不會頂破天花板(大於 maxY)？
-                        // 如果放不下，就把推往上方的阻力設為無限大 (Infinity)
                         let penTop = (winTop <= maxY) ? (winTop - newPos.y) : Infinity;
                         let penLeft = newPos.x - winLeft;
                         let penRight = winRight - newPos.x;
                         
-                        // 尋找最短逃脫路徑
                         let minPen = Math.min(penTop, penLeft, penRight);
                         if (minPen === penTop) newPos.y = winTop;
                         else if (minPen === penLeft) newPos.x = winLeft;
                         else newPos.x = winRight;
                     }
                 }
-                else if (n.z > 0.5) {
-                    // --- 後牆 (無障礙) ---
+                else if (n.z < -0.5) { // 👈 【重大修正】後牆(書櫃牆)的法線朝向 -Z
                     newPos.z = hit.point.z;
                     dragTarget.rotation.y = Math.PI;
-                    newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
+                    newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x)); 
                 }
-                else if (n.x < -0.5) {
-                    // --- 左牆 (包含木門) ---
+                else if (n.x > 0.5) { // 👈 【重大修正】左牆(出外木門)的法線朝向 +X
                     newPos.x = hit.point.x;
                     dragTarget.rotation.y = Math.PI / 2;
-                    newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
+                    newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z)); 
                     
                     const doorLeft = -8.5 - halfW - obstacleMargin;
                     const doorRight = 8.5 + halfW + obstacleMargin;
                     const doorTop = 28.5 + halfH + obstacleMargin;
                     
                     if (newPos.y < doorTop && newPos.z > doorLeft && newPos.z < doorRight) {
-                        // 同樣判斷是否塞得進門頂的縫隙
                         let penTop = (doorTop <= maxY) ? (doorTop - newPos.y) : Infinity;
                         let penLeft = newPos.z - doorLeft;
                         let penRight = doorRight - newPos.z;
- 
+
                         let minPen = Math.min(penTop, penLeft, penRight);
                         if (minPen === penTop) newPos.y = doorTop;
                         else if (minPen === penLeft) newPos.z = doorLeft;
                         else newPos.z = doorRight;
                     }
                 }
-                else if (n.x > 0.5) {
-                    // --- 右牆 (包含冷氣機) ---
+                else if (n.x < -0.5) { // 👈 【重大修正】右牆(冷氣機)的法線朝向 -X
                     newPos.x = hit.point.x;
                     dragTarget.rotation.y = -Math.PI / 2;
-                    newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
+                    newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z)); 
                     
                     const acLeft = -13.5 - halfW - obstacleMargin;
                     const acRight = 3.5 + halfW + obstacleMargin;
                     const acBottom = 28.5 - halfH - obstacleMargin;
                     
                     if (newPos.y > acBottom && newPos.z > acLeft && newPos.z < acRight) {
-                        // 判斷冷氣機下方是否有足夠空間放畫
                         let penBot = (acBottom >= minY) ? (newPos.y - acBottom) : Infinity;
                         let penLeft = newPos.z - acLeft;
                         let penRight = acRight - newPos.z;
- 
+
                         let minPen = Math.min(penBot, penLeft, penRight);
                         if (minPen === penBot) newPos.y = acBottom;
                         else if (minPen === penLeft) newPos.z = acLeft;
                         else newPos.z = acRight;
                     }
                 }
- 
+
                 // ==========================================
-                // 🖼️ B. 動態畫作與畫作之間的排斥 (不重疊)
+                // 🖼️ B. 動態畫作與時鐘的排斥 (不重疊)
                 // ==========================================
                 for (let iter = 0; iter < 2; iter++) {
                     interactables.forEach(item => {
-                        if (item.userData && item.userData.type === 'painting' && item.parent !== dragTarget && item.parent.visible) {
+                        if (item.userData && ['painting', 'clock'].includes(item.userData.type) && item.parent !== dragTarget && item.parent.visible) {
                             let other = item.parent;
                             if (Math.abs(dragTarget.rotation.y - other.rotation.y) < 0.1) {
-                                const isZWall = (Math.abs(n.z) > 0.5);
+                                const isZWall = (Math.abs(n.z) > 0.5); 
                                 const otherHalfW = other.userData.frameW / 2;
                                 const otherHalfH = other.userData.frameH / 2;
                                 
@@ -4709,9 +4655,7 @@ else if (type === 'painting') {
                     });
                 }
                 
-                // ==========================================
                 // 🛡️ C. 最後二次約束邊界
-                // ==========================================
                 newPos.y = Math.max(minY, Math.min(maxY, newPos.y));
                 if (Math.abs(n.z) > 0.5) newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
                 else newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
