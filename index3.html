@@ -3384,60 +3384,9 @@ function buildRoomEnvironment() {
     const sideWallGeo = new THREE.PlaneGeometry(78, 40); const leftWall = new THREE.Mesh(sideWallGeo, wallMat); leftWall.rotation.y = Math.PI/2; leftWall.position.set(-60, 20, 21); scene.add(leftWall); const rightWall = new THREE.Mesh(sideWallGeo, wallMat); rightWall.rotation.y = -Math.PI/2; rightWall.position.set(60, 20, 21); scene.add(rightWall);
     const backWall = new THREE.Mesh(new THREE.PlaneGeometry(120, 40), wallMat); backWall.position.set(0, 20, 60); scene.add(backWall);
 
-    // 【修改點】改寫 createPainting，支援傳入圖片 URL 以及寬高比例 (aspect)
-    function createPainting(x, y, z, url, aspect) {
-        const frameGroup = new THREE.Group(); 
-        frameGroup.position.set(x, y, z); 
-        
-        // 統一固定畫布高度，並依據比例動態推算畫布寬度與畫框寬高
-        const canvasHeight = 10.5;
-        const canvasWidth = canvasHeight * aspect;
-        const frameHeight = canvasHeight + 1.5;
-        const frameWidth = canvasWidth + 1.5;
+  
 
-        // 建立畫框
-        const frame = new THREE.Mesh(
-            new THREE.BoxGeometry(frameWidth, frameHeight, 0.6), 
-            new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.8})
-        ); 
-        frameGroup.add(frame); 
-        
-        // 建立畫布 (圖片載入前預設為淺灰色)
-        const canvasMat = new THREE.MeshStandardMaterial({color: 0xdddddd, roughness: 0.9});
-        const canvasMesh = new THREE.Mesh(
-            new THREE.PlaneGeometry(canvasWidth, canvasHeight), 
-            canvasMat
-        ); 
-        canvasMesh.position.z = 0.31; 
-        frameGroup.add(canvasMesh); 
-        scene.add(frameGroup); 
-        
-        // 動態非同步載入外部圖片
-        const loader = new THREE.TextureLoader();
-        loader.setCrossOrigin('anonymous'); // 允許跨域請求
-        loader.load(
-            url, 
-            (texture) => {
-                texture.encoding = THREE.sRGBEncoding;
-                texture.minFilter = THREE.LinearMipmapLinearFilter; // 確保縮小顯示時不模糊
-                canvasMat.map = texture;
-                canvasMat.color.setHex(0xffffff); // 載入完成後恢復純白以還原真實顏色
-                canvasMat.needsUpdate = true;
-            },
-            undefined,
-            (err) => { console.warn('畫作圖片載入失敗:', url); } // 若伺服器擋跨域，這裡會提示
-  ); // <--- 注意這裡，必須要有 ); 來結束 loader.load
-return frameGroup;
 
-            
-      
-    }
-
-  // 依序掛上自己上載的四幅作品 (設定 X, Y, Z, 網址/本機路徑, 寬/高比例)
-const p1 = createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0); if(p1) p1.userData.itemId = 'painting_1';
-const p2 = createPainting(-26, 17, -16.7, '畫二.jpeg', 2048 / 1365); if(p2) p2.userData.itemId = 'painting_2';
-const p3 = createPainting(26, 17, -16.7, '畫三.jpeg', 1.0); if(p3) p3.userData.itemId = 'painting_3';
-const p4 = createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224); if(p4) p4.userData.itemId = 'painting_4';
 
   const windowFrameGroup = new THREE.Group(); 
     windowFrameGroup.position.set(0, 14.5, -17.5); 
