@@ -3888,8 +3888,14 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     }
 
     // 琴椅
-const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.add(benchGrp);
-    const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(7, 0.8, 3), new THREE.MeshStandardMaterial({color: 0x3a1f11, roughness: 0.8})); benchSeat.position.y = 4.5; benchSeat.castShadow=true; benchGrp.add(benchSeat);
+// 琴椅 (獨立加入場景，避免受鋼琴隱藏影響)
+    const benchGrp = new THREE.Group(); 
+    benchGrp.position.set(54, 0, 22); // 依據鋼琴 (58.5, 0, 22) 的位置，往前推 4.5 的距離
+    benchGrp.rotation.y = -Math.PI / 2; // 與鋼琴保持相同面向
+    scene.add(benchGrp); // 【關鍵】：直接加入 scene，不加入 pianoGrp
+    
+    const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(7, 0.8, 3), new THREE.MeshStandardMaterial({color: 0x3a1f11, roughness: 0.8})); 
+    benchSeat.position.y = 4.5; benchSeat.castShadow=true; benchGrp.add(benchSeat);
     [[-3, 2.25, -1], [3, 2.25, -1], [-3, 2.25, 1], [3, 2.25, 1]].forEach(pos => { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 4.5), pianoGlossy); l.position.set(...pos); l.castShadow=true; benchGrp.add(l); });
 
     // 加入隱形 HitBox 以便點擊
