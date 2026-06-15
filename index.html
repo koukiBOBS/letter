@@ -7064,6 +7064,8 @@ window.toggleReadingLog = function() {
     });
 
     let gachaMachineGrp;
+    let exitFlap;
+    let chuteGrp; // 🛠️ 移至共享作用域：解決 Uncaught ReferenceError 的關鍵
     let capsulePool = [];
     let isGachaPlaying = false;
     let cameraBackup = { pos: null, target: null };
@@ -7089,7 +7091,7 @@ window.toggleReadingLog = function() {
         });
     }
 
-    // 3. 建造精緻的八角扭蛋機 (優化高階物理材質、徑向尺寸偏置防閃爍、莫蘭迪暖色系)
+    // 3. 建造精緻的八角扭蛋機 (優化高階物理材質、徑向尺寸偏置防閃爍、莫蘭迪珊瑚橘)
     function buildDetailedGachaMachine() {
         gachaMachineGrp = new THREE.Group();
         gachaMachineGrp.position.set(-48, 0, 25);
@@ -7178,7 +7180,7 @@ window.toggleReadingLog = function() {
         gachaMachineGrp.add(slot);
 
         // 3.7 🕳️ 單一寬敞的托盤式出口 (空間充足，完美防穿模閃爍)
-        const chuteGrp = new THREE.Group();
+        chuteGrp = new THREE.Group(); // 🛠️ 指向共享變量，而非重新 const 聲明
         chuteGrp.position.set(0, 0.4, 3.8); 
         gachaMachineGrp.add(chuteGrp);
 
@@ -7438,36 +7440,45 @@ window.toggleReadingLog = function() {
             gachaMachineGrp.add(dropCap);
 
             // 滾落大托盤曲線
-            gsap.timeline()
-                .to(dropCap.position, {
-                    x: 0,
-                    y: 0.55,
-                    z: 4.4,
-                    duration: 1.1,
-                    ease: "bounce.out"
-                })
-                .to(dropCap.rotation, {
-                    x: Math.random() * 4,
-                    y: Math.random() * 4,
-                    duration: 1.1
-                }, "<")
-                // 出物口微幅震動反饋
-                .to(chuteGrp.position, {
-                    y: -0.1,
+            const dropTimeline = gsap.timeline();
+            
+            dropTimeline.to(dropCap.position, {
+                x: 0,
+                y: 0.55,
+                z: 4.4,
+                duration: 1.1,
+                ease: "bounce.out"
+            })
+            .to(dropCap.rotation, {
+                x: Math.random() * 4,
+                y: Math.random() * 4,
+                duration: 1.1
+            }, "<");
+
+            // 🛠️ 安全調用 chuteGrp 進行小震動
+            if (chuteGrp) {
+                dropTimeline.to(chuteGrp.position, {
+                    y: 0.3,
                     duration: 0.1,
                     yoyo: true,
                     repeat: 1
-                })
-                // 扭蛋化光消失並彈出詩歌卡片
-                .to(dropCap.scale, {
-                    x: 0, y: 0, z: 0,
-                    duration: 0.4,
-                    delay: 0.3,
-                    onComplete: () => {
-                        gachaMachineGrp.remove(dropCap);
-                        executeDrawLogic();
-                    }
+                }, "-=0.3")
+                .to(chuteGrp.position, {
+                    y: 0.4,
+                    duration: 0.15
                 });
+            }
+
+            // 扭蛋化光消失並彈出詩歌卡片
+            dropTimeline.to(dropCap.scale, {
+                x: 0, y: 0, z: 0,
+                duration: 0.4,
+                delay: 0.3,
+                onComplete: () => {
+                    gachaMachineGrp.remove(dropCap);
+                    executeDrawLogic();
+                }
+            });
         }, null, "+=1.3");
     }
 
@@ -7601,7 +7612,6 @@ window.toggleReadingLog = function() {
         };
     }
 })();
-        
         
         
     </script>
