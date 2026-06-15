@@ -2334,13 +2334,22 @@ function processRandomTask(data) {
             } catch (error) { alert("圖片上傳發生異常：" + error.message); isSubmittingLog = false; btn.innerText = "封裝寄出心得"; btn.disabled = false; }
         }
 
-        function loadUserPlant() { 
-            db.ref(`users/${currentUser.uid}/plant`).on('value', snap => { 
-                let p = snap.val(); userPlantData = p;
-                if (p) { updatePlantStateLogic(p); } 
-                else { if(plantGroup) { desk.remove(plantGroup); interactables = interactables.filter(i => !(i.userData && i.userData.type === 'plant')); plantGroup = null; } }
-            }); 
+  function loadUserPlant() {
+    db.ref(`users/${currentUser.uid}/plant`).on('value', snap => {
+        let p = snap.val();
+        userPlantData = p;
+        
+        if (p) {
+            // 有植物數據，正常更新狀態與生長
+            updatePlantStateLogic(p);
+        } else {
+            // 【修復關鍵】：沒有植物時，不能刪除模型！
+            // 傳入 type=0, growth=0, wilt=0，這樣系統只會畫出「花盆與泥土」，不會畫出葉子。
+            // 這樣桌上就會有一個空花盆可以讓用家點擊。
+            buildPlantIn3D(0, 0, 0);
         }
+    });
+}
 
         function selectPlant(type) { 
             let initialData = { type: type, growth: 0, wilt: 0, lastWatered: Date.now(), plantedAt: Date.now(), daysAccompanied: 0, isDead: false }; 
