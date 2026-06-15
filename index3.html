@@ -3645,12 +3645,23 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     // 👇 修改重點 1：縮小傘的傾斜角度 (原本是 0.15, 0, 0.2)
     const umb = new THREE.Group(); umb.rotation.set(0.08, 0, 0.08); umbGrp.add(umb);
     
-    const uStick = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 10), new THREE.MeshStandardMaterial({color: 0xaaaaaa})); uStick.position.set(0, 5, 0); umb.add(uStick);
+   // 傘柄
+    const uStick = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 10), new THREE.MeshStandardMaterial({color: 0xaaaaaa}));
+    uStick.position.set(0, 5, 0);
+    uStick.castShadow = true; // 👈 讓傘柄產生陰影
+    umb.add(uStick);
     
     // 👇 修改重點 2：稍微收窄傘布底部的寬度 (原本是 1.0，改為 0.85)，確保完全放進筒內
-    const uFab = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.85, 5), new THREE.MeshStandardMaterial({color: 0x3b5998})); uFab.position.set(0, 4, 0); umb.add(uFab);
+    const uFab = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.85, 5), new THREE.MeshStandardMaterial({color: 0x3b5998}));
+    uFab.position.set(0, 4, 0);
+    uFab.castShadow = true; // 👈 讓傘布產生陰影
+    umb.add(uFab);
     
-    const uHan = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.1, 8, 16, Math.PI), new THREE.MeshStandardMaterial({color: 0x111111})); uHan.position.set(0.4, 10, 0); umb.add(uHan);
+    // 傘把手
+    const uHan = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.1, 8, 16, Math.PI), new THREE.MeshStandardMaterial({color: 0x111111}));
+    uHan.position.set(0.4, 10, 0);
+    uHan.castShadow = true; // 👈 讓把手產生陰影
+    umb.add(uHan);
 
 
       // 👇 新增雨傘專用隱形點擊/碰撞框
