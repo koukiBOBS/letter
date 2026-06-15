@@ -541,6 +541,76 @@
     #mobile-cam-knob { display: flex !important; }
     #dev-panel-wrapper { right: 100px !important; }
 }
+
+
+
+        /* --- 沉浸式任務完成視窗 UI --- */
+#modal-gacha-buffer {
+    position: fixed; inset: 0;
+    background: rgba(20, 18, 16, 0.85); /* 深色半透明底 */
+    backdrop-filter: blur(12px); /* 毛玻璃效果 */
+    z-index: 60000;
+    display: none;
+    align-items: center; justify-content: center;
+    overflow: hidden;
+}
+ 
+/* 緩慢旋轉的金色背景光芒 */
+.reward-rays {
+    position: absolute; top: 50%; left: 50%;
+    width: 150vw; height: 150vw;
+    background: conic-gradient(from 0deg, transparent 0deg, rgba(212,175,55,0.06) 30deg, transparent 60deg, rgba(212,175,55,0.06) 90deg, transparent 120deg, rgba(212,175,55,0.06) 150deg, transparent 180deg, rgba(212,175,55,0.06) 210deg, transparent 240deg, rgba(212,175,55,0.06) 270deg, transparent 300deg, rgba(212,175,55,0.06) 330deg, transparent 360deg);
+    transform: translate(-50%, -50%);
+    animation: spinRays 40s linear infinite;
+    z-index: 1;
+    pointer-events: none;
+}
+@keyframes spinRays { 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+ 
+/* 獎勵卡片主體 (信箋風格) */
+.gacha-reward-card {
+    background-color: var(--letter-paper);
+    border: 1px solid #dcd5c9;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.5), inset 0 0 60px rgba(180, 160, 130, 0.15);
+    padding: 60px 50px;
+    border-radius: 8px;
+    max-width: 480px; width: 90%;
+    text-align: center;
+    position: relative;
+    z-index: 10;
+}
+ 
+/* 內部虛線裝飾框 */
+.gacha-reward-card::before {
+    content: ''; position: absolute; inset: 12px;
+    border: 1px dashed #c4b8aa; pointer-events: none;
+    border-radius: 4px;
+}
+ 
+.reward-title { color: #d4af37; font-size: 2.6rem; font-family: var(--font-serif); margin-bottom: 5px; letter-spacing: 4px; text-shadow: 0 2px 10px rgba(212,175,55,0.2); }
+.reward-subtitle { color: #8b7355; font-size: 1.1rem; font-family: var(--font-serif); margin-bottom: 30px; letter-spacing: 2px; }
+.reward-text { color: #5a5042; font-size: 1.1rem; line-height: 1.8; margin-bottom: 45px; font-family: var(--font-serif); }
+ 
+/* 華麗的漸層按鈕 */
+.btn-reward {
+    background: linear-gradient(135deg, #d4af37, #b8860b);
+    color: #fff;
+    border: none;
+    padding: 16px 45px;
+    font-size: 1.25rem;
+    font-family: var(--font-serif);
+    letter-spacing: 2px;
+    border-radius: 40px;
+    box-shadow: 0 10px 20px rgba(212, 175, 55, 0.3);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+.btn-reward:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 15px 30px rgba(212, 175, 55, 0.5);
+    filter: brightness(1.1);
+}
         
     </style>
 </head>
@@ -898,11 +968,25 @@
 
 
 <!-- 抽獎前緩衝提示 -->
-    <div id="modal-gacha-buffer" class="room-modal">
-        <div class="room-modal-content" style="max-width: 400px; text-align: center; background: #fdfaf6; padding: 50px 30px;">
-            <h2 style="color: #d4af37; font-size: 2.2rem; margin-bottom: 20px; font-family: var(--font-serif);">🎉 任務完成</h2>
-            <p style="font-size: 1.1rem; color: #6b4423; margin-bottom: 40px; line-height: 1.6;">感謝您的用心分享！<br>為獎勵您的參與，您獲得了一次抽取房間道具的機會。</p>
-            <button class="btn" style="background: #d4af37; color: #fff; width: 100%; border:none; font-size: 1.2rem; padding: 15px;" id="btn-start-gacha">拆開驚喜</button>
+  <!-- 沉浸式任務完成與抽獎緩衝畫面 -->
+    <div id="modal-gacha-buffer">
+        <div class="reward-rays"></div>
+        <div class="gacha-reward-card" id="reward-card-anim">
+            <!-- 裝飾用 SVG 勾勾 -->
+            <svg viewBox="0 0 24 24" width="56" height="56" stroke="#d4af37" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 20px;">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            
+            <h2 class="reward-title">書寫的餽贈</h2>
+            <div class="reward-subtitle">任務圓滿達成</div>
+            
+            <p class="reward-text">
+                感謝您的用心分享，文字已化為實體。<br>
+                在時光的流轉中，您獲得了一次佈置房間的機會。
+            </p>
+            
+            <button class="btn-reward" id="btn-start-gacha">拆開驚喜禮物</button>
         </div>
     </div>
     
@@ -1670,7 +1754,6 @@ function renderTasks() {
 
 
 // 給予積分，如果是閱讀任務則額外進行抽獎
-// 給予積分，如果是閱讀任務則額外進行抽獎
 function addPointsAndGacha(points, triggerGachaAnim) {
     userPoints += points;
     db.ref(`users/${currentUser.uid}/points`).set(userPoints);
@@ -1685,12 +1768,25 @@ function addPointsAndGacha(points, triggerGachaAnim) {
             db.ref(`users/${currentUser.uid}/inventory/${wonId}`).set(true);
             
             // 延遲 1.5 秒等信封飛走後，顯示緩衝畫面
-            setTimeout(() => { 
-                document.getElementById('modal-gacha-buffer').style.display = 'flex';
-                // 綁定點擊按鈕後才進入 3D 抽獎
+            setTimeout(() => {
+                const bufferModal = document.getElementById('modal-gacha-buffer');
+                bufferModal.style.display = 'flex';
+                
+                // 👇 加入 GSAP 進場動畫，增添高級感
+                gsap.fromTo(bufferModal, { opacity: 0 }, { opacity: 1, duration: 0.5 });
+                gsap.fromTo("#reward-card-anim",
+                    { y: 60, opacity: 0, scale: 0.95 },
+                    { y: 0, opacity: 1, scale: 1, duration: 0.8, ease: "back.out(1.2)", delay: 0.2 }
+                );
+ 
+                // 綁定點擊按鈕後才進入 3D 抽獎 (加入退場動畫)
                 document.getElementById('btn-start-gacha').onclick = () => {
-                    document.getElementById('modal-gacha-buffer').style.display = 'none';
-                    showGachaAnim(wonId); 
+                    gsap.to(bufferModal, {
+                        opacity: 0, duration: 0.5, onComplete: () => {
+                            bufferModal.style.display = 'none';
+                            showGachaAnim(wonId);
+                        }
+                    });
                 };
             }, 1500);
         } else {
