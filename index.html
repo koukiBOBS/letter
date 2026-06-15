@@ -7176,77 +7176,104 @@ window.toggleReadingLog = function() {
         gachaMachineGrp.add(slot);
 
         // 3.7 🕳️ 單一寬敞的托盤式出口 (空間充足，完美防穿模閃爍)
-      // ==========================================
-        // 🌟 修復與升級開始
-        // ==========================================
- 
-        // 3.7 🕳️ 全新物理防盜外凸式取物口 (Protruding Dispenser)
-        chuteGrp = new THREE.Group();
-        chuteGrp.position.set(0, 1.4, 4.0); // 移到機身下方並往外凸出
+        chuteGrp = new THREE.Group(); // 🛠️ 指向共享變量，而非重新 const 聲明
+        chuteGrp.position.set(0, 0.4, 3.8); 
         gachaMachineGrp.add(chuteGrp);
- 
-        // 取物口金屬外框
-        const chuteBox = new THREE.Mesh(new THREE.BoxGeometry(2.8, 2.2, 1.2), polishedSilverMat);
-        chuteBox.position.set(0, 0, 0);
-        chuteBox.castShadow = true;
-        chuteGrp.add(chuteBox);
- 
-        // 取物口內部的黑暗深淵 (模擬洞口)
-        const darkHole = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.8), new THREE.MeshBasicMaterial({color: 0x050505}));
-        darkHole.position.set(0, 0, 0.61); // 貼在外框表面稍微微凸
-        chuteGrp.add(darkHole);
- 
-        // 半透明防盜擋板 (Flap)
-        const flapMat = new THREE.MeshPhysicalMaterial({ color: 0xeeeeee, transmission: 0.8, roughness: 0.2, thickness: 0.1 });
-        const flap = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.6, 0.05), flapMat);
-        flap.position.set(0, 0.1, 0.65);
-        flap.rotation.x = -0.15; // 擋板微微往外傾斜
-        chuteGrp.add(flap);
- 
-        // 底部接物托盤 (半圓柱體，向外延伸接住扭蛋)
-        const trayGeo = new THREE.CylinderGeometry(1.3, 1.3, 1.2, 16, 1, false, 0, Math.PI);
+
+        const backWall = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.6, 0.2), new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9}));
+        backWall.position.set(0, 0.8, -0.1);
+        chuteGrp.add(backWall);
+
+        // 托盤勺體 (Lie Flat)
+        const trayGeo = new THREE.CylinderGeometry(1.2, 1.0, 1.2, 16, 1, true, 0, Math.PI);
         const trayMesh = new THREE.Mesh(trayGeo, polishedSilverMat);
-        trayMesh.rotation.x = Math.PI / 2;
-        trayMesh.rotation.z = Math.PI;
-        trayMesh.position.set(0, -0.8, 0.8); // 往下並往外推
+        trayMesh.rotation.x = Math.PI / 2; 
+        trayMesh.rotation.z = Math.PI; 
+        trayMesh.position.set(0, 0.4, 0.5);
         trayMesh.castShadow = true;
+        trayMesh.receiveShadow = true;
         chuteGrp.add(trayMesh);
- 
-        // 托盤邊緣防掉落金色包邊
-        const rimGeo = new THREE.TorusGeometry(1.3, 0.1, 8, 24, Math.PI);
+
+        // 托盤邊緣金色包邊
+        const rimGeo = new THREE.TorusGeometry(1.15, 0.12, 8, 24, Math.PI);
         const rimMesh = new THREE.Mesh(rimGeo, champagneGoldMat);
-        rimMesh.position.set(0, -0.8, 1.4);
+        rimMesh.position.set(0, 0.4, 1.1);
         rimMesh.rotation.z = Math.PI;
         chuteGrp.add(rimMesh);
- 
-        // 3.8 🌟 解決閃爍：新增專屬展示底盤墊高扭蛋
-        const displayFloor = new THREE.Mesh(new THREE.CylinderGeometry(4.1, 4.1, 0.1, 32), polishedSilverMat);
-        displayFloor.position.y = 7.05; // 微微高於實心底座(7.0)，徹底解決 Z-fighting
-        displayFloor.receiveShadow = true;
-        gachaMachineGrp.add(displayFloor);
- 
-        // 3.9 玻璃圓頂罩 (配合墊高的底盤)
+
+        // 3.8 玻璃圓頂罩 (內縮至 4.1 杜絕縫隙重合)
         const dome = new THREE.Mesh(new THREE.SphereGeometry(4.1, 32, 32, 0, Math.PI*2, 0, Math.PI/2), crystalGlassMat);
-        dome.position.y = 7.1; // 往上提一點點
+        dome.position.y = 7;
         gachaMachineGrp.add(dome);
- 
-        // 3.9.5 頂蓋飾圈與圓頂
+
+        // 3.9 頂蓋飾圈
         const topCapTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.15, 4.15, 0.3, 32), champagneGoldMat);
-        topCapTrim.position.y = 11.2;
+        topCapTrim.position.y = 11.1;
         gachaMachineGrp.add(topCapTrim);
- 
+
         const topCap = new THREE.Mesh(new THREE.SphereGeometry(4.05, 16, 16, 0, Math.PI*2, 0, Math.PI/2), morandiCoralMat);
-        topCap.position.y = 11.3;
+        topCap.position.y = 11.2; 
         topCap.castShadow = true;
         gachaMachineGrp.add(topCap);
- 
+
         const pinnacle = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), champagneGoldMat);
-        pinnacle.position.y = 15.5;
+        pinnacle.position.y = 15.4;
         gachaMachineGrp.add(pinnacle);
- 
-        // ==========================================
-        // 🌟 修復與升級結束
-        // ==========================================
+
+        // 3.10 莫蘭迪低飽和雙色扭蛋球 (晶瑩剔透)
+        const morandiColors = [0xbc8a8f, 0x8fa397, 0xa39284, 0x8aa3b0, 0xb8a38f, 0xc59e8f];
+        const halfSphereGeoTop = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, 0, Math.PI/2);
+        const halfSphereGeoBot = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, Math.PI/2, Math.PI/2);
+        
+        const frostedGlassMat = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
+            transmission: 0.94,
+            roughness: 0.18,
+            transparent: true,
+            thickness: 0.04
+        });
+
+        for(let i=0; i<35; i++) {
+            const capGrp = new THREE.Group();
+            const col = morandiColors[Math.floor(Math.random() * morandiColors.length)];
+            const solidMat = new THREE.MeshStandardMaterial({
+                color: col,
+                roughness: 0.25,
+                metalness: 0.1
+            });
+            
+            const topHalf = new THREE.Mesh(halfSphereGeoTop, frostedGlassMat);
+            const botHalf = new THREE.Mesh(halfSphereGeoBot, solidMat);
+            
+            const seam = new THREE.Mesh(new THREE.TorusGeometry(0.65, 0.015, 8, 24), champagneGoldMat);
+            seam.rotation.x = Math.PI/2;
+            
+            // 內置絲帶古雅卷軸
+            const scrollGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.7, 8);
+            const scrollMat = new THREE.MeshStandardMaterial({color: 0xfefcf7, roughness: 0.95});
+            const scroll = new THREE.Mesh(scrollGeo, scrollMat);
+            scroll.position.y = 0.08;
+            scroll.rotation.z = Math.PI / 4;
+            scroll.rotation.x = Math.PI / 6;
+            
+            const ribbonGeo = new THREE.CylinderGeometry(0.11, 0.13, 0.08, 8);
+            const ribbon = new THREE.Mesh(ribbonGeo, champagneGoldMat);
+            ribbon.position.y = 0.08;
+            ribbon.rotation.copy(scroll.rotation);
+            
+            capGrp.add(topHalf, botHalf, seam, scroll, ribbon);
+
+            const radius = Math.random() * 2.4;
+            const angle = Math.random() * Math.PI * 2;
+            capGrp.position.set(
+                Math.cos(angle) * radius, 
+                7.4 + Math.random() * 3.0, 
+                Math.sin(angle) * radius
+            );
+            capGrp.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+            capGrp.userData.origPos = capGrp.position.clone();
+            capsulePool.push(capGrp);
+            gachaMachineGrp.add(capGrp);
         }
 
         // 點擊判定框 (全機點擊)
@@ -7403,19 +7430,18 @@ window.toggleReadingLog = function() {
             });
         }, null, "+=0.1")
         // 5.4 扭蛋滾下至寬敞大托盤
-       // 5.4 扭蛋滾落至全新的外凸托盤
         .call(() => {
             const dropCap = capsulePool[Math.floor(Math.random() * capsulePool.length)].clone();
             dropCap.position.set(0, 7.0, 0);
             gachaMachineGrp.add(dropCap);
- 
+
             // 滾落大托盤曲線
             const dropTimeline = gsap.timeline();
             
             dropTimeline.to(dropCap.position, {
                 x: 0,
-                y: 0.8, // 配合新的托盤高度
-                z: 5.0, // 往外推，掉落在接物盤正中央
+                y: 0.55,
+                z: 4.4,
                 duration: 1.1,
                 ease: "bounce.out"
             })
@@ -7424,21 +7450,21 @@ window.toggleReadingLog = function() {
                 y: Math.random() * 4,
                 duration: 1.1
             }, "<");
- 
-            // 擋板被撞開的微小動畫
+
+            // 🛠️ 安全調用 chuteGrp 進行小震動
             if (chuteGrp) {
-                // 這裡的 children[2] 是我們剛剛新增的半透明防盜擋板(flap)
-                const flap = chuteGrp.children[2];
-                if (flap) {
-                    dropTimeline.to(flap.rotation, {
-                        x: -1.0, // 往外掀開
-                        duration: 0.2,
-                        yoyo: true,
-                        repeat: 1
-                    }, "-=0.4");
-                }
+                dropTimeline.to(chuteGrp.position, {
+                    y: 0.3,
+                    duration: 0.1,
+                    yoyo: true,
+                    repeat: 1
+                }, "-=0.3")
+                .to(chuteGrp.position, {
+                    y: 0.4,
+                    duration: 0.15
+                });
             }
- 
+
             // 扭蛋化光消失並彈出詩歌卡片
             dropTimeline.to(dropCap.scale, {
                 x: 0, y: 0, z: 0,
@@ -7450,10 +7476,8 @@ window.toggleReadingLog = function() {
                 }
             });
         }, null, "+=1.3");
+    }
 
-
-
-        
     function executeDrawLogic() {
         const unownedIds = Object.keys(LIT_QUOTES).filter(id => !window.userQuotes[id]);
         let chosenId;
