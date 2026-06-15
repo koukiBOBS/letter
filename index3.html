@@ -611,6 +611,120 @@
     box-shadow: 0 15px 30px rgba(212, 175, 55, 0.5);
     filter: brightness(1.1);
 }
+
+
+
+
+
+/* =========================================================
+   四面牆：沉浸式視窗專屬 UI/UX 升級
+   ========================================================= */
+ 
+/* --- 1. 對我的回覆【珍藏木盒風格】 --- */
+#modal-replies .room-modal-content {
+    background: linear-gradient(135deg, #f3eee6 0%, #e6dcc7 100%);
+    box-shadow: inset 0 0 100px rgba(139, 115, 85, 0.15);
+    border: 8px solid #d4c8b6;
+    border-radius: 4px;
+}
+#modal-replies .modal-title {
+    text-align: center; border-bottom: none;
+    background: url('data:image/svg+xml;utf8,<svg width="100" height="20" xmlns="http://www.w3.org/2000/svg"><path d="M0,10 Q50,20 100,10 T200,10" fill="none" stroke="%23548ca8" stroke-width="1.5" opacity="0.3"/></svg>') bottom center repeat-x;
+    padding-bottom: 25px; margin-bottom: 40px;
+}
+#modal-replies .list-item {
+    background: #fffdfa;
+    border: none; border-left: 6px solid var(--color-replies);
+    border-radius: 4px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.06), 0 2px 5px rgba(0,0,0,0.04);
+    margin-bottom: 20px; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+#modal-replies .list-item:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 15px 35px rgba(84, 140, 168, 0.15);
+}
+ 
+/* --- 2. 寄來的信箋【牛皮紙分信架風格】 --- */
+#modal-inbox .room-modal-content {
+    /* 背景色會由 JS 動態切換，這裡加上紙張紋理 */
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+    border-radius: 12px;
+}
+#modal-inbox .tab-btn-custom {
+    background: rgba(255,255,255,0.4); border-radius: 8px 8px 0 0;
+    border: 1px solid rgba(0,0,0,0.05); border-bottom: none;
+    margin: 0 5px; padding: 12px 30px;
+}
+#modal-inbox .tab-btn-custom.active { background: #fff; box-shadow: 0 -4px 15px rgba(0,0,0,0.03); }
+#modal-inbox .list-item {
+    background: #fffaf0 !important;
+    border: 1px dashed #dcd5c9; border-radius: 2px;
+    position: relative; overflow: hidden;
+}
+/* 模擬郵戳裝飾 */
+#modal-inbox .list-item::after {
+    content: ''; position: absolute; right: -20px; top: -20px;
+    width: 80px; height: 80px; border-radius: 50%;
+    border: 2px solid rgba(217, 138, 108, 0.15);
+    background: radial-gradient(circle, transparent 40%, rgba(217, 138, 108, 0.05) 100%);
+    pointer-events: none;
+}
+ 
+/* --- 3. 我的閱讀紀錄【圖書館索書卡風格】 --- */
+#modal-log .room-modal-content {
+    background: #2a2421; /* 深色木桌背景 */
+    box-shadow: inset 0 0 80px rgba(0,0,0,0.8);
+}
+#modal-log .modal-title { color: #e6dfd1 !important; border-bottom: 1px solid #4a3e35; }
+/* 紀錄編輯器改為打字機紙張 */
+#mylog-editor { background: #fdfaf6; border-radius: 2px; box-shadow: 0 15px 40px rgba(0,0,0,0.3); padding: 40px; }
+/* 索書卡片樣式 */
+.log-index-card {
+    background: #fffcf5;
+    border: 1px solid #e6dfd1; border-radius: 4px;
+    padding: 25px 30px; position: relative;
+    box-shadow: 2px 4px 10px rgba(0,0,0,0.2);
+    /* 索書卡的經典紅藍線條 */
+    background-image: repeating-linear-gradient(to bottom, transparent, transparent 29px, #e8f0f8 29px, #e8f0f8 30px);
+    background-position: top 50px left 0;
+    transition: 0.3s;
+}
+.log-index-card::before {
+    content: ''; position: absolute; top: 50px; left: 0; right: 0;
+    height: 2px; background: rgba(220, 100, 100, 0.4);
+}
+.log-index-card:hover { transform: translateY(-5px) rotate(1deg); box-shadow: 5px 15px 25px rgba(0,0,0,0.3); }
+ 
+/* --- 4. 我的任務板【軟木壁布與拍立得風格】 --- */
+#modal-tasks .room-modal-content {
+    background: #f4f6f3;
+    background-image: radial-gradient(#dcdcdc 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+#modal-tasks .task-card {
+    background: #fff; border: none; border-radius: 2px;
+    padding: 15px 15px 35px 15px; /* 下方留白模擬拍立得 */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    position: relative; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* 模擬上方用紙膠帶貼住 */
+#modal-tasks .task-card::before {
+    content: ''; position: absolute; top: -8px; left: 50%; transform: translateX(-50%) rotate(-2deg);
+    width: 40px; height: 15px; background: rgba(220, 215, 205, 0.8);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+#modal-tasks .task-card:hover { transform: scale(1.05) rotate(2deg); box-shadow: 0 15px 30px rgba(0,0,0,0.12); z-index: 10; }
+#modal-tasks .task-card.locked { filter: grayscale(100%) opacity(0.6); }
+ 
+/* --- 響應式手機優化 --- */
+@media (max-width: 768px) {
+    #modal-replies .list-item { padding: 15px 20px; flex-direction: column; align-items: flex-start; gap: 10px; }
+    #modal-replies .badge { margin-right: 0; margin-bottom: 5px; }
+    .log-index-card { padding: 20px; }
+    #modal-inbox .tab-btn-custom { font-size: 1rem; padding: 10px 15px; }
+}
+
+        
         
     </style>
 </head>
@@ -2286,7 +2400,27 @@ function renderList(type, data) {
         }
 
         el.onclick = () => { closeRoomModal(null, isReplyList ? 'modal-replies' : 'modal-inbox'); openChatModal(t.letterId); }; 
-        el.innerHTML = `${badge}<div class="item-title">${titleHtml}</div><div class="item-time">${timeStr}</div>`; 
+       // 尋找 renderList 函數，並替換裡面生成 HTML 的段落：
+        let iconSvg = isReplyList
+            ? `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="1.5" fill="none" style="color:var(--color-replies); margin-right:15px; flex-shrink:0;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>`
+            : `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="1.5" fill="none" style="color:#a48c76; margin-right:15px; flex-shrink:0;"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>`;
+ 
+        el.onclick = () => { closeRoomModal(null, isReplyList ? 'modal-replies' : 'modal-inbox'); openChatModal(t.letterId); };
+        
+        // 重新排版：加入 Icon，並讓標題和時間的佈局更優雅
+        el.innerHTML = `
+            <div style="display:flex; align-items:center; width:100%;">
+                ${iconSvg}
+                <div style="display:flex; flex-direction:column; flex-grow:1; gap:6px;">
+                    <div style="display:flex; align-items:center;">
+                        ${badge}
+                        <span class="item-title" style="font-size:1.15rem; color:#2c3e50;">${titleHtml}</span>
+                    </div>
+                    <span class="item-time" style="font-size:0.85rem; color:#8391a2; font-family:var(--font-sans);">${timeStr}</span>
+                </div>
+                <div style="color:#cbd5e1;">➔</div>
+            </div>
+        `;
         listEl.appendChild(el); 
     }); 
 }
@@ -5575,6 +5709,62 @@ function acceptBankruptcy() {
  
 
 
+
+// 新增或替換這個函數，專門用來渲染漂亮的索書卡
+function renderMyLogs() {
+    const listEl = document.getElementById('mylog-list');
+    if (!listEl) return;
+    
+    // 從資料庫抓取自己寫過的所有信件 (包含自由閱讀與常規任務)
+    db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value').then(snap => {
+        const logs = Object.values(snap.val() || {}).sort((a,b) => b.timestamp - a.timestamp);
+        listEl.innerHTML = '';
+        
+        if (logs.length === 0) {
+            listEl.innerHTML = `<div style="text-align:center; color:#a38c76; padding:40px; font-family:var(--font-serif);">櫃子裡還是空的，等待您存入第一份記憶。</div>`;
+            return;
+        }
+ 
+        logs.forEach(log => {
+            // 排除生活探索，只顯示閱讀紀錄
+            if(log.type === 'random') return;
+ 
+            const d = new Date(log.timestamp);
+            const dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+            
+            const card = document.createElement('div');
+            card.className = 'log-index-card';
+            
+            // 索書卡排版
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-family:var(--font-sans); color:#a38c76; font-size:0.85rem; font-weight:bold; letter-spacing:1px;">
+                    <span>REF: ${log.id.slice(-6).toUpperCase()}</span>
+                    <span style="color:#c25953;">DATE: ${dateStr}</span>
+                </div>
+                <h3 style="font-family:var(--font-serif); color:#4a3e35; font-size:1.4rem; margin-top:25px; margin-bottom:10px;">《${escapeHtml(log.bookTitle)}》</h3>
+                <p style="font-family:var(--font-sans); color:#8c7a6b; font-size:0.95rem;">點擊翻閱詳細筆記與筆友回音</p>
+            `;
+            
+            card.onclick = () => {
+                closeRoomModal(null, 'modal-log');
+                openChatModal(log.id);
+            };
+            listEl.appendChild(card);
+        });
+    });
+}
+ 
+// 確保在打開紀錄視窗時呼叫它
+// 找到 toggleReadingLog 函數，將其修改如下：
+window.toggleReadingLog = function() {
+    const el = document.getElementById('mylog-editor');
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+};
+ 
+// 並且在 initApp() 的最後面，加上這行：
+// renderMyLogs();
+
+        
         
         
     </script>
