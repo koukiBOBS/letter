@@ -2728,7 +2728,7 @@ function returnToRoom() {
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
     // 退回室內的鏡頭動畫
-const roomFov = isTouchDevice ? 80 : 50;
+const roomFov = getIdealFov(); // 👈 呼叫智能判斷
     // 退回室內的鏡頭動畫
     gsap.to(camera.position, { x: roomCameraBackup.cp.x, y: roomCameraBackup.cp.y, z: roomCameraBackup.cp.z, duration: 1.8, ease: "power2.inOut" });
     gsap.to(camera, { fov: roomFov, duration: 1.8, ease: "power2.inOut", onUpdate: () => camera.updateProjectionMatrix() });
@@ -3331,14 +3331,24 @@ function closeDrawAnim() {
 }
 
 
+
+
+// 👇 新增：智能計算最佳視角 (FOV) 
+function getIdealFov() {
+    if (!isTouchDevice) return 50; // 電腦版絕對不受影響，永遠維持 50
+    // 判斷是否為直屏 (高度大於寬度)
+    const isPortrait = window.innerHeight > window.innerWidth;
+    return isPortrait ? 80 : 50;   // 觸控設備：直屏 80，橫屏退回 50
+}
+        
         
       function initRoomScene() {
     const container = document.getElementById('room-canvas-container');
     scene = new THREE.Scene(); 
     scene.fog = new THREE.FogExp2(0xc5c1bc, 0.010);
 
-const roomFov = isTouchDevice ? 80 : 50;
-camera = new THREE.PerspectiveCamera(roomFov, window.innerWidth/window.innerHeight, 0.1, 1000);
+const roomFov = getIdealFov(); // 👈 呼叫智能判斷
+camera = new THREE.PerspectiveCamera(roomFov, window.innerWidth/window.innerHeight, 1.0, 1000);
     
   renderer = new THREE.WebGLRenderer({
         antialias: true,
@@ -4558,8 +4568,18 @@ function setEnvironmentPhase(phaseStr) {
 }
 
         
-        function onWinResize() { if(!camera) return; camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
-        
+      function onWinResize() { 
+    if(!camera) return; 
+    camera.aspect = window.innerWidth / window.innerHeight; 
+    
+    // 如果玩家在室內轉動螢幕，立刻自動調整直屏/橫屏的廣角
+    if (!isAtBalcony) {
+        camera.fov = getIdealFov();
+    }
+    
+    camera.updateProjectionMatrix(); 
+    renderer.setSize(window.innerWidth, window.innerHeight); 
+}
       // --- 拖曳與點擊系統全域變數 ---
         let pointerDownPos = { x: 0, y: 0 };
         let dragTimer = null;       // 長按計時器
