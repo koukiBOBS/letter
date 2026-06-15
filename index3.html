@@ -2515,6 +2515,10 @@ function renderList(type, data) {
             el.style.display = 'none';
         };
 
+
+// 👇 放在全域變數區，讓所有函數都能共用
+const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 1024);
+        
         let scene, camera, renderer, controls, raycaster, mouse;
        let desk, leftDrawer, rightDrawer, book, clipboard, wateringCan, plantGroup, windowGroup, sceneryGroup;
         let glassDoorL, glassDoorR; // 新增這兩個變數來控制玻璃門
@@ -3237,44 +3241,75 @@ function closeDrawAnim() {
 
 
         
-       function initRoomScene() {
+      function initRoomScene() {
     const container = document.getElementById('room-canvas-container');
-           // 👇 偵測是否為手機或平板 (只要支援觸控，或螢幕寬度小於等於 1024 就判定為行動裝置)
-const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 1024);
-    scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0xc5c1bc, 0.010);
+    scene = new THREE.Scene(); 
+    scene.fog = new THREE.FogExp2(0xc5c1bc, 0.010);
     camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
-     renderer = new THREE.WebGLRenderer({
+    
+    renderer = new THREE.WebGLRenderer({
         antialias: true,
         powerPreference: "high-performance", // 榨乾 GPU 效能，告訴瀏覽器優先分配資源
         logarithmicDepthBuffer: true         // 完美解決遠近物體的閃爍 (Z-Fighting) 問題！
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
-   const isMobile = window.innerWidth <= 768;
-renderer.setPixelRatio(isTouchDevice ? Math.min(window.devicePixelRatio, 1.2) : Math.min(window.devicePixelRatio, 2));
+    
+    // 👇 手機與平板將像素比例壓低至 1.2，電腦保留最高 2，大幅降低發燙與卡頓
+    renderer.setPixelRatio(isTouchDevice ? Math.min(window.devicePixelRatio, 1.2) : Math.min(window.devicePixelRatio, 2)); 
+    
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputEncoding = THREE.sRGBEncoding;
-    container.innerHTML = ''; container.appendChild(renderer.domElement);
+    container.innerHTML = ''; 
+    container.appendChild(renderer.domElement);
     
-controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.maxPolarAngle = Math.PI/2 - 0.05; controls.minDistance = 10; controls.maxDistance = 59;
+    controls = new THREE.OrbitControls(camera, renderer.domElement); 
+    controls.enableDamping = true; 
+    controls.maxPolarAngle = Math.PI/2 - 0.05; 
+    controls.minDistance = 10; 
+    controls.maxDistance = 59;
+    
+    // 👇 套用觸控裝置專屬手感優化
+    controls.dampingFactor = 0.12; // 增加摩擦力，讓畫面滑動後迅速煞車，不再感覺輕飄飄
+    controls.rotateSpeed = isTouchDevice ? 0.7 : 1.0; // 平板/手機觸控較靈敏，稍微降低旋轉速度
+    controls.enablePan = false; // 禁用雙指平移，防止誤觸導致視角跑掉
     
     const savedState = localStorage.getItem('roomCameraState');
-    if (savedState) { try { const s = JSON.parse(savedState); camera.position.set(s.cp.x, s.cp.y, s.cp.z); controls.target.set(s.ct.x, s.ct.y, s.ct.z); } catch(e) { setDefaultCamera(); } } else { setDefaultCamera(); }
-    controls.update(); controls.addEventListener('change', () => { 
+    if (savedState) { 
+        try { 
+            const s = JSON.parse(savedState); 
+            camera.position.set(s.cp.x, s.cp.y, s.cp.z); 
+            controls.target.set(s.ct.x, s.ct.y, s.ct.z); 
+        } catch(e) { 
+            setDefaultCamera(); 
+        } 
+    } else { 
+        setDefaultCamera(); 
+    }
+    
+    controls.update(); 
+    
+    controls.addEventListener('change', () => { 
         // 加上 isAtBalcony 判斷，若在露臺則不儲存視角
         if(!camera || !controls || isAtBalcony) return; 
-        const state = { cp: {x: camera.position.x, y: camera.position.y, z: camera.position.z}, ct: {x: controls.target.x, y: controls.target.y, z: controls.target.z} }; 
+        const state = { 
+            cp: {x: camera.position.x, y: camera.position.y, z: camera.position.z}, 
+            ct: {x: controls.target.x, y: controls.target.y, z: controls.target.z} 
+        }; 
         localStorage.setItem('roomCameraState', JSON.stringify(state)); 
     });
-    raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2();
     
-    window.addEventListener('pointerdown', onPointerDown); window.addEventListener('pointerup', onPointerUp); window.addEventListener('pointermove', onPointerMove); window.addEventListener('resize', onWinResize);
+    raycaster = new THREE.Raycaster(); 
+    mouse = new THREE.Vector2();
+    
+    window.addEventListener('pointerdown', onPointerDown); 
+    window.addEventListener('pointerup', onPointerUp); 
+    window.addEventListener('pointermove', onPointerMove); 
+    window.addEventListener('resize', onWinResize);
     
     buildRoomEnvironment(); 
 
-
-
-// ⚡ 效能優化：凍結永遠不會移動的背景物件矩陣
+    // ⚡ 效能優化：凍結永遠不會移動的背景物件矩陣
     sceneryGroup.traverse(obj => {
         // 除了海浪(要更新頂點)和車輛、摩天輪(會移動)之外，其他大廈/橋樑/馬路全數凍結
         if (obj.isMesh && obj !== sea && !animScenery.cars.includes(obj.parent) && obj.parent !== ferrisWheelGrp) {
@@ -3283,7 +3318,7 @@ controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enable
         }
     });
     
-    // 凍結房間牆壁與地板
+    // ⚡ 效能優化：凍結房間牆壁與地板的矩陣
     scene.traverse(obj => {
         if (obj.isMesh && (obj.geometry.type === 'PlaneGeometry' || obj.geometry.type === 'ExtrudeGeometry')) {
             // 排除地氈(會顯示/隱藏)、窗簾與趟門(會拉動)
@@ -3294,13 +3329,16 @@ controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enable
         }
     });
 
-
-
-           
     restoreObjectPositions(); // 載入所有物件的移動紀錄
     syncEnvironmentTime(); 
     animateRoom();
 }
+
+
+
+
+
+        
         function setDefaultCamera() { if (window.innerWidth < 768) { camera.position.set(0, 26, 48); } else { camera.position.set(0, 22, 45); } controls.target.set(0, 7, 0); }
 
  // --- 修訂 2：將畫作移出牆壁，使其貼在室內牆面上 ---
@@ -3460,10 +3498,10 @@ function buildRoomEnvironment() {
     const isMobileDevice = window.innerWidth <= 768;
 
     // 如果是手機，使用普通的半透明材質，放棄昂貴的物理折射計算；如果是電腦則保留物理玻璃
-    const glassMat = isMobileDevice 
+   const glassMat = isTouchDevice 
         ? new THREE.MeshStandardMaterial({
             color: 0xebf8ff, metalness: 0.5, roughness: 0.1, 
-            transparent: true, opacity: 0.3 // 用純粹的透明度代替折射，效能極佳！
+            transparent: true, opacity: 0.3 
           })
         : new THREE.MeshPhysicalMaterial({ 
             color: 0xebf8ff, metalness: 0.15, roughness: 0.02, transmission: 0.95, 
