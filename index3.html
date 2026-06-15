@@ -2518,7 +2518,7 @@ function renderList(type, data) {
 
 // 👇 放在全域變數區，讓所有函數都能共用
 const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 1024);
-        
+        let balconyOnlyGroup; // 新增：只有出露台才需要渲染的風景群組
         let scene, camera, renderer, controls, raycaster, mouse;
        let desk, leftDrawer, rightDrawer, book, clipboard, wateringCan, plantGroup, windowGroup, sceneryGroup;
         let glassDoorL, glassDoorR; // 新增這兩個變數來控制玻璃門
@@ -2594,7 +2594,7 @@ function applyCurtainRatio() {
 let clouds = []; // 用來存放所有雲朵物件，方便動畫更新
 
 let sea; // 用來控制海浪動畫
-        let balconyOnlyGroup; // 新增：只有出露台才需要渲染的風景群組
+      
   let ferrisWheelGrp; // 摩天輪轉動的主體
 let fwCabins = []; 
 let dummySpoutTip; let indicatorLeft, indicatorRight, indicatorTasks; let interactables = []; let timePhase = 'noon'; let animScenery = { cars: [], buildings: [] };
@@ -3247,15 +3247,16 @@ function closeDrawAnim() {
     scene.fog = new THREE.FogExp2(0xc5c1bc, 0.010);
     camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
     
-    renderer = new THREE.WebGLRenderer({
+  renderer = new THREE.WebGLRenderer({
         antialias: true,
-        powerPreference: "high-performance", // 榨乾 GPU 效能，告訴瀏覽器優先分配資源
-        logarithmicDepthBuffer: true         // 完美解決遠近物體的閃爍 (Z-Fighting) 問題！
+        powerPreference: "high-performance", 
+        // 👇 電腦開啟深度緩衝，觸控裝置(手機/平板)強制關閉以防黑屏當機
+        logarithmicDepthBuffer: !isTouchDevice 
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     
-    // 👇 手機與平板將像素比例壓低至 1.2，電腦保留最高 2，大幅降低發燙與卡頓
-    renderer.setPixelRatio(isTouchDevice ? Math.min(window.devicePixelRatio, 1.2) : Math.min(window.devicePixelRatio, 2)); 
+// 手機和平板強制使用標準解析度 (1)，避免 WebGL 緩衝區崩潰；電腦最多使用 2
+renderer.setPixelRatio(isTouchDevice ? 1 : Math.min(window.devicePixelRatio || 1, 2));
     
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
