@@ -7175,6 +7175,7 @@ window.toggleReadingLog = function() {
         slot.position.set(0, 3.5, 4.32);
         gachaMachineGrp.add(slot);
 
+        // 3.7 🕳️ 單一寬敞的托盤式出口 (空間充足，完美防穿模閃爍)
       // ==========================================
         // 🌟 修復與升級開始
         // ==========================================
@@ -7246,64 +7247,20 @@ window.toggleReadingLog = function() {
         // ==========================================
         // 🌟 修復與升級結束
         // ==========================================
-
-       // 3.10 莫蘭迪低飽和雙色扭蛋球 (數量提升至 65 顆)
-        const morandiColors = [0xbc8a8f, 0x8fa397, 0xa39284, 0x8aa3b0, 0xb8a38f, 0xc59e8f];
-        const halfSphereGeoTop = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, 0, Math.PI/2);
-        const halfSphereGeoBot = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, Math.PI/2, Math.PI/2);
-        
-        const frostedGlassMat = new THREE.MeshPhysicalMaterial({
-            color: 0xffffff,
-            transmission: 0.94,
-            roughness: 0.18,
-            transparent: true,
-            thickness: 0.04
-        });
- 
-        // 👇 這裡改成 65
-        for(let i=0; i<65; i++) {
-            const capGrp = new THREE.Group();
-            const col = morandiColors[Math.floor(Math.random() * morandiColors.length)];
-            const solidMat = new THREE.MeshStandardMaterial({
-                color: col,
-                roughness: 0.25,
-                metalness: 0.1
-            });
-            
-            const topHalf = new THREE.Mesh(halfSphereGeoTop, frostedGlassMat);
-            const botHalf = new THREE.Mesh(halfSphereGeoBot, solidMat);
-            
-            const seam = new THREE.Mesh(new THREE.TorusGeometry(0.65, 0.015, 8, 24), champagneGoldMat);
-            seam.rotation.x = Math.PI/2;
-            
-            // 內置絲帶古雅卷軸
-            const scrollGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.7, 8);
-            const scrollMat = new THREE.MeshStandardMaterial({color: 0xfefcf7, roughness: 0.95});
-            const scroll = new THREE.Mesh(scrollGeo, scrollMat);
-            scroll.position.y = 0.08;
-            scroll.rotation.z = Math.PI / 4;
-            scroll.rotation.x = Math.PI / 6;
-            
-            const ribbonGeo = new THREE.CylinderGeometry(0.11, 0.13, 0.08, 8);
-            const ribbon = new THREE.Mesh(ribbonGeo, champagneGoldMat);
-            ribbon.position.y = 0.08;
-            ribbon.rotation.copy(scroll.rotation);
-            
-            capGrp.add(topHalf, botHalf, seam, scroll, ribbon);
- 
-            // 👇 嚴格限制生成半徑與高度，避免穿透玻璃罩
-            const radius = Math.random() * 3.2;
-            const angle = Math.random() * Math.PI * 2;
-            capGrp.position.set(
-                Math.cos(angle) * radius,
-                7.6 + Math.random() * 2.8, // 高度往上提，對齊新的展示盤
-                Math.sin(angle) * radius
-            );
-            capGrp.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
-            capGrp.userData.origPos = capGrp.position.clone();
-            capsulePool.push(capGrp);
-            gachaMachineGrp.add(capGrp);
         }
+
+        // 點擊判定框 (全機點擊)
+        const hitBox = new THREE.Mesh(new THREE.BoxGeometry(10, 16, 10), new THREE.MeshBasicMaterial({visible: false}));
+        hitBox.position.y = 8;
+        hitBox.userData = { type: 'quote_gacha' };
+        gachaMachineGrp.add(hitBox);
+        interactables.push(hitBox);
+
+        // 內部柔和暖光
+        const mLight = new THREE.PointLight(0xfff5e6, 1.0, 12);
+        mLight.position.set(0, 9, 0);
+        gachaMachineGrp.add(mLight);
+    }
 
     // 4. 水平鑰匙鍵扭轉與特寫歸位運鏡交互
     function initLocalInteraction() {
@@ -7445,6 +7402,7 @@ window.toggleReadingLog = function() {
                 });
             });
         }, null, "+=0.1")
+        // 5.4 扭蛋滾下至寬敞大托盤
        // 5.4 扭蛋滾落至全新的外凸托盤
         .call(() => {
             const dropCap = capsulePool[Math.floor(Math.random() * capsulePool.length)].clone();
@@ -7492,8 +7450,10 @@ window.toggleReadingLog = function() {
                 }
             });
         }, null, "+=1.3");
-    }
 
+
+
+        
     function executeDrawLogic() {
         const unownedIds = Object.keys(LIT_QUOTES).filter(id => !window.userQuotes[id]);
         let chosenId;
