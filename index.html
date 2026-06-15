@@ -946,6 +946,83 @@
     color: #fff; 
     transform: scale(1.1) rotate(90deg); 
 }
+
+/* 點擊確認扭一次蛋彈窗樣式 */
+#gacha-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 18, 16, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 100050;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+}
+.confirm-paper {
+    background-color: #fcfbf8;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
+    border: 1px solid #e3d9c6;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.35), inset 0 0 40px rgba(180, 160, 130, 0.05);
+    max-width: 420px;
+    width: 90%;
+    padding: 45px 35px;
+    text-align: center;
+    border-radius: 4px;
+    position: relative;
+    transform: translateY(20px);
+    transition: all 0.5s cubic-bezier(0.2, 1, 0.3, 1);
+}
+.confirm-title {
+    font-family: var(--font-serif);
+    font-size: 1.5rem;
+    color: #4a4238;
+    letter-spacing: 2px;
+    margin-bottom: 18px;
+    font-weight: 600;
+}
+.confirm-text {
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+    color: #7d7065;
+    line-height: 1.8;
+    margin-bottom: 35px;
+}
+.confirm-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+.btn-confirm {
+    background: #da604f;
+    color: white !important;
+    border: none !important;
+    padding: 10px 28px;
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 10px rgba(218, 96, 79, 0.2);
+}
+.btn-confirm:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 15px rgba(218, 96, 79, 0.35);
+}
+.btn-cancel {
+    background: transparent !important;
+    color: #8b7355 !important;
+    border: 1px solid #dcd5c9 !important;
+    padding: 10px 28px;
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.btn-cancel:hover {
+    background: rgba(139, 115, 85, 0.05) !important;
+}
         
     </style>
 </head>
@@ -6987,11 +7064,11 @@ window.toggleReadingLog = function() {
     });
 
     let gachaMachineGrp;
-    let exitFlap;
     let capsulePool = [];
     let isGachaPlaying = false;
+    let cameraBackup = { pos: null, target: null };
 
-    // 2. 自動攔截初始化，注入扭蛋機與收集冊
+    // 2. 自動攔截與初始檢測
     const checkRoomInterval = setInterval(() => {
         if (typeof scene !== 'undefined' && typeof desk !== 'undefined') {
             clearInterval(checkRoomInterval);
@@ -6999,6 +7076,7 @@ window.toggleReadingLog = function() {
             hijackWalletRender();
             listenQuotesData();
             createQuoteOverlay();
+            createGachaConfirmOverlay();
             initLocalInteraction();
         }
     }, 500);
@@ -7011,138 +7089,141 @@ window.toggleReadingLog = function() {
         });
     }
 
-    // 3. 建造極精細的復古八角扭蛋機（全新莫蘭迪低飽和色彩與高階物理材質）
+    // 3. 建造精緻的八角扭蛋機 (優化高階物理材質、徑向尺寸偏置防閃爍、莫蘭迪暖色系)
     function buildDetailedGachaMachine() {
         gachaMachineGrp = new THREE.Group();
         gachaMachineGrp.position.set(-48, 0, 25);
         gachaMachineGrp.rotation.y = Math.PI / 3;
         scene.add(gachaMachineGrp);
 
-        // 🎨 莫蘭迪奢華材質字典
-        const morandiSageMat = new THREE.MeshStandardMaterial({
-            color: 0x899c92, // 莫蘭迪經典鼠尾草綠
-            metalness: 0.25,
-            roughness: 0.35
-        });
-        const brushedGoldMat = new THREE.MeshStandardMaterial({
-            color: 0xcaa775, // 高級拉絲淡黃銅金
-            metalness: 0.85,
-            roughness: 0.2
-        });
-        const darkIronMat = new THREE.MeshStandardMaterial({
-            color: 0x2b2d2f, // 啞光深鐵黑
-            metalness: 0.7,
-            roughness: 0.4
-        });
-        const matteSilverMat = new THREE.MeshStandardMaterial({
-            color: 0xbdc3c7, // 霧面磨砂銀
-            metalness: 0.8,
+        // 🎨 莫蘭迪典雅暖色系與高階金屬材質 (100% 杜絕閃爍)
+        const morandiCoralMat = new THREE.MeshStandardMaterial({
+            color: 0xda604f, // 暖珊瑚紅 (溫潤活潑，拒絕灰沉)
+            metalness: 0.15,
             roughness: 0.25
         });
-        const physicalGlassMat = new THREE.MeshPhysicalMaterial({
+        const champagneGoldMat = new THREE.MeshStandardMaterial({
+            color: 0xe5c158, // 亮麗香檳金飾條
+            metalness: 0.88,
+            roughness: 0.18
+        });
+        const deepIronMat = new THREE.MeshStandardMaterial({
+            color: 0x1f2122, // 磨砂黑鐵
+            metalness: 0.6,
+            roughness: 0.5
+        });
+        const polishedSilverMat = new THREE.MeshStandardMaterial({
+            color: 0xe1e8eb, // 亮拉絲白金
+            metalness: 0.9,
+            roughness: 0.12
+        });
+        const crystalGlassMat = new THREE.MeshPhysicalMaterial({
             color: 0xffffff,
-            transmission: 0.96,
-            roughness: 0.05,
+            transmission: 0.97,
+            roughness: 0.02,
             ior: 1.5,
-            thickness: 0.2,
+            thickness: 0.22,
             transparent: true
         });
 
-        // 八角金屬底座
-        const baseGeo = new THREE.CylinderGeometry(4.5, 4.5, 7, 8);
-        const mBase = new THREE.Mesh(baseGeo, morandiSageMat);
+        // 3.1 八角珊瑚紅金屬底座 (分段設為32使表面極致平滑)
+        const baseGeo = new THREE.CylinderGeometry(4.2, 4.2, 7, 32);
+        const mBase = new THREE.Mesh(baseGeo, morandiCoralMat);
         mBase.position.y = 3.5; 
         mBase.castShadow = true; 
         mBase.receiveShadow = true;
         gachaMachineGrp.add(mBase);
 
-        // 裝飾金色飾邊
-        const baseBottomTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 4.6, 0.4, 8), brushedGoldMat);
-        baseBottomTrim.position.y = 0.2;
+        // 3.2 裝飾金邊（半徑設為 4.26，精準外擴 0.06 杜絕同面閃爍 Z-fighting）
+        const baseBottomTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.26, 4.26, 0.3, 32), champagneGoldMat);
+        baseBottomTrim.position.y = 0.15;
         gachaMachineGrp.add(baseBottomTrim);
 
-        const baseTopTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 4.6, 0.4, 8), brushedGoldMat);
-        baseTopTrim.position.y = 6.8;
+        const baseTopTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.26, 4.26, 0.3, 32), champagneGoldMat);
+        baseTopTrim.position.y = 6.85;
         gachaMachineGrp.add(baseTopTrim);
 
-        // 平整金屬操作平台
-        const ledge = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.3, 1.8), brushedGoldMat);
-        ledge.position.set(0, 5.0, 4.0);
+        // 3.3 水平金屬操作台 (平台往外延伸)
+        const ledge = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.3, 1.8), champagneGoldMat);
+        ledge.position.set(0, 5.0, 3.8);
         gachaMachineGrp.add(ledge);
 
-        // 投幣孔面板
-        const coinPanel = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.2, 0.3), darkIronMat);
-        coinPanel.position.set(0, 3.0, 4.2);
+        // 3.4 投幣孔面板
+        const coinPanel = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.2, 0.2), deepIronMat);
+        coinPanel.position.set(0, 3.0, 4.21);
         gachaMachineGrp.add(coinPanel);
 
-        // 🔑 完美水平放置與旋轉的蝴蝶鑰匙扭蛋鍵
+        // 3.5 🔑 蝴蝶鑰匙（平鋪於操作台、實現真實水平面 Y 軸旋動）
         const knobGrp = new THREE.Group();
-        knobGrp.position.set(0, 5.15, 4.0); 
+        knobGrp.position.set(0, 5.15, 3.8); 
         knobGrp.name = "gachaKnob";
         
-        // 直立式插銷軸心
-        const knobPin = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.5, 16), matteSilverMat);
+        const knobPin = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.5, 16), polishedSilverMat);
         knobPin.position.y = 0.25;
         knobGrp.add(knobPin);
 
-        // 水平對稱的左右旋動翼片（不與扭蛋機穿模，順暢水平旋轉）
-        const knobWingL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.12, 0.4), matteSilverMat);
-        knobWingL.position.set(0.45, 0.4, 0);
-        const knobWingR = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.12, 0.4), matteSilverMat);
-        knobWingR.position.set(-0.45, 0.4, 0);
+        const knobWingL = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.1, 0.35), polishedSilverMat);
+        knobWingL.position.set(0.4, 0.4, 0);
+        const knobWingR = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.1, 0.35), polishedSilverMat);
+        knobWingR.position.set(-0.4, 0.4, 0);
         
-        // 頂部圓蓋
-        const knobCap = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16), brushedGoldMat);
+        const knobCap = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.2, 16), champagneGoldMat);
         knobCap.position.y = 0.45;
         knobGrp.add(knobWingL, knobWingR, knobCap);
         gachaMachineGrp.add(knobGrp);
 
-        // 投幣細孔
-        const slot = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.15), new THREE.MeshBasicMaterial({color: 0x000000}));
-        slot.position.set(0, 3.5, 4.4);
+        // 3.6 投幣槽
+        const slot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 0.15), new THREE.MeshBasicMaterial({color: 0x000000}));
+        slot.position.set(0, 3.5, 4.32);
         gachaMachineGrp.add(slot);
 
-        // 出物口黑色斜道
-        const exitHole = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.2, 0.4), new THREE.MeshBasicMaterial({color: 0x111111}));
-        exitHole.position.set(0, 1.4, 4.2);
-        gachaMachineGrp.add(exitHole);
-        
-        // 出物口金屬擋門
-        exitFlap = new THREE.Mesh(new THREE.BoxGeometry(3.0, 2.0, 0.1), matteSilverMat);
-        exitFlap.position.set(0, 1.4, 4.4);
-        exitFlap.rotation.x = -0.25;
-        gachaMachineGrp.add(exitFlap);
+        // 3.7 🕳️ 單一寬敞的托盤式出口 (空間充足，完美防穿模閃爍)
+        const chuteGrp = new THREE.Group();
+        chuteGrp.position.set(0, 0.4, 3.8); 
+        gachaMachineGrp.add(chuteGrp);
 
-        // 晶透高折射玻璃圓頂罩
-        const dome = new THREE.Mesh(new THREE.SphereGeometry(4.2, 32, 32, 0, Math.PI*2, 0, Math.PI/2), physicalGlassMat);
+        const backWall = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.6, 0.2), new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9}));
+        backWall.position.set(0, 0.8, -0.1);
+        chuteGrp.add(backWall);
+
+        // 托盤勺體 (Lie Flat)
+        const trayGeo = new THREE.CylinderGeometry(1.2, 1.0, 1.2, 16, 1, true, 0, Math.PI);
+        const trayMesh = new THREE.Mesh(trayGeo, polishedSilverMat);
+        trayMesh.rotation.x = Math.PI / 2; 
+        trayMesh.rotation.z = Math.PI; 
+        trayMesh.position.set(0, 0.4, 0.5);
+        trayMesh.castShadow = true;
+        trayMesh.receiveShadow = true;
+        chuteGrp.add(trayMesh);
+
+        // 托盤邊緣金色包邊
+        const rimGeo = new THREE.TorusGeometry(1.15, 0.12, 8, 24, Math.PI);
+        const rimMesh = new THREE.Mesh(rimGeo, champagneGoldMat);
+        rimMesh.position.set(0, 0.4, 1.1);
+        rimMesh.rotation.z = Math.PI;
+        chuteGrp.add(rimMesh);
+
+        // 3.8 玻璃圓頂罩 (內縮至 4.1 杜絕縫隙重合)
+        const dome = new THREE.Mesh(new THREE.SphereGeometry(4.1, 32, 32, 0, Math.PI*2, 0, Math.PI/2), crystalGlassMat);
         dome.position.y = 7;
         gachaMachineGrp.add(dome);
 
-        // 頂蓋金色飾圈
-        const topCapTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.3, 4.3, 0.4, 8), brushedGoldMat);
-        topCapTrim.position.y = 11.2;
+        // 3.9 頂蓋飾圈
+        const topCapTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.15, 4.15, 0.3, 32), champagneGoldMat);
+        topCapTrim.position.y = 11.1;
         gachaMachineGrp.add(topCapTrim);
 
-        // 八角烤漆紅金屬頂蓋
-        const topCap = new THREE.Mesh(new THREE.SphereGeometry(4.2, 16, 16, 0, Math.PI*2, 0, Math.PI/2), morandiSageMat);
+        const topCap = new THREE.Mesh(new THREE.SphereGeometry(4.05, 16, 16, 0, Math.PI*2, 0, Math.PI/2), morandiCoralMat);
         topCap.position.y = 11.2; 
         topCap.castShadow = true;
         gachaMachineGrp.add(topCap);
 
-        // 頂蓋頂部雕花拉絲金球
-        const pinnacle = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 16), brushedGoldMat);
-        pinnacle.position.y = 15.6;
+        const pinnacle = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), champagneGoldMat);
+        pinnacle.position.y = 15.4;
         gachaMachineGrp.add(pinnacle);
 
-        // 🔮 晶瑩剔透莫蘭迪雙色扭蛋球 (高質感透明半球 + 莫蘭迪漆面半球 + 精細詩卷軸)
-        const morandiColors = [
-            0xbc8a8f, // 莫蘭迪乾燥玫瑰
-            0x8fa397, // 莫蘭迪松石綠
-            0xa39284, // 莫蘭迪大地灰
-            0x8aa3b0, // 莫蘭迪霧霾藍
-            0xb8a38f, // 莫蘭迪秋麥黃
-            0xc59e8f  // 莫蘭迪陶土橘
-        ];
+        // 3.10 莫蘭迪低飽和雙色扭蛋球 (晶瑩剔透)
+        const morandiColors = [0xbc8a8f, 0x8fa397, 0xa39284, 0x8aa3b0, 0xb8a38f, 0xc59e8f];
         const halfSphereGeoTop = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, 0, Math.PI/2);
         const halfSphereGeoBot = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, Math.PI/2, Math.PI/2);
         
@@ -7154,7 +7235,7 @@ window.toggleReadingLog = function() {
             thickness: 0.04
         });
 
-        for(let i=0; i<40; i++) {
+        for(let i=0; i<35; i++) {
             const capGrp = new THREE.Group();
             const col = morandiColors[Math.floor(Math.random() * morandiColors.length)];
             const solidMat = new THREE.MeshStandardMaterial({
@@ -7166,11 +7247,10 @@ window.toggleReadingLog = function() {
             const topHalf = new THREE.Mesh(halfSphereGeoTop, frostedGlassMat);
             const botHalf = new THREE.Mesh(halfSphereGeoBot, solidMat);
             
-            // 精巧金色接合飾圈
-            const seam = new THREE.Mesh(new THREE.TorusGeometry(0.65, 0.015, 8, 24), brushedGoldMat);
+            const seam = new THREE.Mesh(new THREE.TorusGeometry(0.65, 0.015, 8, 24), champagneGoldMat);
             seam.rotation.x = Math.PI/2;
             
-            // 內置精細微型詩歌羊皮紙卷軸
+            // 內置絲帶古雅卷軸
             const scrollGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.7, 8);
             const scrollMat = new THREE.MeshStandardMaterial({color: 0xfefcf7, roughness: 0.95});
             const scroll = new THREE.Mesh(scrollGeo, scrollMat);
@@ -7178,20 +7258,18 @@ window.toggleReadingLog = function() {
             scroll.rotation.z = Math.PI / 4;
             scroll.rotation.x = Math.PI / 6;
             
-            // 金色綁繩絲帶
             const ribbonGeo = new THREE.CylinderGeometry(0.11, 0.13, 0.08, 8);
-            const ribbon = new THREE.Mesh(ribbonGeo, brushedGoldMat);
+            const ribbon = new THREE.Mesh(ribbonGeo, champagneGoldMat);
             ribbon.position.y = 0.08;
             ribbon.rotation.copy(scroll.rotation);
             
             capGrp.add(topHalf, botHalf, seam, scroll, ribbon);
 
-            // 限制堆疊範圍，防穿出玻璃罩
-            const radius = Math.random() * 2.5;
+            const radius = Math.random() * 2.4;
             const angle = Math.random() * Math.PI * 2;
             capGrp.position.set(
                 Math.cos(angle) * radius, 
-                7.4 + Math.random() * 3.2, 
+                7.4 + Math.random() * 3.0, 
                 Math.sin(angle) * radius
             );
             capGrp.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
@@ -7200,7 +7278,7 @@ window.toggleReadingLog = function() {
             gachaMachineGrp.add(capGrp);
         }
 
-        // 點擊判定框
+        // 點擊判定框 (全機點擊)
         const hitBox = new THREE.Mesh(new THREE.BoxGeometry(10, 16, 10), new THREE.MeshBasicMaterial({visible: false}));
         hitBox.position.y = 8;
         hitBox.userData = { type: 'quote_gacha' };
@@ -7213,7 +7291,7 @@ window.toggleReadingLog = function() {
         gachaMachineGrp.add(mLight);
     }
 
-    // 4. 水平鍵與扭蛋震動之精緻動畫與音感交互
+    // 4. 水平鑰匙鍵扭轉與特寫歸位運鏡交互
     function initLocalInteraction() {
         let localMouseDown = { x: 0, y: 0 };
         window.addEventListener('pointerdown', (e) => {
@@ -7241,79 +7319,156 @@ window.toggleReadingLog = function() {
             });
             
             if (hit) {
-                triggerGachaDraw();
+                openGachaConfirm();
             }
         });
     }
 
-    function triggerGachaDraw() {
+    // 5. 點擊確認扭一次蛋 UI
+    function createGachaConfirmOverlay() {
+        if(document.getElementById('gacha-confirm-overlay')) return;
+        const overlay = document.createElement('div');
+        overlay.id = 'gacha-confirm-overlay';
+        overlay.innerHTML = `
+            <div class="confirm-paper" id="gacha-confirm-paper">
+                <div class="confirm-title">轉動扭蛋機</div>
+                <div class="confirm-text">提筆落墨，文字有靈。<br>確認要轉動機身，喚醒一段名家語錄嗎？</div>
+                <div class="confirm-actions">
+                    <button class="btn-cancel" onclick="closeGachaConfirm()">稍微等等</button>
+                    <button class="btn-confirm" onclick="confirmGachaDraw()">確認轉動</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+
+    window.openGachaConfirm = function() {
+        const overlay = document.getElementById('gacha-confirm-overlay');
+        overlay.style.display = 'flex';
+        gsap.to(overlay, {opacity: 1, duration: 0.3});
+        gsap.fromTo("#gacha-confirm-paper", {y: 30, opacity: 0}, {y: 0, opacity: 1, duration: 0.5, ease: "power3.out"});
+    };
+
+    window.closeGachaConfirm = function() {
+        const overlay = document.getElementById('gacha-confirm-overlay');
+        gsap.to("#gacha-confirm-paper", {y: 20, opacity: 0, duration: 0.3});
+        gsap.to(overlay, {opacity: 0, duration: 0.3, delay: 0.1, onComplete: () => {
+            overlay.style.display = 'none';
+        }});
+    };
+
+    window.confirmGachaDraw = function() {
+        closeGachaConfirm();
+        startGachaDrawProcess();
+    };
+
+    function startGachaDrawProcess() {
         isGachaPlaying = true;
-        const knob = gachaMachineGrp.getObjectByName("gachaKnob");
-        
+        controls.enabled = false;
+
+        // 5.1 備份當前用家視角
+        cameraBackup.pos = camera.position.clone();
+        cameraBackup.target = controls.target.clone();
+
+        // 5.2 特寫運鏡：計算對焦在托盤出口正前方的完美電影級坐標
+        const rotY = gachaMachineGrp.rotation.y;
+        const dirX = Math.sin(rotY);
+        const dirZ = Math.cos(rotY);
+
+        // 托盤出口大約世界坐標
+        const trayWorldX = -48 + 3.8 * dirX;
+        const trayWorldY = 1.0;
+        const trayWorldZ = 25 + 3.8 * dirZ;
+
+        // 鏡頭前推偏移
+        const camTargetX = trayWorldX;
+        const camTargetY = trayWorldY;
+        const camTargetZ = trayWorldZ;
+
+        const camIdealX = trayWorldX + 9.5 * dirX;
+        const camIdealY = trayWorldY + 2.2;
+        const camIdealZ = trayWorldZ + 9.5 * dirZ;
+
         const tl = gsap.timeline();
 
-        // 1. 旋轉蝴蝶鑰匙 (完美的 Y軸 水平旋動)
-        if (knob) {
-            tl.to(knob.rotation, {
-                y: knob.rotation.y + Math.PI * 4, // 水平正向轉2圈
-                duration: 1.6,
-                ease: "power2.inOut"
-            });
-        }
-
-        // 2. 玻璃球池群微幅跳動震盪
-        capsulePool.forEach(cap => {
-            gsap.to(cap.position, {
-                x: cap.userData.origPos.x + (Math.random() - 0.5) * 0.5,
-                y: cap.userData.origPos.y + (Math.random() - 0.5) * 0.5,
-                z: cap.userData.origPos.z + (Math.random() - 0.5) * 0.5,
-                duration: 0.1,
-                yoyo: true,
-                repeat: 14,
-                ease: "sine.inOut"
-            });
-        });
-
-        // 3. 克隆一顆掉落扭蛋動畫
-        const dropCap = capsulePool[Math.floor(Math.random() * capsulePool.length)].clone();
-        dropCap.position.set(0, 7.0, 0);
-        gachaMachineGrp.add(dropCap);
-
-        tl.to(dropCap.position, {
-            x: 0,
-            y: 1.4,
-            z: 3.5,
-            duration: 0.8,
-            ease: "bounce.out"
-        }, "-=0.6")
-        // 出物口彈簧板往外踢
-        .to(exitFlap.rotation, {
-            x: -0.75,
-            duration: 0.15,
-            ease: "power2.out"
-        }, "-=0.35")
-        // 扭蛋滑出到操作台邊緣
-        .to(dropCap.position, {
-            z: 4.4,
-            y: 0.6,
-            duration: 0.25,
-            ease: "power2.out"
-        }, "-=0.2")
-        // 彈簧擋片反彈合上
-        .to(exitFlap.rotation, {
-            x: -0.25,
-            duration: 0.4,
-            ease: "bounce.out"
+        // 平滑推進鏡頭
+        tl.to(camera.position, {
+            x: camIdealX,
+            y: camIdealY,
+            z: camIdealZ,
+            duration: 1.2,
+            ease: "power2.inOut"
         })
-        // 扭蛋化成光點消失，載入佳句展示窗
-        .to(dropCap.scale, {
-            x: 0, y: 0, z: 0,
-            duration: 0.35,
-            onComplete: () => {
-                gachaMachineGrp.remove(dropCap);
-                executeDrawLogic();
+        .to(controls.target, {
+            x: camTargetX,
+            y: camTargetY,
+            z: camTargetZ,
+            duration: 1.2,
+            ease: "power2.inOut",
+            onUpdate: () => controls.update()
+        }, "<")
+        // 5.3 水平旋扭按鍵 (轉2圈)
+        .call(() => {
+            const knob = gachaMachineGrp.getObjectByName("gachaKnob");
+            if (knob) {
+                gsap.to(knob.rotation, {
+                    y: knob.rotation.y + Math.PI * 4,
+                    duration: 1.5,
+                    ease: "power2.inOut"
+                });
             }
-        }, "-=0.1");
+
+            // 玻璃罩內彩球震蕩
+            capsulePool.forEach(cap => {
+                gsap.to(cap.position, {
+                    x: cap.userData.origPos.x + (Math.random() - 0.5) * 0.4,
+                    y: cap.userData.origPos.y + (Math.random() - 0.5) * 0.4,
+                    z: cap.userData.origPos.z + (Math.random() - 0.5) * 0.4,
+                    duration: 0.1,
+                    yoyo: true,
+                    repeat: 14,
+                    ease: "sine.inOut"
+                });
+            });
+        }, null, "+=0.1")
+        // 5.4 扭蛋滾下至寬敞大托盤
+        .call(() => {
+            const dropCap = capsulePool[Math.floor(Math.random() * capsulePool.length)].clone();
+            dropCap.position.set(0, 7.0, 0);
+            gachaMachineGrp.add(dropCap);
+
+            // 滾落大托盤曲線
+            gsap.timeline()
+                .to(dropCap.position, {
+                    x: 0,
+                    y: 0.55,
+                    z: 4.4,
+                    duration: 1.1,
+                    ease: "bounce.out"
+                })
+                .to(dropCap.rotation, {
+                    x: Math.random() * 4,
+                    y: Math.random() * 4,
+                    duration: 1.1
+                }, "<")
+                // 出物口微幅震動反饋
+                .to(chuteGrp.position, {
+                    y: -0.1,
+                    duration: 0.1,
+                    yoyo: true,
+                    repeat: 1
+                })
+                // 扭蛋化光消失並彈出詩歌卡片
+                .to(dropCap.scale, {
+                    x: 0, y: 0, z: 0,
+                    duration: 0.4,
+                    delay: 0.3,
+                    onComplete: () => {
+                        gachaMachineGrp.remove(dropCap);
+                        executeDrawLogic();
+                    }
+                });
+        }, null, "+=1.3");
     }
 
     function executeDrawLogic() {
@@ -7322,18 +7477,15 @@ window.toggleReadingLog = function() {
         if (unownedIds.length > 0) {
             chosenId = unownedIds[Math.floor(Math.random() * unownedIds.length)];
         } else {
-            // 如全數集齊則隨機抽取
             chosenId = Object.keys(LIT_QUOTES)[Math.floor(Math.random() * Object.keys(LIT_QUOTES).length)];
         }
         
         db.ref(`users/${currentUser.uid}/quotes/${chosenId}`).set(true).then(() => {
-            showQuoteUI(chosenId, () => {
-                isGachaPlaying = false;
-            });
+            showQuoteUI(chosenId);
         });
     }
 
-    // 5. 建立文藝佳句展示窗
+    // 6. 建立佳句展示窗
     function createQuoteOverlay() {
         if(document.getElementById('quote-display-overlay')) return;
         const overlay = document.createElement('div');
@@ -7366,16 +7518,45 @@ window.toggleReadingLog = function() {
         gsap.fromTo("#literary-paper-anim", {y: 40, opacity: 0}, {y: 0, opacity: 1, duration: 0.8, ease: "power3.out", delay: 0.2});
     };
 
+    // 7. 閉幕運鏡：彈窗關閉後視角平滑轉回，重新啟用 OrbitControls
     window.closeQuoteUI = function() {
         gsap.to("#literary-paper-anim", {y: -20, opacity: 0, duration: 0.4});
         gsap.to('#quote-display-overlay', {opacity: 0, duration: 0.5, delay: 0.2, onComplete: () => {
             document.getElementById('quote-display-overlay').style.display = 'none';
+            
+            // 運鏡歸位
+            if (cameraBackup.pos && cameraBackup.target) {
+                gsap.timeline()
+                    .to(camera.position, {
+                        x: cameraBackup.pos.x,
+                        y: cameraBackup.pos.y,
+                        z: cameraBackup.pos.z,
+                        duration: 1.2,
+                        ease: "power2.inOut"
+                    })
+                    .to(controls.target, {
+                        x: cameraBackup.target.x,
+                        y: cameraBackup.target.y,
+                        z: cameraBackup.target.z,
+                        duration: 1.2,
+                        ease: "power2.inOut",
+                        onUpdate: () => controls.update(),
+                        onComplete: () => {
+                            controls.enabled = true;
+                            isGachaPlaying = false;
+                        }
+                    }, "<");
+            } else {
+                controls.enabled = true;
+                isGachaPlaying = false;
+            }
+
             if(onQuoteCloseCallback) onQuoteCloseCallback();
             onQuoteCloseCallback = null;
         }});
     };
 
-    // 6. 覆寫收集冊展示，無縫渲染
+    // 8. 覆寫收集冊
     function hijackWalletRender() {
         const originalRenderWalletGrid = window.renderWalletGrid;
         window.renderWalletGrid = function() {
@@ -7384,14 +7565,13 @@ window.toggleReadingLog = function() {
             
             const divider = document.createElement('div');
             divider.style.gridColumn = "1 / -1";
-            divider.innerHTML = `<h3 class="quote-section-title">🖋️ 文學碎片收集冊</h3><p style="color:#a38c76; font-size:0.9rem; margin-top:-10px; margin-bottom:20px;">透過房間左側的復古扭蛋機，獲取與您靈魂共鳴的文字段落。</p>`;
+            divider.innerHTML = `<h3 class="quote-section-title">🖋️ 文學碎片收集冊</h3><p style="color:#a38c76; font-size:0.9rem; margin-top:-10px; margin-bottom:20px;">透過房間左側的暖橘扭蛋機，獲取與您靈魂共鳴的文字段落。</p>`;
             grid.appendChild(divider);
 
             Object.keys(LIT_QUOTES).forEach(id => {
                 const isOwned = window.userQuotes[id];
                 const card = document.createElement('div');
 
-                // 🚪 未解鎖狀態：高雅稿紙虛線質感，去除 EMOJI 符號，改為「未知的語錄」
                 if (!isOwned) {
                     card.className = 'quote-card-item locked';
                     card.style.background = '#e6dfd1';
@@ -7421,7 +7601,6 @@ window.toggleReadingLog = function() {
         };
     }
 })();
-
         
         
         
