@@ -18,6 +18,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
+      <!-- 👇 新增這一行：用來解析實時電台廣播的套件 👇 -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
     <style>
         :root {
             --bg: #faf7f2; --paper: #ffffff; --text: #2c3e50; --text-muted: #8391a2; --border: #e6e1d6;
@@ -379,7 +382,33 @@
         #dev-toggle-btn { background: #2c3e50; color: white; border: 2px solid #e2e8f0; border-radius: 30px; padding: 10px 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: 0.3s; }
         #dev-toggle-btn:hover { background: #34495e; transform: translateY(-2px); }
         
-        #dev-test-panel { background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(10px); border: 1px solid #475569; width: 300px; border-radius: 16px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform-origin: bottom right; position: absolute; bottom: 0; right: 0; }
+     #dev-test-panel {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid #475569;
+            width: 300px;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: bottom right;
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            
+            /* 新增這三行來控制高度與滾動 */
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+            overscroll-behavior: contain; /* 防止滾動到底時連帶滾動整個網頁 */
+        }
+        
+        /* 替開發面板加上優雅的細線捲軸 */
+        #dev-test-panel::-webkit-scrollbar { width: 6px; }
+        #dev-test-panel::-webkit-scrollbar-track { background: transparent; }
+        #dev-test-panel::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        #dev-test-panel::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        #dev-test-panel.collapsed { transform: scale(0.8); opacity: 0; pointer-events: none; }
         #dev-test-panel.collapsed { transform: scale(0.8); opacity: 0; pointer-events: none; }
         
         .dev-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #475569; padding-bottom: 10px; }
@@ -487,11 +516,293 @@
 .gacha-light { position: absolute; inset: 0; background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 60%); opacity: 0; pointer-events: none; mix-blend-mode: overlay; }
 
         
+/* 👇 新增：視角旋鈕樣式 👇 */
+/* 👇 新增：實時視角旋鈕樣式 (右下角) 👇 */
+#mobile-cam-knob {
+    position: fixed; bottom: 30px; right: 20px; z-index: 3000;
+    width: 70px; height: 70px; background: rgba(250, 247, 242, 0.4);
+    border-radius: 50%; backdrop-filter: blur(8px); border: 2px solid rgba(255,255,255,0.4);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; touch-action: none; pointer-events: auto;
+}
+.knob-center {
+    width: 44px; height: 44px; background: #fff; border-radius: 50%;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.1);
+    position: relative;
+    /* 👇 加上這行平滑過渡，製造八段位的吸附手感 */
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.knob-indicator {
+    position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+    width: 6px; height: 14px; background: var(--color-replies); border-radius: 4px;
+}
+/* 僅在手機/平板尺寸顯示旋鈕，並自動把開發面板往左擠 */
+@media (max-width: 900px) {
+    #mobile-cam-knob { display: flex !important; }
+    #dev-panel-wrapper { right: 100px !important; }
+}
 
+
+
+        /* --- 沉浸式任務完成視窗 UI --- */
+#modal-gacha-buffer {
+    position: fixed; inset: 0;
+    background: rgba(20, 18, 16, 0.85); /* 深色半透明底 */
+    backdrop-filter: blur(12px); /* 毛玻璃效果 */
+    z-index: 60000;
+    display: none;
+    align-items: center; justify-content: center;
+    overflow: hidden;
+}
+ 
+/* 緩慢旋轉的金色背景光芒 */
+.reward-rays {
+    position: absolute; top: 50%; left: 50%;
+    width: 150vw; height: 150vw;
+    background: conic-gradient(from 0deg, transparent 0deg, rgba(212,175,55,0.06) 30deg, transparent 60deg, rgba(212,175,55,0.06) 90deg, transparent 120deg, rgba(212,175,55,0.06) 150deg, transparent 180deg, rgba(212,175,55,0.06) 210deg, transparent 240deg, rgba(212,175,55,0.06) 270deg, transparent 300deg, rgba(212,175,55,0.06) 330deg, transparent 360deg);
+    transform: translate(-50%, -50%);
+    animation: spinRays 40s linear infinite;
+    z-index: 1;
+    pointer-events: none;
+}
+@keyframes spinRays { 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+ 
+/* 獎勵卡片主體 (信箋風格) */
+.gacha-reward-card {
+    background-color: var(--letter-paper);
+    border: 1px solid #dcd5c9;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.5), inset 0 0 60px rgba(180, 160, 130, 0.15);
+    padding: 60px 50px;
+    border-radius: 8px;
+    max-width: 480px; width: 90%;
+    text-align: center;
+    position: relative;
+    z-index: 10;
+}
+ 
+/* 內部虛線裝飾框 */
+.gacha-reward-card::before {
+    content: ''; position: absolute; inset: 12px;
+    border: 1px dashed #c4b8aa; pointer-events: none;
+    border-radius: 4px;
+}
+ 
+.reward-title { color: #d4af37; font-size: 2.6rem; font-family: var(--font-serif); margin-bottom: 5px; letter-spacing: 4px; text-shadow: 0 2px 10px rgba(212,175,55,0.2); }
+.reward-subtitle { color: #8b7355; font-size: 1.1rem; font-family: var(--font-serif); margin-bottom: 30px; letter-spacing: 2px; }
+.reward-text { color: #5a5042; font-size: 1.1rem; line-height: 1.8; margin-bottom: 45px; font-family: var(--font-serif); }
+ 
+/* 華麗的漸層按鈕 */
+.btn-reward {
+    background: linear-gradient(135deg, #d4af37, #b8860b);
+    color: #fff;
+    border: none;
+    padding: 16px 45px;
+    font-size: 1.25rem;
+    font-family: var(--font-serif);
+    letter-spacing: 2px;
+    border-radius: 40px;
+    box-shadow: 0 10px 20px rgba(212, 175, 55, 0.3);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+.btn-reward:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 15px 30px rgba(212, 175, 55, 0.5);
+    filter: brightness(1.1);
+}
+
+
+
+
+
+/* =========================================================
+   四面牆：沉浸式視窗專屬 UI/UX 升級
+   ========================================================= */
+ 
+/* --- 1. 對我的回覆【珍藏木盒風格】 --- */
+#modal-replies .room-modal-content {
+    background: linear-gradient(135deg, #f3eee6 0%, #e6dcc7 100%);
+    box-shadow: inset 0 0 100px rgba(139, 115, 85, 0.15);
+    border: 8px solid #d4c8b6;
+    border-radius: 4px;
+}
+#modal-replies .modal-title {
+    text-align: center; border-bottom: none;
+    background: url('data:image/svg+xml;utf8,<svg width="100" height="20" xmlns="http://www.w3.org/2000/svg"><path d="M0,10 Q50,20 100,10 T200,10" fill="none" stroke="%23548ca8" stroke-width="1.5" opacity="0.3"/></svg>') bottom center repeat-x;
+    padding-bottom: 25px; margin-bottom: 40px;
+}
+#modal-replies .list-item {
+    background: #fffdfa;
+    border: none; border-left: 6px solid var(--color-replies);
+    border-radius: 4px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.06), 0 2px 5px rgba(0,0,0,0.04);
+    margin-bottom: 20px; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+#modal-replies .list-item:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 15px 35px rgba(84, 140, 168, 0.15);
+}
+ 
+/* --- 寄來的信箋【復古航空信封與郵戳】 --- */
+#modal-inbox .room-modal-content {
+    background-color: #f5f2eb; /* 乾淨溫暖的信紙底色 */
+    background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23d0c5b4' fill-opacity='0.15' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='1.5'/%3E%3C/g%3E%3C/svg%3E");
+    border: 1px solid #e3d9c6;
+    box-shadow: inset 0 0 60px rgba(180, 160, 130, 0.1);
+}
+#modal-inbox .modal-title { color: #4a5c68; border-bottom: 2px solid #d8e2e8; }
+#modal-inbox .tab-btn-custom { background: transparent; color: #8a9ba8; }
+#modal-inbox .tab-btn-custom.active { color: #4a5c68; }
+#modal-inbox .tab-btn-custom.active::after { background: #c25953; } /* 紅色底線 */
+ 
+/* 航空信封卡片 */
+#modal-inbox .list-item {
+    background: #ffffff !important;
+    border: none;
+    border-radius: 4px;
+    padding: 30px 40px;
+    margin-bottom: 25px;
+    position: relative;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.03), 0 1px 3px rgba(0,0,0,0.02);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden; /* 確保邊框不超出去 */
+}
+/* 經典紅藍航空信邊緣 */
+#modal-inbox .list-item::before {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 5px;
+    background: repeating-linear-gradient(45deg, #c25953, #c25953 15px, transparent 15px, transparent 30px, #548ca8 30px, #548ca8 45px, transparent 45px, transparent 60px);
+    opacity: 0.8;
+}
+/* 復古郵戳設計 (純CSS繪製) */
+.postmark-stamp {
+    position: absolute; right: 20px; top: 15px;
+    width: 65px; height: 65px;
+    border: 2px solid rgba(194, 89, 83, 0.4);
+    border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transform: rotate(15deg); pointer-events: none;
+}
+.postmark-stamp::before {
+    content: ''; position: absolute; inset: 4px; border: 1px dashed rgba(194, 89, 83, 0.3); border-radius: 50%;
+}
+.postmark-wave {
+    position: absolute; right: -35px; top: 25px;
+    width: 40px; height: 15px;
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(194, 89, 83, 0.3) 3px, rgba(194, 89, 83, 0.3) 5px);
+}
+
+        
+ 
+/* --- 我的閱讀紀錄【作家的陽光手帳本】 --- */
+#modal-log .room-modal-content {
+    /* 徹底捨棄黑色！改為明亮溫暖的方格手帳本底色 */
+    background-color: #f9f7f1;
+    background-image:
+        linear-gradient(rgba(180, 160, 130, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(180, 160, 130, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+    box-shadow: inset 0 0 50px rgba(0,0,0,0.02);
+    border: 1px solid #e8e2d5;
+}
+#modal-log .modal-title { color: #6b5c4d !important; font-family: var(--font-serif); border-bottom: none; }
+#mylog-editor { background: #fff; box-shadow: 0 10px 30px rgba(139, 115, 85, 0.1); border: 1px solid #e8e2d5; }
+ 
+/* 拼貼手帳紙片 */
+.log-index-card {
+    background: #ffffff;
+    border-radius: 2px;
+    padding: 40px 35px 30px 35px;
+    position: relative;
+    box-shadow: 2px 5px 15px rgba(139, 115, 85, 0.08);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* 淡淡的紙張紋理 */
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.02'/%3E%3C/svg%3E");
+}
+/* 紙膠帶裝飾 (半透明抹茶綠) */
+.log-index-card::before {
+    content: ''; position: absolute; top: -12px; left: 50%;
+    transform: translateX(-50%) rotate(-2deg);
+    width: 100px; height: 28px;
+    background: rgba(142, 158, 130, 0.65); /* 抹茶綠 */
+    backdrop-filter: blur(2px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    /* 模擬撕爛的不規則邊緣 */
+    clip-path: polygon(2% 0%, 98% 2%, 100% 98%, 0% 100%);
+    z-index: 5;
+}
+.log-index-card:hover {
+    transform: translateY(-5px) rotate(1deg);
+    box-shadow: 8px 15px 30px rgba(139, 115, 85, 0.12);
+}
+
+        
+ 
+/* --- 4. 我的任務板【軟木壁布與拍立得風格】 --- */
+#modal-tasks .room-modal-content {
+    background: #f4f6f3;
+    background-image: radial-gradient(#dcdcdc 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+#modal-tasks .task-card {
+    background: #fff; border: none; border-radius: 2px;
+    padding: 15px 15px 35px 15px; /* 下方留白模擬拍立得 */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    position: relative; transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* 模擬上方用紙膠帶貼住 */
+#modal-tasks .task-card::before {
+    content: ''; position: absolute; top: -8px; left: 50%; transform: translateX(-50%) rotate(-2deg);
+    width: 40px; height: 15px; background: rgba(220, 215, 205, 0.8);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+#modal-tasks .task-card:hover { transform: scale(1.05) rotate(2deg); box-shadow: 0 15px 30px rgba(0,0,0,0.12); z-index: 10; }
+#modal-tasks .task-card.locked { filter: grayscale(100%) opacity(0.6); }
+ 
+/* --- 響應式手機優化 --- */
+@media (max-width: 768px) {
+    #modal-replies .list-item { padding: 15px 20px; flex-direction: column; align-items: flex-start; gap: 10px; }
+    #modal-replies .badge { margin-right: 0; margin-bottom: 5px; }
+    .log-index-card { padding: 20px; }
+    #modal-inbox .tab-btn-custom { font-size: 1rem; padding: 10px 15px; }
+}
+
+
+
+        .knob-center {
+    width: 44px; height: 44px; background: #fff; border-radius: 50%;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.1);
+    position: relative;
+    /* 👇 加上這行平滑過渡，製造八段位的吸附手感與雙視角顏色變換 */
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s ease;
+}
+
+        /* 登入讀取專用動畫 */
+.auth-loading-spinner {
+    width: 45px; height: 45px;
+    border: 3px solid rgba(160, 140, 120, 0.15);
+    border-top-color: var(--color-replies);
+    border-radius: 50%;
+    animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    margin: 0 auto 15px auto;
+}
+.loading-text-cycle {
+    font-size: 1.15rem; color: #8c7a6b; 
+    font-family: var(--font-serif); 
+    letter-spacing: 2px;
+    animation: pulseText 2s infinite ease-in-out;
+}
+@keyframes pulseText {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
         
     </style>
 </head>
 <body>
+
+     <!-- 👇 新增這行：隱藏的音訊播放器 👇 -->
+    <audio id="rthk-audio" style="display:none;"></audio>
 
     <div id="notification-banner"><span id="notification-text">您有新訊息。</span></div>
     <div id="toast-container">通知訊息</div>
@@ -541,6 +852,10 @@
                 <div class="dev-grid">
                     <button class="dev-btn span-2 highlight" onclick="addPointsAndGacha(1000, true)">🎁 獲取 1000 分並抽獎</button>
                     <button class="dev-btn" onclick="devDisableHandwriting()">⌨️ 解鎖鍵盤</button>
+                      <!-- 👇 新增這兩個按鈕 👇 -->
+                    <button class="dev-btn span-2 highlight" style="background:#16a34a; border-color:#15803d;" onclick="devUnlockAllAssets()">💎 一鍵解鎖</button>
+                    <button class="dev-btn span-2 danger" style="background:#78350f; border-color:#451a03;" onclick="devSimulateBankruptcy()">🍂 欠交破產</button>
+                    <!-- 👆 新增結束 👆 -->
                     <button class="dev-btn danger" onclick="devResetAccount()">⚠️ 帳號重置</button>
                 </div>
             </div>
@@ -591,12 +906,31 @@
                 <input type="text" id="setup-name" class="input-box" placeholder="例如：林小明">
                 <button class="btn" id="btn-setup-name" onclick="saveName()">確認進入</button>
             </div>
+
+
+<!-- 👇 新增的讀取畫面容器 👇 -->
+            <div id="auth-loading-container" class="auth-letter-content" style="display:none; padding: 20px 0;">
+                <div class="auth-loading-spinner"></div>
+                <h2 style="font-size: 1.6rem; color: var(--letter-ink); letter-spacing: 4px; margin-bottom: 5px;">見字如面</h2>
+                <p id="loading-cycle-text" class="loading-text-cycle">正在為您準備...</p>
+            </div>
+            
         </div>
     </div>
 
     <!-- 3D Room Container & Header -->
     <div id="room-canvas-container"></div>
     <div id="room-ui-layer">
+
+
+<!-- 👇 新增：移動端專屬 360 度實時視角旋鈕 👇 -->
+    <div id="mobile-cam-knob" style="display:none;">
+        <div class="knob-center" id="knob-dial">
+            <div class="knob-indicator"></div>
+        </div>
+    </div>
+
+        
 
 <!-- 加入在 <div id="room-ui-layer"> 內部即可 -->
 <button id="btn-return-room" class="btn" style="display:none; position:fixed; bottom:40px; left:50%; transform:translateX(-50%); z-index:4000; background:rgba(250, 247, 242, 0.85); backdrop-filter:blur(5px); color:#2c3e50; border: 1px solid #dcd5c9; box-shadow: 0 10px 25px rgba(0,0,0,0.1);" onclick="returnToRoom()">
@@ -810,13 +1144,43 @@
     </div>
 
 
+    <!-- 🍂 破產懲罰視窗 -->
+<div id="modal-bankruptcy" class="room-modal" style="z-index: 100005;">
+    <div class="room-modal-content" style="max-width: 480px; text-align: center; background: #2a2421; border: 2px solid #5a4a42; box-shadow: 0 30px 60px rgba(0,0,0,0.6);">
+        <h2 style="color: #d98a6c; font-size: 2.2rem; margin-bottom: 15px; font-family: var(--font-serif); border-bottom: 1px dashed #5a4a42; padding-bottom: 20px;">🍂 遺忘的代價</h2>
+        <p style="font-size: 1.15rem; color: #dcd5c9; margin-bottom: 25px; line-height: 1.8; font-family: var(--font-serif);">
+            光陰似箭，筆墨荒蕪。<br>
+            您有任務逾期未交已達四日，<br>辜負了這段文字的約定。
+        </p>
+        <div style="background: rgba(0,0,0,0.4); padding: 18px; border-radius: 8px; margin-bottom: 30px; color: #a48c76; font-size: 0.95rem; line-height: 1.6; text-align: left;">
+            <span style="color: #ef4444;">【系統宣告破產】</span><br>
+            已沒收您所有的積分與房間佈置。<br>但請放心，您過往寫下的文字仍會被珍藏，希望您能重拾紀律，重新出發。
+        </div>
+        <button class="btn" style="background: #8b7355; color: #fff; width: 100%; border: none; font-size: 1.2rem; padding: 15px;" onclick="acceptBankruptcy()">默默承受</button>
+    </div>
+</div>
+
 
 <!-- 抽獎前緩衝提示 -->
-    <div id="modal-gacha-buffer" class="room-modal">
-        <div class="room-modal-content" style="max-width: 400px; text-align: center; background: #fdfaf6; padding: 50px 30px;">
-            <h2 style="color: #d4af37; font-size: 2.2rem; margin-bottom: 20px; font-family: var(--font-serif);">🎉 任務完成</h2>
-            <p style="font-size: 1.1rem; color: #6b4423; margin-bottom: 40px; line-height: 1.6;">感謝您的用心分享！<br>為獎勵您的參與，您獲得了一次抽取房間道具的機會。</p>
-            <button class="btn" style="background: #d4af37; color: #fff; width: 100%; border:none; font-size: 1.2rem; padding: 15px;" id="btn-start-gacha">拆開驚喜</button>
+  <!-- 沉浸式任務完成與抽獎緩衝畫面 -->
+    <div id="modal-gacha-buffer">
+        <div class="reward-rays"></div>
+        <div class="gacha-reward-card" id="reward-card-anim">
+            <!-- 裝飾用 SVG 勾勾 -->
+            <svg viewBox="0 0 24 24" width="56" height="56" stroke="#d4af37" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 20px;">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            
+            <h2 class="reward-title">書寫的餽贈</h2>
+            <div class="reward-subtitle">任務圓滿達成</div>
+            
+            <p class="reward-text">
+                感謝您的用心分享，文字已化為實體。<br>
+                在時光的流轉中，您獲得了一次佈置房間的機會。
+            </p>
+            
+            <button class="btn-reward" id="btn-start-gacha">拆開驚喜禮物</button>
         </div>
     </div>
     
@@ -894,6 +1258,47 @@ window.devResetAccount = function() {
         });
     }
 };
+
+        
+// 👇👇👇 貼在這裡 👇👇👇
+
+// 🍂 開發測試：一鍵觸發破產清算視窗
+window.devSimulateBankruptcy = function() {
+    if(confirm("確定要模擬破產嗎？這將清空您的積分與所有房間佈置，並且強制彈出懲罰視窗。")) {
+        // 直接將分數歸零並刪除所有道具
+        db.ref(`users/${currentUser.uid}/points`).set(0);
+        db.ref(`users/${currentUser.uid}/inventory`).remove().then(() => {
+            // 同步本地變數
+            userPoints = 0;
+            userInventory = {};
+            document.getElementById('user-points-text').innerText = '0';
+            
+            // 彈出我們設計好的破產視窗
+            document.getElementById('modal-bankruptcy').style.display = 'flex';
+        });
+    }
+};
+
+// 💎 開發測試：一鍵擁有全部資產與權限
+window.devUnlockAllAssets = function() {
+    if(confirm("確定要直接解鎖所有資產嗎？這會讓您擁有所有家具與權限，畫面將會重新載入。")) {
+        let fullInventory = {};
+        
+        // 遍歷道具字典，把所有東西都塞進背包
+        Object.keys(ITEM_REGISTRY).forEach(id => {
+            fullInventory[id] = true;
+        });
+        
+        // 給予 99999 分，並寫入完整背包
+        db.ref(`users/${currentUser.uid}/points`).set(99999);
+        db.ref(`users/${currentUser.uid}/inventory`).set(fullInventory).then(() => {
+            showToast("💎 已發放滿配資產！重新載入中...");
+            setTimeout(() => window.location.reload(), 1000);
+        });
+    }
+};
+
+// 👆👆👆 貼到這裡結束 👆👆👆
         
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzcangpOrf05ZRhxzoMUN-C9T57CS3_G80to1lLWv4opXuHbYMMMuKXzap7kkcou3BPsQ/exec"; 
         const firebaseConfig = { apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms", authDomain: "letter-a74d1.firebaseapp.com", databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com", projectId: "letter-a74d1" };
@@ -936,10 +1341,12 @@ const ITEM_REGISTRY = {
     'clock': { name: '極簡掛鐘', desc: '提醒你時間流逝的步伐', type: 'model', minPts: 0 },
     'chair': { name: '復古書桌椅', desc: '符合人體工學的閱讀良伴', type: 'model', minPts: 0 },
     'cat': { name: '橘白小貓', desc: '一隻會四處閒晃睡覺的小貓', type: 'model', minPts: 0 },
-    'painting_1': { name: '畫作一', desc: '為牆面增添藝術氣息', type: 'model', minPts: 0 },
-    'painting_2': { name: '畫作二', desc: '為牆面增添藝術氣息', type: 'model', minPts: 0 },
-    'painting_3': { name: '畫作三', desc: '為牆面增添藝術氣息', type: 'model', minPts: 0 },
-    'painting_4': { name: '畫作四', desc: '為牆面增添藝術氣息', type: 'model', minPts: 0 },
+    'painting_1': { name: '攝影作品一', desc: '為牆面增添藝術氣息', type: 'model', minPts: 0 },
+    'painting_2': { name: '攝影作品二', desc: '為牆面增添藝術氣息', type: 'model', minPts: 0 },
+    'painting_3': { name: '攝影作品三', desc: '為牆面增添藝術氣息', type: 'model', minPts: 0 },
+    'painting_4': { name: '攝影作品四', desc: '為牆面增添藝術氣息', type: 'model', minPts: 0 },
+     // 👇 新增收音機 👇
+    'radio': { name: '復古收音機', desc: '實時播放香港電台，陪伴閱讀時光', type: 'model', minPts: 0 },
     'piano_model': { name: '直立式鋼琴', desc: '黑色的典雅樂器實體', type: 'model', minPts: 0 },
     'piano_bench': { name: '鋼琴椅', desc: '搭配鋼琴的皮革長凳', type: 'model', minPts: 0 },
    'curtain': { name: '雙層遮光窗簾', desc: '調節室內光線的質感窗簾', type: 'model', minPts: 0 },
@@ -988,35 +1395,42 @@ let userPlantData = null; let timeForced = false;
             setTimeout(() => gsap.to(toast, {y: 100, opacity: 0, duration: 0.5}), 3500);
         }
 
- auth.onAuthStateChanged(user => {
+auth.onAuthStateChanged(user => {
     if (user) {
-        const email = user.email.toLowerCase();
+        // 👇 1. 一偵測到使用者，立刻隱藏登入按鈕，顯示唯美 Loading 畫面
+        document.getElementById('login-container').style.display = 'none';
+        document.getElementById('name-setup-container').style.display = 'none';
+        document.getElementById('auth-loading-container').style.display = 'flex';
         
-        // 【關鍵】：將 email 中的 . 替換成 , 以符合 Firebase 的 Key 規則
+        // 👇 2. 啟動充滿文學氣息的跑馬燈文字
+        const loadingMsgs = ["拂去桌上的塵埃...", "正在為您點亮檯燈...", "鋪平信紙...", "正在還原您的書房...", "靜候靈魂的共鳴..."];
+        let msgIdx = 0;
+        const textEl = document.getElementById('loading-cycle-text');
+        window.authLoadingInterval = setInterval(() => {
+            msgIdx = (msgIdx + 1) % loadingMsgs.length;
+            textEl.innerText = loadingMsgs[msgIdx];
+        }, 1500);
+
+        const email = user.email.toLowerCase();
         const encodedEmail = email.replace(/\./g, ',');
 
-        // 1. 直接去 special_users 節點尋找這個人的信箱是不是 true
         db.ref(`special_users/${encodedEmail}`).once('value').then(snap => {
-            const isSpecialUser = snap.val() === true; // 如果是 true 代表在特許名單內
-            
+            const isSpecialUser = snap.val() === true; 
             const isCCCKYC = email.endsWith('@ccckyc.edu.hk');
             const isKenchan = email.includes('kenchan');
 
-            // 2. 核心過濾機制：不符合任何一項條件，強制踢出！
             if (!isCCCKYC && !isKenchan && !isSpecialUser) {
                 alert("很抱歉，您的電郵不符合註冊與登入資格。");
                 auth.signOut();
-                return; // 終止後續載入
+                return; 
             }
 
-            // 3. 通過審查，繼續進入房間
             currentUser = user;
             db.ref(`users/${user.uid}`).once('value').then(userSnap => {
                 let data = userSnap.val();
                 if (data && data.name) { 
                     document.getElementById('user-name').innerText = data.name; 
                     
-                    // 判斷是否為老師並分班
                     if (isTeacherEmail(user.email) && data.classId !== 'teacher_class') {
                         db.ref(`users/${user.uid}`).update({ classId: 'teacher_class' });
                         db.ref('classes/teacher_class').update({ name: "老師" });
@@ -1025,11 +1439,12 @@ let userPlantData = null; let timeForced = false;
                         currentUser.classId = data.classId || 'default'; 
                     }
                     
-                    hideAuthOverlay(); 
-                    initApp(); 
+                    initApp(); // 開始載入 3D 房間
                 } 
                 else { 
-                    document.getElementById('login-container').style.display = 'none'; 
+                    // 如果是新帳號要設定名稱，停止 Loading 跑馬燈
+                    if(window.authLoadingInterval) clearInterval(window.authLoadingInterval);
+                    document.getElementById('auth-loading-container').style.display = 'none'; 
                     document.getElementById('name-setup-container').style.display = 'flex'; 
                 }
             });
@@ -1038,13 +1453,31 @@ let userPlantData = null; let timeForced = false;
         document.getElementById('auth-overlay').style.display = 'flex'; 
         document.getElementById('login-container').style.display = 'flex'; 
         document.getElementById('name-setup-container').style.display = 'none'; 
+        document.getElementById('auth-loading-container').style.display = 'none'; 
         document.getElementById('room-canvas-container').style.display = 'none'; 
         initAuthThreeJS(); 
     }
 });
 
+// 👇 確保房間載入完畢，淡出登入畫面時，要關閉計時器
+function hideAuthOverlay() { 
+    if(window.authLoadingInterval) clearInterval(window.authLoadingInterval);
+    gsap.to("#auth-overlay", { opacity: 0, duration: 0.8, onComplete: () => { 
+        document.getElementById('auth-overlay').style.display = 'none'; 
+    }}); 
+}
 
-        function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert("登入失敗")); }
+function signIn() { 
+            const btn = document.querySelector('.btn-google');
+            btn.innerHTML = `<div style="width:16px; height:16px; border:2px solid #94a3b8; border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite;"></div> 連接 Google 中...`;
+            btn.disabled = true;
+
+            auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => {
+                alert("登入已取消或發生錯誤");
+                btn.innerHTML = `使用 Google 帳號登入`;
+                btn.disabled = false;
+            }); 
+        }
         function signOut() { auth.signOut().then(() => window.location.reload()); }
      function saveName() { 
     const name = document.getElementById('setup-name').value.trim(); 
@@ -1075,68 +1508,152 @@ let userPlantData = null; let timeForced = false;
 }
         function hideAuthOverlay() { gsap.to("#auth-overlay", { opacity: 0, duration: 0.6, onComplete: () => { document.getElementById('auth-overlay').style.display = 'none'; }}); }
 
-       function initApp() { 
-// 👇 加入這行：每次使用者登入進入房間，就更新他的最後上線時間
-db.ref(`users/${currentUser.uid}/lastLoginTime`).set(firebase.database.ServerValue.TIMESTAMP);
+function initApp() { 
+    db.ref(`users/${currentUser.uid}/lastLoginTime`).set(firebase.database.ServerValue.TIMESTAMP);
 
-db.ref(`users/${currentUser.uid}`).on('value', snap => {
-    let data = snap.val() || {};
-    userPoints = data.points || 0;
-    userInventory = data.inventory || {};
-    
-    // 更新權限布林值
-    hasPianoPrivilege = !!userInventory['piano_use'];
-    hasCurtainPrivilege = !!userInventory['curtain'];
-    hasDoorPrivilege = !!userInventory['door_use'];
-    
-    document.getElementById('user-points-text').innerText = userPoints;
-    
-   // 👇 【修改】根據趟門維修狀態，同時限制左右與上下的旋轉角度
-     // 👇 【修改】無論趟門是否維修，只要人在室內，一律嚴格鎖死視角避免穿破房間
-    if (typeof controls !== 'undefined' && !isAtBalcony) {
-        controls.enablePan = false;            // 禁用滑鼠右鍵平移
-        controls.minAzimuthAngle = -Math.PI / 2; // 限制左旋轉 90 度
-        controls.maxAzimuthAngle = Math.PI / 2;  // 限制右旋轉 90 度
-        controls.minPolarAngle = 1.15;         // 限制抬頭角度，防止看到天花板破綻
-        controls.maxDistance = 59;             // 限制最大後退距離，防止穿透背後的牆
-    }
-    
-    // 遍歷整個場景，隱藏未解鎖的實體模型
-    scene.traverse((obj) => {
-        if (obj.userData && obj.userData.itemId) {
-            if (ITEM_REGISTRY[obj.userData.itemId]) {
-                obj.visible = !!userInventory[obj.userData.itemId];
+    db.ref(`users/${currentUser.uid}`).on('value', snap => {
+        let data = snap.val() || {};
+        userPoints = data.points || 0;
+        userInventory = data.inventory || {};
+        
+        hasPianoPrivilege = !!userInventory['piano_use'];
+        hasCurtainPrivilege = !!userInventory['curtain'];
+        hasDoorPrivilege = !!userInventory['door_use'];
+        
+        document.getElementById('user-points-text').innerText = userPoints;
+        
+        if (typeof controls !== 'undefined' && !isAtBalcony) {
+            controls.enablePan = false;            
+            if (window.knobMode === 2) {
+                controls.minAzimuthAngle = Math.PI / 2;    
+                controls.maxAzimuthAngle = Math.PI * 1.5;
+            } else {
+                controls.minAzimuthAngle = -Math.PI / 2;   
+                controls.maxAzimuthAngle = Math.PI / 2;  
             }
+            controls.minPolarAngle = 1.15;         
+            controls.maxDistance = 59;             
+        }
+        
+        if(scene) {
+            scene.traverse((obj) => {
+                if (obj.userData && obj.userData.itemId) {
+                    if (ITEM_REGISTRY[obj.userData.itemId]) {
+                        obj.visible = !!userInventory[obj.userData.itemId];
+                    }
+                }
+            });
         }
     });
-});
 
-           
-            document.getElementById('room-canvas-container').style.display = 'block'; 
-            initRoomScene(); healPool();
-            db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); 
-            setupNotifications(); loadMailbox(); loadUserPlant(); initHandwriting();
+    document.getElementById('room-canvas-container').style.display = 'block'; 
+    
+    // 1. 先建立 3D 場景
+    initRoomScene(); 
+    
+    // 2. 👇 【關鍵修復】：強制 WebGL 在背景預先編譯並渲染一幀 (預熱)
+    renderer.compile(scene, camera);
+    renderer.render(scene, camera);
 
-            // 【新增】如果是老師，自動解除所有手寫板限制，允許直接打字
-            if (isTeacherEmail(currentUser.email)) {
-                document.querySelectorAll('.handwrite-only').forEach(el => { 
-                    el.removeAttribute('readonly'); 
-                    el.classList.remove('handwrite-only'); 
-                    let placeholder = el.nextElementSibling; 
-                    if (placeholder && placeholder.classList.contains('handwrite-placeholder')) { 
-                        placeholder.style.display = 'none'; 
-                    } 
+    // 3. 預熱完成後，才把白色的登入介面優雅地淡出 (這樣就不會黑屏了！)
+    hideAuthOverlay();
+
+    healPool();
+    db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); 
+    setupNotifications(); 
+    loadMailbox(); 
+    loadUserPlant(); 
+    initHandwriting();
+    auditAntiCheat(); 
+
+    if (isTeacherEmail(currentUser.email)) {
+        document.querySelectorAll('.handwrite-only').forEach(el => { 
+            el.removeAttribute('readonly'); 
+            el.classList.remove('handwrite-only'); 
+            let placeholder = el.nextElementSibling; 
+            if (placeholder && placeholder.classList.contains('handwrite-placeholder')) { 
+                placeholder.style.display = 'none'; 
+            } 
+        });
+    }
+
+    if (document.getElementById('dev-panel-wrapper')) {
+        document.getElementById('dev-panel-wrapper').style.display = isDevUser(currentUser.email) ? 'block' : 'none';
+    }
+}
+
+
+
+// 🛡️ 防作弊稽核系統：驗證積分與任務數量是否匹配
+function auditAntiCheat() {
+    if (!currentUser) return;
+
+    // 👇 【新增這段】：如果是開發者或老師，直接跳過防作弊檢查，允許自由加分與測試道具！
+    if (typeof isDevUser === 'function' && isDevUser(currentUser.email)) {
+        console.log("🛠️ 開發者/老師帳號，已豁免防作弊稽核。");
+        return; 
+    }
+
+    // 同時抓取該學生的：1.寄出的信件 2.繳交的探索任務 3.收件箱的對話串狀態
+    Promise.all([
+        db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value'),
+        db.ref('random_task_submissions').orderByChild('senderUid').equalTo(currentUser.uid).once('value'),
+        db.ref(`user_threads/${currentUser.uid}`).once('value')
+    ]).then(([rSnap, randSnap, threadSnap]) => {
+        
+        // 1. 計算「閱讀心得」數量 (排除 type === 'random' 的信件)
+        const readingLetters = Object.values(rSnap.val() || {}).filter(l => l.type !== 'random');
+        const readingCount = readingLetters.length;
+        
+        // 2. 計算「探索任務」數量
+        const randSubs = Object.values(randSnap.val() || {});
+        const randomCount = randSubs.length;
+        
+        // 3. 計算「回信」數量
+        const threads = Object.values(threadSnap.val() || {});
+        const replyCount = threads.filter(t => !t.isSender && t.hasReplied).length;
+
+        // 🧮 計算「應得的最高合法總分」
+        const expectedPoints = (readingCount * 1000) + (randomCount * 500) + (replyCount * 1000);
+
+        // 🔍 比對資料庫中目前的分數
+        db.ref(`users/${currentUser.uid}`).once('value').then(userSnap => {
+            let userData = userSnap.val() || {};
+            let currentPoints = userData.points || 0;
+
+            // 🚨 如果發現異常 (資料庫分數 > 實際應得分數)
+            if (currentPoints > expectedPoints) {
+                console.warn(`⚠️ 偵測到異常積分！實際應得: ${expectedPoints}, 資料庫遭竄改為: ${currentPoints}`);
+                
+                // 懲罰 1：強制將分數覆蓋回「合法分數」
+                db.ref(`users/${currentUser.uid}/points`).set(expectedPoints);
+                userPoints = expectedPoints; 
+                document.getElementById('user-points-text').innerText = expectedPoints;
+
+                // 懲罰 2：檢查並沒收不該擁有的道具
+                let inventory = userData.inventory || {};
+                let inventoryModified = false;
+                
+                Object.keys(inventory).forEach(itemId => {
+                    if (ITEM_REGISTRY[itemId] && expectedPoints < ITEM_REGISTRY[itemId].minPts) {
+                        db.ref(`users/${currentUser.uid}/inventory/${itemId}`).remove();
+                        inventoryModified = true;
+                    }
                 });
-            }
 
- // 👇👇👇 請把這段加在這裡 👇👇👇
-        // 根據電郵判斷是否顯示開發面板
-        if (document.getElementById('dev-panel-wrapper')) {
-            document.getElementById('dev-panel-wrapper').style.display = isDevUser(currentUser.email) ? 'block' : 'none';
-        }
-        // 👆👆👆 加到這裡為止 👆👆👆
-           
-        }
+                if (inventoryModified) {
+                    alert("⚠️ 系統偵測到您的積分與實際完成的任務數量不符。\n已自動校正您的積分，並收回非法取得的道具與權限。");
+                    window.location.reload(); 
+                }
+            }
+        });
+    });
+}
+
+
+
+
+        
 
       function healPool() {
     db.ref('users').once('value').then(userSnap => {
@@ -1403,8 +1920,13 @@ function renderTasks() {
             
 
            // 2. 渲染隨機任務
+            // 2. 渲染隨機任務
              const submittedRandomDates = randSubs.map(s => s.taskDate);
             
+            // 👇 【新增】：在這裡呼叫破產檢查系統 👇
+            checkAndTriggerBankruptcy(readingTasks, randomTasks, submittedReadingDates, submittedRandomDates);
+            // 👆 【新增結束】 👆
+
             // 【新增】建立一個 Map 方便透過日期找到對應的繳交紀錄與 letterId
             const randMap = {};
             randSubs.forEach(s => {
@@ -1460,7 +1982,6 @@ function renderTasks() {
 
 
 // 給予積分，如果是閱讀任務則額外進行抽獎
-// 給予積分，如果是閱讀任務則額外進行抽獎
 function addPointsAndGacha(points, triggerGachaAnim) {
     userPoints += points;
     db.ref(`users/${currentUser.uid}/points`).set(userPoints);
@@ -1475,12 +1996,25 @@ function addPointsAndGacha(points, triggerGachaAnim) {
             db.ref(`users/${currentUser.uid}/inventory/${wonId}`).set(true);
             
             // 延遲 1.5 秒等信封飛走後，顯示緩衝畫面
-            setTimeout(() => { 
-                document.getElementById('modal-gacha-buffer').style.display = 'flex';
-                // 綁定點擊按鈕後才進入 3D 抽獎
+            setTimeout(() => {
+                const bufferModal = document.getElementById('modal-gacha-buffer');
+                bufferModal.style.display = 'flex';
+                
+                // 👇 加入 GSAP 進場動畫，增添高級感
+                gsap.fromTo(bufferModal, { opacity: 0 }, { opacity: 1, duration: 0.5 });
+                gsap.fromTo("#reward-card-anim",
+                    { y: 60, opacity: 0, scale: 0.95 },
+                    { y: 0, opacity: 1, scale: 1, duration: 0.8, ease: "back.out(1.2)", delay: 0.2 }
+                );
+ 
+                // 綁定點擊按鈕後才進入 3D 抽獎 (加入退場動畫)
                 document.getElementById('btn-start-gacha').onclick = () => {
-                    document.getElementById('modal-gacha-buffer').style.display = 'none';
-                    showGachaAnim(wonId); 
+                    gsap.to(bufferModal, {
+                        opacity: 0, duration: 0.5, onComplete: () => {
+                            bufferModal.style.display = 'none';
+                            showGachaAnim(wonId);
+                        }
+                    });
                 };
             }, 1500);
         } else {
@@ -1721,7 +2255,7 @@ else processReply(letterId, partnerUid, ObjectData);
                 });
                 
                 let rec = "";
-             let rec = "";
+          
                 if (eligibleUids.length > 0) {
                     if (selectedTaskIndex === 'free') {
                         // ✨ 自由撰寫邏輯：發送給「最近上線」的同學
@@ -1758,7 +2292,7 @@ else processReply(letterId, partnerUid, ObjectData);
                     db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: ts });
                     if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
                     else db.ref(`unassigned_letters/${ref.key}`).set({ senderUid: currentUser.uid });
-                   db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
+                  db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
                         isSubmittingLog = false; 
                         
                         // 【新增】成功寄出後，清除這四個欄位的 SessionStorage 暫存
@@ -1769,6 +2303,9 @@ else processReply(letterId, partnerUid, ObjectData);
                         document.getElementById('write-editor').style.display = 'none'; document.getElementById('task-grid').style.display = 'grid'; 
                        if(document.getElementById('free-read-btn-wrap')) document.getElementById('free-read-btn-wrap').style.display = 'block';
                         renderTasks(); showToast('心得已隨信箋寄出！'); 
+                        
+                        // 👇👇👇 加上這行：完成閱讀心得給予 1000 積分並觸發抽獎動畫
+                        addPointsAndGacha(1000, true);
                     });
                 });
             });
@@ -1827,7 +2364,7 @@ function processRandomTask(data) {
             // 組合對話內容
             const combinedText = `【探索任務】\n${currentDrawnState.drawnTask}\n\n【備註與感悟】\n${data.text || '（無備註）'}`;
             
-          db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: combinedText, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
+       db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: combinedText, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
                 const btn = document.getElementById('btn-submit-random');
                 btn.innerText = "封裝完成任務"; btn.disabled = false;
                 
@@ -1837,6 +2374,9 @@ function processRandomTask(data) {
                 document.getElementById('random-editor').style.display = 'none'; 
                 document.getElementById('random-task-grid').style.display = 'grid'; 
                 renderTasks(); showToast('探索任務已隨信箋寄出！'); 
+                
+                // 👇👇👇 加上這行：完成探索任務給予 500 積分（通常不觸發強制抽獎動畫，只加分）
+                addPointsAndGacha(500, false);
             });
         });
     });
@@ -1844,12 +2384,23 @@ function processRandomTask(data) {
 
         
 
-        function processReply(id, pUid, text) {
+       function processReply(id, pUid, text) {
             const ts = firebase.database.ServerValue.TIMESTAMP;
-            db.ref(`conversations/${id}`).push({ senderUid: currentUser.uid, text, timestamp: ts }).then(() => {
-                if (pUid) db.ref(`user_threads/${pUid}/${id}`).update({ hasUnread: true, lastUpdated: ts, hasBeenRepliedTo: true });
-                db.ref(`user_threads/${currentUser.uid}/${id}`).update({ hasUnread: false, hasReplied: true, lastUpdated: ts }).then(() => { 
-                    isSubmittingReply = false; closeChatModal(); showToast("回信已成功寄出！");
+            
+            // 👇 修改：先去資料庫檢查這封信是否為「首次回覆」
+            db.ref(`user_threads/${currentUser.uid}/${id}/hasReplied`).once('value').then(snap => {
+                const isFirstReply = !snap.val(); // 如果原本是 false 或是 null，代表是第一次回覆
+                
+                db.ref(`conversations/${id}`).push({ senderUid: currentUser.uid, text, timestamp: ts }).then(() => {
+                    if (pUid) db.ref(`user_threads/${pUid}/${id}`).update({ hasUnread: true, lastUpdated: ts, hasBeenRepliedTo: true });
+                    db.ref(`user_threads/${currentUser.uid}/${id}`).update({ hasUnread: false, hasReplied: true, lastUpdated: ts }).then(() => { 
+                        isSubmittingReply = false; closeChatModal(); showToast("回信已成功寄出！");
+                        
+                        // 👇👇👇 加上這段：如果是首次回覆，給予 1000 積分並觸發抽獎動畫
+                        if (isFirstReply) {
+                            addPointsAndGacha(1000, true);
+                        }
+                    });
                 });
             });
         }
@@ -1871,13 +2422,22 @@ function processRandomTask(data) {
             } catch (error) { alert("圖片上傳發生異常：" + error.message); isSubmittingLog = false; btn.innerText = "封裝寄出心得"; btn.disabled = false; }
         }
 
-        function loadUserPlant() { 
-            db.ref(`users/${currentUser.uid}/plant`).on('value', snap => { 
-                let p = snap.val(); userPlantData = p;
-                if (p) { updatePlantStateLogic(p); } 
-                else { if(plantGroup) { desk.remove(plantGroup); interactables = interactables.filter(i => !(i.userData && i.userData.type === 'plant')); plantGroup = null; } }
-            }); 
+  function loadUserPlant() {
+    db.ref(`users/${currentUser.uid}/plant`).on('value', snap => {
+        let p = snap.val();
+        userPlantData = p;
+        
+        if (p) {
+            // 有植物數據，正常更新狀態與生長
+            updatePlantStateLogic(p);
+        } else {
+            // 【修復關鍵】：沒有植物時，不能刪除模型！
+            // 傳入 type=0, growth=0, wilt=0，這樣系統只會畫出「花盆與泥土」，不會畫出葉子。
+            // 這樣桌上就會有一個空花盆可以讓用家點擊。
+            buildPlantIn3D(0, 0, 0);
         }
+    });
+}
 
         function selectPlant(type) { 
             let initialData = { type: type, growth: 0, wilt: 0, lastWatered: Date.now(), plantedAt: Date.now(), daysAccompanied: 0, isDead: false }; 
@@ -1980,7 +2540,38 @@ function renderList(type, data) {
         }
 
         el.onclick = () => { closeRoomModal(null, isReplyList ? 'modal-replies' : 'modal-inbox'); openChatModal(t.letterId); }; 
-        el.innerHTML = `${badge}<div class="item-title">${titleHtml}</div><div class="item-time">${timeStr}</div>`; 
+       // 尋找 renderList 函數，並替換裡面生成 HTML 的段落：
+ let iconSvg = isReplyList
+            ? `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="1.5" fill="none" style="color:var(--color-replies); margin-right:15px; flex-shrink:0;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>`
+            : `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="1.5" fill="none" style="color:#a48c76; margin-right:15px; flex-shrink:0;"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>`;
+ 
+        el.onclick = () => { closeRoomModal(null, isReplyList ? 'modal-replies' : 'modal-inbox'); openChatModal(t.letterId); };
+        
+        // 判斷是否為「寄來的信箋」(modal-inbox)，如果是，加上隨機旋轉的復古郵戳
+        let postmarkHtml = '';
+        if (!isReplyList) {
+            let randomRot = Math.floor(Math.random() * 40) - 20; // -20 到 20 度的隨機旋轉
+            postmarkHtml = `
+                <div class="postmark-stamp" style="transform: rotate(${randomRot}deg);">
+                    <span style="font-size: 0.6rem; color: rgba(194,89,83,0.5); font-weight: bold; letter-spacing: 1px;">POST</span>
+                    <span style="font-size: 0.5rem; color: rgba(194,89,83,0.4);">${new Date(t.lastUpdated).getDate()} OCT</span>
+                    <div class="postmark-wave"></div>
+                </div>`;
+        }
+ 
+        el.innerHTML = `
+            ${postmarkHtml}
+            <div style="display:flex; align-items:center; width:100%; position:relative; z-index:2;">
+                ${iconSvg}
+                <div style="display:flex; flex-direction:column; flex-grow:1; gap:8px;">
+                    <div style="display:flex; align-items:center;">
+                        ${badge}
+                        <span class="item-title" style="font-size:1.15rem; color:#4a5c68;">${titleHtml}</span>
+                    </div>
+                    <span class="item-time" style="font-size:0.85rem; color:#8a9ba8; font-family:var(--font-sans); letter-spacing:1px;">${timeStr}</span>
+                </div>
+            </div>
+        `;
         listEl.appendChild(el); 
     }); 
 }
@@ -1995,6 +2586,10 @@ function renderList(type, data) {
             el.style.display = 'none';
         };
 
+
+// 👇 放在全域變數區，讓所有函數都能共用
+const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 1024);
+        let balconyOnlyGroup; // 新增：只有出露台才需要渲染的風景群組
         let scene, camera, renderer, controls, raycaster, mouse;
        let desk, leftDrawer, rightDrawer, book, clipboard, wateringCan, plantGroup, windowGroup, sceneryGroup;
         let glassDoorL, glassDoorR; // 新增這兩個變數來控制玻璃門
@@ -2070,20 +2665,32 @@ function applyCurtainRatio() {
 let clouds = []; // 用來存放所有雲朵物件，方便動畫更新
 
 let sea; // 用來控制海浪動畫
-        
+      
   let ferrisWheelGrp; // 摩天輪轉動的主體
 let fwCabins = []; 
 let dummySpoutTip; let indicatorLeft, indicatorRight, indicatorTasks; let interactables = []; let timePhase = 'noon'; let animScenery = { cars: [], buildings: [] };
         let clockHourHand, clockMinHand, clockSecHand;
 
 
+        let doorHinge, roomElevatorGrp, elvMetalDoorL, elvMetalDoorR;
+let isAtStreet = false;
+let elevatorFloor = 30;
+let elevatorInterval = null;
+
 // --- 露台系統全域變數 ---
 let isAtBalcony = false;
+        let radioGrp, radioLED;
+let isRadioPlaying = false;
+let hls = null;
+let musicNotes = []; // 存放飄浮音符的陣列
 let roomCameraBackup = { cp: new THREE.Vector3(), ct: new THREE.Vector3() };
 
 function goToBalcony() {
     if (isAtBalcony) return;
     isAtBalcony = true;
+    
+    // 👇 新增：出露台時，顯示左右宏大風景與海面
+    if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = true;
 
     roomCameraBackup.cp.copy(camera.position);
     roomCameraBackup.ct.copy(controls.target);
@@ -2114,6 +2721,11 @@ function returnToRoom() {
     if (!isAtBalcony) return;
     isAtBalcony = false;
 
+    // 退回室內時，強制切換回望窗模式 (模式一)
+    window.knobMode = 1;
+    const knobCenter = document.querySelector('.knob-center');
+    if(knobCenter) knobCenter.style.background = '#fff';
+
     // 退回室內時，立刻限制左右旋轉角度
     controls.minAzimuthAngle = -Math.PI / 2;
     controls.maxAzimuthAngle = Math.PI / 2;
@@ -2121,8 +2733,10 @@ function returnToRoom() {
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
     // 退回室內的鏡頭動畫
+const roomFov = getIdealFov(); // 👈 呼叫智能判斷
+    // 退回室內的鏡頭動畫
     gsap.to(camera.position, { x: roomCameraBackup.cp.x, y: roomCameraBackup.cp.y, z: roomCameraBackup.cp.z, duration: 1.8, ease: "power2.inOut" });
-    gsap.to(camera, { fov: 50, duration: 1.8, ease: "power2.inOut", onUpdate: () => camera.updateProjectionMatrix() });
+    gsap.to(camera, { fov: roomFov, duration: 1.8, ease: "power2.inOut", onUpdate: () => camera.updateProjectionMatrix() });
     gsap.to(controls.target, { 
         x: roomCameraBackup.ct.x, y: roomCameraBackup.ct.y, z: roomCameraBackup.ct.z, 
         duration: 1.8, 
@@ -2130,7 +2744,10 @@ function returnToRoom() {
         onUpdate: () => controls.update(),
         onComplete: () => {
             // 👇 動畫結束完全進入室內後，才重新鎖死抬頭角度
-            controls.minPolarAngle = 1.15; 
+     controls.minPolarAngle = 1.15; 
+            
+            // 👇 新增：回到室內後，徹底隱藏室外不必要的耗能風景
+            if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = false;
         }
     });
 
@@ -2147,7 +2764,8 @@ function returnToRoom() {
 
 
         
-let tcGrp, chairGroup; 
+let tcGrp, chairGroup;
+let wallDragMesh; // 新增這一個，用來做牆壁拖曳的隱形邊界
 let floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 let catPlatform = 'floor'; // 記錄貓咪所在位置：'floor', 'desk', 'chair'
 
@@ -2159,10 +2777,25 @@ function saveObjectPositions() {
     if(plantGroup) pos.plant = {x: plantGroup.position.x, z: plantGroup.position.z};
     if(tcGrp) pos.trash = {x: tcGrp.position.x, z: tcGrp.position.z};
     if(chairGroup) pos.chair = {x: chairGroup.position.x, z: chairGroup.position.z};
+    if(typeof rackGrp !== 'undefined') pos.rack = {x: rackGrp.position.x, z: rackGrp.position.z}; 
+    if(typeof umbGrp !== 'undefined') pos.umbrella = {x: umbGrp.position.x, z: umbGrp.position.z};
+    
+    // 👇 加入鋼琴與琴椅的存檔
+ // 👇 把原本的 piano 與 bench 存檔替換成這兩行 (加入了 ry)
+    if(typeof pianoGrp !== 'undefined') pos.piano = {x: pianoGrp.position.x, z: pianoGrp.position.z, ry: pianoGrp.rotation.y};
+    if(typeof benchGrp !== 'undefined') pos.bench = {x: benchGrp.position.x, z: benchGrp.position.z, ry: benchGrp.rotation.y};
+
     if(catGrp) pos.cat = {x: catGrp.position.x, y: catGrp.position.y, z: catGrp.position.z, platform: catPlatform};
+    
+    pos.paintings = {};
+    scene.traverse(c => {
+        if (c.userData && c.userData.itemId && (c.userData.itemId.startsWith('painting_') || c.userData.itemId === 'clock' || c.userData.itemId.startsWith('bookcase_'))) {
+            pos.paintings[c.userData.itemId] = { x: c.position.x, y: c.position.y, z: c.position.z, ry: c.rotation.y };
+        }
+    });
     localStorage.setItem('roomObjectPositions', JSON.stringify(pos));
 }
-
+ 
 function restoreObjectPositions() {
     try {
         const pos = JSON.parse(localStorage.getItem('roomObjectPositions'));
@@ -2172,20 +2805,35 @@ function restoreObjectPositions() {
         if(pos.water && wateringCan) wateringCan.position.set(pos.water.x, 8.5, pos.water.z);
         if(pos.trash && tcGrp) tcGrp.position.set(pos.trash.x, tcGrp.position.y, pos.trash.z);
         if(pos.chair && chairGroup) chairGroup.position.set(pos.chair.x, chairGroup.position.y, pos.chair.z);
-       if(pos.cat && catGrp) {
+        if(pos.rack && typeof rackGrp !== 'undefined') rackGrp.position.set(pos.rack.x, rackGrp.position.y, pos.rack.z); 
+        if(pos.umbrella && typeof umbGrp !== 'undefined') umbGrp.position.set(pos.umbrella.x, umbGrp.position.y, pos.umbrella.z); 
+        
+        // 👇 加入鋼琴與琴椅的讀檔復原
+       // 👇 把原本的 piano 與 bench 讀檔替換成這段
+        if(pos.piano && typeof pianoGrp !== 'undefined') {
+            pianoGrp.position.set(pos.piano.x, 0, pos.piano.z);
+            if (pos.piano.ry !== undefined) pianoGrp.rotation.y = pos.piano.ry;
+        }
+        if(pos.bench && typeof benchGrp !== 'undefined') {
+            benchGrp.position.set(pos.bench.x, 0, pos.bench.z);
+            if (pos.bench.ry !== undefined) benchGrp.rotation.y = pos.bench.ry;
+        }
+
+        if(pos.cat && catGrp) {
             catPlatform = pos.cat.platform || 'floor';
-            
-            // 【修訂】強制校正貓咪的 Y 軸高度，無視存壞的懸空高度
             let correctY = 0;
             if (catPlatform === 'desk') correctY = 8.5;
             else if (catPlatform === 'chair') correctY = 4.5;
-            
             catGrp.position.set(pos.cat.x, correctY, pos.cat.z);
-            
-            // 同時把 HitBox 的基礎高度設定好，避免重整後第一次拖曳發生錯亂
-            catGrp.children.forEach(child => {
-                if (child.userData && child.userData.type === 'cat') {
-                    child.userData.originalY = correctY;
+            catGrp.children.forEach(child => { if (child.userData && child.userData.type === 'cat') child.userData.originalY = correctY; });
+        }
+        
+        if (pos.paintings) {
+            scene.traverse(c => {
+                if (c.userData && c.userData.itemId && pos.paintings[c.userData.itemId]) {
+                    let savedP = pos.paintings[c.userData.itemId];
+                    c.position.set(savedP.x, savedP.y, savedP.z);
+                    c.rotation.y = savedP.ry;
                 }
             });
         }
@@ -2230,7 +2878,51 @@ function restoreObjectPositions() {
         }
 
 
+// 🛗 1. 生成拉絲金屬材質 (用於電梯內壁與門)
+function createBrushedMetalTexture() {
+    const canvas = document.createElement('canvas'); 
+    canvas.width = 512; canvas.height = 512; 
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#888888'; ctx.fillRect(0,0,512,512);
+    // 畫出橫向拉絲紋理
+    for(let i=0; i<4000; i++) { 
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)'; 
+        ctx.fillRect(Math.random()*512, Math.random()*512, 100 + Math.random()*200, 1); 
+    } 
+    return new THREE.CanvasTexture(canvas);
+}
 
+// 📟 2. 生成並更新電梯 LED 螢幕
+let elevatorLEDCanvas, elevatorLEDCtx, elevatorLEDTex;
+function updateElevatorLED(floorNumber, directionArrow) {
+    if (!elevatorLEDCanvas) {
+        elevatorLEDCanvas = document.createElement('canvas');
+        elevatorLEDCanvas.width = 256; elevatorLEDCanvas.height = 128;
+        elevatorLEDCtx = elevatorLEDCanvas.getContext('2d');
+        elevatorLEDTex = new THREE.CanvasTexture(elevatorLEDCanvas);
+    }
+    const ctx = elevatorLEDCtx;
+    // 黑色底板
+    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, 256, 128);
+    // 模擬 LED 網格掃描線
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    for(let y=0; y<128; y+=4) ctx.fillRect(0, y, 256, 1);
+    
+    // 紅色發光字體
+    ctx.fillStyle = '#ff3333';
+    ctx.shadowColor = '#ff0000';
+    ctx.shadowBlur = 15;
+    ctx.font = 'bold 70px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    const text = `${directionArrow} ${String(floorNumber).padStart(2, '0')}F`;
+    ctx.fillText(text, 128, 64);
+    
+    ctx.shadowBlur = 0; // 重置
+    elevatorLEDTex.needsUpdate = true;
+    return elevatorLEDTex;
+}
         
         function createWoodTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
@@ -2394,47 +3086,11 @@ function createCloudTexture() {
             }
             const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
         }
-   function createPainting(x, y, z, url, aspect) {
-        const frameGroup = new THREE.Group(); 
-        frameGroup.position.set(x, y, z); 
-        
-        const canvasHeight = 10.5;
-        const canvasWidth = canvasHeight * aspect;
-        const frameHeight = canvasHeight + 1.5;
-        const frameWidth = canvasWidth + 1.5;
 
-        const frame = new THREE.Mesh(
-            new THREE.BoxGeometry(frameWidth, frameHeight, 0.6), 
-            new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.8})
-        ); 
-        frameGroup.add(frame); 
         
-        const canvasMat = new THREE.MeshStandardMaterial({color: 0xdddddd, roughness: 0.9});
-        const canvasMesh = new THREE.Mesh(
-            new THREE.PlaneGeometry(canvasWidth, canvasHeight), 
-            canvasMat
-        ); 
-        canvasMesh.position.z = 0.31; 
-        frameGroup.add(canvasMesh); 
-        scene.add(frameGroup); 
-        
-        const loader = new THREE.TextureLoader();
-        loader.setCrossOrigin('anonymous');
-        loader.load(
-            url, 
-            (texture) => {
-                texture.encoding = THREE.sRGBEncoding;
-                texture.minFilter = THREE.LinearMipmapLinearFilter; 
-                canvasMat.map = texture;
-                canvasMat.color.setHex(0xffffff); 
-                canvasMat.needsUpdate = true;
-            },
-            undefined,
-            (err) => { console.warn('畫作圖片載入失敗:', url); }
-        ); // <--- 注意這裡，必須要有 ); 來結束 loader.load
+  
 
-        return frameGroup; // 隱藏畫布與快照的關鍵
-    }
+        
         function createFloorTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 1024; const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#f7f6f2'; ctx.fillRect(0, 0, 1024, 1024);
@@ -2724,34 +3380,118 @@ function closeDrawAnim() {
 }
 
 
+
+
+// 👇 新增：智能計算最佳視角 (FOV) 
+function getIdealFov() {
+    if (!isTouchDevice) return 50; // 電腦版絕對不受影響，永遠維持 50
+    // 判斷是否為直屏 (高度大於寬度)
+    const isPortrait = window.innerHeight > window.innerWidth;
+    return isPortrait ? 80 : 50;   // 觸控設備：直屏 80，橫屏退回 50
+}
         
-       function initRoomScene() {
+        
+      function initRoomScene() {
     const container = document.getElementById('room-canvas-container');
-    scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0xc5c1bc, 0.010);
-    camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
-    renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.outputEncoding = THREE.sRGBEncoding;
-    container.innerHTML = ''; container.appendChild(renderer.domElement);
+    scene = new THREE.Scene(); 
+    scene.fog = new THREE.FogExp2(0xc5c1bc, 0.010);
+
+const roomFov = getIdealFov(); // 👈 呼叫智能判斷
+camera = new THREE.PerspectiveCamera(roomFov, window.innerWidth/window.innerHeight, 1.0, 1000);
     
-    controls = new THREE.OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.maxPolarAngle = Math.PI/2 - 0.05; controls.minDistance = 10; controls.maxDistance = 59; // 縮小最大距離，避免鏡頭退到書架內
+  renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        powerPreference: "high-performance", 
+        // 👇 電腦開啟深度緩衝，觸控裝置(手機/平板)強制關閉以防黑屏當機
+        logarithmicDepthBuffer: !isTouchDevice 
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    
+// 手機和平板強制使用標準解析度 (1)，避免 WebGL 緩衝區崩潰；電腦最多使用 2
+renderer.setPixelRatio(isTouchDevice ? 1 : Math.min(window.devicePixelRatio || 1, 2));
+    
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    container.innerHTML = ''; 
+    container.appendChild(renderer.domElement);
+    
+    controls = new THREE.OrbitControls(camera, renderer.domElement); 
+    controls.enableDamping = true; 
+    controls.maxPolarAngle = Math.PI/2 - 0.05; 
+    controls.minDistance = 10; 
+    controls.maxDistance = 59;
+    
+    // 👇 套用觸控裝置專屬手感優化
+    controls.dampingFactor = 0.12; // 增加摩擦力，讓畫面滑動後迅速煞車，不再感覺輕飄飄
+    controls.rotateSpeed = isTouchDevice ? 0.7 : 1.0; // 平板/手機觸控較靈敏，稍微降低旋轉速度
+    controls.enablePan = false; // 禁用雙指平移，防止誤觸導致視角跑掉
     
     const savedState = localStorage.getItem('roomCameraState');
-    if (savedState) { try { const s = JSON.parse(savedState); camera.position.set(s.cp.x, s.cp.y, s.cp.z); controls.target.set(s.ct.x, s.ct.y, s.ct.z); } catch(e) { setDefaultCamera(); } } else { setDefaultCamera(); }
-    controls.update(); controls.addEventListener('change', () => { 
+    if (savedState) { 
+        try { 
+            const s = JSON.parse(savedState); 
+            camera.position.set(s.cp.x, s.cp.y, s.cp.z); 
+            controls.target.set(s.ct.x, s.ct.y, s.ct.z); 
+        } catch(e) { 
+            setDefaultCamera(); 
+        } 
+    } else { 
+        setDefaultCamera(); 
+    }
+    
+    controls.update(); 
+    
+    controls.addEventListener('change', () => { 
         // 加上 isAtBalcony 判斷，若在露臺則不儲存視角
         if(!camera || !controls || isAtBalcony) return; 
-        const state = { cp: {x: camera.position.x, y: camera.position.y, z: camera.position.z}, ct: {x: controls.target.x, y: controls.target.y, z: controls.target.z} }; 
+        const state = { 
+            cp: {x: camera.position.x, y: camera.position.y, z: camera.position.z}, 
+            ct: {x: controls.target.x, y: controls.target.y, z: controls.target.z} 
+        }; 
         localStorage.setItem('roomCameraState', JSON.stringify(state)); 
     });
-    raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2();
     
-    window.addEventListener('pointerdown', onPointerDown); window.addEventListener('pointerup', onPointerUp); window.addEventListener('pointermove', onPointerMove); window.addEventListener('resize', onWinResize);
+    raycaster = new THREE.Raycaster(); 
+    mouse = new THREE.Vector2();
+    
+    window.addEventListener('pointerdown', onPointerDown); 
+    window.addEventListener('pointerup', onPointerUp); 
+    window.addEventListener('pointermove', onPointerMove); 
+    window.addEventListener('resize', onWinResize);
     
     buildRoomEnvironment(); 
+
+    // ⚡ 效能優化：凍結永遠不會移動的背景物件矩陣
+    sceneryGroup.traverse(obj => {
+        // 除了海浪(要更新頂點)和車輛、摩天輪(會移動)之外，其他大廈/橋樑/馬路全數凍結
+        if (obj.isMesh && obj !== sea && !animScenery.cars.includes(obj.parent) && obj.parent !== ferrisWheelGrp) {
+            obj.matrixAutoUpdate = false;
+            obj.updateMatrix();
+        }
+    });
+    
+    // ⚡ 效能優化：凍結房間牆壁與地板的矩陣
+    scene.traverse(obj => {
+        if (obj.isMesh && (obj.geometry.type === 'PlaneGeometry' || obj.geometry.type === 'ExtrudeGeometry')) {
+            // 排除地氈(會顯示/隱藏)、窗簾與趟門(會拉動)
+            if (obj.userData.itemId !== 'carpet' && !obj.parent.userData.type && obj.userData.type !== 'window') {
+                obj.matrixAutoUpdate = false;
+                obj.updateMatrix();
+            }
+        }
+    });
+
     restoreObjectPositions(); // 載入所有物件的移動紀錄
     syncEnvironmentTime(); 
     animateRoom();
 }
+
+
+
+
+
+        
         function setDefaultCamera() { if (window.innerWidth < 768) { camera.position.set(0, 26, 48); } else { camera.position.set(0, 22, 45); } controls.target.set(0, 7, 0); }
 
  // --- 修訂 2：將畫作移出牆壁，使其貼在室內牆面上 ---
@@ -2759,30 +3499,30 @@ function buildRoomEnvironment() {
     hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); 
     scene.add(hemiLight);
     
-    dirLight = new THREE.DirectionalLight(0xffeedd, 1.2); 
+   dirLight = new THREE.DirectionalLight(0xffeedd, 1.2); 
     dirLight.position.set(20, 35, -50); 
     dirLight.target.position.set(0, 0, 0); 
     
     dirLight.castShadow = true; 
+    
+    // 👇 1. 適度提升手機與平板的解析度 (從 1024 提升為 2048)
    dirLight.shadow.mapSize.width = 4096; 
     dirLight.shadow.mapSize.height = 4096;
-    
-  // 大幅擴張陰影攝影機的照射範圍，把室外的遠景也包覆進來
-    dirLight.shadow.camera.left = -200;   // 涵蓋左側的大橋與馬路
-    dirLight.shadow.camera.right = 200;   // 涵蓋右側的摩天輪與馬路
-    dirLight.shadow.camera.top = 150;     // 涵蓋上方的高樓大廈
-    dirLight.shadow.camera.bottom = -100; // 涵蓋下方與近處
-    dirLight.shadow.camera.far = 500;     // 確保光線投射距離夠遠
-    
-    dirLight.shadow.bias = -0.0005;        
-    dirLight.shadow.normalBias = 0.05;     
-    dirLight.shadow.radius = 2.5;          
 
-// --- 替換從 dirLight.shadow.bias 開始，到 scene.add(ceilingLight) 結束的段落 ---
     
-    dirLight.shadow.bias = -0.001;        
-    dirLight.shadow.normalBias = 0.08;     // 增加陽光法線偏移，消除波紋
-    dirLight.shadow.radius = 3;          
+    // 👇 2. 【關鍵修復】：大幅縮小陰影攝影機的範圍！
+    // 讓寶貴的陰影像素只集中在「房間與露台 (-80 到 80)」，放棄渲染極遠處的橋樑陰影。
+    // 這會讓陰影的清晰度瞬間暴增 4 到 5 倍！
+    dirLight.shadow.camera.left = -80;   
+    dirLight.shadow.camera.right = 80;   
+    dirLight.shadow.camera.top = 80;     
+    dirLight.shadow.camera.bottom = -80; 
+    dirLight.shadow.camera.far = 150;     // 縮短光線投射極限
+    
+   dirLight.shadow.bias = -0.002;        // 加深偏移
+dirLight.shadow.normalBias = 0.15;    // 👈 將 0.08 改為 0.15，消除牆上條紋
+    // 👇 3. 稍微增加柔化半徑，讓邊緣更自然 (掩飾任何殘留的鋸齒)
+    dirLight.shadow.radius = isTouchDevice ? 3 : 2.5;          
 
     scene.add(dirLight); 
     scene.add(dirLight.target);
@@ -2795,8 +3535,8 @@ function buildRoomEnvironment() {
     ceilingLight.castShadow = false; 
     ceilingLight.shadow.mapSize.width = 1024; 
     ceilingLight.shadow.mapSize.height = 1024; 
-    ceilingLight.shadow.bias = -0.002;           // 微調室內燈陰影偏移
-    ceilingLight.shadow.normalBias = 0.08;       // 【關鍵修復】增加室內燈法線偏移，讓牆壁恢復平整
+  ceilingLight.shadow.bias = -0.004;           // 加深偏移
+ceilingLight.shadow.normalBias = 0.15;       // 👈 將 0.08 改為 0.15，消除牆上條紋
     ceilingLight.shadow.radius = 4; 
     scene.add(ceilingLight);
 
@@ -2817,63 +3557,81 @@ function buildRoomEnvironment() {
     windowHole.moveTo(-15, 1); windowHole.lineTo(15, 1); windowHole.lineTo(15, 28); windowHole.lineTo(-15, 28); 
     wallShape.holes.push(windowHole);
     const frontWall = new THREE.Mesh(new THREE.ExtrudeGeometry(wallShape, { depth: 1, bevelEnabled: false }), wallMat); frontWall.position.set(0, 0, -18); frontWall.castShadow = true; frontWall.receiveShadow = true; scene.add(frontWall);
-    const sideWallGeo = new THREE.PlaneGeometry(78, 40); const leftWall = new THREE.Mesh(sideWallGeo, wallMat); leftWall.rotation.y = Math.PI/2; leftWall.position.set(-60, 20, 21); scene.add(leftWall); const rightWall = new THREE.Mesh(sideWallGeo, wallMat); rightWall.rotation.y = -Math.PI/2; rightWall.position.set(60, 20, 21); scene.add(rightWall);
-    const backWall = new THREE.Mesh(new THREE.PlaneGeometry(120, 40), wallMat); backWall.position.set(0, 20, 60); scene.add(backWall);
+    const sideWallGeo = new THREE.PlaneGeometry(78, 40);
+    const leftWall = new THREE.Mesh(sideWallGeo, wallMat); leftWall.rotation.y = Math.PI/2; leftWall.position.set(-60, 20, 21); leftWall.castShadow = true; leftWall.receiveShadow = true; scene.add(leftWall);
+    const rightWall = new THREE.Mesh(sideWallGeo, wallMat); rightWall.rotation.y = -Math.PI/2; rightWall.position.set(60, 20, 21); rightWall.castShadow = true; rightWall.receiveShadow = true; scene.add(rightWall);
+    const backWall = new THREE.Mesh(new THREE.PlaneGeometry(120, 40), wallMat); backWall.position.set(0, 20, 60); backWall.castShadow = true; backWall.receiveShadow = true; scene.add(backWall);
 
-    // 【修改點】改寫 createPainting，支援傳入圖片 URL 以及寬高比例 (aspect)
-    function createPainting(x, y, z, url, aspect) {
-        const frameGroup = new THREE.Group(); 
-        frameGroup.position.set(x, y, z); 
+  function createPainting(x, y, z, url, aspect) {
+        const frameGroup = new THREE.Group();
+        frameGroup.position.set(x, y, z);
         
-        // 統一固定畫布高度，並依據比例動態推算畫布寬度與畫框寬高
         const canvasHeight = 10.5;
         const canvasWidth = canvasHeight * aspect;
         const frameHeight = canvasHeight + 1.5;
         const frameWidth = canvasWidth + 1.5;
-
-        // 建立畫框
+ 
         const frame = new THREE.Mesh(
-            new THREE.BoxGeometry(frameWidth, frameHeight, 0.6), 
+            new THREE.BoxGeometry(frameWidth, frameHeight, 0.6),
             new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.8})
-        ); 
-        frameGroup.add(frame); 
+        );
+        frameGroup.add(frame);
         
-        // 建立畫布 (圖片載入前預設為淺灰色)
         const canvasMat = new THREE.MeshStandardMaterial({color: 0xdddddd, roughness: 0.9});
         const canvasMesh = new THREE.Mesh(
-            new THREE.PlaneGeometry(canvasWidth, canvasHeight), 
+            new THREE.PlaneGeometry(canvasWidth, canvasHeight),
             canvasMat
-        ); 
-        canvasMesh.position.z = 0.31; 
-        frameGroup.add(canvasMesh); 
-        scene.add(frameGroup); 
+        );
+        canvasMesh.position.z = 0.31;
+        frameGroup.add(canvasMesh);
         
-        // 動態非同步載入外部圖片
+        // 👇 新增：專屬的隱形點擊/拖曳判定箱
+        const hitBox = new THREE.Mesh(
+            new THREE.BoxGeometry(frameWidth + 1, frameHeight + 1, 1.5),
+            new THREE.MeshBasicMaterial({visible: false})
+        );
+        hitBox.position.z = 0;
+        hitBox.userData = { type: 'painting' };
+        frameGroup.add(hitBox);
+        interactables.push(hitBox);
+ 
+        scene.add(frameGroup);
+        
         const loader = new THREE.TextureLoader();
-        loader.setCrossOrigin('anonymous'); // 允許跨域請求
+        loader.setCrossOrigin('anonymous');
         loader.load(
-            url, 
+            url,
             (texture) => {
                 texture.encoding = THREE.sRGBEncoding;
-                texture.minFilter = THREE.LinearMipmapLinearFilter; // 確保縮小顯示時不模糊
+                texture.minFilter = THREE.LinearMipmapLinearFilter;
                 canvasMat.map = texture;
-                canvasMat.color.setHex(0xffffff); // 載入完成後恢復純白以還原真實顏色
+                canvasMat.color.setHex(0xffffff);
                 canvasMat.needsUpdate = true;
             },
             undefined,
-            (err) => { console.warn('畫作圖片載入失敗:', url); } // 若伺服器擋跨域，這裡會提示
-  ); // <--- 注意這裡，必須要有 ); 來結束 loader.load
-return frameGroup;
-
-            
-      
+            (err) => { console.warn('畫作圖片載入失敗:', url); }
+        );
+        
+        // 👇 新增這兩行：記錄畫框的實體寬高，供拖曳防穿模使用
+        frameGroup.userData.frameW = frameWidth;
+        frameGroup.userData.frameH = frameHeight;
+ 
+        return frameGroup;
     }
-
-  // 依序掛上自己上載的四幅作品 (設定 X, Y, Z, 網址/本機路徑, 寬/高比例)
-const p1 = createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0); if(p1) p1.userData.itemId = 'painting_1';
-const p2 = createPainting(-26, 17, -16.7, '畫二.jpeg', 2048 / 1365); if(p2) p2.userData.itemId = 'painting_2';
-const p3 = createPainting(26, 17, -16.7, '畫三.jpeg', 1.0); if(p3) p3.userData.itemId = 'painting_3';
-const p4 = createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224); if(p4) p4.userData.itemId = 'painting_4';
+ 
+    // 依序掛上作品
+    const p1 = createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0); if(p1) p1.userData.itemId = 'painting_1';
+    const p2 = createPainting(-26, 17, -16.7, '畫二.jpeg', 2048 / 1365); if(p2) p2.userData.itemId = 'painting_2';
+    const p3 = createPainting(26, 17, -16.7, '畫三.jpeg', 1.0); if(p3) p3.userData.itemId = 'painting_3';
+    const p4 = createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224); if(p4) p4.userData.itemId = 'painting_4';
+ 
+    // 👇 新增：專為牆壁拖曳設計的隱形房間內壁邊界
+    wallDragMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(117.4, 24, 75.4),
+        new THREE.MeshBasicMaterial({side: THREE.BackSide, visible: false})
+    );
+    wallDragMesh.position.set(0, 20, 21); // 完美對齊室內四面牆
+    scene.add(wallDragMesh);
 
   const windowFrameGroup = new THREE.Group(); 
     windowFrameGroup.position.set(0, 14.5, -17.5); 
@@ -2886,12 +3644,20 @@ const p4 = createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224); if(p4) p4.
     const topF = new THREE.Mesh(new THREE.BoxGeometry(30, frameThickness, frameDepth), frameMat); topF.position.set(0, 13.5 - frameThickness/2, 0); topF.castShadow = true; windowFrameGroup.add(topF);
     const botF = new THREE.Mesh(new THREE.BoxGeometry(30, frameThickness, frameDepth), frameMat); botF.position.set(0, -13.5 + frameThickness/2, 0); botF.castShadow = true; windowFrameGroup.add(botF);
 
-    // 啟用物理透射與折射，打造真實玻璃質感
-    const glassMat = new THREE.MeshPhysicalMaterial({ 
-        color: 0xebf8ff, metalness: 0.15, roughness: 0.02, transmission: 0.95, 
-        ior: 1.52, thickness: 0.5, transparent: true, opacity: 1.0, 
-        clearcoat: 1.0, clearcoatRoughness: 0.02 
-    }); 
+  // 判斷是否為手機
+    const isMobileDevice = window.innerWidth <= 768;
+
+    // 如果是手機，使用普通的半透明材質，放棄昂貴的物理折射計算；如果是電腦則保留物理玻璃
+   const glassMat = isTouchDevice 
+        ? new THREE.MeshStandardMaterial({
+            color: 0xebf8ff, metalness: 0.5, roughness: 0.1, 
+            transparent: true, opacity: 0.3 
+          })
+        : new THREE.MeshPhysicalMaterial({ 
+            color: 0xebf8ff, metalness: 0.15, roughness: 0.02, transmission: 0.95, 
+            ior: 1.52, thickness: 0.5, transparent: true, opacity: 1.0, 
+            clearcoat: 1.0, clearcoatRoughness: 0.02 
+          });
 
     // 【左側動態趟門 (包含玻璃與金屬邊框)】
     glassDoorL = new THREE.Group();
@@ -2919,7 +3685,67 @@ const p4 = createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224); if(p4) p4.
     frameR_right.position.set(7, 0, 0); glassDoorR.add(frameR_right);
     glassDoorR.userData = { type: 'window' };
 
-    const doorGroup = new THREE.Group(); doorGroup.position.set(-59.5, 14, 0); doorGroup.rotation.y = Math.PI/2; scene.add(doorGroup);
+   // ==========================================
+    // 🚪 重建可開關的木門與精緻電梯系統
+    // ==========================================
+    // 1. 木門鉸鏈系統 (讓木門可以真實推開)
+    doorHinge = new THREE.Group(); 
+    doorHinge.position.set(-60, 14, -7); // 設在門框左側邊緣作為旋轉軸
+    scene.add(doorHinge);
+    
+    const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(14, 26, 1.2), new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.7})); 
+    doorPanel.position.set(0, 0, 7); // 偏移門板中心，配合鉸鏈
+    doorHinge.add(doorPanel);
+    
+    const doorKnob = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshStandardMaterial({color: 0x888888, metalness: 0.8})); 
+    doorKnob.position.set(1.2, 0, 12); // 把手位置
+    doorPanel.add(doorKnob);
+
+    // 加入隱形點擊框給木門
+    const doorHitBox = new THREE.Mesh(new THREE.BoxGeometry(16, 28, 4), new THREE.MeshBasicMaterial({visible: false}));
+    doorHitBox.position.set(0, 0, 7);
+    doorHitBox.userData = {type: 'main_door'};
+    doorHinge.add(doorHitBox);
+    interactables.push(doorHitBox);
+
+    // 2. 樓上電梯實體 (藏在木門後方 X: -70)
+    roomElevatorGrp = new THREE.Group();
+    roomElevatorGrp.position.set(-70, 14, 0);
+    scene.add(roomElevatorGrp);
+
+    const metalMat = new THREE.MeshStandardMaterial({map: createBrushedMetalTexture(), metalness: 0.7, roughness: 0.3});
+    
+    // 電梯內部三面牆與地板、天花板
+    const elvBox = new THREE.Mesh(new THREE.BoxGeometry(18, 28, 16), new THREE.MeshStandardMaterial({color: 0x222222, side: THREE.BackSide}));
+    roomElevatorGrp.add(elvBox);
+    const elvBack = new THREE.Mesh(new THREE.PlaneGeometry(16, 28), metalMat); elvBack.position.set(-8.8, 0, 0); elvBack.rotation.y = Math.PI/2; roomElevatorGrp.add(elvBack);
+    const elvLeft = new THREE.Mesh(new THREE.PlaneGeometry(16, 28), metalMat); elvLeft.position.set(0, 0, -7.8); roomElevatorGrp.add(elvLeft);
+    const elvRight = new THREE.Mesh(new THREE.PlaneGeometry(16, 28), metalMat); elvRight.position.set(0, 0, 7.8); elvRight.rotation.y = Math.PI; roomElevatorGrp.add(elvRight);
+    
+    // 電梯鏡子 (掛在背牆)
+    const elvMirror = new THREE.Mesh(new THREE.PlaneGeometry(10, 14), new THREE.MeshStandardMaterial({color: 0xdddddd, metalness: 1.0, roughness: 0.05}));
+    elvMirror.position.set(-8.7, 2, 0); elvMirror.rotation.y = Math.PI/2; roomElevatorGrp.add(elvMirror);
+
+    // 電梯內部柔和頂燈
+    const elvLight = new THREE.PointLight(0xfffaee, 1.2, 30);
+    elvLight.position.set(0, 12, 0);
+    roomElevatorGrp.add(elvLight);
+
+    // 3. 電梯金屬內門 (兩扇對開)
+    elvMetalDoorL = new THREE.Mesh(new THREE.BoxGeometry(1, 28, 8), metalMat);
+    elvMetalDoorL.position.set(8.5, 0, -4); roomElevatorGrp.add(elvMetalDoorL);
+    
+    elvMetalDoorR = new THREE.Mesh(new THREE.BoxGeometry(1, 28, 8), metalMat);
+    elvMetalDoorR.position.set(8.5, 0, 4); roomElevatorGrp.add(elvMetalDoorR);
+
+    // 4. LED 樓層面板 (裝在門上方)
+    const ledMesh = new THREE.Mesh(new THREE.PlaneGeometry(6, 3), new THREE.MeshBasicMaterial({map: updateElevatorLED(30, '■')}));
+    ledMesh.position.set(8.4, 11, 0);
+    ledMesh.rotation.y = -Math.PI/2;
+    roomElevatorGrp.add(ledMesh);
+    
+    // 讓全域可以更新這塊面板
+    window.elevatorLEDMaterial = ledMesh.material;
     const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(16, 28, 1), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.8})); doorGroup.add(doorFrame);
     const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(14, 26, 1.2), new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.7})); doorGroup.add(doorPanel);
     const doorKnob = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshStandardMaterial({color: 0x888888, metalness: 0.8})); doorKnob.position.set(5, 0, 0.8); doorGroup.add(doorKnob);
@@ -2929,7 +3755,7 @@ const p4 = createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224); if(p4) p4.
     const acVent = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1, 14), new THREE.MeshStandardMaterial({color: 0x111111})); acVent.position.set(-0.1, -2, 0); acGroup.add(acVent);
 
    function createBookcase(x, z) {
-        const shelfGroup = new THREE.Group(); shelfGroup.position.set(x, 15, z); scene.add(shelfGroup); const shelfMat = new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.8});
+        const shelfGroup = new THREE.Group();  shelfGroup.position.set(x, 15.02, z); scene.add(shelfGroup); const shelfMat = new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.8});
         const shelfBack = new THREE.Mesh(new THREE.BoxGeometry(22, 30, 0.5), shelfMat); shelfGroup.add(shelfBack); const sideGeo = new THREE.BoxGeometry(0.5, 30, 6);
         const leftSide = new THREE.Mesh(sideGeo, shelfMat); leftSide.position.set(-11, 0, -2.5); leftSide.castShadow = true; shelfGroup.add(leftSide); const rightSide = new THREE.Mesh(sideGeo, shelfMat); rightSide.position.set(11, 0, -2.5); rightSide.castShadow = true; shelfGroup.add(rightSide);
         const topBotGeo = new THREE.BoxGeometry(22, 0.5, 6); const topBoard = new THREE.Mesh(topBotGeo, shelfMat); topBoard.position.set(0, 15, -2.5); topBoard.castShadow = true; shelfGroup.add(topBoard); const botBoard = new THREE.Mesh(topBotGeo, shelfMat); botBoard.position.set(0, -15, -2.5); botBoard.castShadow = true; shelfGroup.add(botBoard);
@@ -2938,6 +3764,17 @@ const p4 = createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224); if(p4) p4.
             const bookColors = [0x8b3a3a, 0x3a5f8b, 0x4f8b3a, 0x8b6b3a, 0x222222, 0xdddddd]; let bx = -10;
             while(bx < 10) { let bw = Math.random() * 0.8 + 0.3; let bh = Math.random() * 2.5 + 3; if(bx + bw > 10) break; const b = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.05, bh, 4), new THREE.MeshStandardMaterial({color: bookColors[Math.floor(Math.random()*bookColors.length)], roughness: 0.7})); if(Math.random() > 0.7) { b.rotation.z = (Math.random() - 0.5) * 0.3; bx += 0.4; } b.position.set(bx + bw/2, sy + bh/2 + 0.25, -2.5); b.castShadow = true; shelfGroup.add(b); bx += bw; }
         }
+
+// 👇 新增：書櫃的拖曳判定框與碰撞屬性
+        const hitBox = new THREE.Mesh(new THREE.BoxGeometry(24, 32, 8), new THREE.MeshBasicMaterial({visible: false}));
+        hitBox.userData = { type: 'bookcase' };
+        shelfGroup.add(hitBox);
+        interactables.push(hitBox);
+        
+        // 賦予類似畫作的邊界計算屬性
+        shelfGroup.userData.frameW = 22; 
+        shelfGroup.userData.wallNormal = new THREE.Vector3(0, 0, 1);
+       
         return shelfGroup; // 這一行是修復無法隱藏的關鍵
     }
 // 替換原本的這三行
@@ -2996,6 +3833,60 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     const handle = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.1, 8, 16), new THREE.MeshStandardMaterial({color:0x8899a6, metalness:0.4})); handle.rotation.set(0, 0, 0); handle.position.set(-0.8, 0.9, 0); handle.castShadow = true; wateringCan.add(handle);
     dummySpoutTip = new THREE.Object3D(); dummySpoutTip.position.set(0, 1.3, 0); spout.add(dummySpoutTip);
 
+
+// ==========================================
+    // 📻 建造復古收音機 (RTHK 香港電台)
+    // ==========================================
+    radioGrp = new THREE.Group(); 
+    // 放置在桌子右側邊緣
+    radioGrp.position.set(12, 8.5, 0); 
+    radioGrp.rotation.y = -0.4;
+    desk.add(radioGrp);
+    radioGrp.userData.itemId = 'radio';
+
+    // 1. 木質外殼
+    const rBody = new THREE.Mesh(new THREE.BoxGeometry(3, 2, 1.5), woodMat);
+    rBody.position.y = 1; rBody.castShadow = true; radioGrp.add(rBody);
+    
+    // 2. 黑色喇叭網罩
+    const rGrill = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.4), new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.9}));
+    rGrill.position.set(-0.5, 1, 0.76); radioGrp.add(rGrill);
+
+    // 3. 調頻旋鈕
+  // 3. 調頻旋鈕
+    const radioKnobMat = new THREE.MeshStandardMaterial({color: 0xdddddd, metalness: 0.8});
+    const rKnob1 = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16), radioKnobMat);
+    rKnob1.rotation.x = Math.PI/2; rKnob1.position.set(0.8, 1.3, 0.75); radioGrp.add(rKnob1);
+    const rKnob2 = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.2, 16), radioKnobMat);
+    rKnob2.rotation.x = Math.PI/2; rKnob2.position.set(0.8, 0.7, 0.75); radioGrp.add(rKnob2);
+
+    // 4. 狀態指示燈 (紅燈停/綠燈播)
+    radioLED = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshStandardMaterial({color: 0x882222, emissive: 0x550000}));
+    radioLED.position.set(1.2, 1.8, 0.76); radioGrp.add(radioLED);
+
+   // 5. 金屬天線 (修復穿模與旋轉軸心)
+    // 建立一個小金屬底座，讓天線看起來是鎖上去的
+    const antennaBase = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.2, 16), radioKnobMat);
+    antennaBase.position.set(-1.2, 2.05, -0.5);
+    radioGrp.add(antennaBase);
+
+    // 偏移天線的幾何中心點，讓它以「底部」為軸心旋轉，不再穿模
+    const antennaGeo = new THREE.CylinderGeometry(0.03, 0.03, 3.5, 8);
+    antennaGeo.translate(0, 1.75, 0); // 將中心往上推一半長度
+    const antenna = new THREE.Mesh(antennaGeo, radioKnobMat);
+    
+    // 將位置設定在底座上
+    antenna.position.set(-1.2, 2.0, -0.5); 
+    antenna.rotation.set(0.2, 0, -0.3); // 完美向後、向左傾斜
+    radioGrp.add(antenna);
+
+    // 6. 點擊判定框
+    const radioHitBox = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 3), new THREE.MeshBasicMaterial({visible: false}));
+    radioHitBox.position.y = 1; radioHitBox.userData = {type: 'radio'}; 
+    radioGrp.add(radioHitBox);
+    interactables.push(radioHitBox);
+
+    
   const cpt = new THREE.Mesh(
         new THREE.PlaneGeometry(36, 24), 
         new THREE.MeshStandardMaterial({map: createCarpetTexture(), roughness: 1.0})
@@ -3060,14 +3951,51 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     const dec2 = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2, 2), new THREE.MeshStandardMaterial({color: 0x8c7a6b})); dec2.position.set(3, 5.3, 0); dec2.castShadow=true; shGrp.add(dec2);
     const dec3 = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 2), new THREE.MeshStandardMaterial({color: 0xdddddd})); dec3.position.set(2, -0.7, 0); dec3.castShadow=true; shGrp.add(dec3);
 
-    const clockGrp = new THREE.Group(); clockGrp.position.set(59.5, 28, 15); clockGrp.rotation.y = -Math.PI/2; scene.add(clockGrp);
-    const clkBase = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 0.6, 32), new THREE.MeshStandardMaterial({color: 0x2c3e50})); clkBase.rotation.x = Math.PI/2; clkBase.castShadow = true; clockGrp.add(clkBase);
-    const clkFace = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 7.4), new THREE.MeshBasicMaterial({map: createClockTexture()})); clkFace.position.z = 0.31; clockGrp.add(clkFace);
-    const handMat = new THREE.MeshBasicMaterial({color: 0x333333}); const secHandMat = new THREE.MeshBasicMaterial({color: 0xc25953});
-    clockHourHand = new THREE.Group(); clockHourHand.position.z = 0.35; const hHand = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.8, 0.05), handMat); hHand.position.y = 0.9; clockHourHand.add(hHand); clockGrp.add(clockHourHand);
-    clockMinHand = new THREE.Group(); clockMinHand.position.z = 0.38; const mHand = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.8, 0.05), handMat); mHand.position.y = 1.4; clockMinHand.add(mHand); clockGrp.add(clockMinHand);
-    clockSecHand = new THREE.Group(); clockSecHand.position.z = 0.41; const sHand = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.2, 0.05), secHandMat); sHand.position.y = 1.0; clockSecHand.add(sHand); clockGrp.add(clockSecHand);
+    // ==========================================
+    // ⏰ 時鐘 (升級為可自由拖曳、防撞、貼牆)
+    // ==========================================
+    const clockGrp = new THREE.Group(); 
+    clockGrp.position.set(59.5, 28, 15); 
+    clockGrp.rotation.y = -Math.PI/2; 
+    
+    // 👇 新增：注入與畫作相同的拖曳元數據
+    clockGrp.userData.frameW = 8.5; // 時鐘的碰撞寬度
+    clockGrp.userData.frameH = 8.5; // 時鐘的碰撞高度
+    clockGrp.userData.wallNormal = new THREE.Vector3(-1, 0, 0); // 初始面向
+    clockGrp.userData.itemId = 'clock'; // 綁定 ID 以便儲存位置
+    scene.add(clockGrp);
+    
+    const clkBase = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 0.6, 32), new THREE.MeshStandardMaterial({color: 0x2c3e50})); 
+    clkBase.rotation.x = Math.PI/2; 
+    clkBase.castShadow = true; 
+    clockGrp.add(clkBase);
+    
+    const clkFace = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 7.4), new THREE.MeshBasicMaterial({map: createClockTexture()})); 
+    clkFace.position.z = 0.35; 
+    clockGrp.add(clkFace);
+    
+    const handMat = new THREE.MeshBasicMaterial({color: 0x333333}); 
+    const secHandMat = new THREE.MeshBasicMaterial({color: 0xc25953});
+    
+    clockHourHand = new THREE.Group(); clockHourHand.position.z = 0.40; 
+    const hHand = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.8, 0.05), handMat); hHand.position.y = 0.9; 
+    clockHourHand.add(hHand); clockGrp.add(clockHourHand);
+    
+    clockMinHand = new THREE.Group(); clockMinHand.position.z = 0.43; 
+    const mHand = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.8, 0.05), handMat); mHand.position.y = 1.4; 
+    clockMinHand.add(mHand); clockGrp.add(clockMinHand);
+    
+    clockSecHand = new THREE.Group(); clockSecHand.position.z = 0.46; 
+    const sHand = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.2, 0.05), secHandMat); sHand.position.y = 1.0; 
+    clockSecHand.add(sHand); clockGrp.add(clockSecHand);
 
+    // 👇 新增：專屬的隱形點擊/拖曳判定箱
+    const clockHitBox = new THREE.Mesh(new THREE.BoxGeometry(8.5, 8.5, 1.5), new THREE.MeshBasicMaterial({visible: false}));
+    clockHitBox.position.z = 0;
+    // 💡 魔法在這裡：直接偽裝成畫作，完美繼承畫作的所有拖曳與防穿模邏輯！
+    clockHitBox.userData = { type: 'painting' }; 
+    clockGrp.add(clockHitBox);
+    interactables.push(clockHitBox);
     const rackGrp = new THREE.Group(); rackGrp.position.set(-56, 0, 30); scene.add(rackGrp);
     const rPole = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 22, 16), woodMat); rPole.position.y = 11; rPole.castShadow = true; rackGrp.add(rPole);
     const rBase = new THREE.Mesh(new THREE.CylinderGeometry(3, 3.5, 0.6, 32), woodMat); rBase.position.y = 0.3; rBase.castShadow = true; rackGrp.add(rBase);
@@ -3075,6 +4003,13 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
         const piv = new THREE.Group(); piv.position.y = 10 + i * 1.4; piv.rotation.y = i * (Math.PI * 0.75); 
         const hk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.5), woodMat); hk.position.set(0.8, 0.8, 0); hk.rotation.z = -Math.PI/4; hk.castShadow = true; piv.add(hk); rackGrp.add(piv); 
     }
+
+   // 👇 新增掛衣架專用隱形點擊/碰撞框
+    const rackHitBox = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 4.5, 22), new THREE.MeshBasicMaterial({visible: false}));
+    rackHitBox.position.y = 11; rackHitBox.userData = {type: 'rack'}; rackGrp.add(rackHitBox);
+    interactables.push(rackHitBox);
+
+    
     
    const umbGrp = new THREE.Group(); umbGrp.position.set(-55, 0, 38); scene.add(umbGrp); 
     const uBody = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.2, 6, 16, 1, true), new THREE.MeshStandardMaterial({color: 0x2c3e50, roughness: 0.8, side: THREE.DoubleSide})); uBody.position.y = 3; uBody.castShadow = true; umbGrp.add(uBody);
@@ -3083,18 +4018,36 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     // 👇 修改重點 1：縮小傘的傾斜角度 (原本是 0.15, 0, 0.2)
     const umb = new THREE.Group(); umb.rotation.set(0.08, 0, 0.08); umbGrp.add(umb);
     
-    const uStick = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 10), new THREE.MeshStandardMaterial({color: 0xaaaaaa})); uStick.position.set(0, 5, 0); umb.add(uStick);
+   // 傘柄
+    const uStick = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 10), new THREE.MeshStandardMaterial({color: 0xaaaaaa}));
+    uStick.position.set(0, 5, 0);
+    uStick.castShadow = true; // 👈 讓傘柄產生陰影
+    umb.add(uStick);
     
     // 👇 修改重點 2：稍微收窄傘布底部的寬度 (原本是 1.0，改為 0.85)，確保完全放進筒內
-    const uFab = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.85, 5), new THREE.MeshStandardMaterial({color: 0x3b5998})); uFab.position.set(0, 4, 0); umb.add(uFab);
+    const uFab = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.85, 5), new THREE.MeshStandardMaterial({color: 0x3b5998}));
+    uFab.position.set(0, 4, 0);
+    uFab.castShadow = true; // 👈 讓傘布產生陰影
+    umb.add(uFab);
     
-    const uHan = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.1, 8, 16, Math.PI), new THREE.MeshStandardMaterial({color: 0x111111})); uHan.position.set(0.4, 10, 0); umb.add(uHan);
+    // 傘把手
+    const uHan = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.1, 8, 16, Math.PI), new THREE.MeshStandardMaterial({color: 0x111111}));
+    uHan.position.set(0.4, 10, 0);
+    uHan.castShadow = true; // 👈 讓把手產生陰影
+    umb.add(uHan);
+
+
+      // 👇 新增雨傘專用隱形點擊/碰撞框
+    const umbHitBox = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 10), new THREE.MeshBasicMaterial({visible: false}));
+    umbHitBox.position.y = 5; umbHitBox.userData = {type: 'umbrella'}; umbGrp.add(umbHitBox);
+    interactables.push(umbHitBox);
 
 
 // ==========================================
     // 🎹 建造典雅直立式鋼琴與琴椅
     // ==========================================
-    const pianoGrp = new THREE.Group();
+   const pianoGrp = new THREE.Group();
+pianoGrp.userData.itemId = 'piano_model'; // 👈 新增這行：綁定鋼琴道具 ID
     const pianoGlossy = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.1, metalness: 0.3 }); 
     const pianoMatte = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 }); 
     const brassMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.2 }); 
@@ -3131,9 +4084,23 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     }
 
     // 琴椅
-const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.add(benchGrp);
-    const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(7, 0.8, 3), new THREE.MeshStandardMaterial({color: 0x3a1f11, roughness: 0.8})); benchSeat.position.y = 4.5; benchSeat.castShadow=true; benchGrp.add(benchSeat);
+// 琴椅 (獨立加入場景，避免受鋼琴隱藏影響)
+    const benchGrp = new THREE.Group(); 
+    benchGrp.userData.itemId = 'piano_bench'; // 👈 新增這行：綁定琴椅道具 ID
+    benchGrp.position.set(54, 0, 22); // 依據鋼琴 (58.5, 0, 22) 的位置，往前推 4.5 的距離
+    benchGrp.rotation.y = -Math.PI / 2; // 與鋼琴保持相同面向
+    scene.add(benchGrp); // 【關鍵】：直接加入 scene，不加入 pianoGrp
+    
+    const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(7, 0.8, 3), new THREE.MeshStandardMaterial({color: 0x3a1f11, roughness: 0.8})); 
+    benchSeat.position.y = 4.5; benchSeat.castShadow=true; benchGrp.add(benchSeat);
     [[-3, 2.25, -1], [3, 2.25, -1], [-3, 2.25, 1], [3, 2.25, 1]].forEach(pos => { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 4.5), pianoGlossy); l.position.set(...pos); l.castShadow=true; benchGrp.add(l); });
+
+    // 👇 加入這段：琴椅的隱形點擊框
+    const benchHitBox = new THREE.Mesh(new THREE.BoxGeometry(8, 6, 6), new THREE.MeshBasicMaterial({visible: false}));
+    benchHitBox.position.y = 3;
+    benchHitBox.userData = { type: 'bench' };
+    benchGrp.add(benchHitBox);
+    interactables.push(benchHitBox); // 註冊到可點擊陣列
 
     // 加入隱形 HitBox 以便點擊
     const pianoHitBox = new THREE.Mesh(new THREE.BoxGeometry(20, 16, 12), new THREE.MeshBasicMaterial({visible: false}));
@@ -3203,17 +4170,23 @@ const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.a
 
     
     // === 重建窗外宏大場景 ===
- sceneryGroup = new THREE.Group(); 
+// === 重建窗外宏大場景 ===
+    sceneryGroup = new THREE.Group(); 
     sceneryGroup.position.set(0, -15, -50); 
     scene.add(sceneryGroup);
 
-   const seaMat = new THREE.MeshStandardMaterial({color: 0x1a3b5c, roughness: 0.1, metalness: 0.8, flatShading: true});
+    // 👇 新增這個群組，並預設隱藏
+    balconyOnlyGroup = new THREE.Group();
+    balconyOnlyGroup.visible = false; 
+    sceneryGroup.add(balconyOnlyGroup);
+
+    const seaMat = new THREE.MeshStandardMaterial({color: 0x1a3b5c, roughness: 0.1, metalness: 0.8, flatShading: true});
     
     // 將平面切分成 80x40 的網格，產生足夠多的「頂點」來製造波浪
     sea = new THREE.Mesh(new THREE.PlaneGeometry(800, 400, 80, 40), seaMat);
     sea.rotation.x = -Math.PI/2; 
     sea.position.set(0, -12, -20); // 放在馬路與地基下方
-    sceneryGroup.add(sea);
+    balconyOnlyGroup.add(sea); // 👈 修改：加入 balconyOnlyGroup
 
     // 儲存海面原始的頂點高度，方便稍後做波浪運算
     sea.userData.originalZ = [];
@@ -3225,7 +4198,7 @@ const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.a
     // 🌉 【新增 左側】青馬大橋 (延伸至左方極遠處)
     const bridgeGroup = new THREE.Group();
     bridgeGroup.position.set(-140, 0, 4); // 與馬路對齊，放在極左側
-    sceneryGroup.add(bridgeGroup);
+    balconyOnlyGroup.add(bridgeGroup); // 👈 修改：加入 balconyOnlyGroup
 
     const towerMat = new THREE.MeshStandardMaterial({color: 0xd0d4d9, roughness: 0.6});
     const cableMat = new THREE.MeshStandardMaterial({color: 0x333333, roughness: 0.5});
@@ -3255,7 +4228,7 @@ const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.a
  // 🎡 【精緻版】海濱摩天輪
     const fwContainer = new THREE.Group();
     fwContainer.position.set(110, -5, -35); 
-    sceneryGroup.add(fwContainer);
+     balconyOnlyGroup.add(fwContainer); // 👈 修改：加入 balconyOnlyGroup
 
     // 1. 摩天輪底座廣場
     const fwBaseMat = new THREE.MeshStandardMaterial({color: 0xaaaaaa, roughness: 0.9});
@@ -3371,11 +4344,11 @@ const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.a
     // 馬路與行人路 (長度從 160 改為 360，連接大橋)
     const roadWidth = 26;
     const road = new THREE.Mesh(new THREE.PlaneGeometry(360, roadWidth), new THREE.MeshStandardMaterial({map: createAsphaltTexture(), roughness: 0.9})); 
-    road.rotation.x = -Math.PI/2; road.position.set(0, -4.9, 4); road.receiveShadow = true; sceneryGroup.add(road);
+    road.rotation.x = -Math.PI/2; road.position.set(0, -4.9, 4); road.receiveShadow = true;  balconyOnlyGroup.add(road); // 👈 修改
     
     const walkMat = new THREE.MeshStandardMaterial({color: 0x888888, roughness: 1.0});
-    const walkNear = new THREE.Mesh(new THREE.BoxGeometry(360, 0.4, 12), walkMat); walkNear.position.set(0, -4.7, roadWidth/2 + 10); walkNear.receiveShadow = true; sceneryGroup.add(walkNear);
-    const walkFar = new THREE.Mesh(new THREE.BoxGeometry(360, 0.4, 12), walkMat); walkFar.position.set(0, -4.7, -roadWidth/2 - 2); walkFar.receiveShadow = true; sceneryGroup.add(walkFar);
+    const walkNear = new THREE.Mesh(new THREE.BoxGeometry(360, 0.4, 12), walkMat); walkNear.position.set(0, -4.7, roadWidth/2 + 10); walkNear.receiveShadow = true; balconyOnlyGroup.add(walkNear);
+    const walkFar = new THREE.Mesh(new THREE.BoxGeometry(360, 0.4, 12), walkMat); walkFar.position.set(0, -4.7, -roadWidth/2 - 2); walkFar.receiveShadow = true; balconyOnlyGroup.add(walkFar);
 
     // 【修訂二：修正汽車車頭朝向】 (車輛增加到12台，並在更長的馬路上分佈)
     const vehicleTypes = ['taxi', 'taxi', 'car', 'car', 'car', 'minibus', 'bus'];
@@ -3392,7 +4365,7 @@ const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.a
         carGroup.position.set(startX, -4.6, laneZ); 
         carGroup.rotation.y = Math.PI / 2; 
         carGroup.userData = { speed: 0.3 * direction, type: 'vehicle' }; 
-        sceneryGroup.add(carGroup); 
+        balconyOnlyGroup.add(carGroup);
         animScenery.cars.push(carGroup); 
     }
 
@@ -3419,7 +4392,7 @@ const benchGrp = new THREE.Group(); benchGrp.position.set(0, 0, 4.5); pianoGrp.a
             t.scale.setScalar(scale);
             t.position.set(i + (Math.random()-0.5)*4, -4.5, zPos + (Math.random()-0.5)*1.5); 
             t.rotation.y = Math.random() * Math.PI;
-            sceneryGroup.add(t); 
+           balconyOnlyGroup.add(t); // 👈 修改
         }); 
     }
 
@@ -3529,13 +4502,22 @@ interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitB
     balconyGrp.add(bFloor);
 
     // 鐵藝欄杆
-    const ironMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.8, roughness: 0.4 });
+  const ironMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.8, roughness: 0.4 });
+    
     const topRail = new THREE.Mesh(new THREE.BoxGeometry(30, 0.4, 0.4), ironMat);
-    topRail.position.set(0, 8.5, -3.8); balconyGrp.add(topRail);
+    topRail.position.set(0, 8.5, -3.8);
+    topRail.castShadow = true; // 👈 補上這行：讓頂部主欄杆產生陰影
+    balconyGrp.add(topRail);
+    
     const sideRailL = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 8), ironMat);
-    sideRailL.position.set(-14.8, 8.5, 0); balconyGrp.add(sideRailL);
+    sideRailL.position.set(-14.8, 8.5, 0);
+    sideRailL.castShadow = true; // 👈 補上這行：讓左側邊緣欄杆產生陰影
+    balconyGrp.add(sideRailL);
+    
     const sideRailR = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 8), ironMat);
-    sideRailR.position.set(14.8, 8.5, 0); balconyGrp.add(sideRailR);
+    sideRailR.position.set(14.8, 8.5, 0);
+    sideRailR.castShadow = true; // 👈 補上這行：讓右側邊緣欄杆產生陰影
+    balconyGrp.add(sideRailR);
     
     // 欄杆立柱
    // 欄杆立柱 (正面)
@@ -3588,8 +4570,7 @@ interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitB
     if(typeof clockGrp !== 'undefined') clockGrp.userData.itemId = 'clock';
     if(typeof rackGrp !== 'undefined') rackGrp.userData.itemId = 'rack';
     if(typeof umbGrp !== 'undefined') umbGrp.userData.itemId = 'umbrella';
-    if(typeof pianoGrp !== 'undefined') pianoGrp.userData.itemId = 'piano_model';
-    if(typeof benchGrp !== 'undefined') benchGrp.userData.itemId = 'piano_bench';
+
     if(typeof chairGroup !== 'undefined') chairGroup.userData.itemId = 'chair';
     if(typeof catGrp !== 'undefined') catGrp.userData.itemId = 'cat';
     if(typeof leftCurtainGrp !== 'undefined') leftCurtainGrp.userData.itemId = 'curtain';
@@ -3696,8 +4677,18 @@ function setEnvironmentPhase(phaseStr) {
 }
 
         
-        function onWinResize() { if(!camera) return; camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
-        
+      function onWinResize() { 
+    if(!camera) return; 
+    camera.aspect = window.innerWidth / window.innerHeight; 
+    
+    // 如果玩家在室內轉動螢幕，立刻自動調整直屏/橫屏的廣角
+    if (!isAtBalcony) {
+        camera.fov = getIdealFov();
+    }
+    
+    camera.updateProjectionMatrix(); 
+    renderer.setSize(window.innerWidth, window.innerHeight); 
+}
       // --- 拖曳與點擊系統全域變數 ---
         let pointerDownPos = { x: 0, y: 0 };
         let dragTimer = null;       // 長按計時器
@@ -3736,9 +4727,9 @@ const intersects = getValidIntersects();
         while(obj.parent && !obj.userData.type) obj = obj.parent;
         const type = obj.userData.type;
 
-        if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat'].includes(type)) {
-            let targetObj = obj;
-            if(['plant', 'trash', 'chair', 'cat'].includes(type)) {
+if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella', 'piano', 'bench'].includes(type)) {
+    let targetObj = obj;
+    if(['plant', 'trash', 'chair', 'cat', 'rack', 'umbrella', 'piano', 'bench'].includes(type)) {
                 targetObj = obj.parent; 
             }
 
@@ -3757,8 +4748,57 @@ const intersects = getValidIntersects();
                     dragTarget.userData.originalY = dragTarget.position.y;
                 }
 
-                gsap.to(dragTarget.position, { y: dragTarget.userData.originalY + 1.2, duration: 0.2 });
+        let snapTargetX = droppedObj.position.x;
+        let snapTargetZ = droppedObj.position.z;
 
+        // 🧲 磁吸效應：如果拖曳的是琴椅，靠近鋼琴時自動吸附到演奏位
+        if (type === 'bench' && typeof pianoGrp !== 'undefined' && pianoGrp.visible) {
+            // 用三角函數動態算出鋼琴的正前方演奏位置 (距離 4.5)
+            let idealX = pianoGrp.position.x + Math.sin(pianoGrp.rotation.y) * 4.5;
+            let idealZ = pianoGrp.position.z + Math.cos(pianoGrp.rotation.y) * 4.5;
+            
+            let dx = droppedObj.position.x - idealX;
+            let dz = droppedObj.position.z - idealZ;
+            
+            if (Math.hypot(dx, dz) < 8) { // 靠近範圍內啟動吸附
+                snapTargetX = idealX;
+                snapTargetZ = idealZ;
+                // 強制轉向與鋼琴一致
+                gsap.to(droppedObj.rotation, {y: pianoGrp.rotation.y, duration: 0.3});
+            }
+        } 
+        // 🧲 磁吸效應：如果拖曳的是鋼琴，琴椅若在附近，會自動跟隨移動保持成套
+        else if (type === 'piano' && typeof benchGrp !== 'undefined' && benchGrp.visible) {
+            let idealX = droppedObj.position.x + Math.sin(droppedObj.rotation.y) * 4.5;
+            let idealZ = droppedObj.position.z + Math.cos(droppedObj.rotation.y) * 4.5;
+            
+            let dx = benchGrp.position.x - idealX;
+            let dz = benchGrp.position.z - idealZ;
+            
+            if (Math.hypot(dx, dz) < 8) {
+                gsap.to(benchGrp.position, {
+                    x: idealX,
+                    z: idealZ,
+                    duration: 0.3
+                });
+                gsap.to(benchGrp.rotation, {y: droppedObj.rotation.y, duration: 0.3});
+            }
+        }
+
+        gsap.to(dragTarget.position, { 
+            x: snapTargetX,
+            z: snapTargetZ,
+            y: dragTarget.userData.originalY, 
+            duration: 0.3, 
+            ease: "bounce.out",
+            onComplete: () => {
+                saveObjectPositions(); 
+                if (type === 'cat') {
+                    catTarget.set(droppedObj.position.x, 0, droppedObj.position.z);
+                    setCatState('idle');
+                }
+            }
+        });
                 let plane = (['log', 'tasks', 'water', 'plant'].includes(type)) ? deskPlane : floorPlane;
                 let intersectPoint = new THREE.Vector3();
                 raycaster.ray.intersectPlane(plane, intersectPoint);
@@ -3788,6 +4828,25 @@ const intersects = getValidIntersects();
 
                 controls.enabled = false;
                 document.body.style.cursor = 'ew-resize';
+            }, 150);
+        }
+
+    else if (type === 'painting' || type === 'bookcase') {
+            dragTimer = setTimeout(() => {
+                isDragging = true;
+                dragTarget = obj.parent; // 抓取整個畫框群組
+                dragTarget.userData.dragType = type;
+                controls.enabled = false;
+                document.body.style.cursor = 'grabbing';
+                
+                // 抓取時計算滑鼠在畫作上的偏移量與當前牆面法線
+                let hits = raycaster.intersectObject(wallDragMesh);
+                if (hits.length > 0) {
+                    dragOffset.copy(hits[0].point).sub(dragTarget.position);
+                    dragTarget.userData.wallNormal = hits[0].face.normal.clone();
+                } else {
+                    dragOffset.set(0, 0, 0);
+                }
             }, 150);
         }
 
@@ -3823,11 +4882,122 @@ function onPointerMove(e) {
                 dragTarget.position.z = newZ;
             }
         } 
-        else if (['trash', 'chair'].includes(type)) {
+  else if (['trash', 'chair', 'rack', 'umbrella', 'piano', 'bench'].includes(type)) {
             raycaster.ray.intersectPlane(floorPlane, intersectPoint);
             if(intersectPoint) {
-                let newX = Math.max(-18, Math.min(18, intersectPoint.x - dragOffset.x));
-                let newZ = Math.max(-4, Math.min(20, intersectPoint.z - dragOffset.z));
+                let newX = intersectPoint.x - dragOffset.x;
+                let newZ = intersectPoint.z - dragOffset.z;
+
+                // 👇 1. 靠近牆壁自動轉向 (專為鋼琴與琴椅設計)
+                if (type === 'piano' || type === 'bench') {
+                    // 計算距離四面牆的距離
+                    let dRight = 56 - newX;
+                    let dLeft = newX - (-56);
+                    let dBack = 56 - newZ;
+                    let dFront = newZ - (-14);
+
+                    // 找出最近的牆壁，並決定完美的旋轉角度 (永遠把背面靠牆)
+                    let minD = Math.min(dRight, dLeft, dBack, dFront);
+                    let targetRot = dragTarget.rotation.y;
+                    
+                   if (minD === dRight) targetRot = -Math.PI / 2;
+                    else if (minD === dLeft) targetRot = Math.PI / 2;
+                    else if (minD === dBack) targetRot = Math.PI; // 👈 修正：背靠後牆，琴鍵朝前
+                    else if (minD === dFront) targetRot = 0;      // 👈 修正：背靠窗戶，琴鍵朝內
+
+                    // 若角度發生變化，使用 GSAP 平滑轉向
+                    if (dragTarget.userData.lastSnapRot !== targetRot) {
+                        gsap.to(dragTarget.rotation, {y: targetRot, duration: 0.2});
+                        dragTarget.userData.lastSnapRot = targetRot;
+                    }
+                }
+
+                newX = Math.max(-56, Math.min(56, newX));
+                newZ = Math.max(-14, Math.min(56, newZ));
+ 
+                // 定義各自的碰撞半徑
+                let myRadius = 2.5;
+                if (type === 'rack' || type === 'chair') myRadius = 4.5;
+                if (type === 'bench') myRadius = 3.5;
+                if (type === 'piano') myRadius = 7.0; 
+ 
+                function pushOutRect(cx, cz, radius, rx, rz, rw, rd) {
+                    let hw = rw / 2, hd = rd / 2;
+                    let testX = cx < rx - hw ? rx - hw : (cx > rx + hw ? rx + hw : cx);
+                    let testZ = cz < rz - hd ? rz - hd : (cz > rz + hd ? rz + hd : cz);
+                    let distX = cx - testX, distZ = cz - testZ;
+                    let dist = Math.sqrt(distX*distX + distZ*distZ);
+                    if (dist < radius) {
+                        if (dist === 0) {
+                            let dL = Math.abs((rx - hw) - cx), dR = Math.abs((rx + hw) - cx);
+                            let dT = Math.abs((rz - hd) - cz), dB = Math.abs((rz + hd) - cz);
+                            let m = Math.min(dL, dR, dT, dB);
+                            if (m === dL) return { x: rx - hw - radius, z: cz };
+                            if (m === dR) return { x: rx + hw + radius, z: cz };
+                            if (m === dT) return { x: cx, z: rz - hd - radius };
+                            return { x: cx, z: rz + hd + radius };
+                        }
+                        return { x: cx + (distX/dist)*(radius-dist), z: cz + (distZ/dist)*(radius-dist) };
+                    }
+                    return { x: cx, z: cz };
+                }
+ 
+                // 1. 避開書桌
+                let pos = pushOutRect(newX, newZ, myRadius, 0, 0, 32, 16);
+                newX = pos.x; newZ = pos.z;
+ 
+                // 2. 避開鋼琴本體 (動態依據鋼琴的旋轉角度決定碰撞寬深！)
+                if (type !== 'piano' && typeof pianoGrp !== 'undefined' && pianoGrp.visible) {
+                    let isPianoZWall = Math.abs(Math.sin(pianoGrp.rotation.y)) > 0.5;
+                    let pW = isPianoZWall ? 6 : 17;
+                    let pD = isPianoZWall ? 17 : 6;
+                    pos = pushOutRect(newX, newZ, myRadius, pianoGrp.position.x, pianoGrp.position.z, pW, pD);
+                    newX = pos.x; newZ = pos.z;
+                }
+ 
+                // 3. 避開書櫃
+                scene.traverse(c => {
+                    if (c.userData && c.userData.itemId && c.userData.itemId.startsWith('bookcase_') && c.visible) {
+                        let isZWall = Math.abs(Math.sin(c.rotation.y)) < 0.5; 
+                        let bw = isZWall ? 22 : 6;
+                        let bd = isZWall ? 6 : 22;
+                        pos = pushOutRect(newX, newZ, myRadius, c.position.x, c.position.z, bw, bd);
+                        newX = pos.x; newZ = pos.z;
+                    }
+                });
+ 
+                // 4. 家具互相排斥
+                const floorItems = [
+                    { grp: tcGrp, r: 2.5 },
+                    { grp: chairGroup, r: 4.5 },
+                    { grp: typeof rackGrp !== 'undefined' ? rackGrp : null, r: 4.5 },
+                    { grp: typeof umbGrp !== 'undefined' ? umbGrp : null, r: 2.5 },
+                    { grp: typeof benchGrp !== 'undefined' ? benchGrp : null, r: 3.5 }
+                ];
+ 
+                for (let iter = 0; iter < 2; iter++) {
+                    floorItems.forEach(item => {
+                        if (item.grp && dragTarget !== item.grp && item.grp.visible) {
+                            let dx = newX - item.grp.position.x;
+                            let dz = newZ - item.grp.position.z;
+                            let dist = Math.sqrt(dx*dx + dz*dz);
+                            let minDist = myRadius + item.r;
+ 
+                            let isPianoBenchPair = (type === 'piano' && item.grp === benchGrp) || (type === 'bench' && item.grp === pianoGrp);
+                            if (isPianoBenchPair) minDist = 1.0; 
+ 
+                            if (dist < minDist && dist > 0.01) {
+                                let overlap = minDist - dist;
+                                newX += (dx / dist) * overlap;
+                                newZ += (dz / dist) * overlap;
+                            }
+                        }
+                    });
+                }
+ 
+                newX = Math.max(-56, Math.min(56, newX));
+                newZ = Math.max(-14, Math.min(56, newZ));
+ 
                 dragTarget.position.x = newX;
                 dragTarget.position.z = newZ;
             }
@@ -3884,6 +5054,280 @@ function onPointerMove(e) {
                 applyCurtainRatio();
             }
         }
+
+
+else if (type === 'painting') {
+            raycaster.setFromCamera(mouse, camera);
+            let hits = raycaster.intersectObject(wallDragMesh);
+            if (hits.length > 0) {
+                let hit = hits[0];
+                let n = hit.face.normal;
+                
+                if (Math.abs(n.y) > 0.5) return;
+                
+                if (dragTarget.userData.wallNormal && n.dot(dragTarget.userData.wallNormal) < 0.9) {
+                    dragOffset.set(0, 0, 0);
+                    dragTarget.userData.wallNormal.copy(n);
+                }
+                
+                let newPos = hit.point.clone().sub(dragOffset);
+                
+                const halfW = dragTarget.userData.frameW / 2;
+                const halfH = dragTarget.userData.frameH / 2;
+                
+                const obstacleMargin = 2.5;
+                const cornerMargin = 2.0;   
+                
+                const safeXMin = -58.7 + halfW + cornerMargin;
+                const safeXMax =  58.7 - halfW - cornerMargin;
+                const safeZMin = -16.7 + halfW + cornerMargin;
+                const safeZMax =  58.7 - halfW - cornerMargin;
+                
+                const minY = 6 + halfH;
+                const maxY = 38 - halfH; 
+                newPos.y = Math.max(minY, Math.min(maxY, newPos.y));
+                
+                // ==========================================
+                // 🛑 A. 建築結構防穿模 (窗戶、木門、冷氣)
+                // ==========================================
+                if (n.z > 0.5) { // 🧱 後牆
+                    newPos.z = hit.point.z;
+                    dragTarget.rotation.y = Math.PI; 
+                    newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
+                }
+                else if (n.z < -0.5) { // 🪟 前牆 (玻璃趟門)
+                    newPos.z = hit.point.z;
+                    dragTarget.rotation.y = 0; 
+                    newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
+                    
+                    const winLeft = -15.5 - halfW - obstacleMargin;
+                    const winRight = 15.5 + halfW + obstacleMargin;
+                    const winTop = 28.5 + halfH + obstacleMargin;
+                    
+                    if (newPos.y < winTop && newPos.x > winLeft && newPos.x < winRight) {
+                        let penTop = (winTop <= maxY) ? (winTop - newPos.y) : Infinity;
+                        let penLeft = newPos.x - winLeft;
+                        let penRight = winRight - newPos.x;
+                        
+                        let minPen = Math.min(penTop, penLeft, penRight);
+                        if (minPen === penTop) newPos.y = winTop;
+                        else if (minPen === penLeft) newPos.x = winLeft;
+                        else newPos.x = winRight;
+                    }
+                }
+                else if (n.x > 0.5) { // 🎹 右牆 (冷氣機)
+                    newPos.x = hit.point.x;
+                    dragTarget.rotation.y = -Math.PI / 2; 
+                    newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
+                    
+                    const acLeft = -13.5 - halfW - obstacleMargin;
+                    const acRight = 3.5 + halfW + obstacleMargin;
+                    const acBottom = 28.5 - halfH - obstacleMargin;
+                    
+                    if (newPos.y > acBottom && newPos.z > acLeft && newPos.z < acRight) {
+                        let penBot = (acBottom >= minY) ? (newPos.y - acBottom) : Infinity;
+                        let penLeft = newPos.z - acLeft;
+                        let penRight = acRight - newPos.z;
+ 
+                        let minPen = Math.min(penBot, penLeft, penRight);
+                        if (minPen === penBot) newPos.y = acBottom;
+                        else if (minPen === penLeft) newPos.z = acLeft;
+                        else newPos.z = acRight;
+                    }
+                }
+                else if (n.x < -0.5) { // 🚪 左牆 (木趟門)
+                    newPos.x = hit.point.x;
+                    dragTarget.rotation.y = Math.PI / 2; 
+                    newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
+                    
+                    const doorLeft = -8.5 - halfW - obstacleMargin;
+                    const doorRight = 8.5 + halfW + obstacleMargin;
+                    const doorTop = 28.5 + halfH + obstacleMargin;
+                    
+                    if (newPos.y < doorTop && newPos.z > doorLeft && newPos.z < doorRight) {
+                        let penTop = (doorTop <= maxY) ? (doorTop - newPos.y) : Infinity;
+                        let penLeft = newPos.z - doorLeft;
+                        let penRight = doorRight - newPos.z;
+ 
+                        let minPen = Math.min(penTop, penLeft, penRight);
+                        if (minPen === penTop) newPos.y = doorTop;
+                        else if (minPen === penLeft) newPos.z = doorLeft;
+                        else newPos.z = doorRight;
+                    }
+                }
+ 
+                // ==========================================
+                // 🧲 B. 通用牆面家具互斥 (畫作、書櫃、時鐘、鋼琴 完美防重疊)
+                // ==========================================
+                const wallItemTypes = ['painting', 'bookcase', 'clock', 'piano'];
+                
+                for (let iter = 0; iter < 2; iter++) {
+                    interactables.forEach(item => {
+                        let other = item.parent;
+                        if (!other) other = item;
+                        
+                        if (item.userData && wallItemTypes.includes(item.userData.type) && other !== dragTarget && other.visible) {
+                            
+                            // 判斷是否在同一面牆 (比較旋轉角度)
+                            const normalize = (a) => { let res = a % (Math.PI * 2); return res < 0 ? res + Math.PI * 2 : res; };
+                            const diff = Math.abs(normalize(dragTarget.rotation.y) - normalize(other.rotation.y || 0));
+                            
+                            if (diff < 0.1 || Math.abs(diff - Math.PI * 2) < 0.1) {
+                                const isZWall = (Math.abs(n.z) > 0.5);
+                                
+                                // 動態獲取目標家具的尺寸與高度
+                                let otherW = other.userData.frameW || 10;
+                                let otherH = other.userData.frameH || 10;
+                                let otherY = other.position.y;
+
+                                if (item.userData.type === 'piano') { otherW = 20; otherH = 16; otherY = 8; }
+                                else if (item.userData.type === 'bookcase') { otherW = 22; otherH = 30; otherY = 15.02; }
+
+                                const otherHalfW = otherW / 2;
+                                const otherHalfH = otherH / 2;
+                                
+                                const minDx = halfW + otherHalfW + 1.0; 
+                                const minDy = halfH + otherHalfH + 1.0; 
+                                
+                                const dx = isZWall ? Math.abs(newPos.x - other.position.x) : Math.abs(newPos.z - other.position.z);
+                                const dy = Math.abs(newPos.y - otherY);
+                                
+                                if (dx < minDx && dy < minDy) {
+                                    const overlapX = minDx - dx;
+                                    const overlapY = minDy - dy;
+                                    
+                                    // 畫作可以上下左右滑開，取最短路徑推開
+                                    if (overlapX < overlapY) {
+                                        if (isZWall) newPos.x += overlapX * (newPos.x > other.position.x ? 1 : -1);
+                                        else newPos.z += overlapX * (newPos.z > other.position.z ? 1 : -1);
+                                    } else {
+                                        newPos.y += overlapY * (newPos.y > otherY ? 1 : -1);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // ==========================================
+                // 🛡️ C. 最後二次約束邊界
+                // ==========================================
+                newPos.y = Math.max(minY, Math.min(maxY, newPos.y));
+                if (Math.abs(n.z) > 0.5) newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
+                else newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
+                
+                dragTarget.position.copy(newPos);
+            }
+            return;
+        }
+
+        else if (type === 'bookcase') {
+            raycaster.setFromCamera(mouse, camera);
+            let hits = raycaster.intersectObject(wallDragMesh);
+            if (hits.length > 0) {
+                let hit = hits[0];
+                let n = hit.face.normal;
+                
+                if (Math.abs(n.y) > 0.5) return; 
+                
+                if (dragTarget.userData.wallNormal && n.dot(dragTarget.userData.wallNormal) < 0.9) {
+                    dragOffset.set(0, 0, 0);
+                    dragTarget.userData.wallNormal.copy(n);
+                }
+                
+                let newPos = hit.point.clone().sub(dragOffset);
+                
+                newPos.y = 15.02; // 強制貼地
+                
+                const halfW = dragTarget.userData.frameW / 2;
+                const obstacleMargin = 1.0; 
+                const cornerMargin = 2.0;   
+                
+                const safeXMin = -58.7 + halfW + cornerMargin;
+                const safeXMax =  58.7 - halfW - cornerMargin;
+                const safeZMin = -16.7 + halfW + cornerMargin;
+                const safeZMax =  58.7 - halfW - cornerMargin;
+                
+                if (n.z > 0.5) { // 🧱 後牆
+                    newPos.z = hit.point.z; 
+                    dragTarget.rotation.y = 0; 
+                }
+                else if (n.z < -0.5) { // 🪟 前牆
+                    newPos.z = hit.point.z; 
+                    dragTarget.rotation.y = Math.PI; 
+                    const doorLeft = -15.5 - halfW - obstacleMargin;
+                    const doorRight = 15.5 + halfW + obstacleMargin;
+                    if (newPos.x > doorLeft && newPos.x < doorRight) {
+                        newPos.x = (newPos.x < 0) ? doorLeft : doorRight; 
+                    }
+                }
+                else if (n.x > 0.5) { // 🎹 右牆
+                    newPos.x = hit.point.x; 
+                    dragTarget.rotation.y = Math.PI / 2; 
+                }
+                else if (n.x < -0.5) { // 🚪 左牆
+                    newPos.x = hit.point.x; 
+                    dragTarget.rotation.y = -Math.PI / 2; 
+                    const doorLeft = -8.5 - halfW - obstacleMargin;
+                    const doorRight = 8.5 + halfW + obstacleMargin;
+                    if (newPos.z > doorLeft && newPos.z < doorRight) {
+                        newPos.z = (newPos.z < 0) ? doorLeft : doorRight; 
+                    }
+                }
+
+                // ==========================================
+                // 🧲 通用牆面家具互斥 (書櫃碰撞排斥)
+                // ==========================================
+                const wallItemTypes = ['painting', 'bookcase', 'clock', 'piano'];
+                
+                for (let iter = 0; iter < 2; iter++) {
+                    interactables.forEach(item => {
+                        let other = item.parent;
+                        if (!other) other = item;
+                        
+                        if (item.userData && wallItemTypes.includes(item.userData.type) && other !== dragTarget && other.visible) {
+                            
+                            const normalize = (a) => { let res = a % (Math.PI * 2); return res < 0 ? res + Math.PI * 2 : res; };
+                            const diff = Math.abs(normalize(dragTarget.rotation.y) - normalize(other.rotation.y || 0));
+                            
+                            if (diff < 0.1 || Math.abs(diff - Math.PI * 2) < 0.1) {
+                                const isZWall = (Math.abs(n.z) > 0.5);
+                                
+                                let otherW = other.userData.frameW || 10;
+                                let otherH = other.userData.frameH || 10;
+                                let otherY = other.position.y;
+
+                                if (item.userData.type === 'piano') { otherW = 20; otherH = 16; otherY = 8; }
+                                else if (item.userData.type === 'bookcase') { otherW = 22; otherH = 30; otherY = 15.02; }
+
+                                const otherHalfW = otherW / 2;
+                                const otherHalfH = otherH / 2;
+                                
+                                const minDx = halfW + otherHalfW + 1.0; 
+                                const minDy = 15 + otherHalfH + 1.0; // 書櫃的 halfH 是 15
+                                
+                                const dx = isZWall ? Math.abs(newPos.x - other.position.x) : Math.abs(newPos.z - other.position.z);
+                                const dy = Math.abs(newPos.y - otherY);
+                                
+                                // 書櫃撞到東西，只能強制在水平方向推開 (因為書櫃不能離地)
+                                if (dx < minDx && dy < minDy) {
+                                    const overlapX = minDx - dx;
+                                    if (isZWall) newPos.x += overlapX * (newPos.x > other.position.x ? 1 : -1);
+                                    else newPos.z += overlapX * (newPos.z > other.position.z ? 1 : -1);
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                if (Math.abs(n.z) > 0.5) newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
+                else newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
+                
+                dragTarget.position.copy(newPos);
+            }
+        }
+ 
+
         return; 
     }
 
@@ -3910,6 +5354,17 @@ function onPointerUp(e) {
             document.body.style.cursor = 'default';
             return;
         }
+
+
+if (type === 'painting' || type === 'bookcase') {
+            saveObjectPositions(); // 儲存畫作與書櫃新位置
+                isDragging = false;
+                dragTarget = null;
+                controls.enabled = true;
+                document.body.style.cursor = 'default';
+                return;
+            }
+        
 
         gsap.to(dragTarget.position, { 
             y: dragTarget.userData.originalY, 
@@ -3961,10 +5416,61 @@ function onPointerUp(e) {
     if(hasPianoPrivilege) openPianoUI(); else showToast("🎹 需要收集「鋼琴彈奏權」才能彈奏。");
 } else if(type === 'wallet') {
     openWalletUI();
-}
+ // 👇 新增這兩行：點擊收音機 👇
+        } else if(type === 'radio') {
+            toggleRadio();
+        }
         
     }
 }
+
+        // 📻 控制香港電台播放
+function toggleRadio() {
+    const audio = document.getElementById('rthk-audio');
+    // RTHK Radio 2 香港電台第二台 (流行音樂與輕閒節目) 實時串流網址
+    const streamUrl = 'https://rthkaudio2-lh.akamaihd.net/i/radio2_1@355865/master.m3u8';
+
+    if (isRadioPlaying) {
+        // 停止播放
+        audio.pause();
+        isRadioPlaying = false;
+        radioLED.material.color.setHex(0x882222);
+        radioLED.material.emissive.setHex(0x550000);
+        showToast("📻 已關閉收音機");
+    } else {
+        // 開始播放
+        showToast("📻 正在連接香港電台 第二台...");
+        
+        // 由於是 HLS (m3u8) 格式，需要使用 hls.js 解析 (除非是原生支援的 Safari)
+        if (Hls.isSupported()) {
+            if (!hls) {
+                hls = new Hls();
+                hls.loadSource(streamUrl);
+                hls.attachMedia(audio);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    audio.play().catch(e => console.log("瀏覽器阻擋自動播放", e));
+                });
+            } else {
+                audio.play();
+            }
+        } 
+        // 支援原生 HLS 的瀏覽器 (例如手機上的 Safari / iOS)
+        else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
+            if (!audio.src) audio.src = streamUrl;
+            audio.play();
+        }
+        
+        isRadioPlaying = true;
+        // 亮起復古綠色指示燈
+        radioLED.material.color.setHex(0x44aa44);
+        radioLED.material.emissive.setHex(0x228822);
+        
+        // 點擊時讓收音機跳動一下
+        gsap.to(radioGrp.scale, {y: 0.9, duration: 0.1, yoyo: true, repeat: 1});
+    }
+}
+
+        
 
        function performWateringAnimation() {
             if (!userPlantData) { document.getElementById('modal-plant-selector').style.display = 'flex'; return; }
@@ -4224,87 +5730,188 @@ function isCatColliding(x, z) {
     }
 }
         
-   function animateRoom() {
-    requestAnimationFrame(animateRoom); 
+ // 👇 1. 新增此函數：判斷是否有 UI 視窗遮擋了 3D 房間
+function isRoomPaused() {
+    // 檢查所有特定的獨立覆蓋層
+    const overlays = [
+        'modal', 'piano-overlay', 'gacha-overlay', 'draw-anim-overlay',
+        'hw-overlay', 'modal-gacha-buffer', 'auth-overlay', 'anim-overlay'
+    ];
+    for (let id of overlays) {
+        const el = document.getElementById(id);
+        if (el && window.getComputedStyle(el).display !== 'none') return true;
+    }
+    
+    // 檢查所有的彈出視窗 (包含信箱、紀錄、任務、植物、錢包等)
+    const modals = document.querySelectorAll('.room-modal');
+    for (let i = 0; i < modals.length; i++) {
+        if (window.getComputedStyle(modals[i]).display !== 'none') return true;
+    }
+    
+    return false;
+}
+ 
+// 👇 新增全域變數用來判斷視窗是否在背景
+let isAppActive = true;
+document.addEventListener("visibilitychange", () => {
+    isAppActive = !document.hidden;
+});
+ 
+// 👇 新增：視錐體物件與「窗外世界感應區」
+const cameraFrustum = new THREE.Frustum();
+const cameraViewProjectionMatrix = new THREE.Matrix4();
+ 
+// 建立一個代表「窗外整個世界」的隱形區域
+// (X寬800, Y高400, Z從窗戶外面 z=-17 開始，往外延伸到極遠處 z=-400)
+const outsideWorldBox = new THREE.Box3(
+    new THREE.Vector3(-400, -100, -400),
+    new THREE.Vector3(400, 300, -17)
+);
+ 
+function animateRoom() {
+    requestAnimationFrame(animateRoom);
+    // 1. 如果畫面被 UI 遮擋，或手機退到背景(縮小網頁)，直接罷工不計算，釋放 100% 效能！
+    if (isRoomPaused() || !isAppActive) return;
+    // 更新視錐體矩陣 (取得目前攝影機看得到的範圍)
+    if (camera) {
+        camera.updateMatrixWorld();
+        cameraViewProjectionMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+        cameraFrustum.setFromProjectionMatrix(cameraViewProjectionMatrix);
+    }
+ 
+// 🔄 實時指南針 (支援原地轉身的鏡像反轉)
+    const knobDial = document.getElementById('knob-dial');
+    if (knobDial && camera && controls && !window.isKnobDragging) {
+        const dx = controls.target.x - camera.position.x;
+        const dz = controls.target.z - camera.position.z;
+        
+        // 根據目前的視角模式，翻轉 X 與 Z 軸方向
+        // 模式一(望窗)：正前方為 -Z。 模式二(望櫃)：正前方為 +Z，且左右相反
+        const refX = (window.knobMode === 2) ? -dx : dx;
+        const refZ = (window.knobMode === 2) ? dz : -dz; 
+        
+        const angleDeg = Math.atan2(refX, refZ) * (180 / Math.PI);
+        knobDial.style.transform = `rotate(${angleDeg}deg)`;
+    }
+       
     if(controls) controls.update();
     
-    // 1. 車輛邏輯：擴大行駛邊界到 180，讓車可以開上大橋再消失
-    animScenery.cars.forEach(c => { 
-        c.position.x += c.userData.speed; 
-        if(c.position.x > 180) c.position.x = -180; 
-        else if(c.position.x < -180) c.position.x = 180; 
-    });
-
-  // 2. 🎡 讓摩天輪緩慢轉動，且車廂保持垂直！
-    if(typeof ferrisWheelGrp !== 'undefined') {
-        const rotationSpeed = 0.0015; // 轉動速度
-        ferrisWheelGrp.rotation.z -= rotationSpeed; // 大輪子逆時針轉
-        
-        // 讓所有車廂「順時針」反向轉動相同的角度，抵銷大輪子的旋轉，保持垂直！
-        if (typeof fwCabins !== 'undefined') {
-            fwCabins.forEach(cabin => {
-                cabin.rotation.z = -ferrisWheelGrp.rotation.z; 
+    // ==========================================
+    // ⚡ 效能優化區：精準判斷是否看到窗外
+    // ==========================================
+ 
+    // 只要視線掃到「窗外的虛擬區域」，或是玩家正站在露台上，就判定為正在看窗外
+    let isLookingOutside = isAtBalcony || cameraFrustum.intersectsBox(outsideWorldBox);
+ 
+    // 只有當視線掃到窗外時，才去計算耗費 CPU 的海浪、雲朵、車輛與摩天輪
+    if (isLookingOutside) {
+        // 1. 車輛邏輯
+        animScenery.cars.forEach(c => {
+            c.position.x += c.userData.speed;
+            if(c.position.x > 180) c.position.x = -180;
+            else if(c.position.x < -180) c.position.x = 180;
+        });
+ 
+        // 2. 🎡 摩天輪
+        if(typeof ferrisWheelGrp !== 'undefined') {
+            const rotationSpeed = 0.0015;
+            ferrisWheelGrp.rotation.z -= rotationSpeed;
+            if (typeof fwCabins !== 'undefined') {
+                fwCabins.forEach(cabin => {
+                    cabin.rotation.z = -ferrisWheelGrp.rotation.z;
+                });
+            }
+        }
+ 
+        // 3. 🌊 海水波浪 (最耗效能的頂點運算)
+        if (typeof sea !== 'undefined') {
+            const time = Date.now() * 0.0015;
+            const posAttr = sea.geometry.attributes.position;
+            for(let i=0; i<posAttr.count; i++) {
+                const x = posAttr.getX(i);
+                const y = posAttr.getY(i);
+                // 這裡使用 Date.now()，所以即使暫停計算，重新看海時波浪也會完美接上，不會有跳動感！
+                const wave1 = Math.sin(x * 0.04 + time) * 1.5;
+                const wave2 = Math.cos(y * 0.03 + time * 0.8) * 1.5;
+                posAttr.setZ(i, sea.userData.originalZ[i] + wave1 + wave2);
+            }
+            posAttr.needsUpdate = true;
+        }
+ 
+        // 4. ☁️ 雲朵飄動
+        if (typeof clouds !== 'undefined' && clouds.length > 0) {
+            clouds.forEach(c => {
+                c.userData.angle -= c.userData.speed;
+                c.position.x = Math.cos(c.userData.angle) * c.userData.radius;
+                c.position.z = Math.sin(c.userData.angle) * c.userData.radius;
+                c.lookAt(0, c.position.y, 0);
             });
         }
     }
-
-
-       // 3. 🌊 讓海水產生起伏波浪動態
-    if (typeof sea !== 'undefined') {
-        const time = Date.now() * 0.0015; // 波浪流動的速度
-        const posAttr = sea.geometry.attributes.position;
-        
-        for(let i=0; i<posAttr.count; i++) {
-            const x = posAttr.getX(i);
-            const y = posAttr.getY(i);
-            
-            // 利用三角函數 (sin, cos) 交錯，產生自然的潮汐起伏感
-            const wave1 = Math.sin(x * 0.04 + time) * 1.5;
-            const wave2 = Math.cos(y * 0.03 + time * 0.8) * 1.5;
-            
-            // 更新頂點高度 (因為平面轉了 -90 度，這裡的 Z 其實是畫面中的上下)
-            posAttr.setZ(i, sea.userData.originalZ[i] + wave1 + wave2);
-        }
-        posAttr.needsUpdate = true; // 告訴 Three.js 頂點改變了，需要重新渲染
-    }
-
-       // 4. ☁️ 讓天空的雲朵緩慢飄動
-    if (typeof clouds !== 'undefined' && clouds.length > 0) {
-        clouds.forEach(c => {
-            // 更新雲朵所在的圓周角度
-            c.userData.angle -= c.userData.speed; 
-            
-            // 根據新的角度，重新計算並更新 X 與 Z 座標
-            c.position.x = Math.cos(c.userData.angle) * c.userData.radius;
-            c.position.z = Math.sin(c.userData.angle) * c.userData.radius;
-            
-            // 確保在移動過程中，雲朵依然面向中心
-            c.lookAt(0, c.position.y, 0);
-        });
-    }
-
-
+ 
+    // ==========================================
+    // 室內動畫 (永遠計算，因為就在身邊)
+    // ==========================================
     if(indicatorLeft && indicatorLeft.visible) { indicatorLeft.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorLeft.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
     if(indicatorRight && indicatorRight.visible) { indicatorRight.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorRight.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
     
-    if(indicatorTasks && indicatorTasks.visible && clipboard) { 
+    if(indicatorTasks && indicatorTasks.visible && clipboard) {
         indicatorTasks.position.x = clipboard.position.x;
         indicatorTasks.position.z = clipboard.position.z;
-        indicatorTasks.position.y = clipboard.position.y + 1.0 + Math.sin(Date.now()*0.003)*0.2; 
-        indicatorTasks.rotation.y = 0.15 + Math.sin(Date.now()*0.002)*0.2; 
+        indicatorTasks.position.y = clipboard.position.y + 1.0 + Math.sin(Date.now()*0.003)*0.2;
+        indicatorTasks.rotation.y = 0.15 + Math.sin(Date.now()*0.002)*0.2;
     }
     
+    // 時鐘
     if(clockHourHand && clockMinHand && clockSecHand) {
-        const now = new Date();
-        const hkTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (8 * 3600000));
-        const hours = hkTime.getHours(); const minutes = hkTime.getMinutes(); const seconds = hkTime.getSeconds(); const millis = hkTime.getMilliseconds();
-        clockSecHand.rotation.z = -(seconds + millis / 1000) * (Math.PI * 2 / 60);
-        clockMinHand.rotation.z = -(minutes + seconds / 60) * (Math.PI * 2 / 60);
-        clockHourHand.rotation.z = -((hours % 12) + minutes / 60) * (Math.PI * 2 / 12);
+        // 優化：只在視線內有看到時鐘時才更新指針
+        if (cameraFrustum.intersectsObject(clockHourHand.children[0])) {
+            const now = new Date();
+            const hkTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (8 * 3600000));
+            const hours = hkTime.getHours(); const minutes = hkTime.getMinutes(); const seconds = hkTime.getSeconds(); const millis = hkTime.getMilliseconds();
+            clockSecHand.rotation.z = -(seconds + millis / 1000) * (Math.PI * 2 / 60);
+            clockMinHand.rotation.z = -(minutes + seconds / 60) * (Math.PI * 2 / 60);
+            clockHourHand.rotation.z = -((hours % 12) + minutes / 60) * (Math.PI * 2 / 12);
+        }
     }
-
+ 
     updateCat();
-
+ 
+    // 🎵 收音機音符特效
+    if (isRadioPlaying && radioGrp && radioGrp.visible) {
+        if (Math.random() > 0.95) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = Math.random() > 0.5 ? '#d4af37' : '#ffffff';
+            ctx.font = '40px sans-serif';
+            ctx.fillText(Math.random() > 0.5 ? '🎵' : '🎶', 10, 45);
+            const tex = new THREE.CanvasTexture(canvas);
+            const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.8 });
+            const sprite = new THREE.Sprite(spriteMat);
+            let startPos = new THREE.Vector3();
+            radioGrp.getWorldPosition(startPos);
+            sprite.position.set(startPos.x + (Math.random()-0.5)*2, startPos.y + 2, startPos.z + (Math.random()-0.5)*2);
+            sprite.scale.set(1.5, 1.5, 1.5);
+            sprite.userData = { speedY: 0.02 + Math.random()*0.02, speedX: (Math.random()-0.5)*0.01 };
+            scene.add(sprite);
+            musicNotes.push(sprite);
+        }
+    }
+    
+    for (let i = musicNotes.length - 1; i >= 0; i--) {
+        let note = musicNotes[i];
+        note.position.y += note.userData.speedY;
+        note.position.x += note.userData.speedX;
+        note.material.opacity -= 0.005;
+        if (note.material.opacity <= 0) {
+            scene.remove(note);
+            note.material.map.dispose();
+            note.material.dispose();
+            musicNotes.splice(i, 1);
+        }
+    }
+       
     if(renderer && scene && camera) renderer.render(scene, camera);
 }
 
@@ -4952,6 +6559,417 @@ window.devSimulateReceiveReply = function() {
     });
 };
 
+
+// 🍂 檢查並執行破產清算
+function checkAndTriggerBankruptcy(readingTasks, randomTasks, submittedReading, submittedRandom) {
+    // 1. 開發者與老師享有豁免權
+    if (typeof isDevUser === 'function' && isDevUser(currentUser.email)) return;
+
+    let isBankrupt = false;
+    const todayReset = new Date().setHours(0,0,0,0);
+
+    // 2. 檢查閱讀任務是否逾期超過 3 天 (即 >= 4 天)
+    for (let dateStr of readingTasks) {
+        if (!submittedReading.includes(dateStr)) {
+            let deadline = new Date(dateStr).setHours(0,0,0,0);
+            if (Math.floor((todayReset - deadline) / 86400000) >= 4) {
+                isBankrupt = true; break;
+            }
+        }
+    }
+
+    // 3. 如果閱讀沒事，繼續檢查探索任務
+    if (!isBankrupt) {
+        for (let dateStr of randomTasks) {
+            if (!submittedRandom.includes(dateStr)) {
+                let deadline = new Date(dateStr).setHours(0,0,0,0);
+                if (Math.floor((todayReset - deadline) / 86400000) >= 4) {
+                    isBankrupt = true; break;
+                }
+            }
+        }
+    }
+
+    // 4. 如果確認破產，執行懲罰
+    if (isBankrupt) {
+        // 先檢查他是否還有財產，如果已經被扣到 0 分且沒道具，就不重複彈窗干擾
+        db.ref(`users/${currentUser.uid}`).once('value').then(snap => {
+            let data = snap.val() || {};
+            let pts = data.points || 0;
+            let inv = data.inventory || {};
+            
+            if (pts > 0 || Object.keys(inv).length > 0) {
+                // 💥 執行清算：積分歸零、道具全砍
+                db.ref(`users/${currentUser.uid}/points`).set(0);
+                db.ref(`users/${currentUser.uid}/inventory`).remove();
+                
+                // 彈出破產宣告視窗
+                document.getElementById('modal-bankruptcy').style.display = 'flex';
+            }
+        });
+    }
+}
+
+// 點擊「默默承受」後重新整理畫面
+function acceptBankruptcy() {
+    document.getElementById('modal-bankruptcy').style.display = 'none';
+    window.location.reload(); // 重新載入，讓房間的道具在眼前消失
+}
+
+
+
+// 👇 移動端實時視角旋鈕與攝影機控制 (完美軌跡、廣角與方向修復版) 👇
+(function initCameraKnob() {
+    const knob = document.getElementById('mobile-cam-knob');
+    if(!knob) return;
+
+    window.isKnobDragging = false;
+    window.knobMode = 1; // 1: 望窗(白色), 2: 望書櫃(木色)
+    let currentSnappedAngle = null;
+    let longPressTimer = null;
+    let startX = 0, startY = 0;
+
+    if (controls) {
+        controls.minAzimuthAngle = -Infinity;
+        controls.maxAzimuthAngle = Infinity;
+    }
+
+    // --- 長按切換視角模式 ---
+   function toggleKnobMode() {
+        window.knobMode = (window.knobMode === 1) ? 2 : 1;
+        const knobCenter = document.querySelector('.knob-center');
+        
+        if (window.knobMode === 1) {
+            knobCenter.style.background = '#fff';
+            showToast("👀 視角切換：望向書桌與窗外");
+            if (controls && !isAtBalcony) {
+                controls.minAzimuthAngle = -Math.PI / 2;
+                controls.maxAzimuthAngle = Math.PI / 2;
+            }
+        } else {
+            knobCenter.style.background = '#e6d7c0'; // 淡雅木色
+            showToast("👀 視角切換：望向房間與書櫃");
+            if (controls && !isAtBalcony) {
+                controls.minAzimuthAngle = Math.PI / 2;
+                controls.maxAzimuthAngle = Math.PI * 1.5;
+            }
+        }
+        
+        window.isKnobDragging = false; 
+        currentSnappedAngle = null; 
+        
+        // 👇 傳入 true，代表切換時「強制退回最廣角 (59)」
+        applyKnobAngle(0, true); 
+    }
+
+    // --- 執行「原地轉向」運鏡 (加入強制廣角參數) ---
+    function applyKnobAngle(snappedDeg, forceWide = false) {
+        // 如果角度沒變，且沒有強制更新廣角，就不用執行
+        if (currentSnappedAngle === snappedDeg && !forceWide) return;
+        currentSnappedAngle = snappedDeg;
+
+        const knobDial = document.getElementById('knob-dial');
+        if (knobDial) knobDial.style.transform = `rotate(${snappedDeg}deg)`;
+
+        if (controls && camera) {
+            let r;
+            if (forceWide) {
+                // 如果是切換模式，強制將距離拉遠至最廣角 (59)
+                r = 59; 
+            } else {
+                // 否則維持玩家當下的縮放距離，上限配合 maxDistance 放寬到 59
+                const currentDx = camera.position.x - controls.target.x;
+                const currentDy = camera.position.y - controls.target.y;
+                const currentDz = camera.position.z - controls.target.z;
+                r = Math.sqrt(currentDx*currentDx + currentDy*currentDy + currentDz*currentDz);
+                r = Math.max(15, Math.min(59, r)); 
+            }
+
+            // 2. 固定圓心站立點 (Camera Base)
+            const baseCx = 0, baseCy = 16, baseCz = 20;
+            let baseTx = 0, baseTy = 16, baseTz = 0; // 看向的目標點
+
+            // 3. 🎯 根據模式與角度設定目標點 (Target)
+            if (window.knobMode === 1) { 
+                // ⚪ 模式一：面向窗戶 (-Z)
+                if (snappedDeg === 0) { 
+                    baseTx=0; baseTy=10; baseTz=-10; 
+                } else if (snappedDeg === 45) { 
+                    baseTx=25; baseTy=10; baseTz=-5; 
+                } else if (snappedDeg === 90) { 
+                    baseTx=50; baseTy=10; baseTz=20; 
+                } else if (snappedDeg === -45) { 
+                    baseTx=-25; baseTy=10; baseTz=-5; 
+                } else if (snappedDeg === -90) { 
+                    baseTx=-50; baseTy=10; baseTz=20; 
+                }
+            } else { 
+                // 🟤 模式二：轉身面向書櫃 (+Z)
+                if (snappedDeg === 0) { 
+                    baseTx=0; baseTy=14; baseTz=55; 
+                } else if (snappedDeg === 45) { 
+                    baseTx=-25; baseTy=12; baseTz=50; 
+                } else if (snappedDeg === 90) { 
+                    baseTx=-50; baseTy=10; baseTz=20; 
+                } else if (snappedDeg === -45) { 
+                    baseTx=25; baseTy=12; baseTz=50; 
+                } else if (snappedDeg === -90) { 
+                    baseTx=50; baseTy=10; baseTz=20; 
+                }
+            }
+
+            // 4. 根據「目標點到圓心」的向量，乘上廣角 (r)，算出相機最終位置
+            const dirX = baseCx - baseTx;
+            const dirY = baseCy - baseTy;
+            const dirZ = baseCz - baseTz;
+            const dirLen = Math.sqrt(dirX*dirX + dirY*dirY + dirZ*dirZ);
+            
+            const idealCamX = baseTx + (dirX / dirLen) * r;
+            const idealCamY = baseTy + (dirY / dirLen) * r;
+            const idealCamZ = baseTz + (dirZ / dirLen) * r;
+
+            // 5. 🛑 絕對物理防穿牆結界 (配合 59 廣角，稍微放寬牆壁阻擋邊界)
+            const clampedCamX = Math.max(-50, Math.min(50, idealCamX));
+            const clampedCamY = Math.max(3, Math.min(38, idealCamY));
+            const clampedCamZ = Math.max(-15, Math.min(55, idealCamZ));
+
+            // 6. GSAP 平滑運鏡
+            gsap.to(camera.position, { x: clampedCamX, y: clampedCamY, z: clampedCamZ, duration: 0.8, ease: "power2.inOut" });
+            gsap.to(controls.target, { 
+                x: baseTx, y: baseTy, z: baseTz, 
+                duration: 0.8, ease: "power2.inOut", 
+                onUpdate: () => controls.update() 
+            });
+        }
+    }
+
+    // --- 拖曳運算 ---
+    function handleKnobMove(e) {
+        if(!window.isKnobDragging || (typeof isAtBalcony !== 'undefined' && isAtBalcony)) return;
+
+        const cx = e.touches ? e.touches[0].clientX : e.clientX;
+        const cy = e.touches ? e.touches[0].clientY : e.clientY;
+
+        // 手指滑動超過 10px，取消長按判定，改為執行視角轉動
+        if (longPressTimer && Math.hypot(cx - startX, cy - startY) > 10) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+
+        const rect = knob.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+
+        let rad = Math.atan2(cx - centerX, -(cy - centerY));
+        let deg = rad * (180 / Math.PI);
+
+        // 🛑 嚴格限制指針只能在「上半部」滑動 (-90度 到 90度)
+        if (deg > 90 && deg <= 180) deg = 90;
+        if (deg < -90 && deg >= -180) deg = -90;
+
+        let snappedDeg = Math.round(deg / 45) * 45;
+        applyKnobAngle(snappedDeg);
+    }
+
+    // --- 事件綁定 ---
+    knob.addEventListener('mousedown', (e) => { 
+        window.isKnobDragging = true; 
+        startX = e.clientX; startY = e.clientY;
+        longPressTimer = setTimeout(toggleKnobMode, 400); // 0.4 秒觸發長按切換
+        handleKnobMove(e); 
+    });
+    knob.addEventListener('touchstart', (e) => { 
+        window.isKnobDragging = true; 
+        startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+        longPressTimer = setTimeout(toggleKnobMode, 400);
+        handleKnobMove(e); 
+    }, {passive: false});
+
+    window.addEventListener('mousemove', handleKnobMove);
+    window.addEventListener('touchmove', (e) => { 
+        if(window.isKnobDragging) { e.preventDefault(); handleKnobMove(e); }
+    }, {passive: false});
+
+    window.addEventListener('mouseup', () => { 
+        window.isKnobDragging = false; 
+        if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    });
+    window.addEventListener('touchend', () => { 
+        window.isKnobDragging = false; 
+        if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    });
+})();
+
+// 新增或替換這個函數，專門用來渲染漂亮的索書卡
+function renderMyLogs() {
+    const listEl = document.getElementById('mylog-list');
+    if (!listEl) return;
+    
+    // 從資料庫抓取自己寫過的所有信件 (包含自由閱讀與常規任務)
+    db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value').then(snap => {
+        const logs = Object.values(snap.val() || {}).sort((a,b) => b.timestamp - a.timestamp);
+        listEl.innerHTML = '';
+        
+        if (logs.length === 0) {
+            listEl.innerHTML = `<div style="text-align:center; color:#a38c76; padding:40px; font-family:var(--font-serif);">櫃子裡還是空的，等待您存入第一份記憶。</div>`;
+            return;
+        }
+ 
+        logs.forEach(log => {
+            // 排除生活探索，只顯示閱讀紀錄
+            if(log.type === 'random') return;
+ 
+            const d = new Date(log.timestamp);
+            const dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+            
+            const card = document.createElement('div');
+            card.className = 'log-index-card';
+            
+            // 索書卡排版
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-family:var(--font-sans); color:#a38c76; font-size:0.85rem; font-weight:bold; letter-spacing:1px;">
+                    <span>REF: ${log.id.slice(-6).toUpperCase()}</span>
+                    <span style="color:#c25953;">DATE: ${dateStr}</span>
+                </div>
+                <h3 style="font-family:var(--font-serif); color:#4a3e35; font-size:1.4rem; margin-top:25px; margin-bottom:10px;">《${escapeHtml(log.bookTitle)}》</h3>
+                <p style="font-family:var(--font-sans); color:#8c7a6b; font-size:0.95rem;">點擊翻閱詳細筆記與筆友回音</p>
+            `;
+            
+            card.onclick = () => {
+                closeRoomModal(null, 'modal-log');
+                openChatModal(log.id);
+            };
+            listEl.appendChild(card);
+        });
+    });
+}
+ 
+// 確保在打開紀錄視窗時呼叫它
+// 找到 toggleReadingLog 函數，將其修改如下：
+window.toggleReadingLog = function() {
+    const el = document.getElementById('mylog-editor');
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+};
+ 
+// 並且在 initApp() 的最後面，加上這行：
+// renderMyLogs();
+// 🎬 沉浸式電梯過場動畫：從書房降至街道
+function startElevatorJourney() {
+    if (isAtStreet) return;
+    isAtStreet = true;
+    
+    // 備份書房相機位置
+    roomCameraBackup.cp.copy(camera.position);
+    roomCameraBackup.ct.copy(controls.target);
+
+    // 鎖定操作
+    controls.enabled = false;
+    document.getElementById('mobile-cam-knob').style.display = 'none';
+
+    const tl = gsap.timeline();
+
+    // 1. 鏡頭走向木門
+    tl.to(camera.position, {x: -40, y: 16, z: 0, duration: 1.5, ease: "power2.inOut"})
+      .to(controls.target, {x: -60, y: 14, z: 0, duration: 1.5, ease: "power2.inOut"}, "<")
+      
+    // 2. 木門緩緩向內推開
+      .to(doorHinge.rotation, {y: Math.PI / 2.2, duration: 1.2, ease: "power1.inOut"})
+      
+    // 3. 走進電梯，轉身面對電梯門
+      .to(camera.position, {x: -68, y: 15, z: 0, duration: 2.0, ease: "power2.inOut"})
+      .to(controls.target, {x: -59, y: 15, z: 0, duration: 2.0, ease: "power2.inOut"}, "<")
+      
+    // 4. 木門自動關上，金屬門也隨之關閉
+      .to(doorHinge.rotation, {y: 0, duration: 1.0, ease: "power1.inOut"})
+      .to(elvMetalDoorL.position, {z: -4, duration: 1.0, ease: "power1.inOut"}, "<")
+      .to(elvMetalDoorR.position, {z: 4, duration: 1.0, ease: "power1.inOut"}, "<")
+      
+    // 5. 啟動電梯下降的微震與 LED 跳動
+      .call(() => {
+          showToast("⬇️ 電梯下降中...");
+          elevatorFloor = 30;
+          
+          // 鏡頭微微震動模擬下降感
+          gsap.to(camera.position, {y: 14.8, duration: 0.1, yoyo: true, repeat: 38});
+          
+          // LED 樓層倒數
+          elevatorInterval = setInterval(() => {
+              elevatorFloor--;
+              window.elevatorLEDMaterial.map = updateElevatorLED(elevatorFloor, '▼');
+              if (elevatorFloor <= 1) {
+                  clearInterval(elevatorInterval);
+                  window.elevatorLEDMaterial.map = updateElevatorLED(1, '■');
+              }
+          }, 100);
+      })
+      
+    // 6. 抵達一樓，開門！(此處暫時讓門打開，準備在第二階段把場景切換到街道)
+      .to(elvMetalDoorL.position, {z: -8, duration: 1.2, delay: 4.0, ease: "power1.inOut"})
+      .to(elvMetalDoorR.position, {z: 8, duration: 1.2, delay: 4.0, ease: "power1.inOut"}, "<")
+      .call(() => {
+          showToast("🏙️ 已抵達 1F 街道");
+          // 開放左右環顧
+          controls.enabled = true;
+          controls.minAzimuthAngle = -Math.PI/2;
+          controls.maxAzimuthAngle = Math.PI/2;
+          
+          // 顯示返回按鈕 (稍後會寫返回邏輯)
+          const btn = document.getElementById('btn-return-room');
+          btn.innerHTML = `<span>🔙 返回 30F 書房</span>`;
+          btn.style.display = 'flex';
+          btn.onclick = returnFromStreet; // 綁定返回函數
+      });
+}
+
+// 🎬 返回房間過場動畫
+function returnFromStreet() {
+    document.getElementById('btn-return-room').style.display = 'none';
+    controls.enabled = false;
+
+    const tl = gsap.timeline();
+
+    // 1. 金屬門關閉
+    tl.to(elvMetalDoorL.position, {z: -4, duration: 1.0, ease: "power1.inOut"})
+      .to(elvMetalDoorR.position, {z: 4, duration: 1.0, ease: "power1.inOut"}, "<")
+      
+    // 2. 上升震動與 LED 跳動
+      .call(() => {
+          showToast("⬆️ 返回書房中...");
+          gsap.to(camera.position, {y: 15.2, duration: 0.1, yoyo: true, repeat: 38});
+          elevatorInterval = setInterval(() => {
+              elevatorFloor++;
+              window.elevatorLEDMaterial.map = updateElevatorLED(elevatorFloor, '▲');
+              if (elevatorFloor >= 30) {
+                  clearInterval(elevatorInterval);
+                  window.elevatorLEDMaterial.map = updateElevatorLED(30, '■');
+              }
+          }, 100);
+      })
+      
+    // 3. 抵達 30F，門打開
+      .to(elvMetalDoorL.position, {z: -8, duration: 1.2, delay: 4.0, ease: "power1.inOut"})
+      .to(elvMetalDoorR.position, {z: 8, duration: 1.2, delay: 4.0, ease: "power1.inOut"}, "<")
+      .to(doorHinge.rotation, {y: Math.PI / 2.2, duration: 1.0, ease: "power1.inOut"}, "<")
+      
+    // 4. 走出電梯，回到書房原位
+      .to(camera.position, {x: roomCameraBackup.cp.x, y: roomCameraBackup.cp.y, z: roomCameraBackup.cp.z, duration: 2.0, ease: "power2.inOut"})
+      .to(controls.target, {x: roomCameraBackup.ct.x, y: roomCameraBackup.ct.y, z: roomCameraBackup.ct.z, duration: 2.0, ease: "power2.inOut"}, "<")
+      
+    // 5. 關上木門，恢復操作
+      .to(doorHinge.rotation, {y: 0, duration: 1.0, ease: "power1.inOut"})
+      .call(() => {
+          isAtStreet = false;
+          controls.enabled = true;
+          document.getElementById('mobile-cam-knob').style.display = 'flex';
+          
+          // 恢復按鈕原本的樣子
+          const btn = document.getElementById('btn-return-room');
+          btn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" style="margin-right:8px;"><path d="M15 18l-6-6 6-6"/></svg> 返回室內`;
+          btn.onclick = returnToRoom; // 綁回露台的返回邏輯
+      });
+}
+        
+        
         
     </script>
 </body>
