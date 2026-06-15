@@ -2237,7 +2237,7 @@ else processReply(letterId, partnerUid, ObjectData);
                     db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: ts });
                     if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
                     else db.ref(`unassigned_letters/${ref.key}`).set({ senderUid: currentUser.uid });
-                   db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
+                  db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
                         isSubmittingLog = false; 
                         
                         // 【新增】成功寄出後，清除這四個欄位的 SessionStorage 暫存
@@ -2248,6 +2248,9 @@ else processReply(letterId, partnerUid, ObjectData);
                         document.getElementById('write-editor').style.display = 'none'; document.getElementById('task-grid').style.display = 'grid'; 
                        if(document.getElementById('free-read-btn-wrap')) document.getElementById('free-read-btn-wrap').style.display = 'block';
                         renderTasks(); showToast('心得已隨信箋寄出！'); 
+                        
+                        // 👇👇👇 加上這行：完成閱讀心得給予 1000 積分並觸發抽獎動畫
+                        addPointsAndGacha(1000, true);
                     });
                 });
             });
@@ -2306,7 +2309,7 @@ function processRandomTask(data) {
             // 組合對話內容
             const combinedText = `【探索任務】\n${currentDrawnState.drawnTask}\n\n【備註與感悟】\n${data.text || '（無備註）'}`;
             
-          db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: combinedText, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
+       db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: combinedText, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
                 const btn = document.getElementById('btn-submit-random');
                 btn.innerText = "封裝完成任務"; btn.disabled = false;
                 
@@ -2316,6 +2319,9 @@ function processRandomTask(data) {
                 document.getElementById('random-editor').style.display = 'none'; 
                 document.getElementById('random-task-grid').style.display = 'grid'; 
                 renderTasks(); showToast('探索任務已隨信箋寄出！'); 
+                
+                // 👇👇👇 加上這行：完成探索任務給予 500 積分（通常不觸發強制抽獎動畫，只加分）
+                addPointsAndGacha(500, false);
             });
         });
     });
@@ -2323,12 +2329,23 @@ function processRandomTask(data) {
 
         
 
-        function processReply(id, pUid, text) {
+       function processReply(id, pUid, text) {
             const ts = firebase.database.ServerValue.TIMESTAMP;
-            db.ref(`conversations/${id}`).push({ senderUid: currentUser.uid, text, timestamp: ts }).then(() => {
-                if (pUid) db.ref(`user_threads/${pUid}/${id}`).update({ hasUnread: true, lastUpdated: ts, hasBeenRepliedTo: true });
-                db.ref(`user_threads/${currentUser.uid}/${id}`).update({ hasUnread: false, hasReplied: true, lastUpdated: ts }).then(() => { 
-                    isSubmittingReply = false; closeChatModal(); showToast("回信已成功寄出！");
+            
+            // 👇 修改：先去資料庫檢查這封信是否為「首次回覆」
+            db.ref(`user_threads/${currentUser.uid}/${id}/hasReplied`).once('value').then(snap => {
+                const isFirstReply = !snap.val(); // 如果原本是 false 或是 null，代表是第一次回覆
+                
+                db.ref(`conversations/${id}`).push({ senderUid: currentUser.uid, text, timestamp: ts }).then(() => {
+                    if (pUid) db.ref(`user_threads/${pUid}/${id}`).update({ hasUnread: true, lastUpdated: ts, hasBeenRepliedTo: true });
+                    db.ref(`user_threads/${currentUser.uid}/${id}`).update({ hasUnread: false, hasReplied: true, lastUpdated: ts }).then(() => { 
+                        isSubmittingReply = false; closeChatModal(); showToast("回信已成功寄出！");
+                        
+                        // 👇👇👇 加上這段：如果是首次回覆，給予 1000 積分並觸發抽獎動畫
+                        if (isFirstReply) {
+                            addPointsAndGacha(1000, true);
+                        }
+                    });
                 });
             });
         }
