@@ -4388,9 +4388,9 @@ if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella
             }, 150);
         }
 
-      if (['painting', 'clock'].includes(type)) {
-    saveObjectPositions(); // 儲存新位置
-    isDragging = false;
+      else if (['painting', 'clock'].includes(type)) {
+            dragTimer = setTimeout(() => {
+                isDragging = true;
                 dragTarget = obj.parent; // 抓取整個畫框群組
                 dragTarget.userData.dragType = type;
                 controls.enabled = false;
@@ -4411,7 +4411,7 @@ if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella
 
         
     }
-
+}
 
 function onPointerMove(e) {
     if(document.querySelector('.room-modal[style*="flex"]')) return;
@@ -4694,9 +4694,9 @@ function onPointerUp(e) {
         }
 
 
-if (type === 'painting') {
-                saveObjectPositions(); // 儲存畫作新位置
-                isDragging = false;
+if (['painting', 'clock'].includes(type)) {
+    saveObjectPositions(); // 儲存新位置
+    isDragging = false;
                 dragTarget = null;
                 controls.enabled = true;
                 document.body.style.cursor = 'default';
