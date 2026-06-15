@@ -2740,6 +2740,8 @@ function restoreObjectPositions() {
         if(pos.chair && chairGroup) chairGroup.position.set(pos.chair.x, chairGroup.position.y, pos.chair.z);
         if(pos.rack && typeof rackGrp !== 'undefined') rackGrp.position.set(pos.rack.x, rackGrp.position.y, pos.rack.z); // 👈 新增
         if(pos.umbrella && typeof umbGrp !== 'undefined') umbGrp.position.set(pos.umbrella.x, umbGrp.position.y, pos.umbrella.z); // 👈 新增
+        if(pos.piano && typeof pianoGrp !== 'undefined') pianoGrp.position.set(pos.piano.x, 0, pos.piano.z);
+        if(pos.bench && typeof benchGrp !== 'undefined') benchGrp.position.set(pos.bench.x, 0, pos.bench.z);
         if(pos.cat && catGrp) {
             catPlatform = pos.cat.platform || 'floor';
             let correctY = 0;
@@ -3898,6 +3900,13 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     benchSeat.position.y = 4.5; benchSeat.castShadow=true; benchGrp.add(benchSeat);
     [[-3, 2.25, -1], [3, 2.25, -1], [-3, 2.25, 1], [3, 2.25, 1]].forEach(pos => { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 4.5), pianoGlossy); l.position.set(...pos); l.castShadow=true; benchGrp.add(l); });
 
+    // 👇 加入這段：琴椅的隱形點擊框
+    const benchHitBox = new THREE.Mesh(new THREE.BoxGeometry(8, 6, 6), new THREE.MeshBasicMaterial({visible: false}));
+    benchHitBox.position.y = 3;
+    benchHitBox.userData = { type: 'bench' };
+    benchGrp.add(benchHitBox);
+    interactables.push(benchHitBox); // 註冊到可點擊陣列
+
     // 加入隱形 HitBox 以便點擊
     const pianoHitBox = new THREE.Mesh(new THREE.BoxGeometry(20, 16, 12), new THREE.MeshBasicMaterial({visible: false}));
     pianoHitBox.position.set(0, 8, 0);
@@ -4366,6 +4375,8 @@ interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitB
     if(typeof clockGrp !== 'undefined') clockGrp.userData.itemId = 'clock';
     if(typeof rackGrp !== 'undefined') rackGrp.userData.itemId = 'rack';
     if(typeof umbGrp !== 'undefined') umbGrp.userData.itemId = 'umbrella';
+    if(typeof pianoGrp !== 'undefined') pos.piano = {x: pianoGrp.position.x, z: pianoGrp.position.z};
+    if(typeof benchGrp !== 'undefined') pos.bench = {x: benchGrp.position.x, z: benchGrp.position.z};
     if(typeof pianoGrp !== 'undefined') pianoGrp.userData.itemId = 'piano_model';
     if(typeof benchGrp !== 'undefined') benchGrp.userData.itemId = 'piano_bench';
     if(typeof chairGroup !== 'undefined') chairGroup.userData.itemId = 'chair';
@@ -4514,9 +4525,9 @@ const intersects = getValidIntersects();
         while(obj.parent && !obj.userData.type) obj = obj.parent;
         const type = obj.userData.type;
 
-if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella'].includes(type)) {
+if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella', 'piano', 'bench'].includes(type)) {
     let targetObj = obj;
-    if(['plant', 'trash', 'chair', 'cat', 'rack', 'umbrella'].includes(type)) {
+    if(['plant', 'trash', 'chair', 'cat', 'rack', 'umbrella', 'piano', 'bench'].includes(type)) {
                 targetObj = obj.parent; 
             }
 
@@ -4535,7 +4546,48 @@ if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella
                     dragTarget.userData.originalY = dragTarget.position.y;
                 }
 
-                gsap.to(dragTarget.position, { y: dragTarget.userData.originalY + 1.2, duration: 0.2 });
+          let snapTargetX = droppedObj.position.x;
+        let snapTargetZ = droppedObj.position.z;
+
+        // 🧲 磁吸效應：如果拖曳的是琴椅，靠近鋼琴時自動吸附到演奏位
+        if (type === 'bench' && typeof pianoGrp !== 'undefined' && pianoGrp.visible) {
+            let dx = droppedObj.position.x - (pianoGrp.position.x - 4.5);
+            let dz = droppedObj.position.z - pianoGrp.position.z;
+            if (Math.hypot(dx, dz) < 8) { // 靠近範圍 8 以內
+                snapTargetX = pianoGrp.position.x - 4.5;
+                snapTargetZ = pianoGrp.position.z;
+                // 強制轉向與鋼琴一致
+                gsap.to(droppedObj.rotation, {y: pianoGrp.rotation.y, duration: 0.3});
+            }
+        } 
+        // 🧲 磁吸效應：如果拖曳的是鋼琴，琴椅若在附近，會自動跟隨移動保持成套
+        else if (type === 'piano' && typeof benchGrp !== 'undefined' && benchGrp.visible) {
+            let dx = benchGrp.position.x - (droppedObj.position.x - 4.5);
+            let dz = benchGrp.position.z - droppedObj.position.z;
+            if (Math.hypot(dx, dz) < 8) {
+                gsap.to(benchGrp.position, {
+                    x: droppedObj.position.x - 4.5,
+                    z: droppedObj.position.z,
+                    duration: 0.3
+                });
+                gsap.to(benchGrp.rotation, {y: droppedObj.rotation.y, duration: 0.3});
+            }
+        }
+
+        gsap.to(dragTarget.position, { 
+            x: snapTargetX,
+            z: snapTargetZ,
+            y: dragTarget.userData.originalY, 
+            duration: 0.3, 
+            ease: "bounce.out",
+            onComplete: () => {
+                saveObjectPositions(); 
+                if (type === 'cat') {
+                    catTarget.set(droppedObj.position.x, 0, droppedObj.position.z);
+                    setCatState('idle');
+                }
+            }
+        });
 
                 let plane = (['log', 'tasks', 'water', 'plant'].includes(type)) ? deskPlane : floorPlane;
                 let intersectPoint = new THREE.Vector3();
@@ -4620,31 +4672,28 @@ function onPointerMove(e) {
                 dragTarget.position.z = newZ;
             }
         } 
-      else if (['trash', 'chair', 'rack', 'umbrella'].includes(type)) {
+    else if (['trash', 'chair', 'rack', 'umbrella', 'piano', 'bench'].includes(type)) {
             raycaster.ray.intersectPlane(floorPlane, intersectPoint);
             if(intersectPoint) {
                 let newX = intersectPoint.x - dragOffset.x;
                 let newZ = intersectPoint.z - dragOffset.z;
  
-                // 1. 基本房間牆壁邊界 (防穿牆出界)
                 newX = Math.max(-56, Math.min(56, newX));
                 newZ = Math.max(-14, Math.min(56, newZ));
  
                 // 定義各自的碰撞半徑
-                const myRadius = (type === 'rack' || type === 'chair') ? 4.5 : 2.5;
+                let myRadius = 2.5;
+                if (type === 'rack' || type === 'chair') myRadius = 4.5;
+                if (type === 'bench') myRadius = 3.5;
+                if (type === 'piano') myRadius = 7.0; // 鋼琴移動時用大圓盤推開其他小物件
  
-                // ==========================================
-                // 🛑 A. 靜態巨型障礙物防穿模 (AABB 矩形碰撞擠壓)
-                // ==========================================
                 function pushOutRect(cx, cz, radius, rx, rz, rw, rd) {
                     let hw = rw / 2, hd = rd / 2;
                     let testX = cx < rx - hw ? rx - hw : (cx > rx + hw ? rx + hw : cx);
                     let testZ = cz < rz - hd ? rz - hd : (cz > rz + hd ? rz + hd : cz);
                     let distX = cx - testX, distZ = cz - testZ;
                     let dist = Math.sqrt(distX*distX + distZ*distZ);
- 
                     if (dist < radius) {
-                        // 如果滑鼠移動太快導致中心點直接塞進去，強制往最近的邊緣彈出
                         if (dist === 0) {
                             let dL = Math.abs((rx - hw) - cx), dR = Math.abs((rx + hw) - cx);
                             let dT = Math.abs((rz - hd) - cz), dB = Math.abs((rz + hd) - cz);
@@ -4654,26 +4703,24 @@ function onPointerMove(e) {
                             if (m === dT) return { x: cx, z: rz - hd - radius };
                             return { x: cx, z: rz + hd + radius };
                         }
-                        // 否則平滑沿著法線推擠出去
                         return { x: cx + (distX/dist)*(radius-dist), z: cz + (distZ/dist)*(radius-dist) };
                     }
                     return { x: cx, z: cz };
                 }
  
-                // 避開書桌 (中心 0,0, 寬 32, 深 16)
+                // 1. 避開書桌
                 let pos = pushOutRect(newX, newZ, myRadius, 0, 0, 32, 16);
                 newX = pos.x; newZ = pos.z;
  
-                // 避開右側鋼琴 (中心 58.5, 22, 寬 12, 深 22)
-                if (typeof pianoGrp !== 'undefined' && pianoGrp.visible) {
-                    pos = pushOutRect(newX, newZ, myRadius, 58, 22, 12, 22);
+                // 2. 避開鋼琴本體 (當我們拖曳的「不是」鋼琴本身時，鋼琴就是一堵厚牆)
+                if (type !== 'piano' && typeof pianoGrp !== 'undefined' && pianoGrp.visible) {
+                    pos = pushOutRect(newX, newZ, myRadius, pianoGrp.position.x, pianoGrp.position.z, 6, 17);
                     newX = pos.x; newZ = pos.z;
                 }
  
-              // 動態避開所有被擺放的書櫃
+                // 3. 避開書櫃
                 scene.traverse(c => {
                     if (c.userData && c.userData.itemId && c.userData.itemId.startsWith('bookcase_') && c.visible) {
-                        // 判斷書櫃目前是貼著前後牆(Z)，還是左右牆(X)，以決定碰撞箱的長寬
                         let isZWall = Math.abs(Math.sin(c.rotation.y)) < 0.5; 
                         let bw = isZWall ? 22 : 6;
                         let bd = isZWall ? 6 : 22;
@@ -4682,27 +4729,27 @@ function onPointerMove(e) {
                     }
                 });
  
-                // ==========================================
-                // 🧲 B. 動態地面家具互相排斥 (圓形碰撞)
-                // ==========================================
+                // 4. 家具互相排斥
                 const floorItems = [
                     { grp: tcGrp, r: 2.5 },
                     { grp: chairGroup, r: 4.5 },
                     { grp: typeof rackGrp !== 'undefined' ? rackGrp : null, r: 4.5 },
-                    { grp: typeof umbGrp !== 'undefined' ? umbGrp : null, r: 2.5 }
+                    { grp: typeof umbGrp !== 'undefined' ? umbGrp : null, r: 2.5 },
+                    { grp: typeof benchGrp !== 'undefined' ? benchGrp : null, r: 3.5 }
                 ];
  
-                // 執行 2 次迭代，確保 A 推 B，B 也不會陷入牆壁
                 for (let iter = 0; iter < 2; iter++) {
                     floorItems.forEach(item => {
-                        // 排除自己，並確保目標存在且可見
                         if (item.grp && dragTarget !== item.grp && item.grp.visible) {
                             let dx = newX - item.grp.position.x;
                             let dz = newZ - item.grp.position.z;
                             let dist = Math.sqrt(dx*dx + dz*dz);
                             let minDist = myRadius + item.r;
  
-                            // 如果距離太近，產生排斥力滑開
+                            // 🧲 特例：當鋼琴與琴椅互相靠近時，取消強烈排斥，允許稍微重疊以利吸附
+                            let isPianoBenchPair = (type === 'piano' && item.grp === benchGrp) || (type === 'bench' && item.grp === pianoGrp);
+                            if (isPianoBenchPair) minDist = 1.0; 
+ 
                             if (dist < minDist && dist > 0.01) {
                                 let overlap = minDist - dist;
                                 newX += (dx / dist) * overlap;
@@ -4712,7 +4759,6 @@ function onPointerMove(e) {
                     });
                 }
  
-                // 🛡️ C. 二次確保推擠後不會被擠出房間邊界
                 newX = Math.max(-56, Math.min(56, newX));
                 newZ = Math.max(-14, Math.min(56, newZ));
  
