@@ -2705,7 +2705,7 @@ function saveObjectPositions() {
    pos.paintings = {};
     scene.traverse(c => {
         // 👇 新增條件：如果 ID 是 painting 開頭，或是 clock，通通存起來
-        if (c.userData && c.userData.itemId && (c.userData.itemId.startsWith('painting_') || c.userData.itemId === 'clock')) {
+    if (c.userData && c.userData.itemId && (c.userData.itemId.startsWith('painting_') || c.userData.itemId === 'clock' || c.userData.itemId.startsWith('bookcase_'))) {
             pos.paintings[c.userData.itemId] = { x: c.position.x, y: c.position.y, z: c.position.z, ry: c.rotation.y };
         }
     });
@@ -3552,6 +3552,17 @@ function buildRoomEnvironment() {
             const bookColors = [0x8b3a3a, 0x3a5f8b, 0x4f8b3a, 0x8b6b3a, 0x222222, 0xdddddd]; let bx = -10;
             while(bx < 10) { let bw = Math.random() * 0.8 + 0.3; let bh = Math.random() * 2.5 + 3; if(bx + bw > 10) break; const b = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.05, bh, 4), new THREE.MeshStandardMaterial({color: bookColors[Math.floor(Math.random()*bookColors.length)], roughness: 0.7})); if(Math.random() > 0.7) { b.rotation.z = (Math.random() - 0.5) * 0.3; bx += 0.4; } b.position.set(bx + bw/2, sy + bh/2 + 0.25, -2.5); b.castShadow = true; shelfGroup.add(b); bx += bw; }
         }
+
+// 👇 新增：書櫃的拖曳判定框與碰撞屬性
+        const hitBox = new THREE.Mesh(new THREE.BoxGeometry(24, 32, 8), new THREE.MeshBasicMaterial({visible: false}));
+        hitBox.userData = { type: 'bookcase' };
+        shelfGroup.add(hitBox);
+        interactables.push(hitBox);
+        
+        // 賦予類似畫作的邊界計算屬性
+        shelfGroup.userData.frameW = 22; 
+        shelfGroup.userData.wallNormal = new THREE.Vector3(0, 0, 1);
+       
         return shelfGroup; // 這一行是修復無法隱藏的關鍵
     }
 // 替換原本的這三行
@@ -4535,7 +4546,7 @@ if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella
             }, 150);
         }
 
-        else if (type === 'painting') {
+    else if (type === 'painting' || type === 'bookcase') {
             dragTimer = setTimeout(() => {
                 isDragging = true;
                 dragTarget = obj.parent; // 抓取整個畫框群組
@@ -4636,9 +4647,17 @@ function onPointerMove(e) {
                     newX = pos.x; newZ = pos.z;
                 }
  
-                // 避開後方書櫃 (中心 0, 59, 寬 80, 深 10)
-                pos = pushOutRect(newX, newZ, myRadius, 0, 59, 80, 10);
-                newX = pos.x; newZ = pos.z;
+              // 動態避開所有被擺放的書櫃
+                scene.traverse(c => {
+                    if (c.userData && c.userData.itemId && c.userData.itemId.startsWith('bookcase_') && c.visible) {
+                        // 判斷書櫃目前是貼著前後牆(Z)，還是左右牆(X)，以決定碰撞箱的長寬
+                        let isZWall = Math.abs(Math.sin(c.rotation.y)) < 0.5; 
+                        let bw = isZWall ? 22 : 6;
+                        let bd = isZWall ? 6 : 22;
+                        pos = pushOutRect(newX, newZ, myRadius, c.position.x, c.position.z, bw, bd);
+                        newX = pos.x; newZ = pos.z;
+                    }
+                });
  
                 // ==========================================
                 // 🧲 B. 動態地面家具互相排斥 (圓形碰撞)
@@ -4889,6 +4908,92 @@ else if (type === 'painting') {
             }
             return;
         }
+
+        else if (type === 'bookcase') {
+            raycaster.setFromCamera(mouse, camera);
+            let hits = raycaster.intersectObject(wallDragMesh);
+            if (hits.length > 0) {
+                let hit = hits[0];
+                let n = hit.face.normal;
+                
+                if (Math.abs(n.y) > 0.5) return; // 忽略天花板與地板
+                
+                if (dragTarget.userData.wallNormal && n.dot(dragTarget.userData.wallNormal) < 0.9) {
+                    dragOffset.set(0, 0, 0);
+                    dragTarget.userData.wallNormal.copy(n);
+                }
+                
+                let newPos = hit.point.clone().sub(dragOffset);
+                
+                // 🛑 核心差異：強制鎖定 Y 軸，讓書櫃永遠貼地！
+                newPos.y = 15.02; 
+                
+                const halfW = dragTarget.userData.frameW / 2;
+                const obstacleMargin = 1.0; 
+                const cornerMargin = 2.0;   
+                
+                const safeXMin = -58.7 + halfW + cornerMargin;
+                const safeXMax =  58.7 - halfW - cornerMargin;
+                const safeZMin = -16.7 + halfW + cornerMargin;
+                const safeZMax =  58.7 - halfW - cornerMargin;
+                
+                // 根據四面牆決定旋轉角度與迴避障礙物
+                if (n.z < -0.5) { // 前牆 (玻璃趟門)
+                    newPos.z = hit.point.z; dragTarget.rotation.y = 0;
+                    const doorLeft = -15.5 - halfW - obstacleMargin;
+                    const doorRight = 15.5 + halfW + obstacleMargin;
+                    if (newPos.x > doorLeft && newPos.x < doorRight) {
+                        newPos.x = (newPos.x < 0) ? doorLeft : doorRight; // 避開玻璃門
+                    }
+                }
+                else if (n.z > 0.5) { // 後牆 (預設牆)
+                    newPos.z = hit.point.z; dragTarget.rotation.y = Math.PI;
+                }
+                else if (n.x < -0.5) { // 左牆 (木趟門)
+                    newPos.x = hit.point.x; dragTarget.rotation.y = Math.PI / 2;
+                    const doorLeft = -8.5 - halfW - obstacleMargin;
+                    const doorRight = 8.5 + halfW + obstacleMargin;
+                    if (newPos.z > doorLeft && newPos.z < doorRight) {
+                        newPos.z = (newPos.z < 0) ? doorLeft : doorRight; // 避開木門
+                    }
+                }
+                else if (n.x > 0.5) { // 右牆 (鋼琴)
+                    newPos.x = hit.point.x; dragTarget.rotation.y = -Math.PI / 2;
+                    if (typeof pianoGrp !== 'undefined' && pianoGrp.visible) {
+                        const pianoLeft = 11 - halfW - obstacleMargin;
+                        const pianoRight = 33 + halfW + obstacleMargin;
+                        if (newPos.z > pianoLeft && newPos.z < pianoRight) {
+                            newPos.z = (newPos.z < 22) ? pianoLeft : pianoRight; // 避開鋼琴
+                        }
+                    }
+                }
+ 
+                // 書櫃之間的防重疊排斥
+                for (let iter = 0; iter < 2; iter++) {
+                    interactables.forEach(item => {
+                        if (item.userData && item.userData.type === 'bookcase' && item.parent !== dragTarget && item.parent.visible) {
+                            let other = item.parent;
+                            if (Math.abs(dragTarget.rotation.y - other.rotation.y) < 0.1) { // 如果在同一面牆
+                                const isZWall = (Math.abs(n.z) > 0.5);
+                                const minDx = halfW + (other.userData.frameW / 2) + 0.5;
+                                const dx = isZWall ? Math.abs(newPos.x - other.position.x) : Math.abs(newPos.z - other.position.z);
+                                if (dx < minDx) {
+                                    const overlapX = minDx - dx;
+                                    if (isZWall) newPos.x += overlapX * (newPos.x > other.position.x ? 1 : -1);
+                                    else newPos.z += overlapX * (newPos.z > other.position.z ? 1 : -1);
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // 最後約束房間角落邊界
+                if (Math.abs(n.z) > 0.5) newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
+                else newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
+                
+                dragTarget.position.copy(newPos);
+            }
+        }
  
 
         return; 
@@ -4919,8 +5024,8 @@ function onPointerUp(e) {
         }
 
 
-if (type === 'painting') {
-                saveObjectPositions(); // 儲存畫作新位置
+if (type === 'painting' || type === 'bookcase') {
+            saveObjectPositions(); // 儲存畫作與書櫃新位置
                 isDragging = false;
                 dragTarget = null;
                 controls.enabled = true;
