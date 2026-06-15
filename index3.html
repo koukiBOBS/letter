@@ -1471,10 +1471,19 @@ db.ref(`users/${currentUser.uid}`).on('value', snap => {
     
    // 👇 【修改】根據趟門維修狀態，同時限制左右與上下的旋轉角度
      // 👇 【修改】無論趟門是否維修，只要人在室內，一律嚴格鎖死視角避免穿破房間
+   // 👇 【修改】無論趟門是否維修，只要人在室內，一律嚴格鎖死視角避免穿破房間
     if (typeof controls !== 'undefined' && !isAtBalcony) {
         controls.enablePan = false;            // 禁用滑鼠右鍵平移
-        controls.minAzimuthAngle = -Math.PI / 2; // 限制左旋轉 90 度
-        controls.maxAzimuthAngle = Math.PI / 2;  // 限制右旋轉 90 度
+        
+        // 根據目前的視角模式，給予不同的左右旋轉限制
+        if (window.knobMode === 2) {
+            controls.minAzimuthAngle = Math.PI / 2;    // 解除死角，允許看書櫃
+            controls.maxAzimuthAngle = Math.PI * 1.5;
+        } else {
+            controls.minAzimuthAngle = -Math.PI / 2;   // 預設看窗戶的限制
+            controls.maxAzimuthAngle = Math.PI / 2;  
+        }
+        
         controls.minPolarAngle = 1.15;         // 限制抬頭角度，防止看到天花板破綻
         controls.maxDistance = 59;             // 限制最大後退距離，防止穿透背後的牆
     }
@@ -2628,6 +2637,11 @@ function goToBalcony() {
 function returnToRoom() {
     if (!isAtBalcony) return;
     isAtBalcony = false;
+
+    // 退回室內時，強制切換回望窗模式 (模式一)
+    window.knobMode = 1;
+    const knobCenter = document.querySelector('.knob-center');
+    if(knobCenter) knobCenter.style.background = '#fff';
 
     // 退回室內時，立刻限制左右旋轉角度
     controls.minAzimuthAngle = -Math.PI / 2;
@@ -6076,23 +6090,32 @@ function acceptBankruptcy() {
     }
 
     // --- 長按切換視角模式 ---
-    function toggleKnobMode() {
+   function toggleKnobMode() {
         window.knobMode = (window.knobMode === 1) ? 2 : 1;
         const knobCenter = document.querySelector('.knob-center');
         
         if (window.knobMode === 1) {
             knobCenter.style.background = '#fff';
             showToast("👀 視角切換：望向書桌與窗外");
+            if (controls && !isAtBalcony) {
+                // 重新鎖死為望窗模式的限制
+                controls.minAzimuthAngle = -Math.PI / 2;
+                controls.maxAzimuthAngle = Math.PI / 2;
+            }
         } else {
             knobCenter.style.background = '#e6d7c0'; // 淡雅木色
             showToast("👀 視角切換：望向房間與書櫃");
+            if (controls && !isAtBalcony) {
+                // 釋放原本的死角，把限制範圍移到後半部的 180 度 (看書櫃)
+                controls.minAzimuthAngle = Math.PI / 2;
+                controls.maxAzimuthAngle = Math.PI * 1.5;
+            }
         }
         
         window.isKnobDragging = false; 
         currentSnappedAngle = null; 
         applyKnobAngle(0); // 切換後強制歸位到該模式的正前方
     }
-
     // --- 執行「原地轉向」運鏡 ---
     function applyKnobAngle(snappedDeg) {
         if (currentSnappedAngle === snappedDeg) return;
