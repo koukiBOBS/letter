@@ -6054,17 +6054,17 @@ function acceptBankruptcy() {
     window.isKnobDragging = false;
     let currentSnappedAngle = null;
     
-    // 建立動畫代理物件 (只負責跑進度條 0 -> 1)
+    // 動畫代理物件：只負責跑時間軸進度 (0 到 1)
     window.camProxy = { p: 0 }; 
+
+    // 徹底解除 OrbitControls 的死板限制，將防穿模交由我們的動態演算法接管
+    if (controls) {
+        controls.minAzimuthAngle = -Infinity;
+        controls.maxAzimuthAngle = Infinity;
+    }
 
     function handleKnobMove(e) {
         if(!window.isKnobDragging || (typeof isAtBalcony !== 'undefined' && isAtBalcony)) return;
-
-        // 解除 OrbitControls 的限制，讓動畫接管全向旋轉
-        if (controls) {
-            controls.minAzimuthAngle = -Infinity;
-            controls.maxAzimuthAngle = Infinity;
-        }
 
         const rect = knob.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
@@ -6090,7 +6090,7 @@ function acceptBankruptcy() {
             }
 
             if (controls && camera) {
-                // 4. 抓取當前相機與目標的「精確距離 (廣角 r)」與「仰角 (polar)」 -> 絕對鎖定！
+                // 4. 📐 抓取起點狀態：絕對鎖死「廣角距離(r)」與「仰角(polar)」
                 const dx = camera.position.x - controls.target.x;
                 const dy = camera.position.y - controls.target.y;
                 const dz = camera.position.z - controls.target.z;
@@ -6099,32 +6099,30 @@ function acceptBankruptcy() {
                 const polar = Math.acos(dy / r);          
                 const startAzimuth = Math.atan2(dx, dz);
 
-                // 紀錄目前的圓心起點
                 const startTx = controls.target.x;
                 const startTy = controls.target.y;
                 const startTz = controls.target.z;
 
-                // 5. 設定圓心目標點 (Target)
+                // 5. 🎯 設定目標圓心 (Target)
                 let endTx = 0, endTy = 7, endTz = 0; // 預設上半部：看書桌
                 
-                // 下半部 (135, 180, -135度) -> 看向正對中央書櫃前一點的位置
+                // 下半部 (135, 180, -135度) -> 圓心放得更後，正對中央書櫃前一點
                 if (Math.abs(snappedDeg) === 135 || Math.abs(snappedDeg) === 180) {
                     endTx = 0;
-                    endTy = 14; // 視角微微抬高，欣賞書櫃
-                    endTz = 48; // 書櫃實體在 Z=59，設在 48 剛好在書櫃正前方
+                    endTy = 14; 
+                    endTz = 52; // 書櫃實體在 Z=59，圓心放在 52 完美特寫
                 }
 
-                // 6. 旋鈕方向映射 (向下拉 = 視角轉向後方)
+                // 6. 旋鈕方向映射 (向下拉 = 相機繞到前方，視角轉向後方)
                 const targetAzimuth = -snappedDeg * (Math.PI / 180);
 
-                // 7. 最短路徑演算法
+                // 7. 🧭 最短路徑演算法
                 let azDiff = targetAzimuth - startAzimuth;
                 azDiff = Math.atan2(Math.sin(azDiff), Math.cos(azDiff));
-                const finalAzimuth = startAzimuth + azDiff;
 
-                // 8. 軌道碰撞偵測動畫
+                // 8. 🛡️ 啟動「動態護城河滑軌」動畫
                 gsap.killTweensOf(window.camProxy);
-                window.camProxy.p = 0; // 重置動畫進度
+                window.camProxy.p = 0; 
 
                 gsap.to(window.camProxy, {
                     p: 1,
@@ -6133,34 +6131,36 @@ function acceptBankruptcy() {
                     onUpdate: () => {
                         let p = window.camProxy.p;
                         
-                        // 計算當下這一幀「理論上」的角度與圓心
+                        // A. 計算當下這幀「理論上」的角度與圓心
                         let currentAz = startAzimuth + azDiff * p;
                         let currentTx = startTx + (endTx - startTx) * p;
                         let currentTy = startTy + (endTy - startTy) * p;
                         let currentTz = startTz + (endTz - startTz) * p;
 
-                        // 根據鎖定的廣角 (r)，計算相機「理論上」的座標
+                        // B. 根據鎖死的廣角 (r)，計算相機「理論上」的座標
                         let idealCamX = currentTx + r * Math.sin(polar) * Math.sin(currentAz);
                         let idealCamZ = currentTz + r * Math.sin(polar) * Math.cos(currentAz);
                         let idealCamY = currentTy + r * Math.cos(polar);
 
-                        // 🛑 核心防撞牆判定：如果理論位置出界，直接略過更新！
-                        // 房間邊界：左牆-52, 右牆52, 窗戶-14, 書櫃52
-                        if (idealCamX >= -52 && idealCamX <= 52 && idealCamZ >= -14 && idealCamZ <= 52) {
-                            // 在安全範圍內，套用座標
-                            camera.position.set(idealCamX, idealCamY, idealCamZ);
-                            controls.target.set(currentTx, currentTy, currentTz);
-                            camera.lookAt(controls.target);
-                            controls.update();
-                        } else {
-                            // 一旦撞牆，相機與圓心就會「停留在最後一個安全的點上」
-                            // 完美達成「書櫃跟牆一樣，是暫停旋轉的點」的要求！
-                        }
-                    },
-                    onComplete: () => {
-                        // 動畫結束後恢復預設保護
-                        controls.minAzimuthAngle = -Math.PI / 2;
-                        controls.maxAzimuthAngle = Math.PI / 2;
+                        // C. 🛑 物理防穿牆碰撞系統：限制相機絕對不能越過牆壁與書櫃！
+                        // 左右牆界線: -50 ~ 50
+                        // 書櫃牆界線: 50 (書櫃實體在59，50絕對安全不穿模)
+                        // 玻璃門界線: -14 (窗戶實體在-18)
+                        let clampedCamX = Math.max(-50, Math.min(50, idealCamX));
+                        let clampedCamY = Math.max(2, Math.min(38, idealCamY));
+                        let clampedCamZ = Math.max(-14, Math.min(50, idealCamZ));
+
+                        // D. 🔄 反向推算圓心：如果相機撞牆被卡住了，我們就滑動圓心來維持「廣角不變」
+                        let finalTx = clampedCamX - r * Math.sin(polar) * Math.sin(currentAz);
+                        let finalTz = clampedCamZ - r * Math.sin(polar) * Math.cos(currentAz);
+                        let finalTy = clampedCamY - r * Math.cos(polar);
+
+                        // E. 應用最終安全座標
+                        camera.position.set(clampedCamX, clampedCamY, clampedCamZ);
+                        controls.target.set(finalTx, finalTy, finalTz);
+                        
+                        camera.lookAt(controls.target);
+                        controls.update();
                     }
                 });
             }
@@ -6174,7 +6174,6 @@ function acceptBankruptcy() {
     window.addEventListener('mouseup', () => { window.isKnobDragging = false; });
     window.addEventListener('touchend', () => { window.isKnobDragging = false; });
 })();
-
 
 
 // 新增或替換這個函數，專門用來渲染漂亮的索書卡
