@@ -3309,8 +3309,10 @@ function buildRoomEnvironment() {
     windowHole.moveTo(-15, 1); windowHole.lineTo(15, 1); windowHole.lineTo(15, 28); windowHole.lineTo(-15, 28); 
     wallShape.holes.push(windowHole);
     const frontWall = new THREE.Mesh(new THREE.ExtrudeGeometry(wallShape, { depth: 1, bevelEnabled: false }), wallMat); frontWall.position.set(0, 0, -18); frontWall.castShadow = true; frontWall.receiveShadow = true; scene.add(frontWall);
-    const sideWallGeo = new THREE.PlaneGeometry(78, 40); const leftWall = new THREE.Mesh(sideWallGeo, wallMat); leftWall.rotation.y = Math.PI/2; leftWall.position.set(-60, 20, 21); scene.add(leftWall); const rightWall = new THREE.Mesh(sideWallGeo, wallMat); rightWall.rotation.y = -Math.PI/2; rightWall.position.set(60, 20, 21); scene.add(rightWall);
-    const backWall = new THREE.Mesh(new THREE.PlaneGeometry(120, 40), wallMat); backWall.position.set(0, 20, 60); scene.add(backWall);
+    const sideWallGeo = new THREE.PlaneGeometry(78, 40);
+    const leftWall = new THREE.Mesh(sideWallGeo, wallMat); leftWall.rotation.y = Math.PI/2; leftWall.position.set(-60, 20, 21); leftWall.castShadow = true; leftWall.receiveShadow = true; scene.add(leftWall);
+    const rightWall = new THREE.Mesh(sideWallGeo, wallMat); rightWall.rotation.y = -Math.PI/2; rightWall.position.set(60, 20, 21); rightWall.castShadow = true; rightWall.receiveShadow = true; scene.add(rightWall);
+    const backWall = new THREE.Mesh(new THREE.PlaneGeometry(120, 40), wallMat); backWall.position.set(0, 20, 60); backWall.castShadow = true; backWall.receiveShadow = true; scene.add(backWall);
 
   function createPainting(x, y, z, url, aspect) {
         const frameGroup = new THREE.Group();
