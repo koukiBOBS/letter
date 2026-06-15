@@ -4642,54 +4642,7 @@ if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella
         let snapTargetX = droppedObj.position.x;
         let snapTargetZ = droppedObj.position.z;
 
-        // 🧲 磁吸效應：如果拖曳的是琴椅，靠近鋼琴時自動吸附到演奏位
-        if (type === 'bench' && typeof pianoGrp !== 'undefined' && pianoGrp.visible) {
-            // 用三角函數動態算出鋼琴的正前方演奏位置 (距離 4.5)
-            let idealX = pianoGrp.position.x + Math.sin(pianoGrp.rotation.y) * 4.5;
-            let idealZ = pianoGrp.position.z + Math.cos(pianoGrp.rotation.y) * 4.5;
-            
-            let dx = droppedObj.position.x - idealX;
-            let dz = droppedObj.position.z - idealZ;
-            
-            if (Math.hypot(dx, dz) < 8) { // 靠近範圍內啟動吸附
-                snapTargetX = idealX;
-                snapTargetZ = idealZ;
-                // 強制轉向與鋼琴一致
-                gsap.to(droppedObj.rotation, {y: pianoGrp.rotation.y, duration: 0.3});
-            }
-        } 
-        // 🧲 磁吸效應：如果拖曳的是鋼琴，琴椅若在附近，會自動跟隨移動保持成套
-        else if (type === 'piano' && typeof benchGrp !== 'undefined' && benchGrp.visible) {
-            let idealX = droppedObj.position.x + Math.sin(droppedObj.rotation.y) * 4.5;
-            let idealZ = droppedObj.position.z + Math.cos(droppedObj.rotation.y) * 4.5;
-            
-            let dx = benchGrp.position.x - idealX;
-            let dz = benchGrp.position.z - idealZ;
-            
-            if (Math.hypot(dx, dz) < 8) {
-                gsap.to(benchGrp.position, {
-                    x: idealX,
-                    z: idealZ,
-                    duration: 0.3
-                });
-                gsap.to(benchGrp.rotation, {y: droppedObj.rotation.y, duration: 0.3});
-            }
-        }
-
-        gsap.to(dragTarget.position, { 
-            x: snapTargetX,
-            z: snapTargetZ,
-            y: dragTarget.userData.originalY, 
-            duration: 0.3, 
-            ease: "bounce.out",
-            onComplete: () => {
-                saveObjectPositions(); 
-                if (type === 'cat') {
-                    catTarget.set(droppedObj.position.x, 0, droppedObj.position.z);
-                    setCatState('idle');
-                }
-            }
-        });
+      
                 let plane = (['log', 'tasks', 'water', 'plant'].includes(type)) ? deskPlane : floorPlane;
                 let intersectPoint = new THREE.Vector3();
                 raycaster.ray.intersectPlane(plane, intersectPoint);
@@ -5257,7 +5210,46 @@ if (type === 'painting' || type === 'bookcase') {
             }
         
 
+     let snapTargetX = droppedObj.position.x;
+        let snapTargetZ = droppedObj.position.z;
+
+        // 🧲 磁吸效應：如果拖曳的是琴椅，靠近鋼琴時自動吸附到演奏位
+        if (type === 'bench' && typeof pianoGrp !== 'undefined' && pianoGrp.visible) {
+            // 用三角函數動態算出鋼琴的正前方演奏位置 (距離 4.5)
+            let idealX = pianoGrp.position.x + Math.sin(pianoGrp.rotation.y) * 4.5;
+            let idealZ = pianoGrp.position.z + Math.cos(pianoGrp.rotation.y) * 4.5;
+            
+            let dx = droppedObj.position.x - idealX;
+            let dz = droppedObj.position.z - idealZ;
+            
+            if (Math.hypot(dx, dz) < 8) { // 靠近範圍內啟動吸附
+                snapTargetX = idealX;
+                snapTargetZ = idealZ;
+                // 強制轉向與鋼琴一致
+                gsap.to(droppedObj.rotation, {y: pianoGrp.rotation.y, duration: 0.3});
+            }
+        } 
+        // 🧲 磁吸效應：如果拖曳的是鋼琴，琴椅若在附近，會自動跟隨移動保持成套
+        else if (type === 'piano' && typeof benchGrp !== 'undefined' && benchGrp.visible) {
+            let idealX = droppedObj.position.x + Math.sin(droppedObj.rotation.y) * 4.5;
+            let idealZ = droppedObj.position.z + Math.cos(droppedObj.rotation.y) * 4.5;
+            
+            let dx = benchGrp.position.x - idealX;
+            let dz = benchGrp.position.z - idealZ;
+            
+            if (Math.hypot(dx, dz) < 8) {
+                gsap.to(benchGrp.position, {
+                    x: idealX,
+                    z: idealZ,
+                    duration: 0.3
+                });
+                gsap.to(benchGrp.rotation, {y: droppedObj.rotation.y, duration: 0.3});
+            }
+        }
+
         gsap.to(dragTarget.position, { 
+            x: snapTargetX,
+            z: snapTargetZ,
             y: dragTarget.userData.originalY, 
             duration: 0.3, 
             ease: "bounce.out",
