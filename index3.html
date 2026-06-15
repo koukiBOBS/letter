@@ -3923,7 +3923,8 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
 // ==========================================
     // 🎹 建造典雅直立式鋼琴與琴椅
     // ==========================================
-    const pianoGrp = new THREE.Group();
+   const pianoGrp = new THREE.Group();
+pianoGrp.userData.itemId = 'piano_model'; // 👈 新增這行：綁定鋼琴道具 ID
     const pianoGlossy = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.1, metalness: 0.3 }); 
     const pianoMatte = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 }); 
     const brassMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.2 }); 
@@ -3962,6 +3963,7 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     // 琴椅
 // 琴椅 (獨立加入場景，避免受鋼琴隱藏影響)
     const benchGrp = new THREE.Group(); 
+    benchGrp.userData.itemId = 'piano_bench'; // 👈 新增這行：綁定琴椅道具 ID
     benchGrp.position.set(54, 0, 22); // 依據鋼琴 (58.5, 0, 22) 的位置，往前推 4.5 的距離
     benchGrp.rotation.y = -Math.PI / 2; // 與鋼琴保持相同面向
     scene.add(benchGrp); // 【關鍵】：直接加入 scene，不加入 pianoGrp
