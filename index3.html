@@ -3239,6 +3239,8 @@ function closeDrawAnim() {
         
        function initRoomScene() {
     const container = document.getElementById('room-canvas-container');
+           // 👇 偵測是否為手機或平板 (只要支援觸控，或螢幕寬度小於等於 1024 就判定為行動裝置)
+const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 1024);
     scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0xc5c1bc, 0.010);
     camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
      renderer = new THREE.WebGLRenderer({
@@ -3247,7 +3249,8 @@ function closeDrawAnim() {
         logarithmicDepthBuffer: true         // 完美解決遠近物體的閃爍 (Z-Fighting) 問題！
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // 限制最高像素比例，大幅降低手機發燙機率
+   const isMobile = window.innerWidth <= 768;
+renderer.setPixelRatio(isTouchDevice ? Math.min(window.devicePixelRatio, 1.2) : Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputEncoding = THREE.sRGBEncoding;
@@ -3312,8 +3315,9 @@ function buildRoomEnvironment() {
     dirLight.castShadow = true; 
 // 手機版降低陰影解析度，大幅提升流暢度
     const isMobile = window.innerWidth <= 768;
-    dirLight.shadow.mapSize.width = isMobile ? 1024 : 2048; 
-    dirLight.shadow.mapSize.height = isMobile ? 1024 : 2048;
+// 平板與手機降低陰影解析度，大幅提升流暢度
+    dirLight.shadow.mapSize.width = isTouchDevice ? 1024 : 2048; 
+    dirLight.shadow.mapSize.height = isTouchDevice ? 1024 : 2048;
     
   // 大幅擴張陰影攝影機的照射範圍，把室外的遠景也包覆進來
     dirLight.shadow.camera.left = -200;   // 涵蓋左側的大橋與馬路
@@ -3452,12 +3456,20 @@ function buildRoomEnvironment() {
     const topF = new THREE.Mesh(new THREE.BoxGeometry(30, frameThickness, frameDepth), frameMat); topF.position.set(0, 13.5 - frameThickness/2, 0); topF.castShadow = true; windowFrameGroup.add(topF);
     const botF = new THREE.Mesh(new THREE.BoxGeometry(30, frameThickness, frameDepth), frameMat); botF.position.set(0, -13.5 + frameThickness/2, 0); botF.castShadow = true; windowFrameGroup.add(botF);
 
-    // 啟用物理透射與折射，打造真實玻璃質感
-    const glassMat = new THREE.MeshPhysicalMaterial({ 
-        color: 0xebf8ff, metalness: 0.15, roughness: 0.02, transmission: 0.95, 
-        ior: 1.52, thickness: 0.5, transparent: true, opacity: 1.0, 
-        clearcoat: 1.0, clearcoatRoughness: 0.02 
-    }); 
+  // 判斷是否為手機
+    const isMobileDevice = window.innerWidth <= 768;
+
+    // 如果是手機，使用普通的半透明材質，放棄昂貴的物理折射計算；如果是電腦則保留物理玻璃
+    const glassMat = isMobileDevice 
+        ? new THREE.MeshStandardMaterial({
+            color: 0xebf8ff, metalness: 0.5, roughness: 0.1, 
+            transparent: true, opacity: 0.3 // 用純粹的透明度代替折射，效能極佳！
+          })
+        : new THREE.MeshPhysicalMaterial({ 
+            color: 0xebf8ff, metalness: 0.15, roughness: 0.02, transmission: 0.95, 
+            ior: 1.52, thickness: 0.5, transparent: true, opacity: 1.0, 
+            clearcoat: 1.0, clearcoatRoughness: 0.02 
+          });
 
     // 【左側動態趟門 (包含玻璃與金屬邊框)】
     glassDoorL = new THREE.Group();
