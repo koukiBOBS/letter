@@ -4479,6 +4479,9 @@ else if (type === 'painting') {
                 let hit = hits[0];
                 let n = hit.face.normal;
                 
+                // 🚨 解決問題 2：如果射線打到天花板或地板 (法線朝上或朝下)，直接略過不處理
+                if (Math.abs(n.y) > 0.5) return;
+                
                 // 智慧換牆：如果發現滑鼠移動到另一面牆，重置偏移量讓畫作精準吸附
                 if (dragTarget.userData.wallNormal && n.dot(dragTarget.userData.wallNormal) < 0.9) {
                     dragOffset.set(0, 0, 0);
@@ -4487,18 +4490,18 @@ else if (type === 'painting') {
                 
                 let newPos = hit.point.clone().sub(dragOffset);
                 
-                // 👇 【核心新增】碰撞防穿模與障礙物迴避 👇
-                // 1. 取得畫框的寬高的一半，用作碰撞邊界計算
+                // 1. 取得畫框的寬高的一半
                 const halfW = dragTarget.userData.frameW / 2;
                 const halfH = dragTarget.userData.frameH / 2;
                 
-                // 2. 定義房間內牆的極限座標 (防止穿模到相鄰的牆面之外)
-                const minX = -58.7 + halfW + 0.1;
-                const maxX =  58.7 - halfW - 0.1;
-                const minZ = -16.7 + halfW + 0.1;
-                const maxZ =  58.7 - halfW - 0.1;
+                // 🚨 解決問題 1：加上牆角的「硬性安全距離」(2.0 單位)
+                const cornerMargin = 2.0;
+                const safeXMin = -58.7 + halfW + cornerMargin;
+                const safeXMax =  58.7 - halfW - cornerMargin;
+                const safeZMin = -16.7 + halfW + cornerMargin;
+                const safeZMax =  58.7 - halfW - cornerMargin;
                 
-                // 3. 限制高度：不貼著地板 (y最低為6)，不頂破天花板 (y最高為36)
+                // 3. 限制高度：不貼著地板，不頂破天花板
                 const minY = 6 + halfH;
                 const maxY = 36 - halfH;
                 newPos.y = Math.max(minY, Math.min(maxY, newPos.y));
@@ -4507,13 +4510,12 @@ else if (type === 'painting') {
                     // --- 前牆 (包含中央窗戶) ---
                     newPos.z = hit.point.z;
                     dragTarget.rotation.y = 0;
-                    newPos.x = Math.max(minX, Math.min(maxX, newPos.x)); // 防牆角穿模
+                    newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x)); // 強制與牆角保持距離
                     
                     // 避開中央窗戶 (窗戶實際範圍 x: -15 到 15)
                     const winLeft = -15.5 - halfW;
                     const winRight = 15.5 + halfW;
                     if (newPos.x > winLeft && newPos.x < winRight) {
-                        // 若滑鼠進入窗戶區域，把畫作「推」向距離較近的那一側牆面
                         if (Math.abs(newPos.x - winLeft) < Math.abs(newPos.x - winRight)) newPos.x = winLeft;
                         else newPos.x = winRight;
                     }
@@ -4522,13 +4524,13 @@ else if (type === 'painting') {
                     // --- 後牆 (滿版無障礙) ---
                     newPos.z = hit.point.z;
                     dragTarget.rotation.y = Math.PI;
-                    newPos.x = Math.max(minX, Math.min(maxX, newPos.x)); // 防牆角穿模
+                    newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x)); // 強制與牆角保持距離
                 }
                 else if (n.x < -0.5) {
                     // --- 左牆 (包含出外趟門) ---
                     newPos.x = hit.point.x;
                     dragTarget.rotation.y = Math.PI / 2;
-                    newPos.z = Math.max(minZ, Math.min(maxZ, newPos.z)); // 防牆角穿模
+                    newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z)); // 強制與牆角保持距離
                     
                     // 避開趟門 (趟門範圍 z: -8 到 8, 高度 y < 28)
                     const doorLeft = -8.5 - halfW;
@@ -4544,14 +4546,14 @@ else if (type === 'painting') {
                     // --- 右牆 (包含冷氣機) ---
                     newPos.x = hit.point.x;
                     dragTarget.rotation.y = -Math.PI / 2;
-                    newPos.z = Math.max(minZ, Math.min(maxZ, newPos.z)); // 防牆角穿模
+                    newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z)); // 強制與牆角保持距離
                     
                     // 避開冷氣機 (冷氣機範圍 z: -13 到 3, 高度 y: 29 以上)
                     const acLeft = -13.5 - halfW;
                     const acRight = 3.5 + halfW;
                     const acBottom = 29 - halfH;
                     if (newPos.z > acLeft && newPos.z < acRight && newPos.y > acBottom) {
-                        newPos.y = acBottom; // 如果撞到冷氣機，強制將畫作往下壓
+                        newPos.y = acBottom; // 撞到冷氣機強制往下壓
                     }
                 }
                 
