@@ -2702,9 +2702,10 @@ function saveObjectPositions() {
     if(typeof umbGrp !== 'undefined') pos.umbrella = {x: umbGrp.position.x, z: umbGrp.position.z}; // 👈 新增
     if(catGrp) pos.cat = {x: catGrp.position.x, y: catGrp.position.y, z: catGrp.position.z, platform: catPlatform};
     
-    pos.paintings = {};
+   pos.paintings = {};
     scene.traverse(c => {
-        if (c.userData && c.userData.itemId && c.userData.itemId.startsWith('painting_')) {
+        // 👇 新增條件：如果 ID 是 painting 開頭，或是 clock，通通存起來
+        if (c.userData && c.userData.itemId && (c.userData.itemId.startsWith('painting_') || c.userData.itemId === 'clock')) {
             pos.paintings[c.userData.itemId] = { x: c.position.x, y: c.position.y, z: c.position.z, ry: c.rotation.y };
         }
     });
@@ -3640,9 +3641,21 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     radioLED = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshStandardMaterial({color: 0x882222, emissive: 0x550000}));
     radioLED.position.set(1.2, 1.8, 0.76); radioGrp.add(radioLED);
 
-    // 5. 金屬天線
-    const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 3), radioKnobMat);
-    antenna.position.set(-1.2, 2.5, -0.5); antenna.rotation.z = -0.3; antenna.rotation.x = 0.2; radioGrp.add(antenna);
+   // 5. 金屬天線 (修復穿模與旋轉軸心)
+    // 建立一個小金屬底座，讓天線看起來是鎖上去的
+    const antennaBase = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.2, 16), radioKnobMat);
+    antennaBase.position.set(-1.2, 2.05, -0.5);
+    radioGrp.add(antennaBase);
+
+    // 偏移天線的幾何中心點，讓它以「底部」為軸心旋轉，不再穿模
+    const antennaGeo = new THREE.CylinderGeometry(0.03, 0.03, 3.5, 8);
+    antennaGeo.translate(0, 1.75, 0); // 將中心往上推一半長度
+    const antenna = new THREE.Mesh(antennaGeo, radioKnobMat);
+    
+    // 將位置設定在底座上
+    antenna.position.set(-1.2, 2.0, -0.5); 
+    antenna.rotation.set(0.2, 0, -0.3); // 完美向後、向左傾斜
+    radioGrp.add(antenna);
 
     // 6. 點擊判定框
     const radioHitBox = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 3), new THREE.MeshBasicMaterial({visible: false}));
@@ -3715,17 +3728,51 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     const dec2 = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2, 2), new THREE.MeshStandardMaterial({color: 0x8c7a6b})); dec2.position.set(3, 5.3, 0); dec2.castShadow=true; shGrp.add(dec2);
     const dec3 = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 2), new THREE.MeshStandardMaterial({color: 0xdddddd})); dec3.position.set(2, -0.7, 0); dec3.castShadow=true; shGrp.add(dec3);
 
-     const clockGrp = new THREE.Group(); clockGrp.position.set(59.5, 28, 15); clockGrp.rotation.y = -Math.PI/2; scene.add(clockGrp);
-    const clkBase = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 0.6, 32), new THREE.MeshStandardMaterial({color: 0x2c3e50})); clkBase.rotation.x = Math.PI/2; clkBase.castShadow = true; clockGrp.add(clkBase);
+    // ==========================================
+    // ⏰ 時鐘 (升級為可自由拖曳、防撞、貼牆)
+    // ==========================================
+    const clockGrp = new THREE.Group(); 
+    clockGrp.position.set(59.5, 28, 15); 
+    clockGrp.rotation.y = -Math.PI/2; 
     
-    // 把 clkFace 的 z 從 0.31 改為 0.35
-    const clkFace = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 7.4), new THREE.MeshBasicMaterial({map: createClockTexture()})); clkFace.position.z = 0.35; clockGrp.add(clkFace);
-    const handMat = new THREE.MeshBasicMaterial({color: 0x333333}); const secHandMat = new THREE.MeshBasicMaterial({color: 0xc25953});
+    // 👇 新增：注入與畫作相同的拖曳元數據
+    clockGrp.userData.frameW = 8.5; // 時鐘的碰撞寬度
+    clockGrp.userData.frameH = 8.5; // 時鐘的碰撞高度
+    clockGrp.userData.wallNormal = new THREE.Vector3(-1, 0, 0); // 初始面向
+    clockGrp.userData.itemId = 'clock'; // 綁定 ID 以便儲存位置
+    scene.add(clockGrp);
     
-    // 指針的 z 分別往外推
-    clockHourHand = new THREE.Group(); clockHourHand.position.z = 0.40; const hHand = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.8, 0.05), handMat); hHand.position.y = 0.9; clockHourHand.add(hHand); clockGrp.add(clockHourHand);
-    clockMinHand = new THREE.Group(); clockMinHand.position.z = 0.43; const mHand = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.8, 0.05), handMat); mHand.position.y = 1.4; clockMinHand.add(mHand); clockGrp.add(clockMinHand);
-    clockSecHand = new THREE.Group(); clockSecHand.position.z = 0.46; const sHand = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.2, 0.05), secHandMat); sHand.position.y = 1.0; clockSecHand.add(sHand); clockGrp.add(clockSecHand);
+    const clkBase = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 0.6, 32), new THREE.MeshStandardMaterial({color: 0x2c3e50})); 
+    clkBase.rotation.x = Math.PI/2; 
+    clkBase.castShadow = true; 
+    clockGrp.add(clkBase);
+    
+    const clkFace = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 7.4), new THREE.MeshBasicMaterial({map: createClockTexture()})); 
+    clkFace.position.z = 0.35; 
+    clockGrp.add(clkFace);
+    
+    const handMat = new THREE.MeshBasicMaterial({color: 0x333333}); 
+    const secHandMat = new THREE.MeshBasicMaterial({color: 0xc25953});
+    
+    clockHourHand = new THREE.Group(); clockHourHand.position.z = 0.40; 
+    const hHand = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.8, 0.05), handMat); hHand.position.y = 0.9; 
+    clockHourHand.add(hHand); clockGrp.add(clockHourHand);
+    
+    clockMinHand = new THREE.Group(); clockMinHand.position.z = 0.43; 
+    const mHand = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.8, 0.05), handMat); mHand.position.y = 1.4; 
+    clockMinHand.add(mHand); clockGrp.add(clockMinHand);
+    
+    clockSecHand = new THREE.Group(); clockSecHand.position.z = 0.46; 
+    const sHand = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.2, 0.05), secHandMat); sHand.position.y = 1.0; 
+    clockSecHand.add(sHand); clockGrp.add(clockSecHand);
+
+    // 👇 新增：專屬的隱形點擊/拖曳判定箱
+    const clockHitBox = new THREE.Mesh(new THREE.BoxGeometry(8.5, 8.5, 1.5), new THREE.MeshBasicMaterial({visible: false}));
+    clockHitBox.position.z = 0;
+    // 💡 魔法在這裡：直接偽裝成畫作，完美繼承畫作的所有拖曳與防穿模邏輯！
+    clockHitBox.userData = { type: 'painting' }; 
+    clockGrp.add(clockHitBox);
+    interactables.push(clockHitBox);
     const rackGrp = new THREE.Group(); rackGrp.position.set(-56, 0, 30); scene.add(rackGrp);
     const rPole = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 22, 16), woodMat); rPole.position.y = 11; rPole.castShadow = true; rackGrp.add(rPole);
     const rBase = new THREE.Mesh(new THREE.CylinderGeometry(3, 3.5, 0.6, 32), woodMat); rBase.position.y = 0.3; rBase.castShadow = true; rackGrp.add(rBase);
