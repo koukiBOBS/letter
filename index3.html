@@ -2654,7 +2654,8 @@ function returnToRoom() {
 
 
         
-let tcGrp, chairGroup; 
+let tcGrp, chairGroup;
+let wallDragMesh; // 新增這一個，用來做牆壁拖曳的隱形邊界
 let floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 let catPlatform = 'floor'; // 記錄貓咪所在位置：'floor', 'desk', 'chair'
 
@@ -2667,9 +2668,20 @@ function saveObjectPositions() {
     if(tcGrp) pos.trash = {x: tcGrp.position.x, z: tcGrp.position.z};
     if(chairGroup) pos.chair = {x: chairGroup.position.x, z: chairGroup.position.z};
     if(catGrp) pos.cat = {x: catGrp.position.x, y: catGrp.position.y, z: catGrp.position.z, platform: catPlatform};
+    
+    // 👇 新增：儲存所有畫作的座標與旋轉面向
+    pos.paintings = {};
+    scene.traverse(c => {
+        if (c.userData && c.userData.itemId && c.userData.itemId.startsWith('painting_')) {
+            pos.paintings[c.userData.itemId] = {
+                x: c.position.x, y: c.position.y, z: c.position.z,
+                ry: c.rotation.y
+            };
+        }
+    });
     localStorage.setItem('roomObjectPositions', JSON.stringify(pos));
 }
-
+ 
 function restoreObjectPositions() {
     try {
         const pos = JSON.parse(localStorage.getItem('roomObjectPositions'));
@@ -2679,26 +2691,31 @@ function restoreObjectPositions() {
         if(pos.water && wateringCan) wateringCan.position.set(pos.water.x, 8.5, pos.water.z);
         if(pos.trash && tcGrp) tcGrp.position.set(pos.trash.x, tcGrp.position.y, pos.trash.z);
         if(pos.chair && chairGroup) chairGroup.position.set(pos.chair.x, chairGroup.position.y, pos.chair.z);
-       if(pos.cat && catGrp) {
+        if(pos.cat && catGrp) {
             catPlatform = pos.cat.platform || 'floor';
-            
-            // 【修訂】強制校正貓咪的 Y 軸高度，無視存壞的懸空高度
             let correctY = 0;
             if (catPlatform === 'desk') correctY = 8.5;
             else if (catPlatform === 'chair') correctY = 4.5;
-            
             catGrp.position.set(pos.cat.x, correctY, pos.cat.z);
-            
-            // 同時把 HitBox 的基礎高度設定好，避免重整後第一次拖曳發生錯亂
             catGrp.children.forEach(child => {
                 if (child.userData && child.userData.type === 'cat') {
                     child.userData.originalY = correctY;
                 }
             });
         }
+        
+        // 👇 新增：還原所有畫作的座標與旋轉面向
+        if (pos.paintings) {
+            scene.traverse(c => {
+                if (c.userData && c.userData.itemId && pos.paintings[c.userData.itemId]) {
+                    let savedP = pos.paintings[c.userData.itemId];
+                    c.position.set(savedP.x, savedP.y, savedP.z);
+                    c.rotation.y = savedP.ry;
+                }
+            });
+        }
     } catch(e){}
 }
-
 
         
       // 🐾 新增小貓咪的全域變數
@@ -2901,47 +2918,79 @@ function createCloudTexture() {
             }
             const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
         }
-   function createPainting(x, y, z, url, aspect) {
-        const frameGroup = new THREE.Group(); 
-        frameGroup.position.set(x, y, z); 
+
+
+
+
+// 【修改點】改寫 createPainting，加入點擊判定箱
+    function createPainting(x, y, z, url, aspect) {
+        const frameGroup = new THREE.Group();
+        frameGroup.position.set(x, y, z);
         
         const canvasHeight = 10.5;
         const canvasWidth = canvasHeight * aspect;
         const frameHeight = canvasHeight + 1.5;
         const frameWidth = canvasWidth + 1.5;
-
+ 
         const frame = new THREE.Mesh(
-            new THREE.BoxGeometry(frameWidth, frameHeight, 0.6), 
+            new THREE.BoxGeometry(frameWidth, frameHeight, 0.6),
             new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.8})
-        ); 
-        frameGroup.add(frame); 
+        );
+        frameGroup.add(frame);
         
         const canvasMat = new THREE.MeshStandardMaterial({color: 0xdddddd, roughness: 0.9});
         const canvasMesh = new THREE.Mesh(
-            new THREE.PlaneGeometry(canvasWidth, canvasHeight), 
+            new THREE.PlaneGeometry(canvasWidth, canvasHeight),
             canvasMat
-        ); 
-        canvasMesh.position.z = 0.31; 
-        frameGroup.add(canvasMesh); 
-        scene.add(frameGroup); 
+        );
+        canvasMesh.position.z = 0.31;
+        frameGroup.add(canvasMesh);
+        
+        // 👇 新增：專屬的隱形點擊/拖曳判定箱
+        const hitBox = new THREE.Mesh(
+            new THREE.BoxGeometry(frameWidth + 1, frameHeight + 1, 1.5),
+            new THREE.MeshBasicMaterial({visible: false})
+        );
+        hitBox.position.z = 0;
+        hitBox.userData = { type: 'painting' };
+        frameGroup.add(hitBox);
+        interactables.push(hitBox);
+ 
+        scene.add(frameGroup);
         
         const loader = new THREE.TextureLoader();
         loader.setCrossOrigin('anonymous');
         loader.load(
-            url, 
+            url,
             (texture) => {
                 texture.encoding = THREE.sRGBEncoding;
-                texture.minFilter = THREE.LinearMipmapLinearFilter; 
+                texture.minFilter = THREE.LinearMipmapLinearFilter;
                 canvasMat.map = texture;
-                canvasMat.color.setHex(0xffffff); 
+                canvasMat.color.setHex(0xffffff);
                 canvasMat.needsUpdate = true;
             },
             undefined,
             (err) => { console.warn('畫作圖片載入失敗:', url); }
-        ); // <--- 注意這裡，必須要有 ); 來結束 loader.load
-
-        return frameGroup; // 隱藏畫布與快照的關鍵
+        );
+        return frameGroup;
     }
+ 
+    // 依序掛上作品
+    const p1 = createPainting(-42, 22, -16.7, '畫一一.jpeg', 1.0); if(p1) p1.userData.itemId = 'painting_1';
+    const p2 = createPainting(-26, 17, -16.7, '畫二.jpeg', 2048 / 1365); if(p2) p2.userData.itemId = 'painting_2';
+    const p3 = createPainting(26, 17, -16.7, '畫三.jpeg', 1.0); if(p3) p3.userData.itemId = 'painting_3';
+    const p4 = createPainting(43, 22, -16.7, '畫四.jpeg', 1835 / 1224); if(p4) p4.userData.itemId = 'painting_4';
+ 
+    // 👇 新增：專為牆壁拖曳設計的隱形房間內壁邊界
+    wallDragMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(117.4, 24, 75.4),
+        new THREE.MeshBasicMaterial({side: THREE.BackSide, visible: false})
+    );
+    wallDragMesh.position.set(0, 20, 21); // 完美對齊室內四面牆
+    scene.add(wallDragMesh);
+
+
+        
         function createFloorTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 1024; const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#f7f6f2'; ctx.fillRect(0, 0, 1024, 1024);
@@ -4360,7 +4409,24 @@ const intersects = getValidIntersects();
             }, 150);
         }
 
-
+else if (type === 'painting') {
+            dragTimer = setTimeout(() => {
+                isDragging = true;
+                dragTarget = obj.parent; // 抓取整個畫框群組
+                dragTarget.userData.dragType = type;
+                controls.enabled = false;
+                document.body.style.cursor = 'grabbing';
+                
+                // 抓取時計算滑鼠在畫作上的偏移量與當前牆面法線
+                let hits = raycaster.intersectObject(wallDragMesh);
+                if (hits.length > 0) {
+                    dragOffset.copy(hits[0].point).sub(dragTarget.position);
+                    dragTarget.userData.wallNormal = hits[0].face.normal.clone();
+                } else {
+                    dragOffset.set(0, 0, 0);
+                }
+            }, 150);
+        }
 
         
     }
