@@ -2719,8 +2719,9 @@ function saveObjectPositions() {
     if(typeof umbGrp !== 'undefined') pos.umbrella = {x: umbGrp.position.x, z: umbGrp.position.z};
     
     // 👇 加入鋼琴與琴椅的存檔
-    if(typeof pianoGrp !== 'undefined') pos.piano = {x: pianoGrp.position.x, z: pianoGrp.position.z};
-    if(typeof benchGrp !== 'undefined') pos.bench = {x: benchGrp.position.x, z: benchGrp.position.z};
+ // 👇 把原本的 piano 與 bench 存檔替換成這兩行 (加入了 ry)
+    if(typeof pianoGrp !== 'undefined') pos.piano = {x: pianoGrp.position.x, z: pianoGrp.position.z, ry: pianoGrp.rotation.y};
+    if(typeof benchGrp !== 'undefined') pos.bench = {x: benchGrp.position.x, z: benchGrp.position.z, ry: benchGrp.rotation.y};
 
     if(catGrp) pos.cat = {x: catGrp.position.x, y: catGrp.position.y, z: catGrp.position.z, platform: catPlatform};
     
@@ -2746,8 +2747,15 @@ function restoreObjectPositions() {
         if(pos.umbrella && typeof umbGrp !== 'undefined') umbGrp.position.set(pos.umbrella.x, umbGrp.position.y, pos.umbrella.z); 
         
         // 👇 加入鋼琴與琴椅的讀檔復原
-        if(pos.piano && typeof pianoGrp !== 'undefined') pianoGrp.position.set(pos.piano.x, 0, pos.piano.z);
-        if(pos.bench && typeof benchGrp !== 'undefined') benchGrp.position.set(pos.bench.x, 0, pos.bench.z);
+       // 👇 把原本的 piano 與 bench 讀檔替換成這段
+        if(pos.piano && typeof pianoGrp !== 'undefined') {
+            pianoGrp.position.set(pos.piano.x, 0, pos.piano.z);
+            if (pos.piano.ry !== undefined) pianoGrp.rotation.y = pos.piano.ry;
+        }
+        if(pos.bench && typeof benchGrp !== 'undefined') {
+            benchGrp.position.set(pos.bench.x, 0, pos.bench.z);
+            if (pos.bench.ry !== undefined) benchGrp.rotation.y = pos.bench.ry;
+        }
 
         if(pos.cat && catGrp) {
             catPlatform = pos.cat.platform || 'floor';
@@ -4550,28 +4558,37 @@ if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella
                     dragTarget.userData.originalY = dragTarget.position.y;
                 }
 
-          let snapTargetX = droppedObj.position.x;
+        let snapTargetX = droppedObj.position.x;
         let snapTargetZ = droppedObj.position.z;
 
         // 🧲 磁吸效應：如果拖曳的是琴椅，靠近鋼琴時自動吸附到演奏位
         if (type === 'bench' && typeof pianoGrp !== 'undefined' && pianoGrp.visible) {
-            let dx = droppedObj.position.x - (pianoGrp.position.x - 4.5);
-            let dz = droppedObj.position.z - pianoGrp.position.z;
-            if (Math.hypot(dx, dz) < 8) { // 靠近範圍 8 以內
-                snapTargetX = pianoGrp.position.x - 4.5;
-                snapTargetZ = pianoGrp.position.z;
+            // 用三角函數動態算出鋼琴的正前方演奏位置 (距離 4.5)
+            let idealX = pianoGrp.position.x + Math.sin(pianoGrp.rotation.y) * 4.5;
+            let idealZ = pianoGrp.position.z + Math.cos(pianoGrp.rotation.y) * 4.5;
+            
+            let dx = droppedObj.position.x - idealX;
+            let dz = droppedObj.position.z - idealZ;
+            
+            if (Math.hypot(dx, dz) < 8) { // 靠近範圍內啟動吸附
+                snapTargetX = idealX;
+                snapTargetZ = idealZ;
                 // 強制轉向與鋼琴一致
                 gsap.to(droppedObj.rotation, {y: pianoGrp.rotation.y, duration: 0.3});
             }
         } 
         // 🧲 磁吸效應：如果拖曳的是鋼琴，琴椅若在附近，會自動跟隨移動保持成套
         else if (type === 'piano' && typeof benchGrp !== 'undefined' && benchGrp.visible) {
-            let dx = benchGrp.position.x - (droppedObj.position.x - 4.5);
-            let dz = benchGrp.position.z - droppedObj.position.z;
+            let idealX = droppedObj.position.x + Math.sin(droppedObj.rotation.y) * 4.5;
+            let idealZ = droppedObj.position.z + Math.cos(droppedObj.rotation.y) * 4.5;
+            
+            let dx = benchGrp.position.x - idealX;
+            let dz = benchGrp.position.z - idealZ;
+            
             if (Math.hypot(dx, dz) < 8) {
                 gsap.to(benchGrp.position, {
-                    x: droppedObj.position.x - 4.5,
-                    z: droppedObj.position.z,
+                    x: idealX,
+                    z: idealZ,
                     duration: 0.3
                 });
                 gsap.to(benchGrp.rotation, {y: droppedObj.rotation.y, duration: 0.3});
@@ -4592,7 +4609,6 @@ if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella
                 }
             }
         });
-
                 let plane = (['log', 'tasks', 'water', 'plant'].includes(type)) ? deskPlane : floorPlane;
                 let intersectPoint = new THREE.Vector3();
                 raycaster.ray.intersectPlane(plane, intersectPoint);
@@ -4676,12 +4692,36 @@ function onPointerMove(e) {
                 dragTarget.position.z = newZ;
             }
         } 
-    else if (['trash', 'chair', 'rack', 'umbrella', 'piano', 'bench'].includes(type)) {
+  else if (['trash', 'chair', 'rack', 'umbrella', 'piano', 'bench'].includes(type)) {
             raycaster.ray.intersectPlane(floorPlane, intersectPoint);
             if(intersectPoint) {
                 let newX = intersectPoint.x - dragOffset.x;
                 let newZ = intersectPoint.z - dragOffset.z;
- 
+
+                // 👇 1. 靠近牆壁自動轉向 (專為鋼琴與琴椅設計)
+                if (type === 'piano' || type === 'bench') {
+                    // 計算距離四面牆的距離
+                    let dRight = 56 - newX;
+                    let dLeft = newX - (-56);
+                    let dBack = 56 - newZ;
+                    let dFront = newZ - (-14);
+
+                    // 找出最近的牆壁，並決定完美的旋轉角度 (永遠把背面靠牆)
+                    let minD = Math.min(dRight, dLeft, dBack, dFront);
+                    let targetRot = dragTarget.rotation.y;
+                    
+                    if (minD === dRight) targetRot = -Math.PI / 2;
+                    else if (minD === dLeft) targetRot = Math.PI / 2;
+                    else if (minD === dBack) targetRot = 0;
+                    else if (minD === dFront) targetRot = Math.PI;
+
+                    // 若角度發生變化，使用 GSAP 平滑轉向
+                    if (dragTarget.userData.lastSnapRot !== targetRot) {
+                        gsap.to(dragTarget.rotation, {y: targetRot, duration: 0.2});
+                        dragTarget.userData.lastSnapRot = targetRot;
+                    }
+                }
+
                 newX = Math.max(-56, Math.min(56, newX));
                 newZ = Math.max(-14, Math.min(56, newZ));
  
@@ -4689,7 +4729,7 @@ function onPointerMove(e) {
                 let myRadius = 2.5;
                 if (type === 'rack' || type === 'chair') myRadius = 4.5;
                 if (type === 'bench') myRadius = 3.5;
-                if (type === 'piano') myRadius = 7.0; // 鋼琴移動時用大圓盤推開其他小物件
+                if (type === 'piano') myRadius = 7.0; 
  
                 function pushOutRect(cx, cz, radius, rx, rz, rw, rd) {
                     let hw = rw / 2, hd = rd / 2;
@@ -4716,9 +4756,12 @@ function onPointerMove(e) {
                 let pos = pushOutRect(newX, newZ, myRadius, 0, 0, 32, 16);
                 newX = pos.x; newZ = pos.z;
  
-                // 2. 避開鋼琴本體 (當我們拖曳的「不是」鋼琴本身時，鋼琴就是一堵厚牆)
+                // 2. 避開鋼琴本體 (動態依據鋼琴的旋轉角度決定碰撞寬深！)
                 if (type !== 'piano' && typeof pianoGrp !== 'undefined' && pianoGrp.visible) {
-                    pos = pushOutRect(newX, newZ, myRadius, pianoGrp.position.x, pianoGrp.position.z, 6, 17);
+                    let isPianoZWall = Math.abs(Math.sin(pianoGrp.rotation.y)) > 0.5;
+                    let pW = isPianoZWall ? 6 : 17;
+                    let pD = isPianoZWall ? 17 : 6;
+                    pos = pushOutRect(newX, newZ, myRadius, pianoGrp.position.x, pianoGrp.position.z, pW, pD);
                     newX = pos.x; newZ = pos.z;
                 }
  
@@ -4750,7 +4793,6 @@ function onPointerMove(e) {
                             let dist = Math.sqrt(dx*dx + dz*dz);
                             let minDist = myRadius + item.r;
  
-                            // 🧲 特例：當鋼琴與琴椅互相靠近時，取消強烈排斥，允許稍微重疊以利吸附
                             let isPianoBenchPair = (type === 'piano' && item.grp === benchGrp) || (type === 'bench' && item.grp === pianoGrp);
                             if (isPianoBenchPair) minDist = 1.0; 
  
