@@ -767,55 +767,6 @@
     #modal-inbox .tab-btn-custom { font-size: 1rem; padding: 10px 15px; }
 }
 
-        /* 👇 移動端實時視角旋鈕樣式 👇 */
-#mobile-cam-knob {
-    position: fixed; bottom: 30px; right: 20px; z-index: 3000;
-    width: 70px; height: 70px; background: rgba(250, 247, 242, 0.4);
-    border-radius: 50%; backdrop-filter: blur(8px); border: 2px solid rgba(255,255,255,0.4);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column;
-    align-items: center; justify-content: center; touch-action: none; pointer-events: auto;
-    /* 防止手機長按選單跑出來 */
-    -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;
-}
-
-.knob-center {
-    width: 44px; height: 44px; border-radius: 50%;
-    box-shadow: inset 0 2px 5px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.1);
-    position: relative;
-    /* 預設為向窗模式 (純白) */
-    background: #ffffff;
-    /* 加入背景顏色與旋轉的平滑過渡 */
-    transition: background-color 0.4s ease, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* 長按切換後的向房模式 (典雅竹葉青色) */
-.knob-center.mode-room {
-    background: #e6f0e9; 
-}
-
-/* 長按時的視覺回饋漣漪動畫 */
-.knob-pulse {
-    position: absolute; inset: 0; border-radius: 50%;
-    background: rgba(107, 142, 115, 0.5);
-    transform: scale(1); opacity: 0; pointer-events: none;
-}
-.knob-center.holding .knob-pulse {
-    animation: holdPulse 0.6s forwards;
-}
-@keyframes holdPulse {
-    0% { transform: scale(1); opacity: 0.8; }
-    100% { transform: scale(1.6); opacity: 0; }
-}
-
-.knob-indicator {
-    position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
-    width: 6px; height: 14px; background: var(--color-replies); border-radius: 4px;
-}
-
-@media (max-width: 900px) {
-    #mobile-cam-knob { display: flex !important; }
-    #dev-panel-wrapper { right: 100px !important; }
-}
         
         
     </style>
@@ -936,13 +887,11 @@
 
 
 <!-- 👇 新增：移動端專屬 360 度實時視角旋鈕 👇 -->
-<!-- 👇 移動端專屬 180 度半圓視角旋鈕 👇 -->
-<div id="mobile-cam-knob" style="display:none;">
-    <div class="knob-center" id="knob-dial">
-        <div class="knob-pulse"></div> <!-- 👈 新增長按漣漪特效 -->
-        <div class="knob-indicator"></div>
+    <div id="mobile-cam-knob" style="display:none;">
+        <div class="knob-center" id="knob-dial">
+            <div class="knob-indicator"></div>
+        </div>
     </div>
-</div>
 
         
 
@@ -6097,115 +6046,26 @@ function acceptBankruptcy() {
 
 
 // 👇 移動端實時視角旋鈕與攝影機控制 (完美軌跡、廣角與方向修復版) 👇
-// 👇 移動端實時視角旋鈕與攝影機控制 (雙色半圓、長按切換、絕對防穿牆版) 👇
+// 👇 移動端實時視角旋鈕與攝影機控制 (動態圓心切換、絕對防穿牆、廣角鎖定版) 👇
+// 👇 移動端實時視角旋鈕與攝影機控制 (動態圓心切換、絕對防穿牆、8方位精準鎖定版) 👇
 (function initCameraKnob() {
     const knob = document.getElementById('mobile-cam-knob');
-    const knobDial = document.getElementById('knob-dial');
-    if(!knob || !knobDial) return;
+    if(!knob) return;
 
     window.isKnobDragging = false;
-    let currentSnappedAngle = 0;
+    let currentSnappedAngle = null;
     
-    // 兩種模式：'window' (看窗外), 'room' (看書房/書櫃)
-    let viewMode = 'window'; 
-    let holdTimer = null;
+    // 動畫代理物件：只負責跑時間軸進度 (0 到 1)
     window.camProxy = { p: 0 }; 
 
-    // 解除 OrbitControls 水平旋轉限制，交由我們的腳本接管
+    // 徹底解除 OrbitControls 的死板限制，將防穿模交由我們的動態演算法接管
     if (controls) {
         controls.minAzimuthAngle = -Infinity;
         controls.maxAzimuthAngle = Infinity;
     }
 
-    // 🎯 執行模式切換
-    function toggleViewMode() {
-        if(typeof isAtBalcony !== 'undefined' && isAtBalcony) return;
-        
-        // 切換變數與 UI 顏色
-        viewMode = viewMode === 'window' ? 'room' : 'window';
-        knobDial.classList.toggle('mode-room', viewMode === 'room');
-        
-        // 切換時提供震動回饋 (如果手機支援)
-        if (navigator.vibrate) navigator.vibrate(50);
-        showToast(viewMode === 'window' ? "👀 視角：向窗" : "👀 視角：向內");
-
-        // 重置指針回正上方 (0度)
-        currentSnappedAngle = 0;
-        knobDial.style.transform = `rotate(0deg)`;
-        
-        // 觸發鏡頭自動飛往新視角
-        moveCameraToAngle(0, true);
-    }
-
-    // 📸 核心攝影機移動與「物理防穿牆」引擎
-    function moveCameraToAngle(deg, isSwitchingMode = false) {
-        if (!controls || !camera) return;
-
-        // 1. 定義兩個模式的注視圓心與理想距離
-        // 向窗看：圓心在窗前
-        const targetWindow = { x: 0, y: 12, z: -5 };
-        // 向房看：圓心在書桌與書櫃之間
-        const targetRoom = { x: 0, y: 12, z: 35 };
-        
-        const currentTarget = viewMode === 'window' ? targetWindow : targetRoom;
-        const radius = 42; // 攝影機與目標的距離
-        const polar = Math.PI / 2.3; // 攝影機的仰角 (稍微往下看)
-
-        // 2. 將角度 (-90 到 90) 轉換為弳度
-        const rad = deg * (Math.PI / 180);
-
-        // 3. 根據模式計算「理想」的相機座標
-        let idealCamX, idealCamZ;
-        if (viewMode === 'window') {
-            // 看窗：相機在房間內 (Z 較大)，面對 -Z 方向
-            idealCamX = currentTarget.x + radius * Math.sin(rad);
-            idealCamZ = currentTarget.z + radius * Math.cos(rad);
-        } else {
-            // 看房：相機在窗戶旁 (Z 較小)，面對 +Z 方向
-            idealCamX = currentTarget.x - radius * Math.sin(rad);
-            idealCamZ = currentTarget.z - radius * Math.cos(rad);
-        }
-        let idealCamY = currentTarget.y + radius * Math.cos(polar);
-
-        // 4. 🛑 絕對物理防穿牆系統 (Physical Bounding Box)
-        // 牆壁邊界：X: ±60，後方書櫃 Z: 54~60，前方窗戶 Z: -18
-        // 留出安全距離，避免鏡頭切入牆壁或家具模型中
-        const safeMinX = -46;
-        const safeMaxX = 46;
-        const safeMinZ = -10; // 絕對不穿透窗戶與趟門
-        const safeMaxZ = 46;  // 絕對不穿透後方書櫃！
-
-        // 若超過邊界，強制停留在邊緣。這會自動讓相機沿著牆壁滑行，產生「碰到牆壁」的物理感
-        let clampedCamX = Math.max(safeMinX, Math.min(safeMaxX, idealCamX));
-        let clampedCamY = Math.max(5, Math.min(36, idealCamY));
-        let clampedCamZ = Math.max(safeMinZ, Math.min(safeMaxZ, idealCamZ));
-
-        // 5. 使用 GSAP 平滑移動鏡頭
-        gsap.killTweensOf(camera.position);
-        gsap.killTweensOf(controls.target);
-
-        const duration = isSwitchingMode ? 1.5 : 0.4; // 切換模式時飛慢一點，拖曳時反應快一點
-        const ease = isSwitchingMode ? "power2.inOut" : "power1.out";
-
-        gsap.to(camera.position, {
-            x: clampedCamX, y: clampedCamY, z: clampedCamZ,
-            duration: duration, ease: ease
-        });
-        
-        gsap.to(controls.target, {
-            x: currentTarget.x, y: currentTarget.y, z: currentTarget.z,
-            duration: duration, ease: ease,
-            onUpdate: () => controls.update()
-        });
-    }
-
-    // 👆 處理拖曳事件
     function handleKnobMove(e) {
         if(!window.isKnobDragging || (typeof isAtBalcony !== 'undefined' && isAtBalcony)) return;
-
-        // 如果手指一滑動，就取消長按判定
-        clearTimeout(holdTimer);
-        knobDial.classList.remove('holding');
 
         const rect = knob.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
@@ -6213,58 +6073,106 @@ function acceptBankruptcy() {
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-        // 1. 計算角度
+        // 1. 計算手指拖曳角度 (上0, 右90, 下180/-180, 左-90)
         let rad = Math.atan2(clientX - centerX, -(clientY - centerY));
         let deg = rad * (180 / Math.PI);
 
-        // 2. 🛡️ 限制只能在上半圓活動 (-90 到 90 度)
-        if (deg > 90) deg = 90;
-        if (deg < -90) deg = -90;
-
-        // 3. 切分為 5 個優雅的段位 (-90, -45, 0, 45, 90)
+        // 2. 8 等份磁吸 (每 45 度一格)
         let snappedDeg = Math.round(deg / 45) * 45;
+        if (snappedDeg === -180) snappedDeg = 180;
 
         if (currentSnappedAngle !== snappedDeg) {
             currentSnappedAngle = snappedDeg;
-            // 轉動實體旋鈕
-            knobDial.style.transform = `rotate(${snappedDeg}deg)`;
-            // 移動攝影機
-            moveCameraToAngle(snappedDeg);
+
+            // 3. UI 旋鈕同步轉動
+            const knobDial = document.getElementById('knob-dial');
+            if (knobDial) {
+                knobDial.style.transform = `rotate(${snappedDeg}deg)`;
+            }
+
+            if (controls && camera) {
+                // 4. 📐 抓取起點狀態：絕對鎖死「廣角距離(r)」與「仰角(polar)」
+                const dx = camera.position.x - controls.target.x;
+                const dy = camera.position.y - controls.target.y;
+                const dz = camera.position.z - controls.target.z;
+
+                const r = Math.sqrt(dx*dx + dy*dy + dz*dz); 
+                const polar = Math.acos(dy / r);          
+                const startAzimuth = Math.atan2(dx, dz);
+
+                const startTx = controls.target.x;
+                const startTy = controls.target.y;
+                const startTz = controls.target.z;
+
+                // 5. 🎯 設定目標圓心 (Target) - 細緻定義 8 個方位的完美對焦中心
+                let endTx = 0, endTy = 7, endTz = 0; // 預設看書桌
+                
+                if (snappedDeg === 0) { endTx = 0; endTy = 7; endTz = 0; } // 上：正看書桌
+                else if (snappedDeg === 45) { endTx = 22; endTy = 10; endTz = 15; } // 右上：書桌右側與時鐘
+                else if (snappedDeg === 90) { endTx = 38; endTy = 12; endTz = 25; } // 右：正看鋼琴
+                else if (snappedDeg === 135) { endTx = 25; endTy = 14; endTz = 45; } // 右下：右側書櫃
+                else if (Math.abs(snappedDeg) === 180) { endTx = 0; endTy = 14; endTz = 45; } // 下：中央書櫃 (圓心在 Z=45，書櫃前方)
+                else if (snappedDeg === -135) { endTx = -25; endTy = 14; endTz = 45; } // 左下：左側書櫃
+                else if (snappedDeg === -90) { endTx = -38; endTy = 10; endTz = 25; } // 左：掛衣架與趟門
+                else if (snappedDeg === -45) { endTx = -22; endTy = 10; endTz = 15; } // 左上：左側畫作
+
+                // 6. 旋鈕方向映射 (向下拉 = 相機繞到前方，視角轉向後方)
+                const targetAzimuth = -snappedDeg * (Math.PI / 180);
+
+                // 7. 🧭 最短路徑演算法
+                let azDiff = targetAzimuth - startAzimuth;
+                azDiff = Math.atan2(Math.sin(azDiff), Math.cos(azDiff));
+
+                // 8. 🛡️ 啟動「動態護城河滑軌」動畫
+                gsap.killTweensOf(window.camProxy);
+                window.camProxy.p = 0; 
+
+                gsap.to(window.camProxy, {
+                    p: 1,
+                    duration: 0.8,
+                    ease: "power2.inOut",
+                    onUpdate: () => {
+                        let p = window.camProxy.p;
+                        
+                        // A. 計算當下這幀「理論上」的角度與圓心
+                        let currentAz = startAzimuth + azDiff * p;
+                        let currentTx = startTx + (endTx - startTx) * p;
+                        let currentTy = startTy + (endTy - startTy) * p;
+                        let currentTz = startTz + (endTz - startTz) * p;
+
+                        // B. 根據鎖死的廣角 (r)，計算相機「理論上」的坐標
+                        let idealCamX = currentTx + r * Math.sin(polar) * Math.sin(currentAz);
+                        let idealCamZ = currentTz + r * Math.sin(polar) * Math.cos(currentAz);
+                        let idealCamY = currentTy + r * Math.cos(polar);
+
+                        // C. 🛑 絕對物理防穿牆系統 (核心修復區)
+                        // 房間真實邊界 X:-60~60, Z:-18~60。
+                        // 我們把邊界大幅往內縮，確保任何角度都不會拍到牆外或卡進家具側面的死角縫隙。
+                        // Z 軸最大鎖在 46，完美避開 Z=59 的書櫃，且保持漂亮的觀看距離。
+                        let clampedCamX = Math.max(-42, Math.min(42, idealCamX));
+                        let clampedCamY = Math.max(3, Math.min(36, idealCamY));
+                        let clampedCamZ = Math.max(-10, Math.min(46, idealCamZ));
+
+                        // D. 應用最終安全坐標並更新 OrbitControls
+                        // (放棄原先反推 Target 的邏輯，讓 Target 準確到達你想看的地方。
+                        // 如果相機撞牆被 clamped 擋住，焦距 r 會自然縮短，形成完美的「物理暫停貼牆」手感)
+                        camera.position.set(clampedCamX, clampedCamY, clampedCamZ);
+                        controls.target.set(currentTx, currentTy, currentTz);
+                        
+                        camera.lookAt(controls.target);
+                        controls.update();
+                    }
+                });
+            }
         }
     }
 
-    // 綁定事件
-    const startDrag = (e) => {
-        if (e.cancelable) e.preventDefault();
-        window.isKnobDragging = true;
-        
-        // 啟動長按計時器 (600ms 切換視角)
-        knobDial.classList.add('holding');
-        holdTimer = setTimeout(() => {
-            window.isKnobDragging = false; // 長按觸發後中斷拖曳
-            knobDial.classList.remove('holding');
-            toggleViewMode();
-        }, 600);
-
-        handleKnobMove(e);
-    };
-
-    const endDrag = () => {
-        window.isKnobDragging = false;
-        clearTimeout(holdTimer);
-        knobDial.classList.remove('holding');
-    };
-
-    knob.addEventListener('mousedown', startDrag);
-    knob.addEventListener('touchstart', startDrag, {passive: false});
-    
+    knob.addEventListener('mousedown', (e) => { window.isKnobDragging = true; handleKnobMove(e); });
+    knob.addEventListener('touchstart', (e) => { window.isKnobDragging = true; handleKnobMove(e); }, {passive: false});
     window.addEventListener('mousemove', handleKnobMove);
-    window.addEventListener('touchmove', (e) => { 
-        if(window.isKnobDragging) { e.preventDefault(); handleKnobMove(e); } 
-    }, {passive: false});
-    
-    window.addEventListener('mouseup', endDrag);
-    window.addEventListener('touchend', endDrag);
+    window.addEventListener('touchmove', (e) => { if(window.isKnobDragging) e.preventDefault(); handleKnobMove(e); }, {passive: false});
+    window.addEventListener('mouseup', () => { window.isKnobDragging = false; });
+    window.addEventListener('touchend', () => { window.isKnobDragging = false; });
 })();
 
 
