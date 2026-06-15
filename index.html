@@ -6892,8 +6892,7 @@ window.toggleReadingLog = function() {
         });
     }
 
-    // 3. 建造極精細的復古八角扭蛋機
-function buildDetailedGachaMachine() {
+    function buildDetailedGachaMachine() {
     gachaMachineGrp = new THREE.Group();
     // 放置於房間左側牆角，面向中心
     gachaMachineGrp.position.set(-48, 0, 25);
@@ -7072,6 +7071,100 @@ function buildDetailedGachaMachine() {
     mLight.position.set(0, 9, 0);
     gachaMachineGrp.add(mLight);
 }
+
+    // 3. 建造極精細的復古八角扭蛋機
+  function playQuoteGachaAnim() {
+    if (userPoints < 500) return showToast("🪙 積分不足 500，無法抽取。");
+    if (!confirm("確定要消耗 500 積分轉動一次扭蛋機嗎？")) return;
+
+    isGachaPlaying = true;
+    userPoints -= 500;
+    db.ref(`users/${currentUser.uid}/points`).set(userPoints);
+    document.getElementById('user-points-text').innerText = userPoints;
+
+    const keys = Object.keys(LIT_QUOTES);
+    const wonId = keys[Math.floor(Math.random() * keys.length)];
+    
+    controls.enabled = false;
+    const backupPos = camera.position.clone();
+    const backupTarget = controls.target.clone();
+    const knob = gachaMachineGrp.getObjectByName('gachaKnob');
+    
+    const tl = gsap.timeline();
+    
+    // 鏡頭推進
+    tl.to(camera.position, {x: -36, y: 5, z: 32, duration: 1.5, ease: "power2.inOut"})
+      .to(controls.target, {x: -48, y: 4, z: 25, duration: 1.5, ease: "power2.inOut", onUpdate: () => controls.update()}, "<")
+      // 💡 修正：繞 Y 軸橫向作水平偏轉
+      .to(knob.rotation, {y: knob.rotation.y + Math.PI*2, duration: 0.8, ease: "back.out(1.5)"})
+      // 玻璃罩內跳動
+      .call(() => {
+          capsulePool.forEach(cap => {
+              gsap.to(cap.position, {
+                  y: cap.userData.origPos.y + Math.random()*2.5, 
+                  x: cap.userData.origPos.x + (Math.random()-0.5)*1.5, 
+                  z: cap.userData.origPos.z + (Math.random()-0.5)*1.5,
+                  duration: 0.1, yoyo: true, repeat: 9
+              });
+          });
+      })
+      .to({}, {duration: 1.0})
+      // 💡 修正：出物口掉出對應精美質感的半透明水晶扭蛋
+      .call(() => {
+          const capGrp = new THREE.Group();
+          const goldMat = new THREE.MeshStandardMaterial({color: 0xd4af37, metalness: 0.85, roughness: 0.15});
+          const morandiColors = [0x8a9a86, 0xb89088, 0xd0af84, 0x6b8294, 0xd1c7bd, 0xbfa89e];
+          const col = morandiColors[Math.floor(Math.random() * morandiColors.length)];
+          
+          const solidMat = new THREE.MeshStandardMaterial({color: col, roughness: 0.25, metalness: 0.1});
+          const frostedGlassMat = new THREE.MeshPhysicalMaterial({
+              color: 0xffffff,
+              transmission: 0.92,
+              roughness: 0.2,
+              transparent: true,
+              thickness: 0.05
+          });
+
+          const topHalf = new THREE.Mesh(new THREE.SphereGeometry(0.7, 32, 32, 0, Math.PI*2, 0, Math.PI/2), frostedGlassMat);
+          const botHalf = new THREE.Mesh(new THREE.SphereGeometry(0.7, 32, 32, 0, Math.PI*2, Math.PI/2, Math.PI/2), solidMat);
+          
+          const seam = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.02, 8, 32), goldMat);
+          seam.rotation.x = Math.PI/2;
+
+          const scrollGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.8, 16);
+          const scrollMat = new THREE.MeshStandardMaterial({color: 0xfdfaf6, roughness: 0.9});
+          const scroll = new THREE.Mesh(scrollGeo, scrollMat);
+          scroll.position.y = 0.1;
+          scroll.rotation.z = Math.PI / 4;
+          scroll.rotation.x = Math.PI / 8;
+          
+          const ribbonGeo = new THREE.CylinderGeometry(0.13, 0.13, 0.1, 16);
+          const ribbon = new THREE.Mesh(ribbonGeo, goldMat);
+          ribbon.position.y = 0.1;
+          ribbon.rotation.copy(scroll.rotation);
+
+          capGrp.add(topHalf, botHalf, seam, scroll, ribbon);
+          capGrp.position.set(0, 1.6, 3.5);
+          gachaMachineGrp.add(capGrp);
+          
+          gsap.to(capGrp.position, {z: 5.5, y: 0.7, duration: 0.8, ease: "bounce.out", onComplete: () => {
+              setTimeout(() => {
+                  gachaMachineGrp.remove(capGrp);
+                  db.ref(`users/${currentUser.uid}/quotes/${wonId}`).set(true);
+                  window.userQuotes[wonId] = true;
+                  
+                  showQuoteUI(wonId, () => {
+                      gsap.to(camera.position, {x: backupPos.x, y: backupPos.y, z: backupPos.z, duration: 1.2, ease: "power2.inOut"});
+                      gsap.to(controls.target, {x: backupTarget.x, y: backupTarget.y, z: backupTarget.z, duration: 1.2, ease: "power2.inOut", onUpdate: () => controls.update(), onComplete: () => {
+                          controls.enabled = true;
+                          isGachaPlaying = false;
+                      }});
+                  });
+              }, 600);
+          }});
+      });
+}
+
     // 6. 動態建立超文藝展示視窗 (不需修改原 HTML)
     function createQuoteOverlay() {
         if(document.getElementById('quote-display-overlay')) return;
@@ -7130,8 +7223,7 @@ function buildDetailedGachaMachine() {
                 const isOwned = window.userQuotes[id];
                 const card = document.createElement('div');
 
-                if (!isOwned) {
-                    // 💡 修改：在「未解鎖」狀態下，更換名稱、去除Emoji、升級為高雅稿紙虛線框
+              // 💡 修改：在「未解鎖」狀態下，更換名稱、去除Emoji、升級為高雅稿紙虛線框
 if (!isOwned) {
     card.className = 'quote-card-item locked';
     card.style.background = '#e6dfd1'; // 古雅象牙紙張色
