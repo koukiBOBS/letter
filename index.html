@@ -3746,10 +3746,7 @@ ceilingLight.shadow.normalBias = 0.15;       // 👈 將 0.08 改為 0.15，消�
     
     // 讓全域可以更新這塊面板
     window.elevatorLEDMaterial = ledMesh.material;
-    const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(16, 28, 1), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.8})); doorGroup.add(doorFrame);
-    const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(14, 26, 1.2), new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.7})); doorGroup.add(doorPanel);
-    const doorKnob = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshStandardMaterial({color: 0x888888, metalness: 0.8})); doorKnob.position.set(5, 0, 0.8); doorGroup.add(doorKnob);
-
+  
     const acGroup = new THREE.Group(); acGroup.position.set(59, 32, -5); scene.add(acGroup);
     const acBody = new THREE.Mesh(new THREE.BoxGeometry(2, 6, 16), new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.3})); acGroup.add(acBody);
     const acVent = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1, 14), new THREE.MeshStandardMaterial({color: 0x111111})); acVent.position.set(-0.1, -2, 0); acGroup.add(acVent);
@@ -5417,8 +5414,10 @@ if (type === 'painting' || type === 'bookcase') {
 } else if(type === 'wallet') {
     openWalletUI();
  // 👇 新增這兩行：點擊收音機 👇
-        } else if(type === 'radio') {
+      } else if(type === 'radio') {
             toggleRadio();
+        } else if(type === 'main_door') {
+            startElevatorJourney();
         }
         
     }
