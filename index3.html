@@ -767,6 +767,55 @@
     #modal-inbox .tab-btn-custom { font-size: 1rem; padding: 10px 15px; }
 }
 
+        /* 👇 移動端實時視角旋鈕樣式 👇 */
+#mobile-cam-knob {
+    position: fixed; bottom: 30px; right: 20px; z-index: 3000;
+    width: 70px; height: 70px; background: rgba(250, 247, 242, 0.4);
+    border-radius: 50%; backdrop-filter: blur(8px); border: 2px solid rgba(255,255,255,0.4);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; touch-action: none; pointer-events: auto;
+    /* 防止手機長按選單跑出來 */
+    -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;
+}
+
+.knob-center {
+    width: 44px; height: 44px; border-radius: 50%;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.1);
+    position: relative;
+    /* 預設為向窗模式 (純白) */
+    background: #ffffff;
+    /* 加入背景顏色與旋轉的平滑過渡 */
+    transition: background-color 0.4s ease, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 長按切換後的向房模式 (典雅竹葉青色) */
+.knob-center.mode-room {
+    background: #e6f0e9; 
+}
+
+/* 長按時的視覺回饋漣漪動畫 */
+.knob-pulse {
+    position: absolute; inset: 0; border-radius: 50%;
+    background: rgba(107, 142, 115, 0.5);
+    transform: scale(1); opacity: 0; pointer-events: none;
+}
+.knob-center.holding .knob-pulse {
+    animation: holdPulse 0.6s forwards;
+}
+@keyframes holdPulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(1.6); opacity: 0; }
+}
+
+.knob-indicator {
+    position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+    width: 6px; height: 14px; background: var(--color-replies); border-radius: 4px;
+}
+
+@media (max-width: 900px) {
+    #mobile-cam-knob { display: flex !important; }
+    #dev-panel-wrapper { right: 100px !important; }
+}
         
         
     </style>
@@ -887,11 +936,13 @@
 
 
 <!-- 👇 新增：移動端專屬 360 度實時視角旋鈕 👇 -->
-    <div id="mobile-cam-knob" style="display:none;">
-        <div class="knob-center" id="knob-dial">
-            <div class="knob-indicator"></div>
-        </div>
+<!-- 👇 移動端專屬 180 度半圓視角旋鈕 👇 -->
+<div id="mobile-cam-knob" style="display:none;">
+    <div class="knob-center" id="knob-dial">
+        <div class="knob-pulse"></div> <!-- 👈 新增長按漣漪特效 -->
+        <div class="knob-indicator"></div>
     </div>
+</div>
 
         
 
