@@ -4784,42 +4784,35 @@ else if (type === 'painting') {
                 const maxY = 38 - halfH; // 原本是 36，稍微提高到 38 充分利用牆面
                 newPos.y = Math.max(minY, Math.min(maxY, newPos.y));
                 
+            // ==========================================
+                // 🛑 A. 實體障礙物防穿模 (智慧深度擠壓演算法 - 修正版)
                 // ==========================================
-                // 🛑 A. 實體障礙物防穿模 (智慧深度擠壓演算法)
-                // ==========================================
-                if (n.z < -0.5) {
-                    // --- 前牆 (包含中央露台玻璃趟門) ---
+                if (n.z > 0.5) { // 🪟 前牆 (包含中央露台玻璃趟門)
                     newPos.z = hit.point.z;
-                    dragTarget.rotation.y = 0;
+                    dragTarget.rotation.y = Math.PI;
                     newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
                     
                     const winLeft = -15.5 - halfW - obstacleMargin;
                     const winRight = 15.5 + halfW + obstacleMargin;
                     const winTop = 28.5 + halfH + obstacleMargin;
                     
-                    // 如果碰到門的區域
                     if (newPos.y < winTop && newPos.x > winLeft && newPos.x < winRight) {
-                        // 判斷：如果把畫推到門上，會不會頂破天花板(大於 maxY)？
-                        // 如果放不下，就把推往上方的阻力設為無限大 (Infinity)
                         let penTop = (winTop <= maxY) ? (winTop - newPos.y) : Infinity;
                         let penLeft = newPos.x - winLeft;
                         let penRight = winRight - newPos.x;
                         
-                        // 尋找最短逃脫路徑
                         let minPen = Math.min(penTop, penLeft, penRight);
                         if (minPen === penTop) newPos.y = winTop;
                         else if (minPen === penLeft) newPos.x = winLeft;
                         else newPos.x = winRight;
                     }
                 }
-                else if (n.z > 0.5) {
-                    // --- 後牆 (無障礙) ---
+                else if (n.z < -0.5) { // 🧱 後牆 (無障礙)
                     newPos.z = hit.point.z;
-                    dragTarget.rotation.y = Math.PI;
+                    dragTarget.rotation.y = 0;
                     newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
                 }
-                else if (n.x < -0.5) {
-                    // --- 左牆 (包含木門) ---
+                else if (n.x > 0.5) { // 🚪 左牆 (包含木門)
                     newPos.x = hit.point.x;
                     dragTarget.rotation.y = Math.PI / 2;
                     newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
@@ -4829,7 +4822,6 @@ else if (type === 'painting') {
                     const doorTop = 28.5 + halfH + obstacleMargin;
                     
                     if (newPos.y < doorTop && newPos.z > doorLeft && newPos.z < doorRight) {
-                        // 同樣判斷是否塞得進門頂的縫隙
                         let penTop = (doorTop <= maxY) ? (doorTop - newPos.y) : Infinity;
                         let penLeft = newPos.z - doorLeft;
                         let penRight = doorRight - newPos.z;
@@ -4840,8 +4832,7 @@ else if (type === 'painting') {
                         else newPos.z = doorRight;
                     }
                 }
-                else if (n.x > 0.5) {
-                    // --- 右牆 (包含冷氣機) ---
+                else if (n.x < -0.5) { // 🎹 右牆 (包含冷氣機)
                     newPos.x = hit.point.x;
                     dragTarget.rotation.y = -Math.PI / 2;
                     newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
@@ -4851,7 +4842,6 @@ else if (type === 'painting') {
                     const acBottom = 28.5 - halfH - obstacleMargin;
                     
                     if (newPos.y > acBottom && newPos.z > acLeft && newPos.z < acRight) {
-                        // 判斷冷氣機下方是否有足夠空間放畫
                         let penBot = (acBottom >= minY) ? (newPos.y - acBottom) : Infinity;
                         let penLeft = newPos.z - acLeft;
                         let penRight = acRight - newPos.z;
@@ -4937,37 +4927,40 @@ else if (type === 'painting') {
                 const safeZMin = -16.7 + halfW + cornerMargin;
                 const safeZMax =  58.7 - halfW - cornerMargin;
                 
-                // 根據四面牆決定旋轉角度與迴避障礙物
-                if (n.z < -0.5) { // 前牆 (玻璃趟門)
-                    newPos.z = hit.point.z; dragTarget.rotation.y = 0;
+            // 👇 修正版：根據四面牆決定旋轉角度與迴避障礙物 (修正了法線反轉問題)
+                if (n.z > 0.5) { // 🪟 前牆 (玻璃趟門)
+                    newPos.z = hit.point.z; 
+                    dragTarget.rotation.y = Math.PI; // 面向房間內 (+Z)
                     const doorLeft = -15.5 - halfW - obstacleMargin;
                     const doorRight = 15.5 + halfW + obstacleMargin;
                     if (newPos.x > doorLeft && newPos.x < doorRight) {
-                        newPos.x = (newPos.x < 0) ? doorLeft : doorRight; // 避開玻璃門
+                        newPos.x = (newPos.x < 0) ? doorLeft : doorRight; 
                     }
                 }
-                else if (n.z > 0.5) { // 後牆 (預設牆)
-                    newPos.z = hit.point.z; dragTarget.rotation.y = Math.PI;
+                else if (n.z < -0.5) { // 🧱 後牆 (預設牆)
+                    newPos.z = hit.point.z; 
+                    dragTarget.rotation.y = 0; // 面向房間內 (-Z)
                 }
-                else if (n.x < -0.5) { // 左牆 (木趟門)
-                    newPos.x = hit.point.x; dragTarget.rotation.y = Math.PI / 2;
+                else if (n.x > 0.5) { // 🚪 左牆 (木趟門)
+                    newPos.x = hit.point.x; 
+                    dragTarget.rotation.y = Math.PI / 2; // 面向房間內 (+X)
                     const doorLeft = -8.5 - halfW - obstacleMargin;
                     const doorRight = 8.5 + halfW + obstacleMargin;
                     if (newPos.z > doorLeft && newPos.z < doorRight) {
-                        newPos.z = (newPos.z < 0) ? doorLeft : doorRight; // 避開木門
+                        newPos.z = (newPos.z < 0) ? doorLeft : doorRight; 
                     }
                 }
-                else if (n.x > 0.5) { // 右牆 (鋼琴)
-                    newPos.x = hit.point.x; dragTarget.rotation.y = -Math.PI / 2;
+                else if (n.x < -0.5) { // 🎹 右牆 (鋼琴)
+                    newPos.x = hit.point.x; 
+                    dragTarget.rotation.y = -Math.PI / 2; // 面向房間內 (-X)
                     if (typeof pianoGrp !== 'undefined' && pianoGrp.visible) {
                         const pianoLeft = 11 - halfW - obstacleMargin;
                         const pianoRight = 33 + halfW + obstacleMargin;
                         if (newPos.z > pianoLeft && newPos.z < pianoRight) {
-                            newPos.z = (newPos.z < 22) ? pianoLeft : pianoRight; // 避開鋼琴
+                            newPos.z = (newPos.z < 22) ? pianoLeft : pianoRight; 
                         }
                     }
                 }
- 
                 // 書櫃之間的防重疊排斥
                 for (let iter = 0; iter < 2; iter++) {
                     interactables.forEach(item => {
