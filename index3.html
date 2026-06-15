@@ -6045,16 +6045,17 @@ function acceptBankruptcy() {
 
 
 
-// 👇 移動端實時視角旋鈕與攝影機控制 (完美軌跡與廣角修復版) 👇
+// 👇 移動端實時視角旋鈕與攝影機控制 (完美軌跡、廣角與方向修復版) 👇
 (function initCameraKnob() {
     const knob = document.getElementById('mobile-cam-knob');
     if(!knob) return;
 
     window.isKnobDragging = false;
     let currentSnappedAngle = null;
+    window.camProxy = { az: 0 }; // 建立全域共用代理物件，解決動畫互相衝突失效的 BUG
 
     function handleKnobMove(e) {
-        // 如果不在拖曳狀態，或在露台，則不處理
+        // 如果不在拖曳狀態，或身處露台，則不執行
         if(!window.isKnobDragging || (typeof isAtBalcony !== 'undefined' && isAtBalcony)) return;
         
         const rect = knob.getBoundingClientRect();
@@ -6063,57 +6064,71 @@ function acceptBankruptcy() {
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         
-        // 1. 計算拖曳手勢的角度 (上:0, 右:90, 下:180, 左:-90)
+        // 1. 計算手指拖曳的角度 (上方為0, 右方為90, 下方為180, 左方為-90)
         let rad = Math.atan2(clientX - centerX, -(clientY - centerY));
         let deg = rad * (180 / Math.PI);
 
-        // 2. 嚴格限制在房間牆壁範圍內 (-90度 ~ 90度)
-        // 碰到牆和書櫃(左右兩邊極限)都要停住，物理阻擋往下旋轉！
-        if (deg > 90 && deg <= 180) deg = 90;
-        if (deg < -90 || deg > 180) deg = -90;
+        // 2. 🧱 物理邊界鎖死：碰到牆壁(左右極限90度)就停住！
+        // 絕對不允許旋轉到下方(室外或後方牆壁)
+        if (deg > 90) deg = 90;
+        if (deg < -90) deg = -90;
 
-        // 3. 將 360 度完美分為 8 等份 (每格 45 度)
+        // 3. 完美 8 等份磁吸 (每 45 度一格)
         let snappedDeg = Math.round(deg / 45) * 45;
 
-        // 如果角度改變，則觸發旋轉動畫
+        // 只有當跨越到下一個等份時，才觸發旋轉
         if (currentSnappedAngle !== snappedDeg) {
             currentSnappedAngle = snappedDeg;
             
-            // 4. 同步 UI 旋鈕的視覺轉動 (指針也會被牆壁擋住)
+            // 同步 UI 旋鈕的視覺指標
             const knobDial = document.getElementById('knob-dial');
             if (knobDial) {
                 knobDial.style.transform = `rotate(${snappedDeg}deg)`;
             }
 
             if (controls && camera) {
-                // 5. 抓取目前 OrbitControls 的精確參數 (✨完美保留預設的廣角與中心點✨)
-                const radius = controls.getDistance();
-                const polar = controls.getPolarAngle();
-                const startAzimuth = controls.getAzimuthalAngle();
+                // 4. 📐 抓取當前精確的圓心位置與廣角距離 (保證「圓心不要變、廣角跟預設一致」)
+                const dx = camera.position.x - controls.target.x;
+                const dy = camera.position.y - controls.target.y;
+                const dz = camera.position.z - controls.target.z;
                 
-                // 目標方位角 (轉為弧度)
-                const targetAzimuth = snappedDeg * (Math.PI / 180);
+                const r = Math.sqrt(dx*dx + dy*dy + dz*dz); // 鎖定與圓心的距離 (廣角)
+                const polar = Math.acos(dy / r);          // 鎖定上下仰角
+                const startAzimuth = Math.atan2(dx, dz);  // 當前相機的左右方位角
+                
+                // 5. 根據旋鈕方向決定視角：旋鈕向右 = 看向右邊 (相機需往左移動)
+                // 加入負號反轉，讓直覺與操作完全一致
+                const targetAzimuth = -snappedDeg * (Math.PI / 180);
 
-                // 6. 最短路徑演算法 (計算起點到終點的最小夾角)
+                // 6. 🧭 最短路徑演算法
                 let azDiff = targetAzimuth - startAzimuth;
                 azDiff = Math.atan2(Math.sin(azDiff), Math.cos(azDiff));
                 const finalAzimuth = startAzimuth + azDiff;
 
-                // 使用代理物件製作動畫，絕對不干擾相機的縮放與中心座標
-                const proxy = { az: startAzimuth };
+                // 暫時解除原生 OrbitControls 限制，交由系統動畫接管
+                controls.minAzimuthAngle = -Infinity;
+                controls.maxAzimuthAngle = Infinity;
+
+                // 殺死上一個滑動動畫，防止打架 (解決旋鈕失效的核心關鍵)
+                gsap.killTweensOf(window.camProxy);
+                window.camProxy.az = startAzimuth;
                 
-                // 停止上一個滑動動畫，確保連續滑動不卡頓
-                gsap.killTweensOf(proxy); 
-                gsap.to(proxy, {
+                gsap.to(window.camProxy, {
                     az: finalAzimuth,
                     duration: 0.6,
                     ease: "power2.out",
                     onUpdate: () => {
-                        // 根據新的方位角，重新精算相機在圓周上的 XYZ 座標，完美貼合軌道
-                        camera.position.x = controls.target.x + radius * Math.sin(polar) * Math.sin(proxy.az);
-                        camera.position.z = controls.target.z + radius * Math.sin(polar) * Math.cos(proxy.az);
-                        camera.position.y = controls.target.y + radius * Math.cos(polar);
+                        // 嚴格沿著圓周軌道移動相機，圓心(Target)絕對不變
+                        camera.position.x = controls.target.x + r * Math.sin(polar) * Math.sin(window.camProxy.az);
+                        camera.position.z = controls.target.z + r * Math.sin(polar) * Math.cos(window.camProxy.az);
+                        camera.position.y = controls.target.y + r * Math.cos(polar);
+                        camera.lookAt(controls.target);
                         controls.update();
+                    },
+                    onComplete: () => {
+                        // 動畫結束後，重新鎖定安全視角範圍
+                        controls.minAzimuthAngle = -Math.PI / 2;
+                        controls.maxAzimuthAngle = Math.PI / 2;
                     }
                 });
             }
