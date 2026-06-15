@@ -3378,12 +3378,30 @@ renderer.setPixelRatio(isTouchDevice ? 1 : Math.min(window.devicePixelRatio || 1
     controls.rotateSpeed = isTouchDevice ? 0.7 : 1.0; // 平板/手機觸控較靈敏，稍微降低旋轉速度
     controls.enablePan = false; // 禁用雙指平移，防止誤觸導致視角跑掉
     
-    const savedState = localStorage.getItem('roomCameraState');
+   const savedState = localStorage.getItem('roomCameraState');
     if (savedState) { 
         try { 
             const s = JSON.parse(savedState); 
             camera.position.set(s.cp.x, s.cp.y, s.cp.z); 
             controls.target.set(s.ct.x, s.ct.y, s.ct.z); 
+            
+            // 👇 新增：如果是手機直屏，強制將讀取到的視角「往後推到最廣角極限 (59)」
+            if (isTouchDevice && window.innerHeight > window.innerWidth) {
+                const dx = camera.position.x - controls.target.x;
+                const dy = camera.position.y - controls.target.y;
+                const dz = camera.position.z - controls.target.z;
+                const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                
+                // 如果距離小於極限 59，按比例把鏡頭往後拉
+                if (dist < 59) {
+                    const ratio = 59 / Math.max(dist, 0.1);
+                    camera.position.set(
+                        controls.target.x + dx * ratio,
+                        controls.target.y + dy * Math.min(ratio, 1.2), // 高度微調避免穿透天花板
+                        controls.target.z + dz * ratio
+                    );
+                }
+            }
         } catch(e) { 
             setDefaultCamera(); 
         } 
@@ -3443,7 +3461,15 @@ renderer.setPixelRatio(isTouchDevice ? 1 : Math.min(window.devicePixelRatio || 1
 
 
         
-        function setDefaultCamera() { if (window.innerWidth < 768) { camera.position.set(0, 26, 48); } else { camera.position.set(0, 22, 45); } controls.target.set(0, 7, 0); }
+      function setDefaultCamera() { 
+            // 如果是手機或直屏設備，將預設視角拉到最高且最遠 (距離上限 59)
+            if (window.innerWidth < 768 || window.innerHeight > window.innerWidth) { 
+                camera.position.set(0, 30, 59); 
+            } else { 
+                camera.position.set(0, 22, 45); 
+            } 
+            controls.target.set(0, 7, 0); 
+        }
 
  // --- 修訂 2：將畫作移出牆壁，使其貼在室內牆面上 ---
 function buildRoomEnvironment() {
