@@ -2715,14 +2715,18 @@ function saveObjectPositions() {
     if(plantGroup) pos.plant = {x: plantGroup.position.x, z: plantGroup.position.z};
     if(tcGrp) pos.trash = {x: tcGrp.position.x, z: tcGrp.position.z};
     if(chairGroup) pos.chair = {x: chairGroup.position.x, z: chairGroup.position.z};
-    if(typeof rackGrp !== 'undefined') pos.rack = {x: rackGrp.position.x, z: rackGrp.position.z}; // 👈 新增
-    if(typeof umbGrp !== 'undefined') pos.umbrella = {x: umbGrp.position.x, z: umbGrp.position.z}; // 👈 新增
+    if(typeof rackGrp !== 'undefined') pos.rack = {x: rackGrp.position.x, z: rackGrp.position.z}; 
+    if(typeof umbGrp !== 'undefined') pos.umbrella = {x: umbGrp.position.x, z: umbGrp.position.z};
+    
+    // 👇 加入鋼琴與琴椅的存檔
+    if(typeof pianoGrp !== 'undefined') pos.piano = {x: pianoGrp.position.x, z: pianoGrp.position.z};
+    if(typeof benchGrp !== 'undefined') pos.bench = {x: benchGrp.position.x, z: benchGrp.position.z};
+
     if(catGrp) pos.cat = {x: catGrp.position.x, y: catGrp.position.y, z: catGrp.position.z, platform: catPlatform};
     
-   pos.paintings = {};
+    pos.paintings = {};
     scene.traverse(c => {
-        // 👇 新增條件：如果 ID 是 painting 開頭，或是 clock，通通存起來
-    if (c.userData && c.userData.itemId && (c.userData.itemId.startsWith('painting_') || c.userData.itemId === 'clock' || c.userData.itemId.startsWith('bookcase_'))) {
+        if (c.userData && c.userData.itemId && (c.userData.itemId.startsWith('painting_') || c.userData.itemId === 'clock' || c.userData.itemId.startsWith('bookcase_'))) {
             pos.paintings[c.userData.itemId] = { x: c.position.x, y: c.position.y, z: c.position.z, ry: c.rotation.y };
         }
     });
@@ -2738,10 +2742,13 @@ function restoreObjectPositions() {
         if(pos.water && wateringCan) wateringCan.position.set(pos.water.x, 8.5, pos.water.z);
         if(pos.trash && tcGrp) tcGrp.position.set(pos.trash.x, tcGrp.position.y, pos.trash.z);
         if(pos.chair && chairGroup) chairGroup.position.set(pos.chair.x, chairGroup.position.y, pos.chair.z);
-        if(pos.rack && typeof rackGrp !== 'undefined') rackGrp.position.set(pos.rack.x, rackGrp.position.y, pos.rack.z); // 👈 新增
-        if(pos.umbrella && typeof umbGrp !== 'undefined') umbGrp.position.set(pos.umbrella.x, umbGrp.position.y, pos.umbrella.z); // 👈 新增
+        if(pos.rack && typeof rackGrp !== 'undefined') rackGrp.position.set(pos.rack.x, rackGrp.position.y, pos.rack.z); 
+        if(pos.umbrella && typeof umbGrp !== 'undefined') umbGrp.position.set(pos.umbrella.x, umbGrp.position.y, pos.umbrella.z); 
+        
+        // 👇 加入鋼琴與琴椅的讀檔復原
         if(pos.piano && typeof pianoGrp !== 'undefined') pianoGrp.position.set(pos.piano.x, 0, pos.piano.z);
         if(pos.bench && typeof benchGrp !== 'undefined') benchGrp.position.set(pos.bench.x, 0, pos.bench.z);
+
         if(pos.cat && catGrp) {
             catPlatform = pos.cat.platform || 'floor';
             let correctY = 0;
@@ -4375,10 +4382,7 @@ interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitB
     if(typeof clockGrp !== 'undefined') clockGrp.userData.itemId = 'clock';
     if(typeof rackGrp !== 'undefined') rackGrp.userData.itemId = 'rack';
     if(typeof umbGrp !== 'undefined') umbGrp.userData.itemId = 'umbrella';
-    if(typeof pianoGrp !== 'undefined') pos.piano = {x: pianoGrp.position.x, z: pianoGrp.position.z};
-    if(typeof benchGrp !== 'undefined') pos.bench = {x: benchGrp.position.x, z: benchGrp.position.z};
-    if(typeof pianoGrp !== 'undefined') pianoGrp.userData.itemId = 'piano_model';
-    if(typeof benchGrp !== 'undefined') benchGrp.userData.itemId = 'piano_bench';
+
     if(typeof chairGroup !== 'undefined') chairGroup.userData.itemId = 'chair';
     if(typeof catGrp !== 'undefined') catGrp.userData.itemId = 'cat';
     if(typeof leftCurtainGrp !== 'undefined') leftCurtainGrp.userData.itemId = 'curtain';
