@@ -4710,10 +4710,10 @@ function onPointerMove(e) {
                     let minD = Math.min(dRight, dLeft, dBack, dFront);
                     let targetRot = dragTarget.rotation.y;
                     
-                    if (minD === dRight) targetRot = -Math.PI / 2;
+                   if (minD === dRight) targetRot = -Math.PI / 2;
                     else if (minD === dLeft) targetRot = Math.PI / 2;
-                    else if (minD === dBack) targetRot = 0;
-                    else if (minD === dFront) targetRot = Math.PI;
+                    else if (minD === dBack) targetRot = Math.PI; // 👈 修正：背靠後牆，琴鍵朝前
+                    else if (minD === dFront) targetRot = 0;      // 👈 修正：背靠窗戶，琴鍵朝內
 
                     // 若角度發生變化，使用 GSAP 平滑轉向
                     if (dragTarget.userData.lastSnapRot !== targetRot) {
