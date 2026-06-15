@@ -2649,56 +2649,47 @@ let tcGrp, chairGroup;
 let floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 let catPlatform = 'floor'; // 記錄貓咪所在位置：'floor', 'desk', 'chair'
 
-// 👇 1. 新增全域變數，存放所有「可移動」的物件，用於碰撞判定
-let allMovables = [];
-let wallXPlane = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 59.5); // 右側牆面
-let wallZPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -16.7); // 正前方牆面
- 
-// 👇 2. 升級版：自動掃描並儲存所有可移動物件的位置
 function saveObjectPositions() {
     const pos = {};
-    allMovables.forEach(obj => {
-        if (obj.userData && obj.userData.itemId) {
-            pos[obj.userData.itemId] = { x: obj.position.x, y: obj.position.y, z: obj.position.z };
-        }
-    });
+    if(book) pos.log = {x: book.position.x, z: book.position.z};
+    if(clipboard) pos.tasks = {x: clipboard.position.x, z: clipboard.position.z};
+    if(wateringCan) pos.water = {x: wateringCan.position.x, z: wateringCan.position.z};
+    if(plantGroup) pos.plant = {x: plantGroup.position.x, z: plantGroup.position.z};
+    if(tcGrp) pos.trash = {x: tcGrp.position.x, z: tcGrp.position.z};
+    if(chairGroup) pos.chair = {x: chairGroup.position.x, z: chairGroup.position.z};
     if(catGrp) pos.cat = {x: catGrp.position.x, y: catGrp.position.y, z: catGrp.position.z, platform: catPlatform};
     localStorage.setItem('roomObjectPositions', JSON.stringify(pos));
 }
- 
-// 👇 3. 升級版：自動復原所有可移動物件的位置
+
 function restoreObjectPositions() {
     try {
         const pos = JSON.parse(localStorage.getItem('roomObjectPositions'));
         if(!pos) return;
-        allMovables.forEach(obj => {
-            if (obj.userData && obj.userData.itemId && pos[obj.userData.itemId]) {
-                const saved = pos[obj.userData.itemId];
-                obj.position.set(saved.x, saved.y, saved.z);
-            }
-        });
-        
-        if(pos.cat && catGrp) {
+        if(pos.log && book) book.position.set(pos.log.x, 8.6, pos.log.z);
+        if(pos.tasks && clipboard) clipboard.position.set(pos.tasks.x, 8.55, pos.tasks.z);
+        if(pos.water && wateringCan) wateringCan.position.set(pos.water.x, 8.5, pos.water.z);
+        if(pos.trash && tcGrp) tcGrp.position.set(pos.trash.x, tcGrp.position.y, pos.trash.z);
+        if(pos.chair && chairGroup) chairGroup.position.set(pos.chair.x, chairGroup.position.y, pos.chair.z);
+       if(pos.cat && catGrp) {
             catPlatform = pos.cat.platform || 'floor';
-            let correctY = (catPlatform === 'desk') ? 8.5 : ((catPlatform === 'chair') ? 4.5 : 0);
+            
+            // 【修訂】強制校正貓咪的 Y 軸高度，無視存壞的懸空高度
+            let correctY = 0;
+            if (catPlatform === 'desk') correctY = 8.5;
+            else if (catPlatform === 'chair') correctY = 4.5;
+            
             catGrp.position.set(pos.cat.x, correctY, pos.cat.z);
-            catGrp.children.forEach(child => { if (child.userData && child.userData.type === 'cat') child.userData.originalY = correctY; });
+            
+            // 同時把 HitBox 的基礎高度設定好，避免重整後第一次拖曳發生錯亂
+            catGrp.children.forEach(child => {
+                if (child.userData && child.userData.type === 'cat') {
+                    child.userData.originalY = correctY;
+                }
+            });
         }
     } catch(e){}
 }
- 
-// 👇 4. 修復盆栽消失問題：如果沒有資料，強制彈出選擇視窗
-function loadUserPlant() {
-    db.ref(`users/${currentUser.uid}/plant`).on('value', snap => {
-        let p = snap.val(); userPlantData = p;
-        if (p) {
-            updatePlantStateLogic(p);
-        } else {
-            // 初始狀態沒有植物時，立刻顯示挑選視窗
-            document.getElementById('modal-plant-selector').style.display = 'flex';
-        }
-    });
-}
+
 
         
       // 🐾 新增小貓咪的全域變數
@@ -4165,41 +4156,6 @@ interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitB
     if(typeof rightCurtainGrp !== 'undefined') rightCurtainGrp.userData.itemId = 'curtain';
     // 👆 【貼到這裡為止】 👆
 
-
-  const movablesSetup = [
-        { obj: book, id: 'log', type: 'log', zone: 'desk' },
-        { obj: clipboard, id: 'tasks', type: 'tasks', zone: 'desk' },
-        { obj: wateringCan, id: 'water', type: 'water', zone: 'desk' },
-        { obj: radioGrp, id: 'radio', type: 'radio', zone: 'desk' },
-        { obj: walletObj, id: 'wallet', type: 'wallet', zone: 'desk' },
-        { obj: tcGrp, id: 'trash', type: 'trash', zone: 'floor' },
-        { obj: chairGroup, id: 'chair', type: 'chair', zone: 'floor' },
-        { obj: umbGrp, id: 'umbrella', type: 'umbrella', zone: 'floor' },
-        { obj: rackGrp, id: 'rack', type: 'rack', zone: 'floor' },
-        { obj: pianoGrp, id: 'piano_model', type: 'piano', zone: 'floor' },
-        { obj: benchGrp, id: 'piano_bench', type: 'piano_bench', zone: 'floor' },
-        { obj: clockGrp, id: 'clock', type: 'clock', zone: 'wall_x' }, // 掛在右側牆
-        { obj: acGroup, id: 'ac', type: 'ac', zone: 'wall_x' }, // 掛在右側牆
-        { obj: shGrp, id: 'shelf', type: 'shelf', zone: 'wall_x' }, // 掛在右側牆
-        { obj: bc1, id: 'bookcase_1', type: 'bookcase', zone: 'wall_z_floor' }, // 貼齊後牆
-        { obj: bc2, id: 'bookcase_2', type: 'bookcase', zone: 'wall_z_floor' },
-        { obj: bc3, id: 'bookcase_3', type: 'bookcase', zone: 'wall_z_floor' },
-        { obj: p1, id: 'painting_1', type: 'painting', zone: 'wall_z' }, // 掛在正前牆
-        { obj: p2, id: 'painting_2', type: 'painting', zone: 'wall_z' },
-        { obj: p3, id: 'painting_3', type: 'painting', zone: 'wall_z' },
-        { obj: p4, id: 'painting_4', type: 'painting', zone: 'wall_z' }
-    ];
- 
-    movablesSetup.forEach(m => {
-        if(m.obj) {
-            m.obj.userData = { ...m.obj.userData, isMovable: true, dragZone: m.zone, itemId: m.id, type: m.type };
-            allMovables.push(m.obj);
-            interactables.push(m.obj); // 確保光線投射器能點到它們
-        }
-    });
-
-
-    
 // 在 buildRoomEnvironment 結尾，將所有標記了 itemId 的道具預設隱藏
     scene.traverse((obj) => {
         if (obj.userData && obj.userData.itemId) {
@@ -4210,58 +4166,39 @@ interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitB
     
 }
         
-function buildPlantIn3D(type, growth, wilt) {
-    if (plantGroup) {
-        desk.remove(plantGroup);
-        interactables = interactables.filter(i => !(i.userData && i.userData.type === 'plant'));
-        // 👇 清除舊的植物，避免殘留在移動碰撞陣列中
-        allMovables = allMovables.filter(i => !(i.userData && i.userData.type === 'plant'));
-    }
+      function buildPlantIn3D(type, growth, wilt) {
+    if (plantGroup) { desk.remove(plantGroup); interactables = interactables.filter(i => !(i.userData && i.userData.type === 'plant')); }
+    plantGroup = new THREE.Group(); plantGroup.position.set(0, 8.5, -3); desk.add(plantGroup);
     
-    plantGroup = new THREE.Group();
-    plantGroup.position.set(0, 8.5, -3);
-    desk.add(plantGroup);
+    // 如果有舊的儲存位置，則繼承之
+    try { const pos = JSON.parse(localStorage.getItem('roomObjectPositions')); if(pos && pos.plant) plantGroup.position.set(pos.plant.x, 8.5, pos.plant.z); } catch(e){}
+
+    const hitBox = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 4), new THREE.MeshBasicMaterial({visible: false})); hitBox.position.y = 2.5; hitBox.userData = {type: 'plant'}; plantGroup.add(hitBox); interactables.push(hitBox);
     
-    // 👇 新增：設定植物群組為可移動物件，並加入碰撞陣列
-    plantGroup.userData = { type: 'plant', isMovable: true, dragZone: 'desk', itemId: 'plant' };
-    allMovables.push(plantGroup);
- 
-    try {
-        const pos = JSON.parse(localStorage.getItem('roomObjectPositions'));
-        if(pos && pos.plant) plantGroup.position.set(pos.plant.x, pos.plant.y || 8.5, pos.plant.z);
-    } catch(e){}
- 
-    const hitBox = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 4), new THREE.MeshBasicMaterial({visible: false}));
-    hitBox.position.y = 2.5;
-    hitBox.userData = {type: 'plant'}; // 維持 hitBox 的辨識屬性，用於滑鼠點擊
-    plantGroup.add(hitBox);
-    interactables.push(hitBox);
- 
-    // --- 以下為原本的植物生成邏輯，無需改動 ---
     const pot = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.9, 1.6, 32), new THREE.MeshStandardMaterial({color: 0xd4a373, roughness: 0.9})); pot.position.y=0.8; pot.castShadow=true; plantGroup.add(pot);
     const dirt = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, 0.05, 32), new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 1.0})); dirt.position.y=1.61; plantGroup.add(dirt);
     
     const isDead = wilt >= 7; const scale = 0.1 + (growth / 100) * 0.15; const wiltFactor = isDead ? 1 : wilt / 7;
     const leafColor = isDead ? new THREE.Color(0x5d4037) : new THREE.Color(0x4c7c2b).lerp(new THREE.Color(0x8d6e63), wiltFactor);
     const mat = new THREE.MeshStandardMaterial({color: leafColor, roughness: 0.9, side: THREE.DoubleSide}); const plantBody = new THREE.Group(); plantBody.position.y = 1.6; plantGroup.add(plantBody);
- 
-    if (type === 1) {
-        const count = Math.floor(growth / 8) + 3; const leafGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.05, 16);
+
+    if (type === 1) { 
+        const count = Math.floor(growth / 8) + 3; const leafGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.05, 16); 
         for(let i=0; i<count; i++) { const stemGrp = new THREE.Group(); const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2), mat); stem.position.y = 1; stem.castShadow = true; stemGrp.add(stem); const leaf = new THREE.Mesh(leafGeo, mat); leaf.position.y = 2; leaf.rotation.x = Math.PI / 2; leaf.scale.set(1, 1, 1.2); leaf.castShadow = true; stemGrp.add(leaf); let dropAngle = isDead ? (Math.PI/1.6) : (wiltFactor * Math.PI/4 + 0.2); stemGrp.rotation.x = dropAngle; stemGrp.rotation.y = i * 2.4; if(isDead) stemGrp.scale.setScalar(scale * 0.8); else stemGrp.scale.setScalar(scale * (0.8 + i*0.05)); plantBody.add(stemGrp); }
-    } else if (type === 2) {
-        const count = Math.floor(growth / 4) + 12; const leafGeo = new THREE.ConeGeometry(0.6, 1.8, 12); leafGeo.translate(0, 0.9, 0);
+    } else if (type === 2) { 
+        const count = Math.floor(growth / 4) + 12; const leafGeo = new THREE.ConeGeometry(0.6, 1.8, 12); leafGeo.translate(0, 0.9, 0); 
         for(let i=0; i<count; i++) { const leaf = new THREE.Mesh(leafGeo, mat); const angle = i * 2.39996; const radius = i * 0.05; leaf.rotation.y = -angle; let bend = Math.PI/2 - (Math.PI/2) / (1 + i*0.15); if(isDead) bend += Math.PI/4; leaf.rotation.x = bend; leaf.position.x = Math.cos(angle) * radius * scale; leaf.position.z = Math.sin(angle) * radius * scale; leaf.position.y = (count - i) * 0.02 * scale; leaf.scale.set(scale, scale, scale*0.5); leaf.castShadow=true; plantBody.add(leaf); }
-    } else if (type === 3) {
+    } else if (type === 3) { 
         const trunkMat = new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 1.0}); const bonsaiGrp = new THREE.Group();
         const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 3, 8), trunkMat); trunk.position.y = 1.5; trunk.rotation.z = 0.3; trunk.rotation.x = 0.2; trunk.castShadow = true; bonsaiGrp.add(trunk);
         const crown = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), mat); crown.position.set(-0.5, 3.2, -0.5); crown.scale.set(1, 0.6, 1); crown.castShadow = true; bonsaiGrp.add(crown);
         const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 1.5), trunkMat); branch.position.set(0.5, 1.5, 0); branch.rotation.z = -0.6; branch.castShadow = true; bonsaiGrp.add(branch);
         const crown2 = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 16), mat); crown2.position.set(1.2, 2.0, 0); crown2.scale.set(1, 0.6, 1); crown2.castShadow = true; bonsaiGrp.add(crown2);
         if (isDead) { bonsaiGrp.scale.setScalar(scale * 1.2); crown.scale.set(0.8, 0.3, 0.8); crown2.scale.set(0.8, 0.3, 0.8); crown.position.y -= 0.4; crown2.position.y -= 0.2; } else { bonsaiGrp.scale.setScalar(scale * 1.6); } plantBody.add(bonsaiGrp);
-    } else if (type === 4) {
+    } else if (type === 4) { 
         const stemCount = Math.floor(growth / 10) + 4; const purpColor = isDead ? new THREE.Color(0x6b5b6b) : new THREE.Color(0x9b7bc6).lerp(new THREE.Color(0x8d6e63), wiltFactor); const flowerMat = new THREE.MeshStandardMaterial({color: purpColor, roughness: 0.8});
         for(let i=0; i<stemCount; i++) { const stemGrp = new THREE.Group(); const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.5), mat); stem.position.y = 1.25; stem.castShadow = true; stemGrp.add(stem); const flower = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.2, 8), flowerMat); flower.position.y = 3.0; flower.castShadow = true; stemGrp.add(flower); stemGrp.rotation.x = (Math.random() - 0.5) * 0.4; stemGrp.rotation.z = (Math.random() - 0.5) * 0.4; if (isDead) stemGrp.rotation.x += Math.PI/2.5; stemGrp.scale.setScalar(scale * 1.3); plantBody.add(stemGrp); }
-    } else if (type === 5) {
+    } else if (type === 5) { 
         const cacMat = new THREE.MeshStandardMaterial({color: leafColor, roughness: 0.9}); const mainGrp = new THREE.Group();
         const body = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 2.5, 16), cacMat); body.castShadow = true; mainGrp.add(body);
         const capTop = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16), cacMat); capTop.position.y = 1.25; capTop.castShadow = true; mainGrp.add(capTop);
@@ -4345,201 +4282,224 @@ function getValidIntersects() {
 }
 
         
-// 👇 碰撞判定函數：檢查目前移動的物件是否與其他物件重疊
-function checkCollision(targetObj) {
-    targetObj.updateMatrixWorld();
-    let box1 = new THREE.Box3().setFromObject(targetObj);
-    box1.expandByScalar(-0.4); // 給予一點點容錯空間，讓物件可以緊密並排
-    
-    for (let i = 0; i < allMovables.length; i++) {
-        let other = allMovables[i];
-        // 忽略自己、忽略被隱藏的未解鎖道具
-        if (other === targetObj || !other.visible) continue; 
-        
-        let box2 = new THREE.Box3().setFromObject(other);
-        box2.expandByScalar(-0.4);
-        
-        // 發生碰撞排斥！
-        if (box1.intersectsBox(box2)) return true; 
-    }
-    return false;
-}
-
 function onPointerDown(e) {
     if(document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
     pointerDownPos.x = e.clientX; pointerDownPos.y = e.clientY;
-    mouse.x = (e.clientX / window.innerWidth) * 2 - 1; mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
 
-    const intersects = getValidIntersects();
+const intersects = getValidIntersects();
     if(intersects.length > 0) {
-        // 向上尋找具備 userData 屬性的父物件
         let obj = intersects[0].object;
-        while(obj.parent && !obj.userData.type && !obj.userData.isMovable) obj = obj.parent;
-        
-        // 如果這個物件被我們標記為「可移動」或者是貓咪
-        if (obj.userData.isMovable || obj.userData.type === 'cat' || obj.userData.type === 'curtain') {
+        while(obj.parent && !obj.userData.type) obj = obj.parent;
+        const type = obj.userData.type;
+
+        if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat'].includes(type)) {
+            let targetObj = obj;
+            if(['plant', 'trash', 'chair', 'cat'].includes(type)) {
+                targetObj = obj.parent; 
+            }
+
             dragTimer = setTimeout(() => {
                 isDragging = true;
-                dragTarget = obj;
+                dragTarget = targetObj;
+                dragTarget.userData.dragType = type;
                 controls.enabled = false;
-                
-                if (obj.userData.type === 'curtain') {
-                    document.body.style.cursor = 'ew-resize';
-                    dragTarget.userData.curtainSide = obj.userData.side;
-                    let curtainPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 16.5);
-                    let intersectPoint = new THREE.Vector3();
-                    raycaster.ray.intersectPlane(curtainPlane, intersectPoint);
-                    if(intersectPoint) dragOffset.x = intersectPoint.x - ((obj.userData.side === 'left') ? (-15 * curtainRatio) : (15 * curtainRatio)); 
-                    return;
-                }
-
                 document.body.style.cursor = 'grabbing';
-                if (obj.userData.type === 'cat') setCatState('dragged');
 
-                // 記錄原始高度，並微微浮起給予視覺回饋 (牆面物件不浮起)
-                if (dragTarget.userData.originalY === undefined) dragTarget.userData.originalY = dragTarget.position.y;
-                if (!dragTarget.userData.dragZone || !dragTarget.userData.dragZone.includes('wall')) {
-                    gsap.to(dragTarget.position, { y: dragTarget.userData.originalY + 1.2, duration: 0.2 });
+                if (type === 'cat') {
+                    setCatState('dragged');
                 }
 
-                // 根據不同的平面計算抓取偏移量
-                let plane = floorPlane;
-                if (dragTarget.userData.dragZone === 'desk') plane = deskPlane;
-                else if (dragTarget.userData.dragZone === 'wall_x') plane = wallXPlane;
-                else if (dragTarget.userData.dragZone === 'wall_z') plane = wallZPlane;
-                
+                if(dragTarget.userData.originalY === undefined) {
+                    dragTarget.userData.originalY = dragTarget.position.y;
+                }
+
+                gsap.to(dragTarget.position, { y: dragTarget.userData.originalY + 1.2, duration: 0.2 });
+
+                let plane = (['log', 'tasks', 'water', 'plant'].includes(type)) ? deskPlane : floorPlane;
                 let intersectPoint = new THREE.Vector3();
                 raycaster.ray.intersectPlane(plane, intersectPoint);
-                if (intersectPoint) dragOffset.copy(intersectPoint).sub(dragTarget.position);
+                if(intersectPoint) {
+                    dragOffset.copy(intersectPoint).sub(dragTarget.position);
+                }
+            }, 300);
+        } 
+        else if (type === 'curtain') {
+            dragTimer = setTimeout(() => {
+                isDragging = true;
+                dragTarget = obj; 
+                dragTarget.userData.dragType = type;
+                // 記錄玩家抓取的是「左邊」還是「右邊」的窗簾
+                dragTarget.userData.curtainSide = obj.userData.side; 
+                
+                // 計算滑鼠抓取的偏移量，避免拉動瞬間窗簾跳躍
+                let curtainPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 16.5);
+                let intersectPoint = new THREE.Vector3();
+                raycaster.ray.intersectPlane(curtainPlane, intersectPoint);
+                if(intersectPoint) {
+                    let expectedX = (obj.userData.side === 'left') ? (-15 * curtainRatio) : (15 * curtainRatio);
+                    dragOffset.x = intersectPoint.x - expectedX; 
+                } else {
+                    dragOffset.x = 0;
+                }
 
-            }, 250); // 長按 0.25 秒觸發移動
+                controls.enabled = false;
+                document.body.style.cursor = 'ew-resize';
+            }, 150);
         }
+
+
+
+        
     }
 }
 
 function onPointerMove(e) {
     if(document.querySelector('.room-modal[style*="flex"]')) return;
-    mouse.x = (e.clientX / window.innerWidth) * 2 - 1; mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
 
     if(dragTimer && !isDragging) {
-        if(Math.abs(e.clientX - pointerDownPos.x) > 5 || Math.abs(e.clientY - pointerDownPos.y) > 5) { clearTimeout(dragTimer); dragTimer = null; }
+        if(Math.abs(e.clientX - pointerDownPos.x) > 5 || Math.abs(e.clientY - pointerDownPos.y) > 5) {
+            clearTimeout(dragTimer); 
+            dragTimer = null;
+        }
     }
 
     if(isDragging && dragTarget) {
+        const type = dragTarget.userData.dragType;
         raycaster.setFromCamera(mouse, camera);
         let intersectPoint = new THREE.Vector3();
-        let zone = dragTarget.userData.dragZone;
-
-        // 窗簾邏輯獨立
-        if (dragTarget.userData.type === 'curtain') {
+        
+        if(['log', 'tasks', 'water', 'plant'].includes(type)) {
+            raycaster.ray.intersectPlane(deskPlane, intersectPoint);
+            if(intersectPoint) {
+                let newX = Math.max(-13, Math.min(13, intersectPoint.x - dragOffset.x));
+                let newZ = Math.max(-6, Math.min(6, intersectPoint.z - dragOffset.z));
+                dragTarget.position.x = newX;
+                dragTarget.position.z = newZ;
+            }
+        } 
+        else if (['trash', 'chair'].includes(type)) {
+            raycaster.ray.intersectPlane(floorPlane, intersectPoint);
+            if(intersectPoint) {
+                let newX = Math.max(-18, Math.min(18, intersectPoint.x - dragOffset.x));
+                let newZ = Math.max(-4, Math.min(20, intersectPoint.z - dragOffset.z));
+                dragTarget.position.x = newX;
+                dragTarget.position.z = newZ;
+            }
+        }
+        else if (type === 'cat') {
+            raycaster.ray.intersectPlane(floorPlane, intersectPoint);
+            if(intersectPoint) {
+                let newX = intersectPoint.x - dragOffset.x;
+                let newZ = intersectPoint.z - dragOffset.z;
+                
+                if (newX >= -14 && newX <= 14 && newZ >= -7 && newZ <= 7) {
+                    catPlatform = 'desk';
+                    dragTarget.userData.originalY = 8.5;
+                    newX = Math.max(-12, Math.min(12, newX));
+                    newZ = Math.max(-5.5, Math.min(5.5, newZ));
+                } else if (chairGroup && newX >= chairGroup.position.x - 3 && newX <= chairGroup.position.x + 3 && newZ >= chairGroup.position.z - 3 && newZ <= chairGroup.position.z + 3) {
+                    catPlatform = 'chair';
+                    dragTarget.userData.originalY = 4.5;
+                    newX = Math.max(chairGroup.position.x - 1.5, Math.min(chairGroup.position.x + 1.5, newX));
+                    newZ = Math.max(chairGroup.position.z - 1.5, Math.min(chairGroup.position.z + 1.5, newZ));
+                } else {
+                    catPlatform = 'floor';
+                    dragTarget.userData.originalY = 0;
+                    newX = Math.max(-16, Math.min(16, newX));
+                    newZ = Math.max(-2, Math.min(18, newZ));
+                    if (isCatColliding(newX, newZ)) return; 
+                }
+                
+                dragTarget.position.x = newX;
+                dragTarget.position.z = newZ;
+                dragTarget.position.y = dragTarget.userData.originalY + 1.2;
+            }
+        }
+        else if (type === 'curtain') {
             let curtainPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 16.5);
             raycaster.ray.intersectPlane(curtainPlane, intersectPoint);
             if (intersectPoint) {
                 let targetX = intersectPoint.x - dragOffset.x;
                 let side = dragTarget.userData.curtainSide;
-                let r = side === 'left' ? Math.abs(Math.max(-15, Math.min(0, targetX))) / 15 : Math.max(0, Math.min(15, targetX)) / 15;
-                curtainRatio = r; applyCurtainRatio();
+                let r;
+                
+                // 根據抓取的分別是左窗簾還是右窗簾來嚴格限制範圍
+                if (side === 'left') {
+                    // 左窗簾：0 是全閉，-15 是全開。限制滑鼠目標只能在 -15 到 0 之間。
+                    let clampedX = Math.max(-15, Math.min(0, targetX));
+                    r = Math.abs(clampedX) / 15;
+                } else {
+                    // 右窗簾：0 是全閉，15 是全開。限制滑鼠目標只能在 0 到 15 之間。
+                    let clampedX = Math.max(0, Math.min(15, targetX));
+                    r = clampedX / 15;
+                }
+                
+                curtainRatio = r;
+                applyCurtainRatio();
             }
-            return;
         }
-
-        // 🐾 貓咪特殊邏輯
-        if (dragTarget.userData.type === 'cat') {
-            raycaster.ray.intersectPlane(floorPlane, intersectPoint);
-            if(intersectPoint) {
-                let newX = intersectPoint.x - dragOffset.x; let newZ = intersectPoint.z - dragOffset.z;
-                if (newX >= -14 && newX <= 14 && newZ >= -7 && newZ <= 7) { catPlatform = 'desk'; dragTarget.userData.originalY = 8.5; newX = Math.max(-12, Math.min(12, newX)); newZ = Math.max(-5.5, Math.min(5.5, newZ)); } 
-                else if (chairGroup && newX >= chairGroup.position.x - 3 && newX <= chairGroup.position.x + 3 && newZ >= chairGroup.position.z - 3 && newZ <= chairGroup.position.z + 3) { catPlatform = 'chair'; dragTarget.userData.originalY = 4.5; newX = Math.max(chairGroup.position.x - 1.5, Math.min(chairGroup.position.x + 1.5, newX)); newZ = Math.max(chairGroup.position.z - 1.5, Math.min(chairGroup.position.z + 1.5, newZ)); } 
-                else { catPlatform = 'floor'; dragTarget.userData.originalY = 0; newX = Math.max(-55, Math.min(55, newX)); newZ = Math.max(-10, Math.min(50, newZ)); }
-                dragTarget.position.set(newX, dragTarget.userData.originalY + 1.2, newZ);
-            }
-            return;
-        }
-
-        // 📦 常規物件物理移動與防穿模系統
-        let oldPos = dragTarget.position.clone();
-        let newPos = oldPos.clone();
-
-        if (zone === 'desk') {
-            raycaster.ray.intersectPlane(deskPlane, intersectPoint);
-            if(intersectPoint) { newPos.x = Math.max(-12.5, Math.min(12.5, intersectPoint.x - dragOffset.x)); newPos.z = Math.max(-5.5, Math.min(5.5, intersectPoint.z - dragOffset.z)); }
-        } 
-        else if (zone === 'floor') {
-            raycaster.ray.intersectPlane(floorPlane, intersectPoint);
-            if(intersectPoint) { newPos.x = Math.max(-55, Math.min(55, intersectPoint.x - dragOffset.x)); newPos.z = Math.max(-15, Math.min(55, intersectPoint.z - dragOffset.z)); }
-        }
-        else if (zone === 'wall_x') { // 限制在右側牆壁，只允許 Z 軸與 Y 軸移動
-            raycaster.ray.intersectPlane(wallXPlane, intersectPoint);
-            if(intersectPoint) { newPos.z = Math.max(-10, Math.min(55, intersectPoint.z - dragOffset.z)); newPos.y = Math.max(5, Math.min(35, intersectPoint.y - dragOffset.y)); }
-        }
-        else if (zone === 'wall_z') { // 限制在前方牆壁，只允許 X 軸與 Y 軸移動
-            raycaster.ray.intersectPlane(wallZPlane, intersectPoint);
-            if(intersectPoint) { newPos.x = Math.max(-55, Math.min(55, intersectPoint.x - dragOffset.x)); newPos.y = Math.max(8, Math.min(32, intersectPoint.y - dragOffset.y)); }
-        }
-        else if (zone === 'wall_z_floor') { // 書櫃：貼齊後牆，但只能在地上左右移動
-            raycaster.ray.intersectPlane(floorPlane, intersectPoint);
-            if(intersectPoint) { newPos.x = Math.max(-45, Math.min(45, intersectPoint.x - dragOffset.x)); }
-        }
-
-        // 先將物件移到預定位置測試
-        dragTarget.position.copy(newPos);
-        
-        // 🛑 碰撞排斥判定
-        if (checkCollision(dragTarget)) {
-            // 如果撞到東西，立刻退回上一幀的位置，實現「推不過去」的實體感
-            dragTarget.position.copy(oldPos);
-        }
-
         return; 
     }
 
     raycaster.setFromCamera(mouse, camera);
-    const intersects = getValidIntersects();
+const intersects = getValidIntersects();
     document.body.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
 }
 
 function onPointerUp(e) {
-    if(dragTimer) { clearTimeout(dragTimer); dragTimer = null; }
+    if(dragTimer) { 
+        clearTimeout(dragTimer); 
+        dragTimer = null; 
+    }
 
     if(isDragging && dragTarget) {
-        if (dragTarget.userData.type === 'curtain') {
+        const type = dragTarget.userData.dragType; 
+        const droppedObj = dragTarget;             
+
+        if (type === 'curtain') {
             localStorage.setItem('roomCurtainRatio', curtainRatio.toString());
-            isDragging = false; dragTarget = null; controls.enabled = true; document.body.style.cursor = 'default';
+            isDragging = false;
+            dragTarget = null;
+            controls.enabled = true;
+            document.body.style.cursor = 'default';
             return;
         }
 
-        let fallY = dragTarget.userData.originalY !== undefined ? dragTarget.userData.originalY : dragTarget.position.y;
-
         gsap.to(dragTarget.position, { 
-            y: fallY, 
+            y: dragTarget.userData.originalY, 
             duration: 0.3, 
             ease: "bounce.out",
             onComplete: () => {
-                saveObjectPositions(); // 放開滑鼠時自動儲存所有物件新座標
-                if (dragTarget.userData.type === 'cat') {
-                    catTarget.set(dragTarget.position.x, 0, dragTarget.position.z);
+                saveObjectPositions(); 
+                if (type === 'cat') {
+                    catTarget.set(droppedObj.position.x, 0, droppedObj.position.z);
                     setCatState('idle');
                 }
-                isDragging = false; dragTarget = null; controls.enabled = true; document.body.style.cursor = 'default';
             }
         });
+        isDragging = false;
+        dragTarget = null;
+        controls.enabled = true; 
+        document.body.style.cursor = 'default';
         return; 
     }
 
-    // 點擊事件 (保留您原本點擊展開 UI 等邏輯)
     if(Math.abs(e.clientX - pointerDownPos.x) > 10 || Math.abs(e.clientY - pointerDownPos.y) > 10) return;
     if(document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
     
     mouse.x = (e.clientX/window.innerWidth)*2-1; mouse.y = -(e.clientY/window.innerHeight)*2+1;
     raycaster.setFromCamera(mouse, camera);
-    const intersects = getValidIntersects();
-    
+ const intersects = getValidIntersects();
     if(intersects.length > 0) {
         let obj = intersects[0].object; while(obj.parent && !obj.userData.type) obj = obj.parent;
         const type = obj.userData.type;
         
-        // ... (這以下完全保留您原本 if (type === 'replies') ... 等所有點擊開啟功能的邏輯) ...
         if(type === 'replies' && leftDrawer.position.z <= 0) {
             isDrawerAnimating = true; gsap.to(leftDrawer.position, {z: 3.5, duration: 0.5, onComplete: () => { document.getElementById('modal-replies').style.display = 'flex'; isDrawerAnimating = false; }});
         } else if(type === 'inbox' && rightDrawer.position.z <= 0) {
@@ -4547,22 +4507,25 @@ function onPointerUp(e) {
         } else if(type === 'log') { gsap.to(book.position, {y: 9, rotationY: 0, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-log').style.display = 'flex'; }});
         } else if(type === 'tasks') { gsap.to(clipboard.position, {y: 9, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-tasks').style.display = 'flex'; }});
         } else if(type === 'water') { performWateringAnimation();
-        } else if(type === 'plant') { 
+       } else if(type === 'plant') { 
             if (userPlantData && userPlantData.isDead) { 
                 showToast("🥀 這盆植物已經枯萎了，請重新挑選一盆吧。"); 
                 setTimeout(() => document.getElementById('modal-plant-selector').style.display = 'flex', 1500); 
             } else { 
                 showPlantStatus(); 
             } 
-        } else if(type === 'window') {
-            if(hasDoorPrivilege) goToBalcony(); else showToast("🚪 露台趟門失修，無法開啟。需收集「通行權」。");
-        } else if(type === 'piano') {
-            if(hasPianoPrivilege) openPianoUI(); else showToast("🎹 需要收集「鋼琴彈奏權」才能彈奏。");
-        } else if(type === 'wallet') {
-            openWalletUI();
+        // 👇 新增這三行，讓窗戶可以直接點擊
+       } else if(type === 'window') {
+    if(hasDoorPrivilege) goToBalcony(); else showToast("🚪 露台趟門失修，無法開啟。需收集「通行權」。");
+} else if(type === 'piano') {
+    if(hasPianoPrivilege) openPianoUI(); else showToast("🎹 需要收集「鋼琴彈奏權」才能彈奏。");
+} else if(type === 'wallet') {
+    openWalletUI();
+ // 👇 新增這兩行：點擊收音機 👇
         } else if(type === 'radio') {
             toggleRadio();
         }
+        
     }
 }
 
