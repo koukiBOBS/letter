@@ -1453,80 +1453,79 @@ let userPlantData = null; let timeForced = false;
 }
         function hideAuthOverlay() { gsap.to("#auth-overlay", { opacity: 0, duration: 0.6, onComplete: () => { document.getElementById('auth-overlay').style.display = 'none'; }}); }
 
-       function initApp() { 
-// 👇 加入這行：每次使用者登入進入房間，就更新他的最後上線時間
-db.ref(`users/${currentUser.uid}/lastLoginTime`).set(firebase.database.ServerValue.TIMESTAMP);
+function initApp() { 
+    db.ref(`users/${currentUser.uid}/lastLoginTime`).set(firebase.database.ServerValue.TIMESTAMP);
 
-db.ref(`users/${currentUser.uid}`).on('value', snap => {
-    let data = snap.val() || {};
-    userPoints = data.points || 0;
-    userInventory = data.inventory || {};
-    
-    // 更新權限布林值
-    hasPianoPrivilege = !!userInventory['piano_use'];
-    hasCurtainPrivilege = !!userInventory['curtain'];
-    hasDoorPrivilege = !!userInventory['door_use'];
-    
-    document.getElementById('user-points-text').innerText = userPoints;
-    
-   // 👇 【修改】根據趟門維修狀態，同時限制左右與上下的旋轉角度
-     // 👇 【修改】無論趟門是否維修，只要人在室內，一律嚴格鎖死視角避免穿破房間
-   // 👇 【修改】無論趟門是否維修，只要人在室內，一律嚴格鎖死視角避免穿破房間
-    if (typeof controls !== 'undefined' && !isAtBalcony) {
-        controls.enablePan = false;            // 禁用滑鼠右鍵平移
+    db.ref(`users/${currentUser.uid}`).on('value', snap => {
+        let data = snap.val() || {};
+        userPoints = data.points || 0;
+        userInventory = data.inventory || {};
         
-        // 根據目前的視角模式，給予不同的左右旋轉限制
-        if (window.knobMode === 2) {
-            controls.minAzimuthAngle = Math.PI / 2;    // 解除死角，允許看書櫃
-            controls.maxAzimuthAngle = Math.PI * 1.5;
-        } else {
-            controls.minAzimuthAngle = -Math.PI / 2;   // 預設看窗戶的限制
-            controls.maxAzimuthAngle = Math.PI / 2;  
+        hasPianoPrivilege = !!userInventory['piano_use'];
+        hasCurtainPrivilege = !!userInventory['curtain'];
+        hasDoorPrivilege = !!userInventory['door_use'];
+        
+        document.getElementById('user-points-text').innerText = userPoints;
+        
+        if (typeof controls !== 'undefined' && !isAtBalcony) {
+            controls.enablePan = false;            
+            if (window.knobMode === 2) {
+                controls.minAzimuthAngle = Math.PI / 2;    
+                controls.maxAzimuthAngle = Math.PI * 1.5;
+            } else {
+                controls.minAzimuthAngle = -Math.PI / 2;   
+                controls.maxAzimuthAngle = Math.PI / 2;  
+            }
+            controls.minPolarAngle = 1.15;         
+            controls.maxDistance = 59;             
         }
         
-        controls.minPolarAngle = 1.15;         // 限制抬頭角度，防止看到天花板破綻
-        controls.maxDistance = 59;             // 限制最大後退距離，防止穿透背後的牆
-    }
-    
-    // 遍歷整個場景，隱藏未解鎖的實體模型
-    scene.traverse((obj) => {
-        if (obj.userData && obj.userData.itemId) {
-            if (ITEM_REGISTRY[obj.userData.itemId]) {
-                obj.visible = !!userInventory[obj.userData.itemId];
-            }
+        if(scene) {
+            scene.traverse((obj) => {
+                if (obj.userData && obj.userData.itemId) {
+                    if (ITEM_REGISTRY[obj.userData.itemId]) {
+                        obj.visible = !!userInventory[obj.userData.itemId];
+                    }
+                }
+            });
         }
     });
-});
 
-           
-            document.getElementById('room-canvas-container').style.display = 'block'; 
-            initRoomScene(); healPool();
-            db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); 
-            setupNotifications(); loadMailbox(); loadUserPlant(); initHandwriting();
+    document.getElementById('room-canvas-container').style.display = 'block'; 
+    
+    // 1. 先建立 3D 場景
+    initRoomScene(); 
+    
+    // 2. 👇 【關鍵修復】：強制 WebGL 在背景預先編譯並渲染一幀 (預熱)
+    renderer.compile(scene, camera);
+    renderer.render(scene, camera);
 
-            // 👇 在這裡加入稽核函數 👇
+    // 3. 預熱完成後，才把白色的登入介面優雅地淡出 (這樣就不會黑屏了！)
+    hideAuthOverlay();
+
+    healPool();
+    db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); 
+    setupNotifications(); 
+    loadMailbox(); 
+    loadUserPlant(); 
+    initHandwriting();
     auditAntiCheat(); 
 
-            // 【新增】如果是老師，自動解除所有手寫板限制，允許直接打字
-            if (isTeacherEmail(currentUser.email)) {
-                document.querySelectorAll('.handwrite-only').forEach(el => { 
-                    el.removeAttribute('readonly'); 
-                    el.classList.remove('handwrite-only'); 
-                    let placeholder = el.nextElementSibling; 
-                    if (placeholder && placeholder.classList.contains('handwrite-placeholder')) { 
-                        placeholder.style.display = 'none'; 
-                    } 
-                });
-            }
+    if (isTeacherEmail(currentUser.email)) {
+        document.querySelectorAll('.handwrite-only').forEach(el => { 
+            el.removeAttribute('readonly'); 
+            el.classList.remove('handwrite-only'); 
+            let placeholder = el.nextElementSibling; 
+            if (placeholder && placeholder.classList.contains('handwrite-placeholder')) { 
+                placeholder.style.display = 'none'; 
+            } 
+        });
+    }
 
- // 👇👇👇 請把這段加在這裡 👇👇👇
-        // 根據電郵判斷是否顯示開發面板
-        if (document.getElementById('dev-panel-wrapper')) {
-            document.getElementById('dev-panel-wrapper').style.display = isDevUser(currentUser.email) ? 'block' : 'none';
-        }
-        // 👆👆👆 加到這裡為止 👆👆👆
-           
-        }
+    if (document.getElementById('dev-panel-wrapper')) {
+        document.getElementById('dev-panel-wrapper').style.display = isDevUser(currentUser.email) ? 'block' : 'none';
+    }
+}
 
 
 
@@ -3347,33 +3346,29 @@ function buildRoomEnvironment() {
     hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); 
     scene.add(hemiLight);
     
-    dirLight = new THREE.DirectionalLight(0xffeedd, 1.2); 
+   dirLight = new THREE.DirectionalLight(0xffeedd, 1.2); 
     dirLight.position.set(20, 35, -50); 
     dirLight.target.position.set(0, 0, 0); 
     
     dirLight.castShadow = true; 
-// 手機版降低陰影解析度，大幅提升流暢度
-    const isMobile = window.innerWidth <= 768;
-// 平板與手機降低陰影解析度，大幅提升流暢度
-    dirLight.shadow.mapSize.width = isTouchDevice ? 1024 : 2048; 
-    dirLight.shadow.mapSize.height = isTouchDevice ? 1024 : 2048;
     
-  // 大幅擴張陰影攝影機的照射範圍，把室外的遠景也包覆進來
-    dirLight.shadow.camera.left = -200;   // 涵蓋左側的大橋與馬路
-    dirLight.shadow.camera.right = 200;   // 涵蓋右側的摩天輪與馬路
-    dirLight.shadow.camera.top = 150;     // 涵蓋上方的高樓大廈
-    dirLight.shadow.camera.bottom = -100; // 涵蓋下方與近處
-    dirLight.shadow.camera.far = 500;     // 確保光線投射距離夠遠
+    // 👇 1. 適度提升手機與平板的解析度 (從 1024 提升為 2048)
+    dirLight.shadow.mapSize.width = isTouchDevice ? 2048 : 4096; 
+    dirLight.shadow.mapSize.height = isTouchDevice ? 2048 : 4096;
     
-    dirLight.shadow.bias = -0.0005;        
-    dirLight.shadow.normalBias = 0.05;     
-    dirLight.shadow.radius = 2.5;          
-
-// --- 替換從 dirLight.shadow.bias 開始，到 scene.add(ceilingLight) 結束的段落 ---
+    // 👇 2. 【關鍵修復】：大幅縮小陰影攝影機的範圍！
+    // 讓寶貴的陰影像素只集中在「房間與露台 (-80 到 80)」，放棄渲染極遠處的橋樑陰影。
+    // 這會讓陰影的清晰度瞬間暴增 4 到 5 倍！
+    dirLight.shadow.camera.left = -80;   
+    dirLight.shadow.camera.right = 80;   
+    dirLight.shadow.camera.top = 80;     
+    dirLight.shadow.camera.bottom = -80; 
+    dirLight.shadow.camera.far = 150;     // 縮短光線投射極限
     
     dirLight.shadow.bias = -0.001;        
-    dirLight.shadow.normalBias = 0.08;     // 增加陽光法線偏移，消除波紋
-    dirLight.shadow.radius = 3;          
+    dirLight.shadow.normalBias = 0.08;     
+    // 👇 3. 稍微增加柔化半徑，讓邊緣更自然 (掩飾任何殘留的鋸齒)
+    dirLight.shadow.radius = isTouchDevice ? 3 : 2.5;          
 
     scene.add(dirLight); 
     scene.add(dirLight.target);
