@@ -6046,19 +6046,19 @@ function acceptBankruptcy() {
 
 
 // 👇 移動端實時視角旋鈕與攝影機控制 (完美軌跡、廣角與方向修復版) 👇
-// 👇 移動端實時視角旋鈕與攝影機控制 (全向 360 度 8 等份修復版) 👇
+// 👇 移動端實時視角旋鈕與攝影機控制 (圓心雙目標動態切換、廣角不變、絕不穿牆版) 👇
 (function initCameraKnob() {
     const knob = document.getElementById('mobile-cam-knob');
     if(!knob) return;
 
     window.isKnobDragging = false;
     let currentSnappedAngle = null;
-    window.camProxy = { az: 0 }; // 共用代理物件，解決連續滑動時動畫打架的 BUG
+    window.camProxy = { az: 0, tx: 0, ty: 7, tz: 0 }; // 包含方位角與目標座標的雙軌代理物件
 
     function handleKnobMove(e) {
         if(!window.isKnobDragging || (typeof isAtBalcony !== 'undefined' && isAtBalcony)) return;
-        
-        // 🚨 徹底解除 OrbitControls 原本的左右視角限制，允許 360 度全向旋轉！
+
+        // 解除 OrbitControls 的左右限制，允許全向旋轉
         if (controls) {
             controls.minAzimuthAngle = -Infinity;
             controls.maxAzimuthAngle = Infinity;
@@ -6069,19 +6069,18 @@ function acceptBankruptcy() {
         const centerY = rect.top + rect.height / 2;
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        
-        // 1. 計算手指拖曳的角度 (上0, 右90, 下180/-180, 左-90)
+
+        // 1. 計算手指拖曳角度 (上0, 右90, 下180, 左-90)
         let rad = Math.atan2(clientX - centerX, -(clientY - centerY));
         let deg = rad * (180 / Math.PI);
 
-        // 2. 完美 8 等份磁吸 (0, 45, 90, 135, 180, -135, -90, -45)
-        // 這次沒有任何牆壁阻擋，旋鈕下半部完整解放！
+        // 2. 8 等份磁吸 (每 45 度一格)
         let snappedDeg = Math.round(deg / 45) * 45;
-        if (snappedDeg === -180) snappedDeg = 180; // 統一底部數值
+        if (snappedDeg === -180) snappedDeg = 180;
 
         if (currentSnappedAngle !== snappedDeg) {
             currentSnappedAngle = snappedDeg;
-            
+
             // 3. UI 旋鈕同步轉動
             const knobDial = document.getElementById('knob-dial');
             if (knobDial) {
@@ -6089,36 +6088,58 @@ function acceptBankruptcy() {
             }
 
             if (controls && camera) {
-                // 4. 抓取當前 OrbitControls 狀態 (保證圓心絕對不變、廣角絕對不變)
+                // 4. 抓取當前 OrbitControls 狀態 (計算精確的廣角距離與仰角)
                 const dx = camera.position.x - controls.target.x;
                 const dy = camera.position.y - controls.target.y;
                 const dz = camera.position.z - controls.target.z;
+
+                const r = Math.sqrt(dx*dx + dy*dy + dz*dz); // 絕對鎖死這個廣角半徑！
+                const polar = Math.acos(dy / r);          // 絕對鎖死這個仰角！
+                const startAzimuth = Math.atan2(dx, dz);
+
+                // 5. 判斷上/下半部，決定圓心 (Target)
+                // 上半部與兩側 (0, 45, 90, -45, -90) -> 看向書桌
+                let targetCenter = { x: 0, y: 7, z: 0 };
                 
-                const r = Math.sqrt(dx*dx + dy*dy + dz*dz); 
-                const polar = Math.acos(dy / r);          
-                const startAzimuth = Math.atan2(dx, dz);  
-                
-                // 5. 旋鈕方向映射：指向下 (180度) 即相機繞到前方看向後方
+                // 下半部 (135, 180, -135) -> 看向後方書櫃
+                if (Math.abs(snappedDeg) === 135 || Math.abs(snappedDeg) === 180) {
+                    // 動態計算安全的 Z 軸，保證相機退到最後面時也不會穿透窗戶(Z=-17)
+                    // r 是你現在的廣角半徑，r-12 能確保相機極限卡在安全範圍內
+                    const safeZ = Math.max(25, r - 12);
+                    targetCenter = { x: 0, y: 15, z: safeZ }; // 稍微抬高 Y 軸，讓高大的書櫃能完整入鏡
+                }
+
+                // 6. 旋鈕方向映射 (向下180度 = 相機走到前方，視角轉向後方)
                 const targetAzimuth = -snappedDeg * (Math.PI / 180);
 
-                // 6. 🧭 最短路徑演算法：保證動畫順滑，絕對不會反向多繞一圈
+                // 7. 最短路徑演算法 (保證不繞遠路)
                 let azDiff = targetAzimuth - startAzimuth;
                 azDiff = Math.atan2(Math.sin(azDiff), Math.cos(azDiff));
                 const finalAzimuth = startAzimuth + azDiff;
 
-                // 7. 動畫平滑過渡
+                // 8. 平滑雙軌動畫 (同時移動圓心與旋轉角度)
                 gsap.killTweensOf(window.camProxy);
                 window.camProxy.az = startAzimuth;
-                
+                window.camProxy.tx = controls.target.x;
+                window.camProxy.ty = controls.target.y;
+                window.camProxy.tz = controls.target.z;
+
                 gsap.to(window.camProxy, {
                     az: finalAzimuth,
-                    duration: 0.6,
-                    ease: "power2.out",
+                    tx: targetCenter.x,
+                    ty: targetCenter.y,
+                    tz: targetCenter.z,
+                    duration: 0.8, // 稍微拉長一點讓圓心切換更柔和
+                    ease: "power2.inOut", 
                     onUpdate: () => {
-                        // 嚴格沿著圓周軌道移動相機，圓心(Target) 100% 鎖死
+                        // 同步更新圓心
+                        controls.target.set(window.camProxy.tx, window.camProxy.ty, window.camProxy.tz);
+
+                        // 嚴格依照鎖死的廣角(r)與仰角(polar)計算相機位置，完美貼合軌道
                         camera.position.x = controls.target.x + r * Math.sin(polar) * Math.sin(window.camProxy.az);
                         camera.position.z = controls.target.z + r * Math.sin(polar) * Math.cos(window.camProxy.az);
                         camera.position.y = controls.target.y + r * Math.cos(polar);
+
                         camera.lookAt(controls.target);
                         controls.update();
                     }
@@ -6126,7 +6147,7 @@ function acceptBankruptcy() {
             }
         }
     }
-    
+
     knob.addEventListener('mousedown', (e) => { window.isKnobDragging = true; handleKnobMove(e); });
     knob.addEventListener('touchstart', (e) => { window.isKnobDragging = true; handleKnobMove(e); }, {passive: false});
     window.addEventListener('mousemove', handleKnobMove);
