@@ -4835,19 +4835,42 @@ function isCatColliding(x, z) {
     }
 }
         
-   function animateRoom() {
-    requestAnimationFrame(animateRoom); 
-
-
-// 🔄 實時指南針：讓旋鈕指針永遠精準指向相機看出去的方向
- const knobDial = document.getElementById('knob-dial');
-// 👇 加上 && !window.isKnobDragging
-if (knobDial && camera && controls && !window.isKnobDragging) {
-    const dx = controls.target.x - camera.position.x;
-    const dz = controls.target.z - camera.position.z;
-    const angleDeg = Math.atan2(dx, -dz) * (180 / Math.PI);
-    knobDial.style.transform = `rotate(${angleDeg}deg)`;
+ // 👇 1. 新增此函數：判斷是否有 UI 視窗遮擋了 3D 房間
+function isRoomPaused() {
+    // 檢查所有特定的獨立覆蓋層
+    const overlays = [
+        'modal', 'piano-overlay', 'gacha-overlay', 'draw-anim-overlay',
+        'hw-overlay', 'modal-gacha-buffer', 'auth-overlay', 'anim-overlay'
+    ];
+    for (let id of overlays) {
+        const el = document.getElementById(id);
+        if (el && window.getComputedStyle(el).display !== 'none') return true;
+    }
+    
+    // 檢查所有的彈出視窗 (包含信箱、紀錄、任務、植物、錢包等)
+    const modals = document.querySelectorAll('.room-modal');
+    for (let i = 0; i < modals.length; i++) {
+        if (window.getComputedStyle(modals[i]).display !== 'none') return true;
+    }
+    
+    return false;
 }
+ 
+// 2. 找到原有的 animateRoom，修改其開頭
+function animateRoom() {
+    requestAnimationFrame(animateRoom);
+ 
+    // 👇 3. 新增這行：若畫面被 UI 視窗遮擋，即暫停背景的渲染與物理運算，釋放極大效能！ 👇
+    if (isRoomPaused()) return;
+ 
+    // 🔄 實時指南針：讓旋鈕指針永遠精準指向相機看出去的方向
+    const knobDial = document.getElementById('knob-dial');
+    if (knobDial && camera && controls && !window.isKnobDragging) {
+        const dx = controls.target.x - camera.position.x;
+        const dz = controls.target.z - camera.position.z;
+        const angleDeg = Math.atan2(dx, -dz) * (180 / Math.PI);
+        knobDial.style.transform = `rotate(${angleDeg}deg)`;
+    }
        
     if(controls) controls.update();
     
