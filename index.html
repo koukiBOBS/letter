@@ -4476,7 +4476,7 @@ function getIdealFov() {
       function initRoomScene() {
     const container = document.getElementById('room-canvas-container');
     scene = new THREE.Scene(); 
-    scene.fog = new THREE.FogExp2(0xc5c1bc, 0.06);
+    scene.fog = new THREE.FogExp2(0xc5c1bc, 0.006);
 
 const roomFov = getIdealFov(); // 👈 呼叫智能判斷
 camera = new THREE.PerspectiveCamera(roomFov, window.innerWidth/window.innerHeight, 1.0, 1000);
