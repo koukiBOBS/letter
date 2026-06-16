@@ -2406,7 +2406,16 @@ function renderTasks() {
           // ==========================================
             // 📖 1. 渲染閱讀任務卡片
             // ==========================================
-          readingTasks.forEach((dateStr, i) => {
+        // 輔助函數：將日期字串轉換為乾淨的 MM/DD 格式
+            const formatShortDate = (dStr) => {
+                const d = new Date(dStr);
+                return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+            };
+
+            // ==========================================
+            // 📖 1. 渲染閱讀任務卡片
+            // ==========================================
+            readingTasks.forEach((dateStr, i) => {
                 const unlocked = new Date().setHours(0,0,0,0) >= new Date(dateStr).setHours(0,0,0,0);
                 const done = submittedReadingDates.includes(dateStr);
                 
@@ -2423,31 +2432,42 @@ function renderTasks() {
                 const el = document.createElement('div'); 
                 el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
                 
-                // --- 視覺化精緻排版 ---
-                let dateHtml = '';
+                // --- 極簡時間軸 UI 設計 ---
+                const startMMDD = formatShortDate(dateStr);
+                const deadlineMMDD = formatShortDate(deadlineStr);
+                let colorTheme, lineStyle, warningIcon = '';
+
                 if (!unlocked) {
-                    // 🌟 【修改這裡】：未開放時，也會顯示帶有虛線邊框的灰色截止日徽章
-                    dateHtml = `
-                        <span class="task-date" style="display:block; margin-bottom:8px; color:#94a3b8;">🔒 預計開放: ${dateStr}</span>
-                        <span style="display:inline-block; font-size:0.8rem; background:#f8fafc; color:#94a3b8; padding:5px 12px; border-radius:20px; font-weight:bold; border:1px dashed #cbd5e1;">⏳ 截止: ${deadlineStr}</span>
-                    `;
-                } else if (done) {
-                    dateHtml = `<span class="task-date" style="color:#6b8e73; font-weight:bold;">✓ 已完成</span>`;
+                    colorTheme = '#cbd5e1'; // 未解鎖：灰色
+                    lineStyle = 'border-top: 2px dashed #cbd5e1; background: transparent;';
+                } else if (isLate) {
+                    colorTheme = '#ef4444'; // 逾期：紅色
+                    lineStyle = 'background: #ef4444;';
+                    warningIcon = '<span style="font-size:0.8rem; margin-left:4px;">⚠️</span>';
                 } else {
-                    if (isLate) {
-                        dateHtml = `
-                            <span class="task-date" style="display:block; margin-bottom:8px; color:#94a3b8;">發放: ${dateStr}</span>
-                            <span style="display:inline-block; font-size:0.8rem; background:#fee2e2; color:#ef4444; padding:5px 12px; border-radius:20px; font-weight:bold; box-shadow:0 2px 4px rgba(239,68,68,0.1);">⚠️ 逾期 (限: ${deadlineStr})</span>
-                        `;
-                    } else {
-                        dateHtml = `
-                            <span class="task-date" style="display:block; margin-bottom:8px; color:#94a3b8;">發放: ${dateStr}</span>
-                            <span style="display:inline-block; font-size:0.8rem; background:#f0f5f1; color:#57785e; padding:5px 12px; border-radius:20px; font-weight:bold; border:1px solid #c3d6c8; box-shadow:0 2px 4px rgba(87,120,94,0.05);">⏳ 截止: ${deadlineStr}</span>
-                        `;
-                    }
+                    colorTheme = '#6b8e73'; // 進行中：綠色
+                    lineStyle = 'background: #6b8e73;';
                 }
 
-                el.innerHTML = `<span class="task-num" style="margin-bottom:10px;">第 ${i+1} 回閱讀</span>${dateHtml}`;
+                let dateHtml = '';
+                if (done) {
+                    dateHtml = `<span class="task-date" style="color:#6b8e73; font-weight:bold; font-size:1rem; letter-spacing:1px;">✓ 已完成</span>`;
+                } else {
+                    // 畫出直觀的連線點點圖形： 06/17 圓點 ── 圓點 06/18
+                    dateHtml = `
+                        <div style="display:flex; align-items:center; justify-content:center; width:100%; margin-top:15px; font-family:var(--font-sans); font-size:0.95rem; font-weight:600; color:${colorTheme};">
+                            <span>${startMMDD}</span>
+                            <div style="flex-grow:1; display:flex; align-items:center; margin:0 8px;">
+                                <div style="width:5px; height:5px; border-radius:50%; background:${colorTheme};"></div>
+                                <div style="flex-grow:1; height:2px; ${lineStyle}"></div>
+                                <div style="width:5px; height:5px; border-radius:50%; background:${colorTheme};"></div>
+                            </div>
+                            <span>${deadlineMMDD}${warningIcon}</span>
+                        </div>
+                    `;
+                }
+
+                el.innerHTML = `<span class="task-num" style="margin-bottom:5px;">第 ${i+1} 回閱讀</span>${dateHtml}`;
                 
                 el.onclick = () => {
                     if(done) openChatModal(rMap[dateStr].id);
@@ -2459,6 +2479,7 @@ function renderTasks() {
                 }; 
                 rGrid.appendChild(el);
             });
+
             // ==========================================
             // 📸 2. 渲染生活探索卡片
             // ==========================================
@@ -2468,7 +2489,6 @@ function renderTasks() {
                 const unlocked = true; 
                 const done = submittedRandomDates.includes(dateStr);
                 
-                // 計算 48 小時後的截止日
                 let dDate = new Date(new Date(dateStr).getTime() + 86400000);
                 let deadlineStr = `${dDate.getFullYear()}-${String(dDate.getMonth()+1).padStart(2,'0')}-${String(dDate.getDate()).padStart(2,'0')}`;
                 
@@ -2482,28 +2502,41 @@ function renderTasks() {
                 const el = document.createElement('div'); 
                 el.className = `task-card ${done ? 'completed' : ''}`;
                 
-                // --- 視覺化精緻排版 ---
+                // --- 極簡時間軸 UI 設計 ---
+                const startMMDD = formatShortDate(dateStr);
+                const deadlineMMDD = formatShortDate(deadlineStr);
+                let colorTheme, lineStyle, warningIcon = '';
+
+                if (isLate) {
+                    colorTheme = '#ef4444'; 
+                    lineStyle = 'background: #ef4444;';
+                    warningIcon = '<span style="font-size:0.8rem; margin-left:4px;">⚠️</span>';
+                } else {
+                    colorTheme = '#d98a6c'; // 探索任務的專屬橘色
+                    lineStyle = 'background: #d98a6c;';
+                }
+
                 let dateHtml = '';
                 if (done) {
-                    dateHtml = `<span class="task-date" style="color:#6b8e73; font-weight:bold;">✓ 已完成</span>`;
+                    dateHtml = `<span class="task-date" style="color:#d98a6c; font-weight:bold; font-size:1rem; letter-spacing:1px;">✓ 已完成</span>`;
                 } else {
-                    if (isLate) {
-                        dateHtml = `
-                            <span class="task-date" style="display:block; margin-bottom:8px; color:#94a3b8;">發放: ${dateStr}</span>
-                            <span style="display:inline-block; font-size:0.8rem; background:#fee2e2; color:#ef4444; padding:5px 12px; border-radius:20px; font-weight:bold; box-shadow:0 2px 4px rgba(239,68,68,0.1);">⚠️ 逾期 (限: ${deadlineStr})</span>
-                        `;
-                    } else {
-                        dateHtml = `
-                            <span class="task-date" style="display:block; margin-bottom:8px; color:#94a3b8;">發放: ${dateStr}</span>
-                            <span style="display:inline-block; font-size:0.8rem; background:#fff1eb; color:#c25953; padding:5px 12px; border-radius:20px; font-weight:bold; border:1px solid #fbdcd5; box-shadow:0 2px 4px rgba(194,89,83,0.05);">⏳ 截止: ${deadlineStr}</span>
-                        `;
-                    }
+                    dateHtml = `
+                        <div style="display:flex; align-items:center; justify-content:center; width:100%; margin-top:15px; font-family:var(--font-sans); font-size:0.95rem; font-weight:600; color:${colorTheme};">
+                            <span>${startMMDD}</span>
+                            <div style="flex-grow:1; display:flex; align-items:center; margin:0 8px;">
+                                <div style="width:5px; height:5px; border-radius:50%; background:${colorTheme};"></div>
+                                <div style="flex-grow:1; height:2px; ${lineStyle}"></div>
+                                <div style="width:5px; height:5px; border-radius:50%; background:${colorTheme};"></div>
+                            </div>
+                            <span>${deadlineMMDD}${warningIcon}</span>
+                        </div>
+                    `;
                     if (drawnTasksData[dateStr]) { 
-                        dateHtml += `<div style="margin-top:12px; font-size:0.8rem; color:#8b7355; font-weight:600; letter-spacing:1px;">已抽籤，待繳交</div>`; 
+                        dateHtml += `<div style="margin-top:10px; font-size:0.75rem; color:#8b7355; font-weight:600; letter-spacing:1px; background:#fdfaf6; padding:2px 8px; border-radius:10px; display:inline-block;">已抽籤</div>`; 
                     }
                 }
 
-                el.innerHTML = `<span class="task-num" style="margin-bottom:10px;">第 ${i+1} 回探索</span>${dateHtml}`;
+                el.innerHTML = `<span class="task-num" style="margin-bottom:5px;">第 ${i+1} 回探索</span>${dateHtml}`;
                 
                 el.onclick = () => {
                     if(done) openChatModal(randMap[dateStr].letterId);
@@ -2511,6 +2544,8 @@ function renderTasks() {
                 }; 
                 randGrid.appendChild(el);
             });
+
+            
 // --- 渲染「自由撰寫」的紀錄卡片 ---
             freeReadingLetters.forEach((l) => {
                 const el = document.createElement('div'); 
