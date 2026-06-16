@@ -2406,7 +2406,7 @@ function renderTasks() {
           // ==========================================
             // 📖 1. 渲染閱讀任務卡片
             // ==========================================
-        // 輔助函數：將日期字串轉換為乾淨的 MM/DD 格式
+    // 輔助函數：將日期字串轉換為乾淨的 MM/DD 格式
             const formatShortDate = (dStr) => {
                 const d = new Date(dStr);
                 return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
@@ -2419,7 +2419,6 @@ function renderTasks() {
                 const unlocked = new Date().setHours(0,0,0,0) >= new Date(dateStr).setHours(0,0,0,0);
                 const done = submittedReadingDates.includes(dateStr);
                 
-                // 計算 48 小時後的截止日
                 let dDate = new Date(new Date(dateStr).getTime() + 86400000);
                 let deadlineStr = `${dDate.getFullYear()}-${String(dDate.getMonth()+1).padStart(2,'0')}-${String(dDate.getDate()).padStart(2,'0')}`;
                 
@@ -2432,37 +2431,39 @@ function renderTasks() {
                 const el = document.createElement('div'); 
                 el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
                 
-                // --- 極簡時間軸 UI 設計 ---
-                const startMMDD = formatShortDate(dateStr);
-                const deadlineMMDD = formatShortDate(deadlineStr);
-                let colorTheme, lineStyle, warningIcon = '';
+                // --- 雙色時間軸 UI 設計 ---
+                let startColor = '#548ca8'; // 開放日：莫蘭迪藍
+                let endColor = isLate ? '#ef4444' : '#d98a6c'; // 截止日：紅色(逾期) 或 莫蘭迪橘(正常)
+                let lineStyle = '';
+                let startIcon = '';
+                let endIcon = '';
 
                 if (!unlocked) {
-                    colorTheme = '#cbd5e1'; // 未解鎖：灰色
-                    lineStyle = 'border-top: 2px dashed #cbd5e1; background: transparent;';
-                } else if (isLate) {
-                    colorTheme = '#ef4444'; // 逾期：紅色
-                    lineStyle = 'background: #ef4444;';
-                    warningIcon = '<span style="font-size:0.8rem; margin-left:4px;">⚠️</span>';
+                    // 未開放：保留鮮明顏色，加上鎖頭，線條改為虛線
+                    startIcon = '<span style="font-size:0.8rem; margin-right:3px;">🔒</span>';
+                    lineStyle = `border-top: 2px dashed #cbd5e1; background: transparent;`;
                 } else {
-                    colorTheme = '#6b8e73'; // 進行中：綠色
-                    lineStyle = 'background: #6b8e73;';
+                    // 已開放：雙色漸層實線
+                    lineStyle = `background: linear-gradient(to right, ${startColor}, ${endColor});`;
+                    if (isLate) endIcon = '<span style="font-size:0.8rem; margin-left:4px;">⚠️</span>';
                 }
 
                 let dateHtml = '';
                 if (done) {
-                    dateHtml = `<span class="task-date" style="color:#6b8e73; font-weight:bold; font-size:1rem; letter-spacing:1px;">✓ 已完成</span>`;
+                    dateHtml = `<span class="task-date" style="color:#6b8e73; font-weight:bold; font-size:1.05rem; letter-spacing:1px; margin-top:12px; display:block;">✓ 任務已達成</span>`;
                 } else {
-                    // 畫出直觀的連線點點圖形： 06/17 圓點 ── 圓點 06/18
+                    const endBg = isLate ? 'rgba(239,68,68,0.1)' : 'rgba(217,138,108,0.12)';
                     dateHtml = `
-                        <div style="display:flex; align-items:center; justify-content:center; width:100%; margin-top:15px; font-family:var(--font-sans); font-size:0.95rem; font-weight:600; color:${colorTheme};">
-                            <span>${startMMDD}</span>
-                            <div style="flex-grow:1; display:flex; align-items:center; margin:0 8px;">
-                                <div style="width:5px; height:5px; border-radius:50%; background:${colorTheme};"></div>
+                        <div style="display:flex; align-items:center; justify-content:center; width:100%; margin-top:18px; font-family:var(--font-sans); font-size:0.9rem; font-weight:600;">
+                            <span style="color:${startColor}; background:rgba(84,140,168,0.12); padding:3px 8px; border-radius:6px;">${startIcon}${formatShortDate(dateStr)}</span>
+                            
+                            <div style="flex-grow:1; display:flex; align-items:center; margin:0 6px;">
+                                <div style="width:5px; height:5px; border-radius:50%; background:${startColor};"></div>
                                 <div style="flex-grow:1; height:2px; ${lineStyle}"></div>
-                                <div style="width:5px; height:5px; border-radius:50%; background:${colorTheme};"></div>
+                                <div style="width:5px; height:5px; border-radius:50%; background:${endColor};"></div>
                             </div>
-                            <span>${deadlineMMDD}${warningIcon}</span>
+                            
+                            <span style="color:${endColor}; background:${endBg}; padding:3px 8px; border-radius:6px;">${formatShortDate(deadlineStr)}${endIcon}</span>
                         </div>
                     `;
                 }
@@ -2486,7 +2487,7 @@ function renderTasks() {
             if (randomTasks.length === 0) randGrid.innerHTML = '<div class="empty-state"><p>目前尚未設定探索任務。</p></div>';
             
             randomTasks.forEach((dateStr, i) => {
-                const unlocked = true; 
+                const unlocked = true; // 探索任務預設皆為解鎖
                 const done = submittedRandomDates.includes(dateStr);
                 
                 let dDate = new Date(new Date(dateStr).getTime() + 86400000);
@@ -2502,37 +2503,32 @@ function renderTasks() {
                 const el = document.createElement('div'); 
                 el.className = `task-card ${done ? 'completed' : ''}`;
                 
-                // --- 極簡時間軸 UI 設計 ---
-                const startMMDD = formatShortDate(dateStr);
-                const deadlineMMDD = formatShortDate(deadlineStr);
-                let colorTheme, lineStyle, warningIcon = '';
-
-                if (isLate) {
-                    colorTheme = '#ef4444'; 
-                    lineStyle = 'background: #ef4444;';
-                    warningIcon = '<span style="font-size:0.8rem; margin-left:4px;">⚠️</span>';
-                } else {
-                    colorTheme = '#d98a6c'; // 探索任務的專屬橘色
-                    lineStyle = 'background: #d98a6c;';
-                }
+                // --- 雙色時間軸 UI 設計 ---
+                let startColor = '#548ca8'; 
+                let endColor = isLate ? '#ef4444' : '#d98a6c'; 
+                let lineStyle = `background: linear-gradient(to right, ${startColor}, ${endColor});`;
+                let endIcon = isLate ? '<span style="font-size:0.8rem; margin-left:4px;">⚠️</span>' : '';
 
                 let dateHtml = '';
                 if (done) {
-                    dateHtml = `<span class="task-date" style="color:#d98a6c; font-weight:bold; font-size:1rem; letter-spacing:1px;">✓ 已完成</span>`;
+                    dateHtml = `<span class="task-date" style="color:#6b8e73; font-weight:bold; font-size:1.05rem; letter-spacing:1px; margin-top:12px; display:block;">✓ 任務已達成</span>`;
                 } else {
+                    const endBg = isLate ? 'rgba(239,68,68,0.1)' : 'rgba(217,138,108,0.12)';
                     dateHtml = `
-                        <div style="display:flex; align-items:center; justify-content:center; width:100%; margin-top:15px; font-family:var(--font-sans); font-size:0.95rem; font-weight:600; color:${colorTheme};">
-                            <span>${startMMDD}</span>
-                            <div style="flex-grow:1; display:flex; align-items:center; margin:0 8px;">
-                                <div style="width:5px; height:5px; border-radius:50%; background:${colorTheme};"></div>
+                        <div style="display:flex; align-items:center; justify-content:center; width:100%; margin-top:18px; font-family:var(--font-sans); font-size:0.9rem; font-weight:600;">
+                            <span style="color:${startColor}; background:rgba(84,140,168,0.12); padding:3px 8px; border-radius:6px;">${formatShortDate(dateStr)}</span>
+                            
+                            <div style="flex-grow:1; display:flex; align-items:center; margin:0 6px;">
+                                <div style="width:5px; height:5px; border-radius:50%; background:${startColor};"></div>
                                 <div style="flex-grow:1; height:2px; ${lineStyle}"></div>
-                                <div style="width:5px; height:5px; border-radius:50%; background:${colorTheme};"></div>
+                                <div style="width:5px; height:5px; border-radius:50%; background:${endColor};"></div>
                             </div>
-                            <span>${deadlineMMDD}${warningIcon}</span>
+                            
+                            <span style="color:${endColor}; background:${endBg}; padding:3px 8px; border-radius:6px;">${formatShortDate(deadlineStr)}${endIcon}</span>
                         </div>
                     `;
                     if (drawnTasksData[dateStr]) { 
-                        dateHtml += `<div style="margin-top:10px; font-size:0.75rem; color:#8b7355; font-weight:600; letter-spacing:1px; background:#fdfaf6; padding:2px 8px; border-radius:10px; display:inline-block;">已抽籤</div>`; 
+                        dateHtml += `<div style="margin-top:12px; font-size:0.75rem; color:#8b7355; font-weight:600; letter-spacing:1px; background:#fdfaf6; padding:2px 8px; border-radius:10px; display:inline-block;">已抽籤，待繳交</div>`; 
                     }
                 }
 
