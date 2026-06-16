@@ -5445,19 +5445,21 @@ else if (type === 'painting') {
                 
                 let newPos = hit.point.clone().sub(dragOffset);
                 
-                const halfW = dragTarget.userData.frameW / 2;
+             const halfW = dragTarget.userData.frameW / 2;
                 const halfH = dragTarget.userData.frameH / 2;
                 
-                const obstacleMargin = 2.5;
-                const cornerMargin = 2.0;   
+                // 👇 1. 大幅縮小防撞邊距 (從 2.5 降為 0.5)，給予極大自由度
+                const obstacleMargin = 0.5;
+                const cornerMargin = 0.5;   
                 
                 const safeXMin = -58.7 + halfW + cornerMargin;
                 const safeXMax =  58.7 - halfW - cornerMargin;
                 const safeZMin = -16.7 + halfW + cornerMargin;
                 const safeZMax =  58.7 - halfW - cornerMargin;
                 
-                const minY = 6 + halfH;
-                const maxY = 38 - halfH; 
+                // 👇 2. 放寬上下極限，允許畫作掛得更低 (靠近地板) 或更高 (靠近天花板)
+                const minY = 3 + halfH;
+                const maxY = 39 - halfH;
                 newPos.y = Math.max(minY, Math.min(maxY, newPos.y));
                 
                 // ==========================================
@@ -5465,12 +5467,12 @@ else if (type === 'painting') {
                 // ==========================================
                 if (n.z > 0.5) { // 🧱 後牆
                     newPos.z = hit.point.z;
-                    dragTarget.rotation.y = Math.PI; 
+                    dragTarget.rotation.y = Math.PI;
                     newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
                 }
                 else if (n.z < -0.5) { // 🪟 前牆 (玻璃趟門)
                     newPos.z = hit.point.z;
-                    dragTarget.rotation.y = 0; 
+                    dragTarget.rotation.y = 0;
                     newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
                     
                     const winLeft = -15.5 - halfW - obstacleMargin;
@@ -5478,6 +5480,7 @@ else if (type === 'painting') {
                     const winTop = 28.5 + halfH + obstacleMargin;
                     
                     if (newPos.y < winTop && newPos.x > winLeft && newPos.x < winRight) {
+                        // 👇 3. 智能判斷：如果畫作太高，上面塞不下，就強制只允許往左右滑開，防止卡在半空中
                         let penTop = (winTop <= maxY) ? (winTop - newPos.y) : Infinity;
                         let penLeft = newPos.x - winLeft;
                         let penRight = winRight - newPos.x;
@@ -5490,7 +5493,7 @@ else if (type === 'painting') {
                 }
                 else if (n.x > 0.5) { // 🎹 右牆 (冷氣機)
                     newPos.x = hit.point.x;
-                    dragTarget.rotation.y = -Math.PI / 2; 
+                    dragTarget.rotation.y = -Math.PI / 2;
                     newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
                     
                     const acLeft = -13.5 - halfW - obstacleMargin;
@@ -5501,7 +5504,6 @@ else if (type === 'painting') {
                         let penBot = (acBottom >= minY) ? (newPos.y - acBottom) : Infinity;
                         let penLeft = newPos.z - acLeft;
                         let penRight = acRight - newPos.z;
- 
                         let minPen = Math.min(penBot, penLeft, penRight);
                         if (minPen === penBot) newPos.y = acBottom;
                         else if (minPen === penLeft) newPos.z = acLeft;
@@ -5510,7 +5512,7 @@ else if (type === 'painting') {
                 }
                 else if (n.x < -0.5) { // 🚪 左牆 (木趟門)
                     newPos.x = hit.point.x;
-                    dragTarget.rotation.y = Math.PI / 2; 
+                    dragTarget.rotation.y = Math.PI / 2;
                     newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
                     
                     const doorLeft = -8.5 - halfW - obstacleMargin;
@@ -5521,7 +5523,6 @@ else if (type === 'painting') {
                         let penTop = (doorTop <= maxY) ? (doorTop - newPos.y) : Infinity;
                         let penLeft = newPos.z - doorLeft;
                         let penRight = doorRight - newPos.z;
- 
                         let minPen = Math.min(penTop, penLeft, penRight);
                         if (minPen === penTop) newPos.y = doorTop;
                         else if (minPen === penLeft) newPos.z = doorLeft;
