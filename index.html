@@ -4702,19 +4702,37 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
 
     // 透過數學正弦波 (Sine Wave) 把平面的頂點推成波浪狀
    // 透過數學正弦波，加上隨機相位與次級波浪，產生不規則的真實皺褶
-    const randomPhaseL = Math.random() * Math.PI * 2; // 左窗簾隨機起點
-    const randomPhaseR = Math.random() * Math.PI * 2; // 右窗簾隨機起點
+  // 透過「振幅調變」技術，讓每個褶的深度隨機且不均勻，同時大幅降低整體起伏
+    const randomPhaseL = Math.random() * Math.PI * 2;
+    const randomPhaseR = Math.random() * Math.PI * 2;
 
     const posL = foldGeoL.attributes.position;
     for (let i = 0; i < posL.count; i++) {
         const x = posL.getX(i);
-        const y = posL.getY(i);
-        // 主波浪 (1.5頻率) + 次級小波浪 (3.0頻率) + 垂直自然下垂微調
-        let z = Math.sin(x * 1.5 + randomPhaseL) * 1.0; 
-        z += Math.sin(x * 3.0 + randomPhaseL) * 0.25; 
+        // depthModulator 是一個緩慢波動的值，讓皺褶深度在 0.25 到 0.45 之間變化
+        let depthModulator = 0.35 + 0.1 * Math.sin(x * 0.4 + randomPhaseL); 
+        
+        // 主波浪乘上 depthModulator，產生深淺不一的褶
+        let z = Math.sin(x * 2.0 + randomPhaseL) * depthModulator; 
+        // 加上極微小的布料不平整感
+        z += Math.sin(x * 4.0 + randomPhaseL) * 0.05; 
+        
         posL.setZ(i, z);
     }
     foldGeoL.computeVertexNormals(); // 重新計算光影反射面
+
+    const posR = foldGeoR.attributes.position;
+    for (let i = 0; i < posR.count; i++) {
+        const x = posR.getX(i);
+        // 右邊用不同的頻率，確保左右布料的垂墜感完全不同
+        let depthModulator = 0.35 + 0.1 * Math.sin(x * 0.35 + randomPhaseR); 
+        
+        let z = Math.sin(x * 1.9 + randomPhaseR) * depthModulator; 
+        z += Math.sin(x * 3.8 + randomPhaseR) * 0.05; 
+        
+        posR.setZ(i, z);
+    }
+    foldGeoR.computeVertexNormals();
 
     const posR = foldGeoR.attributes.position;
     for (let i = 0; i < posR.count; i++) {
