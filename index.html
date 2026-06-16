@@ -7180,50 +7180,54 @@ window.toggleReadingLog = function() {
         slot.position.set(0, 3.5, 4.36);
         gachaMachineGrp.add(slot);
  
-  // 3.7 🕳️ 出口洞穴與實心接球兜 (托盤)
+  // 3.7 🕳️ 無縫連接的金屬通道與高階透明壓克力托盤
         chuteGrp = new THREE.Group();
-        chuteGrp.position.set(0, 2.0, 4.0); // 👈 高度大幅提升至 2.0，徹底遠離地板
+        chuteGrp.position.set(0, 2.5, 4.1); // 貼近圓柱表面，並提高位置防穿地
         gachaMachineGrp.add(chuteGrp);
  
-        // A. 打造深邃的內部出口洞穴
-        const holeInner = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 1.5), new THREE.MeshBasicMaterial({color: 0x050505}));
-        holeInner.position.set(0, 0, -0.4);
+        // A. 深邃不閃爍的內部洞穴 (退至內部，徹底避免與表面重合閃爍)
+        const holeInner = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 1.2), new THREE.MeshBasicMaterial({color: 0x050505}));
+        holeInner.position.set(0, 0, -0.5);
         chuteGrp.add(holeInner);
  
-        // B. 出口的銀色金屬邊框與擋板
+        // B. 向外延伸的金屬通道 (讓機身與托盤完美過渡)
         const frameMat = new THREE.MeshStandardMaterial({color: 0xe1e8eb, metalness: 0.9, roughness: 0.3});
-        const fTop = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 0.4), frameMat); fTop.position.set(0, 0.85, 0);
-        const fBot = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 0.4), frameMat); fBot.position.set(0, -0.85, 0);
-        const fL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 0.4), frameMat); fL.position.set(-0.85, 0, 0);
-        const fR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 0.4), frameMat); fR.position.set(0.85, 0, 0);
+        const tunnelTop = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 1.0), frameMat); tunnelTop.position.set(0, 0.85, 0.2);
+        const tunnelBot = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 1.0), frameMat); tunnelBot.position.set(0, -0.85, 0.2);
+        const tunnelL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 1.0), frameMat); tunnelL.position.set(-0.85, 0, 0.2);
+        const tunnelR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 1.0), frameMat); tunnelR.position.set(0.85, 0, 0.2);
         
-        const flap = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.4, 0.05), deepIronMat);
-        flap.position.set(0, 0.1, 0.1);
+        // 微掀的金屬擋板
+        const flap = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 0.05), deepIronMat);
+        flap.position.set(0, 0.1, 0.4);
         flap.rotation.x = -0.2;
-        chuteGrp.add(fTop, fBot, fL, fR, flap);
+        chuteGrp.add(tunnelTop, tunnelBot, tunnelL, tunnelR, flap);
  
-        // C. 打造帶有物理厚度感的高階透明壓克力托盤
+        // C. 物理厚度的高透壓克力接球兜 (加大尺寸並銜接通道底端)
         const acrylicMat = new THREE.MeshPhysicalMaterial({
             color: 0xffffff, transmission: 0.85, opacity: 1.0, transparent: true,      
             roughness: 0.15, metalness: 0.1, ior: 1.5, thickness: 0.5,         
             clearcoat: 1.0, clearcoatRoughness: 0.1, side: THREE.DoubleSide
         });
         
-        const scoopGeo = new THREE.CylinderGeometry(1.2, 1.2, 2.2, 32, 1, false, 0, Math.PI);
+        // 兜的本體：半徑加寬至 1.4，完美接住扭蛋 (半徑0.65)
+        const scoopGeo = new THREE.CylinderGeometry(1.4, 1.4, 2.0, 32, 1, false, 0, Math.PI);
         const scoop = new THREE.Mesh(scoopGeo, acrylicMat);
-        scoop.rotation.z = Math.PI / 2; scoop.rotation.x = Math.PI / 2;
-        scoop.position.set(0, -0.6, 1.2); // 調整至邊框下方
+        scoop.rotation.set(Math.PI / 2, 0, Math.PI / 2);
+        scoop.position.set(0, -0.85, 1.6); // Z: 1.6 讓它一半包覆通道，一半往外接球
         
-        const capGeo = new THREE.CircleGeometry(1.2, 32, 0, Math.PI);
+        // 兜的外側封口 (只封外側，內側連接通道)
+        const capGeo = new THREE.CircleGeometry(1.4, 32, 0, Math.PI);
         const capL = new THREE.Mesh(capGeo, acrylicMat);
-        capL.position.set(-1.1, -0.6, 1.2); capL.rotation.set(Math.PI/2, -Math.PI/2, 0);
+        capL.position.set(-1.0, -0.85, 1.6); capL.rotation.set(Math.PI/2, -Math.PI/2, 0);
         const capR = new THREE.Mesh(capGeo, acrylicMat);
-        capR.position.set(1.1, -0.6, 1.2); capR.rotation.set(Math.PI/2, Math.PI/2, 0);
+        capR.position.set(1.0, -0.85, 1.6); capR.rotation.set(Math.PI/2, Math.PI/2, 0);
         
-        const rimGeo = new THREE.CylinderGeometry(1.25, 1.25, 2.3, 32, 1, true, 0, Math.PI);
+        // 兜的加厚防護邊緣 (同樣使用壓克力材質)
+        const rimGeo = new THREE.CylinderGeometry(1.45, 1.45, 2.1, 32, 1, true, 0, Math.PI);
         const rim = new THREE.Mesh(rimGeo, acrylicMat);
         rim.rotation.set(Math.PI/2, 0, Math.PI/2);
-        rim.position.set(0, -0.6, 1.2);
+        rim.position.set(0, -0.85, 1.6);
  
         chuteGrp.add(scoop, capL, capR, rim);
  
@@ -7441,38 +7445,41 @@ window.toggleReadingLog = function() {
             });
         }, null, "+=0.1")
         // 5.4 扭蛋從洞穴深處滾下至托盤
+      // 5.4 扭蛋從洞穴深處滾下至托盤
         .call(() => {
             const dropCap = capsulePool[Math.floor(Math.random() * capsulePool.length)].clone();
-            // 📍 起點：深邃洞口內部
-            dropCap.position.set(0, 1.8, 3.4);
+            // 📍 起點：深邃洞口內部 (藏在擋板後面)
+            dropCap.position.set(0, 2.5, 3.5); 
             gachaMachineGrp.add(dropCap);
  
             const dropTimeline = gsap.timeline();
             
-            // 滾落拋物線
+            // 滾落拋物線：精準算入新托盤的座標
+            // 托盤底部中心 Y = 2.5(chuteGrp) - 0.85(scoopOffset) - 1.4(radius) = 0.25
+            // 加上扭蛋半徑 0.65，完美著陸點 Y 為 0.9
             dropTimeline.to(dropCap.position, {
                 x: 0,
-                y: 0.85,   // 👈 完美物理高度：兜的最底端(0.2) + 球體半徑(0.65) = 0.85
-                z: 5.2,    // 👈 落在兜的中心
+                y: 0.9,     // 👈 完美著陸高度，絕不穿模
+                z: 5.7,     // 👈 剛好落在透明兜的正中央
                 duration: 1.0,
-                ease: "bounce.out" // 落地彈跳感
+                ease: "bounce.out"
             })
             .to(dropCap.rotation, {
-                x: Math.random() * 4,
-                y: Math.random() * 4,
+                x: Math.random() * 6,
+                y: Math.random() * 6,
                 duration: 1.0
             }, "<");
  
-            // 托盤受到球體撞擊的微微震動反饋
+            // 托盤受撞擊的物理微震
             if (chuteGrp) {
                 dropTimeline.to(chuteGrp.position, {
-                    y: 1.95, // 原高度 2.0，向下微震
+                    y: 2.45, // 原高度 2.5
                     duration: 0.1,
                     yoyo: true,
                     repeat: 1
                 }, "-=0.2")
                 .to(chuteGrp.position, {
-                    y: 2.0,
+                    y: 2.5,
                     duration: 0.15
                 });
             }
@@ -7481,14 +7488,14 @@ window.toggleReadingLog = function() {
             dropTimeline.to(dropCap.scale, {
                 x: 0, y: 0, z: 0,
                 duration: 0.4,
-                delay: 0.6, // 停留久一點讓玩家看清楚完整的扭蛋
+                delay: 0.6, // 給玩家足夠時間看清落下的扭蛋
                 onComplete: () => {
                     gachaMachineGrp.remove(dropCap);
                     executeDrawLogic();
                 }
             });
-        }, null, "+=1.5"); // 等攪拌動畫 1.5 秒播完才掉出扭蛋
-    }
+        }, null, "+=1.5");
+ 
 
     function executeDrawLogic() {
         const unownedIds = Object.keys(LIT_QUOTES).filter(id => !window.userQuotes[id]);
