@@ -7780,16 +7780,22 @@ const crystalGlassMat = new THREE.MeshStandardMaterial({
         flap.rotation.x = -0.25;
         flap.name = "gachaFlap";
         chuteGrp.add(tunnelTop, tunnelBot, tunnelL, tunnelR, flap);
-        // 3.8 玻璃圓頂罩
-        const dome = new THREE.Mesh(new THREE.SphereGeometry(4.1, 32, 32, 0, Math.PI*2, 0, Math.PI/2), crystalGlassMat);
-        dome.position.y = 7;
-        gachaMachineGrp.add(dome);
-        // 3.9 頂蓋飾圈
+       // 3.8 玻璃圓柱罩 (取代原本的半圓頂)
+        // 使用 openEnded=true (最後一個參數) 移除上下底面，因為被蓋住了看不到，藉此節省手機效能
+        const glassBodyHeight = 4.4;
+        const glassBody = new THREE.Mesh(new THREE.CylinderGeometry(4.0, 4.0, glassBodyHeight, 32, 1, true), crystalGlassMat);
+        glassBody.position.y = 7.0 + (glassBodyHeight / 2); // 完美銜接在 y=7 的底座上
+        gachaMachineGrp.add(glassBody);
+
+        // 3.9 頂蓋飾圈與紅色圓頂蓋
+        const topY = 7.0 + glassBodyHeight; // 計算圓柱體的頂部座標 (y=11.4)
+        
         const topCapTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.15, 4.15, 0.3, 32, 1, true), champagneGoldMat);
-        topCapTrim.position.y = 11.1;
+        topCapTrim.position.y = topY;
         gachaMachineGrp.add(topCapTrim);
-        const topCap = new THREE.Mesh(new THREE.SphereGeometry(4.05, 16, 16, 0, Math.PI*2, 0, Math.PI/2), morandiCoralMat);
-        topCap.position.y = 11.2;
+        
+        const topCap = new THREE.Mesh(new THREE.SphereGeometry(4.05, 32, 16, 0, Math.PI*2, 0, Math.PI/2), morandiCoralMat);
+        topCap.position.y = topY; // 完美覆蓋在金邊上方
         topCap.castShadow = true;
         gachaMachineGrp.add(topCap);
 
