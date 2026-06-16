@@ -4734,16 +4734,7 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     }
     foldGeoR.computeVertexNormals();
 
-    const posR = foldGeoR.attributes.position;
-    for (let i = 0; i < posR.count; i++) {
-        const x = posR.getX(i);
-        const y = posR.getY(i);
-        // 右窗簾頻率與左窗簾稍微不同 (1.4 vs 1.5)，徹底打破對稱感
-        let z = Math.sin(x * 1.4 + randomPhaseR) * 1.1; 
-        z += Math.sin(x * 2.8 + randomPhaseR) * 0.2; 
-        posR.setZ(i, z);
-    }
-    foldGeoR.computeVertexNormals();
+ 
 
     const clothL = new THREE.Mesh(foldGeoL, curtainMat);
     clothL.castShadow = true;
