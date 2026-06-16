@@ -4088,25 +4088,22 @@ function createHKVehicle(type, direction) {
         addWheels(2.6, 0.5, 2.2); addWheels(2.6, 0.5, -2.2);
         addLights(2.6, 1.0, direction > 0 ? 3.76 : -3.76, direction > 0 ? -3.76 : 3.76);
     } 
-   else if(type === 'bus') { // 雙層巴士
+  else if(type === 'bus') { // 雙層巴士
         const busColors = [0xddb822, 0xeeeeee, 0xcc2222]; // 九巴黃/城巴白/龍運紅
         const bodyMat = new THREE.MeshStandardMaterial({color: busColors[Math.floor(Math.random()*busColors.length)]});
         addBox(3.2, 4.8, 12, bodyMat, 2.8, 0); // 龐大車身
-        // 將玻璃深度(長度)從 11.8 加長到 12.1，讓它前後都凸出車身(12)一點點，形成前後車窗
         addBox(3.3, 1.2, 12.1, glassMat, 2.0, 0); // 下層環繞窗
         addBox(3.3, 1.2, 12.1, glassMat, 4.2, 0); // 上層環繞窗
         addWheels(3.2, 0.6, 3.5); addWheels(3.2, 0.6, -3.5); addWheels(3.2, 0.6, -4.8); // 三軸
         addLights(3.2, 1.2, direction > 0 ? 6.01 : -6.01, direction > 0 ? -6.01 : 6.01);
-
-        // 建立一個專屬於巴士的隱形點擊框
-    const hitBox = new THREE.Mesh(new THREE.BoxGeometry(3.6, 5.5, 12.5), new THREE.MeshBasicMaterial({visible: false}));
-    hitBox.position.set(0, 2.4, 0);
-    // 綁定 type 與父物件的關聯
-    hitBox.userData = { type: 'bus', vehicleObj: vGroup, direction: direction };
-    vGroup.add(hitBox);
-    // 加入到可點擊陣列中 (請確保 interactables 變數可被存取)
-    interactables.push(hitBox);
-}
+        
+        // 👇 就是這四行：建立專屬於巴士的隱形點擊框 👇
+        const hitBox = new THREE.Mesh(new THREE.BoxGeometry(3.6, 5.5, 12.5), new THREE.MeshBasicMaterial({visible: false}));
+        hitBox.position.set(0, 2.4, 0);
+        hitBox.userData = { type: 'bus', vehicleObj: vGroup, direction: direction };
+        vGroup.add(hitBox);
+        interactables.push(hitBox); // 將點擊框註冊到互動陣列中
+    }
  
     else { // 私家車 (多色)
         const carColors = [0x111111, 0xdddddd, 0x223388, 0x882222, 0x444444];
@@ -5478,21 +5475,31 @@ benchGrp = new THREE.Group();
     const walkNear = new THREE.Mesh(new THREE.BoxGeometry(360, 0.4, 12), walkMat); walkNear.position.set(0, -4.7, roadWidth/2 + 10); walkNear.receiveShadow = true; balconyOnlyGroup.add(walkNear);
     const walkFar = new THREE.Mesh(new THREE.BoxGeometry(360, 0.4, 12), walkMat); walkFar.position.set(0, -4.7, -roadWidth/2 - 2); walkFar.receiveShadow = true; balconyOnlyGroup.add(walkFar);
 
-    // 【修訂二：修正汽車車頭朝向】 (車輛增加到12台，並在更長的馬路上分佈)
-    const vehicleTypes = ['taxi', 'taxi', 'car', 'car', 'car', 'minibus', 'bus'];
-    for(let i=0; i<12; i++) { 
-        const vType = vehicleTypes[Math.floor(Math.random()*vehicleTypes.length)];
-        const direction = i % 2 === 0 ? 1 : -1; 
+  // 【修訂二：修正汽車車頭朝向】 (保證有雙層巴士，增加車流密度與微調車速)
+    // 強制指定 16 台車的陣容，確保雙層巴士(bus)一定會頻繁出現
+    const fixedVehicleTypes = [
+        'bus', 'taxi', 'car', 'minibus', 'bus', 'car', 'taxi', 'car', // 去程 8 台
+        'taxi', 'bus', 'car', 'car', 'minibus', 'taxi', 'bus', 'car'  // 回程 8 台
+    ];
+    
+    for(let i = 0; i < 16; i++) { 
+        const vType = fixedVehicleTypes[i];
+        const direction = i < 8 ? 1 : -1; 
         const laneZ = direction > 0 ? 8 : 0; 
         const carGroup = createHKVehicle(vType, direction);
         
-        const slotIndex = Math.floor(i / 2); 
-        // 配合加長的馬路，調整起點
-        const startX = direction > 0 ? -160 + (slotIndex * 50) : 160 - (slotIndex * 50);
+        const slotIndex = i % 8; // 每條車道分佈 8 台車
+        
+        // 配合 360 單位的馬路，每台車間距約 45 單位，確保畫面中隨時都有車
+        const startX = direction > 0 ? -160 + (slotIndex * 45) : 160 - (slotIndex * 45);
 
         carGroup.position.set(startX, -4.6, laneZ); 
         carGroup.rotation.y = Math.PI / 2; 
-        carGroup.userData = { speed: 0.3 * direction, type: 'vehicle' }; 
+        
+        // 為了避免車流太死板，給予每一台車微小的隨機速度差異 (0.35 ~ 0.45)
+        const randomSpeed = 0.35 + (Math.random() * 0.1); 
+        carGroup.userData = { speed: randomSpeed * direction, type: 'vehicle' }; 
+        
         balconyOnlyGroup.add(carGroup);
         animScenery.cars.push(carGroup); 
     }
