@@ -496,11 +496,88 @@
 
 
 /* --- 錢包與收集冊介面 --- */
-#modal-wallet { background: rgba(20, 18, 16, 0.9); backdrop-filter: blur(8px); }
-.wallet-content { background: #3c2a21; border: 2px solid #b4a08c; color: #fdfaf6; padding: 40px; border-radius: 12px; max-width: 900px; width: 95%; margin: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5); position: relative; max-height: 90vh; overflow-y: auto; font-family: var(--font-serif); }
-.wallet-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #b4a08c; padding-bottom: 20px; margin-bottom: 30px; }
-.points-display { font-size: 2.5rem; color: #d4af37; text-shadow: 0 2px 10px rgba(212, 175, 55, 0.3); }
-.collection-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
+/* --- 錢包與收集冊介面 (精緻真皮質感) --- */
+#modal-wallet { background: rgba(10, 8, 5, 0.9); backdrop-filter: blur(10px); }
+ 
+/* 皮革底色、噪點紋理、邊緣壓線與陰影 */
+.wallet-content {
+    background-color: #3e2418;
+    background-image:
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.08'/%3E%3C/svg%3E"),
+        radial-gradient(circle at center, #5c3926 0%, #2a160e 100%);
+    border: 2px solid #1a0d08;
+    border-radius: 12px;
+    box-shadow:
+        inset 0 0 0 6px #4a2e1d,     /* 內圈高光壓線 */
+        inset 0 0 0 7px #1a0d08,     /* 內圈縫線溝槽 */
+        inset 0 0 80px rgba(0,0,0,0.8),
+        0 30px 60px rgba(0,0,0,0.8);
+    color: #fdfaf6;
+    padding: 50px 40px;
+    max-width: 900px;
+    width: 95%;
+    margin: auto;
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+    font-family: var(--font-serif);
+}
+ 
+/* 擬真縫線裝飾 */
+.wallet-content::after {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    border: 1px dashed rgba(212, 175, 55, 0.35); /* 金線感 */
+    border-radius: 6px;
+    pointer-events: none;
+    z-index: 10;
+}
+ 
+.wallet-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(212, 175, 55, 0.2); padding-bottom: 20px; margin-bottom: 30px; position: relative; z-index: 2; }
+.points-display { font-size: 2.5rem; color: #d4af37; text-shadow: 0 2px 15px rgba(212, 175, 55, 0.4); }
+ 
+/* --- 收集冊分頁按鈕 --- */
+.wallet-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 35px;
+    position: relative;
+    z-index: 2;
+}
+.wallet-tab-btn {
+    background: transparent;
+    border: none;
+    color: #a38c76;
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 10px 20px;
+    transition: all 0.3s ease;
+    position: relative;
+    letter-spacing: 2px;
+}
+.wallet-tab-btn:hover { color: #dcd5c9; }
+.wallet-tab-btn.active {
+    color: #d4af37;
+    font-weight: 600;
+    text-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+}
+.wallet-tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 2px;
+    background: #d4af37;
+    box-shadow: 0 0 8px rgba(212, 175, 55, 0.5);
+}
+ 
+.collection-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; position: relative; z-index: 2; }
+.item-card { background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(212, 175, 55, 0.2); border-radius: 8px; padding: 15px; text-align: center; transition: 0.3s; position: relative; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); }
 .item-card { background: #523a28; border: 1px solid #7d5a40; border-radius: 8px; padding: 15px; text-align: center; transition: 0.3s; position: relative; overflow: hidden; }
 .item-card.locked { filter: grayscale(100%) brightness(0.5); opacity: 0.7; }
 .item-card.locked::after { content: '🔒 未解鎖'; position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; font-weight: bold; color: #aaa; letter-spacing: 2px; }
@@ -1356,19 +1433,30 @@
 
 
     <!-- 積分錢包與收集冊 -->
-    <div id="modal-wallet" class="room-modal">
-        <div class="wallet-content">
-            <button class="room-modal-close" onclick="closeRoomModal(event, 'modal-wallet')" style="color: #b4a08c;">×</button>
-            <div class="wallet-header">
-                <div>
-                    <h2 style="font-size: 1.8rem; color: #e6dfd1; margin-bottom: 5px;">我的資產與收集冊</h2>
-                    <span style="color: #a38c76; font-size: 0.95rem;">完成閱讀/回覆 +1000分，探索 +500分</span>
-                </div>
-                <div class="points-display"><span id="user-points-text">0</span> <span style="font-size:1.2rem; color:#a38c76;">分</span></div>
+   <!-- 積分錢包與收集冊 -->
+<div id="modal-wallet" class="room-modal">
+    <div class="wallet-content">
+        <button class="room-modal-close" onclick="closeRoomModal(event, 'modal-wallet')" style="color: #d4af37; z-index: 20;">×</button>
+        
+        <div class="wallet-header">
+            <div>
+                <h2 style="font-size: 1.8rem; color: #e6dfd1; margin-bottom: 5px; letter-spacing: 2px;">我的資產與回憶</h2>
+                <span style="color: #a38c76; font-size: 0.95rem;">完成閱讀/回覆 +1000分，探索 +500分</span>
             </div>
-            <div class="collection-grid" id="collection-grid"></div>
+            <div class="points-display"><span id="user-points-text">0</span> <span style="font-size:1.2rem; color:#a38c76;">分</span></div>
         </div>
+ 
+        <!-- 雙分頁按鈕 -->
+        <div class="wallet-tabs">
+            <button id="tab-wallet-items" class="wallet-tab-btn active" onclick="switchWalletTab('items')">🛋️ 房間佈置</button>
+            <button id="tab-wallet-quotes" class="wallet-tab-btn" onclick="switchWalletTab('quotes')">🖋️ 文學碎片</button>
+        </div>
+ 
+        <!-- 兩個獨立的 Grid 容器 -->
+        <div class="collection-grid" id="collection-grid-items"></div>
+        <div class="collection-grid" id="collection-grid-quotes" style="display: none;"></div>
     </div>
+</div>
 
 
     <!-- 🍂 破產懲罰視窗 -->
@@ -1467,6 +1555,9 @@
 
 
 
+
+        
+
         let allowedEmailsWhitelist = [];
 
 
@@ -1475,6 +1566,17 @@ function isTeacherEmail(email) {
     return email && /^[^\d@]+@ccckyc\.edu\.hk$/.test(email);
 }
 
+
+window.switchWalletTab = function(tab) {
+    document.getElementById('tab-wallet-items').classList.toggle('active', tab === 'items');
+    document.getElementById('tab-wallet-quotes').classList.toggle('active', tab === 'quotes');
+    
+    document.getElementById('collection-grid-items').style.display = tab === 'items' ? 'grid' : 'none';
+    document.getElementById('collection-grid-quotes').style.display = tab === 'quotes' ? 'grid' : 'none';
+};
+
+
+        
 
 window.devResetAccount = function() {
     if(confirm("確定要將積分歸零，並沒收所有收集到的道具嗎？")) {
@@ -1491,13 +1593,14 @@ window.devResetAccount = function() {
 
 // 🍂 開發測試：一鍵觸發破產清算視窗
 window.devSimulateBankruptcy = function() {
-    if(confirm("確定要模擬破產嗎？這將清空您的積分與所有房間佈置，並且強制彈出懲罰視窗。")) {
-        // 直接將分數歸零並刪除所有道具
+    if(confirm("確定要模擬破產嗎？這將清空您的積分、所有房間佈置與『文學碎片』，並強制彈出懲罰視窗。")) {
         db.ref(`users/${currentUser.uid}/points`).set(0);
-        db.ref(`users/${currentUser.uid}/inventory`).remove().then(() => {
+        db.ref(`users/${currentUser.uid}/inventory`).remove();
+        db.ref(`users/${currentUser.uid}/quotes`).remove().then(() => { // 👈 沒收語錄
             // 同步本地變數
             userPoints = 0;
             userInventory = {};
+            window.userQuotes = {}; // 👈 清空本地
             document.getElementById('user-points-text').innerText = '0';
             
             // 彈出我們設計好的破產視窗
@@ -6354,8 +6457,8 @@ function openWalletUI() {
 }
 
 function renderWalletGrid() {
-    const grid = document.getElementById('collection-grid');
-    grid.innerHTML = '';
+const grid = document.getElementById('collection-grid-items');
+grid.innerHTML = '';
     
     if (!offscreenRenderer) {
         offscreenRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
@@ -6732,17 +6835,23 @@ function checkAndTriggerBankruptcy(readingTasks, randomTasks, submittedReading, 
     }
 
     // 4. 如果確認破產，執行懲罰
+// 4. 如果確認破產，執行懲罰
     if (isBankrupt) {
-        // 先檢查他是否還有財產，如果已經被扣到 0 分且沒道具，就不重複彈窗干擾
         db.ref(`users/${currentUser.uid}`).once('value').then(snap => {
             let data = snap.val() || {};
             let pts = data.points || 0;
             let inv = data.inventory || {};
+            let quotes = data.quotes || {}; // 👈 檢查語錄資產
             
-            if (pts > 0 || Object.keys(inv).length > 0) {
-                // 💥 執行清算：積分歸零、道具全砍
+            // 只要有分數、有道具，或有語錄，就清空
+            if (pts > 0 || Object.keys(inv).length > 0 || Object.keys(quotes).length > 0) {
+                // 💥 執行清算：積分歸零、道具全砍、文學碎片全燒毀
                 db.ref(`users/${currentUser.uid}/points`).set(0);
                 db.ref(`users/${currentUser.uid}/inventory`).remove();
+                db.ref(`users/${currentUser.uid}/quotes`).remove(); // 👈 沒收語錄
+                
+                // 清空本地變數
+                window.userQuotes = {};
                 
                 // 彈出破產宣告視窗
                 document.getElementById('modal-bankruptcy').style.display = 'flex';
@@ -7509,36 +7618,35 @@ function startGachaDrawProcess() {
     };
 
     // 8. 覆寫收集冊
+// 8. 覆寫收集冊 (雙分頁支援)
     function hijackWalletRender() {
         const originalRenderWalletGrid = window.renderWalletGrid;
         window.renderWalletGrid = function() {
-            originalRenderWalletGrid(); 
-            const grid = document.getElementById('collection-grid');
+            originalRenderWalletGrid();
             
-            const divider = document.createElement('div');
-            divider.style.gridColumn = "1 / -1";
-            divider.innerHTML = `<h3 class="quote-section-title">🖋️ 文學碎片收集冊</h3><p style="color:#a38c76; font-size:0.9rem; margin-top:-10px; margin-bottom:20px;">透過房間左側的暖橘扭蛋機，獲取與您靈魂共鳴的文字段落。</p>`;
-            grid.appendChild(divider);
-
+            // 指向專屬的語錄 Grid 容器
+            const gridQuotes = document.getElementById('collection-grid-quotes');
+            if (!gridQuotes) return;
+            gridQuotes.innerHTML = '';
+ 
             Object.keys(LIT_QUOTES).forEach(id => {
                 const isOwned = window.userQuotes[id];
                 const card = document.createElement('div');
-
+ 
                 if (!isOwned) {
                     card.className = 'quote-card-item locked';
-                    card.style.background = '#e6dfd1';
-                    card.style.border = '1px solid #dcd5c9';
+                    card.style.background = 'rgba(255, 255, 255, 0.05)';
+                    card.style.border = '1px solid rgba(212, 175, 55, 0.1)';
                     card.innerHTML = `
-                        <div style="border: 1px dashed #b4a08c; padding: 25px 15px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(139,115,85,0.015);">
-                            <div style="width: 24px; height: 1px; background: #c4b8aa; margin-bottom: 12px;"></div>
+                        <div style="border: 1px dashed rgba(212, 175, 55, 0.2); padding: 25px 15px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                             <div style="color: #8b7355; font-family: var(--font-serif); font-size: 1rem; letter-spacing: 3px; font-weight: 600;">未知的語錄</div>
-                            <div style="color: #b4a08c; font-size: 0.75rem; margin-top: 8px; letter-spacing: 1px; font-family: var(--font-sans);">UNLOCKED VIA GACHA</div>
-                            <div style="width: 24px; height: 1px; background: #c4b8aa; margin-top: 12px;"></div>
+                            <div style="color: #6a5743; font-size: 0.75rem; margin-top: 8px; letter-spacing: 1px; font-family: var(--font-sans);">UNLOCKED VIA GACHA</div>
                         </div>
                     `;
                 } else {
                     const q = LIT_QUOTES[id];
                     card.className = 'quote-card-item';
+                    card.style.background = '#efeae2'; // 抽到的保留紙張質感
                     card.innerHTML = `
                         <div class="quote-preview-text">「${q.text}」</div>
                         <div class="quote-author-badge">— ${q.author}</div>
@@ -7548,7 +7656,7 @@ function startGachaDrawProcess() {
                         showQuoteUI(id);
                     };
                 }
-                grid.appendChild(card);
+                gridQuotes.appendChild(card);
             });
         };
     }
