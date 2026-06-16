@@ -3409,172 +3409,6 @@ const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 
         let glassDoorL, glassDoorR; // 新增這兩個變數來控制玻璃門
 
 
-
-
-
-// 🎨 零效能生成：香港電車軌道柏油路
-function createTramRoadTexture() {
-    const canvas = document.createElement('canvas'); 
-    canvas.width = 512; canvas.height = 512; 
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#222224'; ctx.fillRect(0,0,512,512); // 深色柏油
-    for(let i=0; i<20000; i++) { // 柏油顆粒
-        ctx.fillStyle = Math.random()>0.5 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.15)';
-        ctx.fillRect(Math.random()*512, Math.random()*512, 1.5, 1.5);
-    }
-    // 畫上兩條金屬質感的電車軌道
-    ctx.fillStyle = '#555555'; 
-    ctx.fillRect(0, 180, 512, 8); 
-    ctx.fillRect(0, 240, 512, 8);
-    // 畫上雙白線
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    for(let i=0; i<512; i+=60) { ctx.fillRect(i, 210, 30, 4); }
-    const tex = new THREE.CanvasTexture(canvas); 
-    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; 
-    tex.repeat.set(10, 1); 
-    return tex;
-}
-
-// 🎨 零效能生成：香港霓虹燈招牌庫
-const hkSignTexts = ["冰室", "大藥房", "金行", "鐘錶", "茶餐廳", "當", "夜總會", "麻雀", "理髮", "海鮮酒家"];
-const hkSignColors = ['#ff2222', '#22ff22', '#22aaff', '#ffaa00', '#ff22aa'];
-const neonSignMaterials = []; // 緩存材質池
-
-function initNeonMaterials() {
-    for(let i=0; i<15; i++) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 64; canvas.height = 256;
-        const ctx = canvas.getContext('2d');
-        const bgColor = Math.random() > 0.5 ? '#111' : '#dddddd';
-        const neonColor = hkSignColors[Math.floor(Math.random() * hkSignColors.length)];
-        const text = hkSignTexts[Math.floor(Math.random() * hkSignTexts.length)];
-        
-        ctx.fillStyle = bgColor; ctx.fillRect(0, 0, 64, 256);
-        ctx.strokeStyle = neonColor; ctx.lineWidth = 6; ctx.strokeRect(4, 4, 56, 248);
-        
-        ctx.fillStyle = neonColor;
-        ctx.font = 'bold 32px "Noto Serif TC", sans-serif';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        
-        for(let j=0; j<text.length; j++) {
-            ctx.fillText(text[j], 32, 60 + j * 50);
-        }
-        const tex = new THREE.CanvasTexture(canvas);
-        // 建立會發光的材質
-        neonSignMaterials.push(new THREE.MeshStandardMaterial({
-            map: tex, emissiveMap: tex, emissive: neonColor, emissiveIntensity: 0, roughness: 0.2
-        }));
-    }
-}
-
-
-        // --- 無限駕駛引擎全域變數 ---
-let driveWorldGrp = null;
-let cityTreadmill = [];
-let bridgeTreadmill = [];
-let pedestrians = [];
-let rideSpeed = 0;
-let currentDriveMode = ''; // 'city' 或 'bridge'
-
-function buildInfiniteDriveWorld() {
-    if (driveWorldGrp) scene.remove(driveWorldGrp);
-    driveWorldGrp = new THREE.Group();
-    // 隱藏在極遠方，避免與房間重疊
-    driveWorldGrp.position.set(0, -1000, 0); 
-    scene.add(driveWorldGrp);
-
-    if (neonSignMaterials.length === 0) initNeonMaterials();
-
-    // 1. 共用馬路與行人路
-    const roadMat = new THREE.MeshStandardMaterial({ map: createTramRoadTexture(), roughness: 0.9 });
-    const road = new THREE.Mesh(new THREE.PlaneGeometry(800, 40), roadMat);
-    road.rotation.x = -Math.PI / 2; road.position.y = -4.8;
-    driveWorldGrp.add(road);
-
-    const walkMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 1.0 });
-    const walkL = new THREE.Mesh(new THREE.BoxGeometry(800, 0.4, 20), walkMat);
-    walkL.position.set(0, -4.6, -30); driveWorldGrp.add(walkL);
-    const walkR = new THREE.Mesh(new THREE.BoxGeometry(800, 0.4, 20), walkMat);
-    walkR.position.set(0, -4.6, 30); driveWorldGrp.add(walkR);
-
-    // ==========================================
-    // 🏙️ 城市模式 (City Treadmill)
-    // ==========================================
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0x999999, map: typeof createBuildingTexture !== 'undefined' ? createBuildingTexture() : null, roughness: 0.9 });
-    
-    // 生成 16 棟可循環的香港舊唐樓/大廈
-    for(let i=0; i<16; i++) {
-        const bGrp = new THREE.Group();
-        
-        // 隨機高度與寬度的樓體
-        const h = 40 + Math.random() * 80;
-        const w = 15 + Math.random() * 10;
-        const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 15), wallMat);
-        b.position.y = h/2 - 4.4;
-        bGrp.add(b);
-
-        // 隨機掛上 1~3 個伸出來的香港霓虹燈招牌
-        const signCount = Math.floor(Math.random() * 3) + 1;
-        for(let s=0; s<signCount; s++) {
-            const signMat = neonSignMaterials[Math.floor(Math.random() * neonSignMaterials.length)];
-            const sign = new THREE.Mesh(new THREE.BoxGeometry(2, 12, 10), signMat);
-            sign.position.set((Math.random()-0.5)*w, 10 + Math.random()*(h-20), 8);
-            sign.userData.isNeon = true;
-            bGrp.add(sign);
-        }
-
-        // 分配到左右兩側
-        const isLeft = i % 2 === 0;
-        bGrp.position.set(-300 + (i * 40), 0, isLeft ? -45 : 45);
-        driveWorldGrp.add(bGrp);
-        cityTreadmill.push(bGrp);
-    }
-
-    // 🚶 生成 20 個隨機路人 (簡單低多邊形)
-    for(let i=0; i<20; i++) {
-        const pGrp = new THREE.Group();
-        const shirtColor = new THREE.Color().setHSL(Math.random(), 0.5, 0.5);
-        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 3, 8), new THREE.MeshStandardMaterial({color: shirtColor, roughness: 0.9}));
-        body.position.y = -2.5;
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.7, 8, 8), new THREE.MeshStandardMaterial({color: 0xffccaa, roughness: 0.8}));
-        head.position.y = -0.5;
-        pGrp.add(body, head);
-        
-        pGrp.position.set(-200 + Math.random() * 400, 0, (Math.random() > 0.5 ? 1 : -1) * (22 + Math.random() * 6));
-        pGrp.userData.walkSpeed = (Math.random() * 0.4 + 0.2) * (Math.random() > 0.5 ? 1 : -1);
-        driveWorldGrp.add(pGrp);
-        pedestrians.push(pGrp);
-    }
-
-    // ==========================================
-    // 🌉 大橋模式 (Bridge Treadmill)
-    // ==========================================
-    const pillarMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.7 });
-    const cableMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 });
-    
-    // 生成 6 組巨大的橋塔與懸索
-    for(let i=0; i<6; i++) {
-        const pGrp = new THREE.Group();
-        
-        const pL = new THREE.Mesh(new THREE.BoxGeometry(6, 120, 8), pillarMat); pL.position.set(0, 40, -22); pGrp.add(pL);
-        const pR = new THREE.Mesh(new THREE.BoxGeometry(6, 120, 8), pillarMat); pR.position.set(0, 40, 22); pGrp.add(pR);
-        const cross = new THREE.Mesh(new THREE.BoxGeometry(6, 5, 44), pillarMat); cross.position.set(0, 60, 0); pGrp.add(cross);
-        
-        // 粗懸索
-        const cL = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 180), cableMat);
-        cL.rotation.z = Math.PI / 3; cL.position.set(0, 20, -22); pGrp.add(cL);
-        const cR = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 180), cableMat);
-        cR.rotation.z = Math.PI / 3; cR.position.set(0, 20, 22); pGrp.add(cR);
-
-        pGrp.position.set(-400 + (i * 150), 0, 0);
-        driveWorldGrp.add(pGrp);
-        bridgeTreadmill.push(pGrp);
-    }
-}
-
-
-
-        
 // --- 雙層巴士乘坐系統 ---
 let isRidingBus = false;
 let activeBus = null;
@@ -7003,58 +6837,7 @@ function animateRoom() {
  
     // 只要視線掃到「窗外的虛擬區域」，或是玩家正站在露台上，就判定為正在看窗外
     let isLookingOutside = isAtBalcony || cameraFrustum.intersectsBox(outsideWorldBox);
-
-
-
-// 在 animateRoom() 函數內，找到這行 if (isLookingOutside) { ... } 之前，插入以下代碼：
-
-    // ==========================================
-    // 🚌 巴士行駛無限跑步機邏輯
-    // ==========================================
-    if (isRidingBus && driveWorldGrp) {
-        // 為了營造車子往前開的錯覺，所有的風景都要往 +Z 方向退後
-        
-        if (currentDriveMode === 'city') {
-            // 更新城市大廈
-            cityTreadmill.forEach(bGrp => {
-                bGrp.position.z += rideSpeed;
-                // 如果大廈退到鏡頭後方太遠，就傳送到最前方 (無限輪迴)
-                if (bGrp.position.z > 150) {
-                    bGrp.position.z -= 600;
-                    
-                    // ✨ 隨機重組！讓它看起來像是一棟新的樓
-                    bGrp.scale.y = 0.8 + Math.random() * 0.6;
-                    bGrp.children.forEach(child => {
-                        if(child.userData.isNeon) {
-                            child.material = neonSignMaterials[Math.floor(Math.random() * neonSignMaterials.length)];
-                        }
-                    });
-                }
-            });
-            
-            // 更新路人
-            pedestrians.forEach(pGrp => {
-                // 路人自己會走，加上車速
-                pGrp.position.z += rideSpeed + pGrp.userData.walkSpeed;
-                if (pGrp.position.z > 100) {
-                    pGrp.position.z -= 400;
-                    pGrp.position.x = -200 + Math.random() * 400;
-                }
-            });
-            
-        } else if (currentDriveMode === 'bridge') {
-            // 更新大橋柱子與懸索
-            bridgeTreadmill.forEach(pGrp => {
-                pGrp.position.z += rideSpeed * 1.5; // 橋上感覺開得比較快
-                if (pGrp.position.z > 200) {
-                    pGrp.position.z -= 900;
-                }
-            });
-        }
-    }
-
-
-    
+ 
     // 只有當視線掃到窗外時，才去計算耗費 CPU 的海浪、雲朵、車輛與摩天輪
     if (isLookingOutside) {
         // 1. 車輛邏輯
@@ -7100,13 +6883,7 @@ function animateRoom() {
             });
         }
     }
-
-
-
-
-
-
-    
+ 
     // ==========================================
     // 室內動畫 (永遠計算，因為就在身邊)
     // ==========================================
@@ -9021,11 +8798,6 @@ function rideBus(busHitBox) {
     activeBus = busHitBox.userData.vehicleObj;
     const direction = busHitBox.userData.direction;
 
-    // 決定前往城市還是大橋 (-1: 往摩天輪/城市, 1: 往大橋)
-    currentDriveMode = direction < 0 ? 'city' : 'bridge';
-    rideSpeed = 1.6; // 設定行駛速度
-
-    // 備份陽台視角
     preRideCameraState.pos.copy(camera.position);
     preRideCameraState.target.copy(controls.target);
     preRideCameraState.fov = camera.fov;
@@ -9037,97 +8809,98 @@ function rideBus(busHitBox) {
         window.originalControlsUpdate.call(controls);
     };
 
+    activeBus.children.forEach(child => {
+        if (child.isMesh && child !== busHitBox) {
+            child.userData.wasVisible = child.visible;
+            child.visible = false;
+        }
+    });
+
+    if (!busInteriorGrp) busInteriorGrp = createBusInterior();
+    activeBus.add(busInteriorGrp);
+
+    const camZPos = direction > 0 ? 3.5 : -3.5;
+    busInteriorGrp.position.set(0, 4.2, camZPos);
+    busInteriorGrp.rotation.set(0, direction > 0 ? Math.PI : 0, 0);
+
     controls.enabled = false;
     document.getElementById('btn-return-room').style.display = 'none';
     if(document.getElementById('mobile-cam-knob')) document.getElementById('mobile-cam-knob').style.display = 'none';
 
-    // 💡 閉眼轉場 (黑屏過渡)
-    const fadeScreen = document.createElement('div');
-    fadeScreen.id = 'bus-fade-screen';
-    fadeScreen.style.cssText = 'position:fixed; inset:0; background:#050505; z-index:99999; opacity:0; pointer-events:none;';
-    document.body.appendChild(fadeScreen);
+    const targetWorldPos = new THREE.Vector3(0, 4.2, camZPos).applyMatrix4(activeBus.matrixWorld);
+    gsap.to(camera.position, {
+        x: targetWorldPos.x, y: targetWorldPos.y, z: targetWorldPos.z,
+        duration: 1.2, ease: "power2.inOut"
+    });
+    
+    gsap.to(camera, { fov: 75, duration: 1.2, onUpdate: () => camera.updateProjectionMatrix() });
 
-    gsap.to(fadeScreen, { opacity: 1, duration: 0.8, onComplete: () => {
-        // --- 趁黑屏時偷天換日 ---
-        
-        // 1. 隱藏房間的陽台風景
-        if(typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = false;
-        
-        // 2. 建立並顯示無限跑步機世界
-        buildInfiniteDriveWorld();
-        
-        // 3. 把車廂內裝加入世界
-        if (!busInteriorGrp) busInteriorGrp = createBusInterior();
-        driveWorldGrp.add(busInteriorGrp);
-        busInteriorGrp.position.set(0, 4.2, 0); // 放在跑步機世界的中心
-        
-        // 4. 將相機綁定進車廂
-        busInteriorGrp.add(camera);
-        camera.position.set(0, 0.4, 0);
-        camera.rotation.set(0, 0, 0); // 看向 -Z
-        camera.fov = 75; camera.updateProjectionMatrix();
-
-        // 5. 控制霓虹燈是否發光 (依據目前環境時間)
-        const isNight = currentEnvParams && currentEnvParams.phaseStr === 'night';
-        neonSignMaterials.forEach(mat => {
-            mat.emissiveIntensity = isNight ? 2.0 : 0.0;
-        });
-
-        // --- 睜開眼睛 ---
-        gsap.to(fadeScreen, { opacity: 0, duration: 1.0, onComplete: () => {
-            fadeScreen.remove();
+    const lookAheadWorldPos = new THREE.Vector3(0, 4.2, direction > 0 ? 30 : -30).applyMatrix4(activeBus.matrixWorld);
+    gsap.to(controls.target, {
+        x: lookAheadWorldPos.x, y: lookAheadWorldPos.y, z: lookAheadWorldPos.z,
+        duration: 1.2, ease: "power2.inOut",
+        onComplete: () => {
+            busInteriorGrp.add(camera);
+            camera.position.set(0, 0.4, 0);
+            camera.rotation.set(0, 0, 0);
             
-            // 🚌 啟動微幅車體震動
+            // 🚌 極度輕微的車體震動 (平穩路感)
             busBumpAnim = gsap.to(camera.position, {
-                y: 0.408, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut"
+                y: 0.408, // 只震動 0.008 單位
+                duration: 0.6, // 放慢震動頻率
+                yoyo: true, 
+                repeat: -1, 
+                ease: "sine.inOut"
             });
             
             document.getElementById('btn-getoff-bus').style.display = 'flex';
-            const destName = currentDriveMode === 'city' ? '彌敦道' : '青馬大橋';
-            showToast(`🚌 歡迎搭乘九龍巴士，下一站：${destName}。`);
-        }});
-    }});
+            showToast("🚌 歡迎搭乘九龍巴士，請緊握扶手。");
+        }
+    });
 }
 
 function getOffBus() {
     if (!isRidingBus) return;
     isRidingBus = false;
     document.getElementById('btn-getoff-bus').style.display = 'none';
+
     if (busBumpAnim) { busBumpAnim.kill(); busBumpAnim = null; }
 
-    const fadeScreen = document.createElement('div');
-    fadeScreen.id = 'bus-fade-screen';
-    fadeScreen.style.cssText = 'position:fixed; inset:0; background:#050505; z-index:99999; opacity:0; pointer-events:none;';
-    document.body.appendChild(fadeScreen);
+    const worldPos = new THREE.Vector3();
+    camera.getWorldPosition(worldPos);
+    scene.add(camera);
+    camera.position.copy(worldPos);
 
-    gsap.to(fadeScreen, { opacity: 1, duration: 0.8, onComplete: () => {
-        
-        // --- 趁黑屏時還原現場 ---
-        scene.add(camera);
-        camera.position.copy(preRideCameraState.pos);
-        camera.fov = preRideCameraState.fov; camera.updateProjectionMatrix();
-        controls.target.copy(preRideCameraState.target);
+    if (activeBus) {
+        activeBus.children.forEach(child => {
+            if (child.isMesh && child.userData.wasVisible !== undefined) {
+                child.visible = child.userData.wasVisible;
+            }
+        });
+        if (busInteriorGrp) activeBus.remove(busInteriorGrp);
+    }
+    activeBus = null;
 
-        // 刪除無限世界，釋放記憶體
-        if (driveWorldGrp) {
-            scene.remove(driveWorldGrp);
-            driveWorldGrp = null;
-        }
-        
-        // 恢復陽台風景
-        if(typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = true;
-
-        if (window.originalControlsUpdate) controls.update = window.originalControlsUpdate;
-        
-        gsap.to(fadeScreen, { opacity: 0, duration: 1.0, onComplete: () => {
-            fadeScreen.remove();
+    gsap.to(camera.position, {
+        x: preRideCameraState.pos.x, y: preRideCameraState.pos.y, z: preRideCameraState.pos.z,
+        duration: 1.2, ease: "power2.inOut"
+    });
+    gsap.to(camera, { fov: preRideCameraState.fov, duration: 1.2, onUpdate: () => camera.updateProjectionMatrix() });
+    
+    if (window.originalControlsUpdate) controls.update = window.originalControlsUpdate;
+    
+    gsap.to(controls.target, {
+        x: preRideCameraState.target.x, y: preRideCameraState.target.y, z: preRideCameraState.target.z,
+        duration: 1.2, ease: "power2.inOut",
+        onUpdate: () => controls.update(),
+        onComplete: () => {
             controls.enabled = true;
             document.getElementById('btn-return-room').style.display = 'flex';
             if(window.innerWidth <= 900 && document.getElementById('mobile-cam-knob')) {
                 document.getElementById('mobile-cam-knob').style.display = 'flex';
             }
-        }});
-    }});
+        }
+    });
 }
         
         
