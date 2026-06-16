@@ -2403,25 +2403,71 @@ function renderTasks() {
             if (readingTasks.length === 0 && freeReadingLetters.length === 0) {
                 rGrid.innerHTML = '<div class="empty-state"><p>目前尚未有閱讀任務與自由撰寫紀錄。</p></div>';
             }
-            readingTasks.forEach((dateStr, i) => {
+          readingTasks.forEach((dateStr, i) => {
+                // 1. 判斷是否解鎖
                 const unlocked = new Date().setHours(0,0,0,0) >= new Date(dateStr).setHours(0,0,0,0);
                 const done = submittedReadingDates.includes(dateStr);
+                
+                // 2. 計算 48 小時後的截止日期 (發放日 + 1 天)
+                const dDate = new Date(new Date(dateStr).getTime() + 86400000);
+                const deadlineStr = `${dDate.getFullYear()}-${String(dDate.getMonth()+1).padStart(2,'0')}-${String(dDate.getDate()).padStart(2,'0')}`;
+                
+                // 3. 判斷是否逾期
+                const limitTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
+                const isLate = !done && Date.now() >= limitTime;
                 
                 // 📝 寫入日曆資料
                 addCalTask(dateStr, 'reading', rMap[dateStr]);
 
                 if (unlocked && !done) { hasPendingTasks = true; }
 
-                const el = document.createElement('div'); el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
-                el.innerHTML = `<span class="task-num">第 ${i+1} 回閱讀</span><span class="task-date">${dateStr} 開放</span>`;
+                const el = document.createElement('div'); 
+                el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
+                
+                // 4. 動態生成日期的 UI (包含發放與截止)
+                let dateHtml = '';
+                if (!unlocked) {
+                    // 未解鎖 (灰階顯示開放日)
+                    dateHtml = `<span class="task-date">🔒 ${dateStr} 開放</span>`;
+                } else if (done) {
+                    // 已完成 (顯示發放日即可)
+                    dateHtml = `<span class="task-date">${dateStr} 發放</span>`;
+                } else {
+                    // 解鎖未完成 (突顯截止日期)
+                    if (isLate) {
+                        dateHtml = `
+                            <span class="task-date" style="display:block; margin-bottom:4px;">${dateStr} 發放</span>
+                            <span style="display:inline-block; font-size:0.8rem; background:#fee2e2; color:#ef4444; padding:4px 10px; border-radius:12px; font-weight:bold;">⚠️ 逾期 (限期: ${deadlineStr})</span>
+                        `;
+                    } else {
+                        dateHtml = `
+                            <span class="task-date" style="display:block; margin-bottom:4px;">${dateStr} 發放</span>
+                            <span style="display:inline-block; font-size:0.8rem; background:#f0f5f1; color:#57785e; padding:4px 10px; border-radius:12px; border:1px solid #c3d6c8;">⏳ 截止: ${deadlineStr}</span>
+                        `;
+                    }
+                }
+
+                // 組合卡片內容
+                el.innerHTML = `
+                    <span class="task-num">第 ${i+1} 回閱讀</span>
+                    ${dateHtml}
+                `;
+                
+                // 點擊事件
                 el.onclick = () => {
-                    if(done) openChatModal(rMap[dateStr].id);
-                    else if(unlocked) {
+                    if(done) {
+                        openChatModal(rMap[dateStr].id);
+                    } else if(unlocked) {
                         if(hasUnrepliedLetters) return alert("您有尚未回覆的信件，請先回覆。");
-                        selectedTaskIndex = i; selectedTaskDate = dateStr;
-                        rGrid.style.display = 'none'; document.getElementById('write-editor').style.display = 'block';
-                    } else alert("時空未到，尚未開放。");
-                }; rGrid.appendChild(el);
+                        selectedTaskIndex = i; 
+                        selectedTaskDate = dateStr;
+                        rGrid.style.display = 'none'; 
+                        document.getElementById('write-editor').style.display = 'block';
+                    } else {
+                        alert("時空未到，尚未開放。");
+                    }
+                }; 
+                rGrid.appendChild(el);
             });
 
 // --- 渲染「自由撰寫」的紀錄卡片 ---
