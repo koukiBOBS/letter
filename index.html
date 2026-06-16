@@ -7125,41 +7125,42 @@ window.toggleReadingLog = function() {
         });
 
         // 3.1 八角珊瑚紅金屬底座 (分段設為32使表面極致平滑)
+     // 3.1 八角珊瑚紅金屬底座 (分段設為32使表面極致平滑)
         const baseGeo = new THREE.CylinderGeometry(4.2, 4.2, 7, 32);
         const mBase = new THREE.Mesh(baseGeo, morandiCoralMat);
-        mBase.position.y = 3.5; 
-        mBase.castShadow = true; 
+        mBase.position.y = 3.5;
+        mBase.castShadow = true;
         mBase.receiveShadow = true;
         gachaMachineGrp.add(mBase);
-
-        // 3.2 裝飾金邊（半徑設為 4.26，精準外擴 0.06 杜絕同面閃爍 Z-fighting）
-        const baseBottomTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.26, 4.26, 0.3, 32), champagneGoldMat);
+ 
+        // 3.2 裝飾金邊（✅ 修正閃爍：改為 openEnded = true，挖空上下底面，杜絕 Z-fighting）
+        const baseBottomTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.26, 4.26, 0.3, 32, 1, true), champagneGoldMat);
         baseBottomTrim.position.y = 0.15;
         gachaMachineGrp.add(baseBottomTrim);
-
-        const baseTopTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.26, 4.26, 0.3, 32), champagneGoldMat);
+ 
+        const baseTopTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.26, 4.26, 0.3, 32, 1, true), champagneGoldMat);
         baseTopTrim.position.y = 6.85;
         gachaMachineGrp.add(baseTopTrim);
-
+ 
         // 3.3 水平金屬操作台 (平台往外延伸)
         const ledge = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.3, 1.8), champagneGoldMat);
         ledge.position.set(0, 5.0, 3.8);
         gachaMachineGrp.add(ledge);
-
-        // 3.4 投幣孔面板
+ 
+        // 3.4 投幣孔面板 (✅ Z軸外移至 4.25，避免與圓柱體邊緣衝突閃爍)
         const coinPanel = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.2, 0.2), deepIronMat);
-        coinPanel.position.set(0, 3.0, 4.21);
+        coinPanel.position.set(0, 3.0, 4.25);
         gachaMachineGrp.add(coinPanel);
-
+ 
         // 3.5 🔑 蝴蝶鑰匙（平鋪於操作台、實現真實水平面 Y 軸旋動）
         const knobGrp = new THREE.Group();
-        knobGrp.position.set(0, 5.15, 3.8); 
+        knobGrp.position.set(0, 5.15, 3.8);
         knobGrp.name = "gachaKnob";
         
         const knobPin = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.5, 16), polishedSilverMat);
         knobPin.position.y = 0.25;
         knobGrp.add(knobPin);
-
+ 
         const knobWingL = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.1, 0.35), polishedSilverMat);
         knobWingL.position.set(0.4, 0.4, 0);
         const knobWingR = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.1, 0.35), polishedSilverMat);
@@ -7169,105 +7170,96 @@ window.toggleReadingLog = function() {
         knobCap.position.y = 0.45;
         knobGrp.add(knobWingL, knobWingR, knobCap);
         gachaMachineGrp.add(knobGrp);
-
+ 
         // 3.6 投幣槽
         const slot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 0.15), new THREE.MeshBasicMaterial({color: 0x000000}));
-        slot.position.set(0, 3.5, 4.32);
+        slot.position.set(0, 3.5, 4.36);
         gachaMachineGrp.add(slot);
-
-        // 3.7 🕳️ 單一寬敞的托盤式出口 (空間充足，完美防穿模閃爍)
-        chuteGrp = new THREE.Group(); // 🛠️ 指向共享變量，而非重新 const 聲明
-        chuteGrp.position.set(0, 0.4, 3.8); 
+ 
+        // 3.7 🕳️ 精緻實體托盤與深邃出口 (✅ 修正為符合物理的接球碗)
+        chuteGrp = new THREE.Group();
+        chuteGrp.position.set(0, 0.8, 4.0);
         gachaMachineGrp.add(chuteGrp);
-
-        const backWall = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.6, 0.2), new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.9}));
-        backWall.position.set(0, 0.8, -0.1);
-        chuteGrp.add(backWall);
-
-        // 托盤勺體 (Lie Flat)
-        const trayGeo = new THREE.CylinderGeometry(1.2, 1.0, 1.2, 16, 1, true, 0, Math.PI);
+ 
+        // 洞口周圍的銀色金屬外框與深邃背景
+        const holeFrame = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.4, 0.1), polishedSilverMat);
+        holeFrame.position.set(0, 0.8, -0.05);
+        const holeCutout = new THREE.Mesh(new THREE.BoxGeometry(2.0, 2.0, 0.15), new THREE.MeshBasicMaterial({color: 0x050505}));
+        holeCutout.position.set(0, 0.8, -0.02);
+        chuteGrp.add(holeFrame);
+        chuteGrp.add(holeCutout);
+ 
+        // 半球碗型實心托盤 (完美防穿模接球)
+        const trayGeo = new THREE.SphereGeometry(1.4, 32, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
         const trayMesh = new THREE.Mesh(trayGeo, polishedSilverMat);
-        trayMesh.rotation.x = Math.PI / 2; 
-        trayMesh.rotation.z = Math.PI; 
-        trayMesh.position.set(0, 0.4, 0.5);
+        trayMesh.scale.set(1, 0.4, 1.1); // 壓扁並往前拉長形成接球槽
+        trayMesh.position.set(0, -0.2, 0.8);
         trayMesh.castShadow = true;
         trayMesh.receiveShadow = true;
-        chuteGrp.add(trayMesh);
-
-        // 托盤邊緣金色包邊
-        const rimGeo = new THREE.TorusGeometry(1.15, 0.12, 8, 24, Math.PI);
+        
+        // 托盤邊緣的金色防掉落包邊
+        const rimGeo = new THREE.TorusGeometry(1.4, 0.08, 16, 32);
         const rimMesh = new THREE.Mesh(rimGeo, champagneGoldMat);
-        rimMesh.position.set(0, 0.4, 1.1);
-        rimMesh.rotation.z = Math.PI;
+        rimMesh.rotation.x = Math.PI / 2;
+        rimMesh.scale.set(1, 1.1, 1);
+        rimMesh.position.set(0, -0.2, 0.8);
+        
+        chuteGrp.add(trayMesh);
         chuteGrp.add(rimMesh);
-
+ 
         // 3.8 玻璃圓頂罩 (內縮至 4.1 杜絕縫隙重合)
         const dome = new THREE.Mesh(new THREE.SphereGeometry(4.1, 32, 32, 0, Math.PI*2, 0, Math.PI/2), crystalGlassMat);
         dome.position.y = 7;
         gachaMachineGrp.add(dome);
-
+ 
         // 3.9 頂蓋飾圈
-        const topCapTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.15, 4.15, 0.3, 32), champagneGoldMat);
+        const topCapTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.15, 4.15, 0.3, 32, 1, true), champagneGoldMat);
         topCapTrim.position.y = 11.1;
         gachaMachineGrp.add(topCapTrim);
-
+ 
         const topCap = new THREE.Mesh(new THREE.SphereGeometry(4.05, 16, 16, 0, Math.PI*2, 0, Math.PI/2), morandiCoralMat);
-        topCap.position.y = 11.2; 
+        topCap.position.y = 11.2;
         topCap.castShadow = true;
         gachaMachineGrp.add(topCap);
-
+ 
         const pinnacle = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), champagneGoldMat);
         pinnacle.position.y = 15.4;
         gachaMachineGrp.add(pinnacle);
-
-        // 3.10 莫蘭迪低飽和雙色扭蛋球 (晶瑩剔透)
+ 
+        // 3.10 莫蘭迪低飽和雙色扭蛋球 (✅ 數量大幅提升至 80)
         const morandiColors = [0xbc8a8f, 0x8fa397, 0xa39284, 0x8aa3b0, 0xb8a38f, 0xc59e8f];
         const halfSphereGeoTop = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, 0, Math.PI/2);
         const halfSphereGeoBot = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, Math.PI/2, Math.PI/2);
         
         const frostedGlassMat = new THREE.MeshPhysicalMaterial({
-            color: 0xffffff,
-            transmission: 0.94,
-            roughness: 0.18,
-            transparent: true,
-            thickness: 0.04
+            color: 0xffffff, transmission: 0.94, roughness: 0.18, transparent: true, thickness: 0.04
         });
-
-        for(let i=0; i<35; i++) {
+ 
+        for(let i=0; i<80; i++) { // 數量從 35 提升至 80
             const capGrp = new THREE.Group();
             const col = morandiColors[Math.floor(Math.random() * morandiColors.length)];
-            const solidMat = new THREE.MeshStandardMaterial({
-                color: col,
-                roughness: 0.25,
-                metalness: 0.1
-            });
+            const solidMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.25, metalness: 0.1 });
             
             const topHalf = new THREE.Mesh(halfSphereGeoTop, frostedGlassMat);
             const botHalf = new THREE.Mesh(halfSphereGeoBot, solidMat);
-            
             const seam = new THREE.Mesh(new THREE.TorusGeometry(0.65, 0.015, 8, 24), champagneGoldMat);
             seam.rotation.x = Math.PI/2;
             
-            // 內置絲帶古雅卷軸
             const scrollGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.7, 8);
             const scrollMat = new THREE.MeshStandardMaterial({color: 0xfefcf7, roughness: 0.95});
             const scroll = new THREE.Mesh(scrollGeo, scrollMat);
-            scroll.position.y = 0.08;
-            scroll.rotation.z = Math.PI / 4;
-            scroll.rotation.x = Math.PI / 6;
+            scroll.position.y = 0.08; scroll.rotation.set(Math.PI / 6, 0, Math.PI / 4);
             
-            const ribbonGeo = new THREE.CylinderGeometry(0.11, 0.13, 0.08, 8);
-            const ribbon = new THREE.Mesh(ribbonGeo, champagneGoldMat);
-            ribbon.position.y = 0.08;
-            ribbon.rotation.copy(scroll.rotation);
+            const ribbon = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 0.08, 8), champagneGoldMat);
+            ribbon.position.y = 0.08; ribbon.rotation.copy(scroll.rotation);
             
             capGrp.add(topHalf, botHalf, seam, scroll, ribbon);
-
-            const radius = Math.random() * 2.4;
+ 
+            const radius = Math.random() * 3.2; // 避免撞玻璃罩
             const angle = Math.random() * Math.PI * 2;
             capGrp.position.set(
-                Math.cos(angle) * radius, 
-                7.4 + Math.random() * 3.0, 
+                Math.cos(angle) * radius,
+                7.5 + Math.random() * 2.8, // 均勻散佈於罩子內
                 Math.sin(angle) * radius
             );
             capGrp.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
@@ -7440,8 +7432,8 @@ window.toggleReadingLog = function() {
             
             dropTimeline.to(dropCap.position, {
                 x: 0,
-                y: 0.55,
-                z: 4.4,
+                y: 0.9,     // 物理精準落點：剛好落在托盤凹槽底部
+                z: 4.8,     // 物理精準落點：滾到托盤中央
                 duration: 1.1,
                 ease: "bounce.out"
             })
