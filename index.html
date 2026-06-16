@@ -4858,6 +4858,8 @@ function getValidIntersects() {
 
         
 function onPointerDown(e) {
+    // 👇 新增這行：如果點擊的不是 3D 畫布 (例如點到按鈕或視窗)，直接忽略！
+    if (e.target.tagName !== 'CANVAS') return;
     if(document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
     pointerDownPos.x = e.clientX; pointerDownPos.y = e.clientY;
 
@@ -5430,6 +5432,8 @@ const intersects = getValidIntersects();
 }
 
 function onPointerUp(e) {
+    // 👇 新增這行：防穿透保護
+    if (e.target.tagName !== 'CANVAS') return;
     if(dragTimer) { 
         clearTimeout(dragTimer); 
         dragTimer = null; 
@@ -7176,36 +7180,58 @@ window.toggleReadingLog = function() {
         slot.position.set(0, 3.5, 4.36);
         gachaMachineGrp.add(slot);
  
-        // 3.7 🕳️ 精緻實體托盤與深邃出口 (✅ 修正為符合物理的接球碗)
+      // 3.7 🕳️ 出口洞穴與實心接球兜 (托盤)
         chuteGrp = new THREE.Group();
-        chuteGrp.position.set(0, 0.8, 4.0);
+        chuteGrp.position.set(0, 0, 4.0); // 貼齊機身表面
         gachaMachineGrp.add(chuteGrp);
  
-        // 洞口周圍的銀色金屬外框與深邃背景
-        const holeFrame = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.4, 0.1), polishedSilverMat);
-        holeFrame.position.set(0, 0.8, -0.05);
-        const holeCutout = new THREE.Mesh(new THREE.BoxGeometry(2.0, 2.0, 0.15), new THREE.MeshBasicMaterial({color: 0x050505}));
-        holeCutout.position.set(0, 0.8, -0.02);
-        chuteGrp.add(holeFrame);
-        chuteGrp.add(holeCutout);
+        // A. 打造深邃的內部出口洞穴
+        const holeInner = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 1.5), new THREE.MeshBasicMaterial({color: 0x050505}));
+        holeInner.position.set(0, 1.8, -0.4); // 往機器內部推
+        chuteGrp.add(holeInner);
  
-        // 半球碗型實心托盤 (完美防穿模接球)
-        const trayGeo = new THREE.SphereGeometry(1.4, 32, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
-        const trayMesh = new THREE.Mesh(trayGeo, polishedSilverMat);
-        trayMesh.scale.set(1, 0.4, 1.1); // 壓扁並往前拉長形成接球槽
-        trayMesh.position.set(0, -0.2, 0.8);
-        trayMesh.castShadow = true;
-        trayMesh.receiveShadow = true;
+        // B. 出口的銀色金屬邊框與擋板
+        const frameMat = new THREE.MeshStandardMaterial({color: 0xe1e8eb, metalness: 0.9, roughness: 0.3});
+        const fTop = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 0.4), frameMat); fTop.position.set(0, 2.65, 0);
+        const fBot = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 0.4), frameMat); fBot.position.set(0, 0.95, 0);
+        const fL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 0.4), frameMat); fL.position.set(-0.85, 1.8, 0);
+        const fR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 0.4), frameMat); fR.position.set(0.85, 1.8, 0);
         
-        // 托盤邊緣的金色防掉落包邊
-        const rimGeo = new THREE.TorusGeometry(1.4, 0.08, 16, 32);
-        const rimMesh = new THREE.Mesh(rimGeo, champagneGoldMat);
-        rimMesh.rotation.x = Math.PI / 2;
-        rimMesh.scale.set(1, 1.1, 1);
-        rimMesh.position.set(0, -0.2, 0.8);
+        // 黑色的活動擋板 (微微掀開)
+        const flap = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.4, 0.05), deepIronMat);
+        flap.position.set(0, 1.9, 0.1);
+        flap.rotation.x = -0.2; // 微微往外掀開
+        chuteGrp.add(fTop, fBot, fL, fR, flap);
+ 
+        // C. 打造有厚度、不透明的實體接球兜 (半圓柱體)
+        const trayMat = new THREE.MeshStandardMaterial({
+            color: 0xda604f, // 配合機身底座的珊瑚紅
+            metalness: 0.15,
+            roughness: 0.4,
+            side: THREE.DoubleSide // 👈 關鍵：雙面渲染讓它不再透明，產生實體厚度感
+        });
         
-        chuteGrp.add(trayMesh);
-        chuteGrp.add(rimMesh);
+        // 兜的本體 (半圓柱橫放)
+        const scoopGeo = new THREE.CylinderGeometry(1.2, 1.2, 2.2, 32, 1, false, 0, Math.PI);
+        const scoop = new THREE.Mesh(scoopGeo, trayMat);
+        scoop.rotation.z = Math.PI / 2;
+        scoop.rotation.x = Math.PI / 2;
+        scoop.position.set(0, 0.8, 1.2); // 放在洞口正下方延伸出
+        
+        // 兜的左右兩側封口
+        const capGeo = new THREE.CircleGeometry(1.2, 32, 0, Math.PI);
+        const capL = new THREE.Mesh(capGeo, trayMat);
+        capL.position.set(-1.1, 0.8, 1.2); capL.rotation.set(Math.PI/2, -Math.PI/2, 0);
+        const capR = new THREE.Mesh(capGeo, trayMat);
+        capR.position.set(1.1, 0.8, 1.2); capR.rotation.set(Math.PI/2, Math.PI/2, 0);
+        
+        // 兜的金色邊緣防護圈
+        const rimGeo = new THREE.CylinderGeometry(1.25, 1.25, 2.3, 32, 1, true, 0, Math.PI);
+        const rim = new THREE.Mesh(rimGeo, champagneGoldMat);
+        rim.rotation.set(Math.PI/2, 0, Math.PI/2);
+        rim.position.set(0, 0.8, 1.2);
+ 
+        chuteGrp.add(scoop, capL, capR, rim);
  
         // 3.8 玻璃圓頂罩 (內縮至 4.1 杜絕縫隙重合)
         const dome = new THREE.Mesh(new THREE.SphereGeometry(4.1, 32, 32, 0, Math.PI*2, 0, Math.PI/2), crystalGlassMat);
@@ -7282,14 +7308,16 @@ window.toggleReadingLog = function() {
     }
 
     // 4. 水平鑰匙鍵扭轉與特寫歸位運鏡交互
-    function initLocalInteraction() {
+   function initLocalInteraction() {
         let localMouseDown = { x: 0, y: 0 };
         window.addEventListener('pointerdown', (e) => {
+            if (e.target.tagName !== 'CANVAS') return; // 👈 新增這行防穿透
             localMouseDown.x = e.clientX;
             localMouseDown.y = e.clientY;
         });
-
+ 
         window.addEventListener('pointerup', (e) => {
+            if (e.target.tagName !== 'CANVAS') return; // 👈 新增這行防穿透
             if (isGachaPlaying || isRoomPaused()) return;
             if (Math.abs(e.clientX - localMouseDown.x) > 10 || Math.abs(e.clientY - localMouseDown.y) > 10) return;
             
@@ -7421,42 +7449,43 @@ window.toggleReadingLog = function() {
                 });
             });
         }, null, "+=0.1")
-        // 5.4 扭蛋滾下至寬敞大托盤
+      // 5.4 扭蛋從洞穴深處滾下至托盤
         .call(() => {
             const dropCap = capsulePool[Math.floor(Math.random() * capsulePool.length)].clone();
-            dropCap.position.set(0, 7.0, 0);
+            // 📍 起點：深邃洞口內部
+            dropCap.position.set(0, 1.8, 3.4);
             gachaMachineGrp.add(dropCap);
-
-            // 滾落大托盤曲線
+ 
+            // 滾落拋物線
             const dropTimeline = gsap.timeline();
             
             dropTimeline.to(dropCap.position, {
                 x: 0,
-                y: 0.9,     // 物理精準落點：剛好落在托盤凹槽底部
-                z: 4.8,     // 物理精準落點：滾到托盤中央
-                duration: 1.1,
+                y: 0.6,    // 📍 終點高度：剛好落在兜的底部
+                z: 5.2,    // 📍 終點深度：兜的中心點
+                duration: 1.0,
                 ease: "bounce.out"
             })
             .to(dropCap.rotation, {
                 x: Math.random() * 4,
                 y: Math.random() * 4,
-                duration: 1.1
+                duration: 1.0
             }, "<");
-
-            // 🛠️ 安全調用 chuteGrp 進行小震動
+ 
+            // 托盤微微震動反饋
             if (chuteGrp) {
                 dropTimeline.to(chuteGrp.position, {
-                    y: 0.3,
+                    y: -0.05,
                     duration: 0.1,
                     yoyo: true,
                     repeat: 1
-                }, "-=0.3")
+                }, "-=0.2")
                 .to(chuteGrp.position, {
-                    y: 0.4,
+                    y: 0,
                     duration: 0.15
                 });
             }
-
+ 
             // 扭蛋化光消失並彈出詩歌卡片
             dropTimeline.to(dropCap.scale, {
                 x: 0, y: 0, z: 0,
