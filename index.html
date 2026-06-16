@@ -1147,6 +1147,70 @@
 .btn-cancel:hover {
     background: rgba(139, 115, 85, 0.05) !important;
 }
+
+
+
+
+
+        /* =====================================================================
+* 🔖 隨信附上語錄卡片功能樣式
+* ===================================================================== */
+ 
+/* 信件內文顯示的語錄卡片 */
+.letter-attached-quote {
+    background-color: #fcfbf8;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
+    border: 1px solid #dcd5c9;
+    border-left: 4px solid #d4af37;
+    padding: 25px 30px;
+    margin: 30px 0;
+    border-radius: 4px;
+    position: relative;
+    box-shadow: 0 8px 20px rgba(139, 115, 85, 0.06);
+    transition: transform 0.3s;
+}
+.letter-attached-quote:hover { transform: translateY(-2px); }
+.letter-attached-quote .quote-mark { position: absolute; top: 10px; left: 15px; font-size: 3rem; color: rgba(212, 175, 55, 0.15); font-family: Georgia, serif; line-height: 1; }
+.letter-attached-quote .quote-text { font-family: var(--font-serif); font-size: 1.15rem; color: #4a4238; line-height: 1.8; letter-spacing: 1.5px; position: relative; z-index: 2; margin-bottom: 15px; text-align: justify; }
+.letter-attached-quote .quote-author { font-family: var(--font-sans); font-size: 0.9rem; color: #8b7355; text-align: right; font-weight: 500; }
+ 
+/* 編輯器中的預覽框 */
+.quote-preview-box {
+    background: #fdfaf6;
+    border: 1px dashed #c4b8aa;
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+.quote-preview-box .text { font-family: var(--font-serif); color: #5a5042; font-size: 1rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.quote-preview-box .btn-remove { background: #fee2e2; color: #ef4444; border: none; padding: 5px 10px; border-radius: 20px; cursor: pointer; font-size: 0.85rem; flex-shrink: 0; }
+ 
+/* 挑選語錄的彈窗 */
+#modal-quote-selector {
+    position: fixed; inset: 0; background: rgba(20, 18, 16, 0.85); backdrop-filter: blur(8px);
+    z-index: 65000; display: none; align-items: center; justify-content: center;
+}
+.quote-selector-content {
+    background: #fcfbf8; width: 90%; max-width: 800px; max-height: 85vh; border-radius: 12px;
+    padding: 40px; position: relative; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.quote-selector-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; margin-top: 20px; }
+.quote-selector-item {
+    background: #fff; border: 1px solid #dcd5c9; padding: 20px; border-radius: 8px; cursor: pointer;
+    transition: all 0.2s; position: relative;
+}
+.quote-selector-item:hover { border-color: #d4af37; transform: translateY(-3px); box-shadow: 0 8px 20px rgba(212, 175, 55, 0.15); }
+.quote-selector-item.selected { border-color: #d4af37; background: #fffcf5; box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.3); }
+ 
+@media (max-width: 768px) {
+    .letter-attached-quote { padding: 20px 20px 20px 30px; }
+    .quote-selector-content { padding: 25px 20px; }
+    .quote-selector-grid { grid-template-columns: 1fr; }
+}
         
     </style>
 </head>
@@ -1401,6 +1465,19 @@
                     </div>
                     <div class="field-group"><label class="field-label">思考問題</label><textarea id="log-question" class="textarea handwrite-only" style="min-height:100px;" readonly placeholder="點此喚出全螢幕書寫板..."></textarea></div>
                     <div class="field-group"><label class="field-label">閱讀感悟</label><textarea id="log-content" class="textarea handwrite-only" style="min-height:220px;" readonly placeholder="點此喚出全螢幕書寫板...（最少 150 字）"></textarea></div>
+                  
+                    
+                    <!-- 👇 新增這段：附上語錄的按鈕與預覽 (寫心得用) -->
+<div class="field-group">
+    <label class="field-label" style="color: #d4af37;">🔖 隨信附上語錄卡片 (選填)</label>
+    <div id="log-quote-preview" class="quote-preview-box" style="display:none;">
+        <div class="text" id="log-quote-text"></div>
+        <button class="btn-remove" onclick="removeAttachedQuote()">移除</button>
+    </div>
+    <button id="btn-add-log-quote" class="btn" style="background:transparent; color:#8b7355; border-color:#dcd5c9; padding: 10px 20px; width: auto;" onclick="openQuoteAttachmentSelector('log')">➕ 挑選語錄</button>
+</div>
+                    
+                    
                     <div class="field-group upload-container">
                         <label class="field-label" style="margin-bottom: 0;">書頁留影</label>
                         <label class="upload-btn">點擊選擇圖片 <input type="file" id="book-image" accept="image/*" style="display:none;" onchange="handleFileSelect(event, 'reading')"></label>
@@ -1597,6 +1674,25 @@
             </div>
         </div>
     </div>
+
+
+
+
+<!-- 挑選語錄卡片彈窗 -->
+<div id="modal-quote-selector">
+    <div class="quote-selector-content">
+        <button class="room-modal-close" style="top: 15px; right: 20px; color: #a48c76;" onclick="closeQuoteAttachmentSelector()">×</button>
+        <h2 style="font-family: var(--font-serif); color: #4a4238; text-align: center; margin-bottom: 10px;">挑選語錄卡片</h2>
+        <p style="text-align: center; color: #8c7a6b; margin-bottom: 30px; font-size: 0.95rem;">將您收集的文學碎片化作書籤，隨信寄出。<br>(對方可見此卡片，但不會被加入對方的收集冊中)</p>
+        <div id="quote-selector-empty" style="display:none; text-align:center; padding: 40px; color: #a48c76;">您尚未在扭蛋機抽到任何語錄。</div>
+        <div class="quote-selector-grid" id="quote-selector-grid"></div>
+    </div>
+</div>
+
+
+
+
+    
 
     <script>
 
@@ -2520,19 +2616,28 @@ window.openFreeReadingEditor = function() {
                             .replace(/【探索任務】/g, '<span class="letter-section-divider">探索任務</span>')
                             .replace(/【備註與感悟】/g, '<span class="letter-section-divider">備註與感悟</span>');
                         
-                        let imgTag = m.imageUrl ? `<a href="${m.imageUrl}" target="_blank" class="letter-img-wrap"><img src="${m.imageUrl}" class="letter-img" loading="lazy"></a>` : '';
-                        
-                        let sheetClass = isMe ? 'my-letter' : (l.type === 'random' ? 'partner-random' : 'partner-reading');
-                        let headerLabel = isMe ? '✍️ 我的手札' : (l.type === 'random' ? '📸 筆友的探索' : '📬 筆友的心得');
-
-                        contentHTML += `<div class="letter-sheet ${sheetClass}">
-                            <div class="letter-header-meta">
-                                <span>${headerLabel}</span>
-                                <span>${tStr}</span>
-                            </div>
-                            <div class="letter-text">${formattedText}</div>
-                            ${imgTag}
-                        </div>`;
+                      let attachedQuoteHtml = '';
+if (m.attachedQuoteId && LIT_QUOTES[m.attachedQuoteId]) {
+    const q = LIT_QUOTES[m.attachedQuoteId];
+    attachedQuoteHtml = `
+        <div class="letter-attached-quote">
+            <div class="quote-mark">❝</div>
+            <div class="quote-text">${q.text}</div>
+            <div class="quote-author">— ${q.author}《${q.book}》</div>
+        </div>
+    `;
+}
+ 
+// 然後將底下的 contentHTML += 改成這樣（插入 ${attachedQuoteHtml}）：
+contentHTML += `<div class="letter-sheet ${sheetClass}">
+    <div class="letter-header-meta">
+        <span>${headerLabel}</span>
+        <span>${tStr}</span>
+    </div>
+    <div class="letter-text">${formattedText}</div>
+    ${attachedQuoteHtml}
+    ${imgTag}
+</div>`;
                     });
 
                     if (canReply) {
@@ -2541,15 +2646,24 @@ window.openFreeReadingEditor = function() {
                         let roAttr = isTeacher ? '' : 'readonly';
                         let placeholderText = isTeacher ? '請輸入您的回音...（最少 100 字）' : '點此喚出全螢幕書寫板，一筆一劃寫下您的回音...（最少 100 字）';
 
-                        contentHTML += `<div class="letter-sheet reply-sheet my-letter">
-                            <div class="letter-header-meta">
-                                <span>✍️ 提筆回信</span><span>紙短情長</span>
-                            </div>
-                            <textarea id="reply-text" class="textarea ${hwClass}" ${roAttr} placeholder="${placeholderText}"></textarea>
-                            <div style="text-align: center;">
-                                <button class="btn" style="margin: 20px auto 0; padding: 12px 40px; background: var(--color-replies);" id="btn-send-reply">寄出回信</button>
-                            </div>
-                        </div>`;
+                       contentHTML += `<div class="letter-sheet reply-sheet my-letter">
+    <div class="letter-header-meta">
+        <span>✍️ 提筆回信</span><span>紙短情長</span>
+    </div>
+    <textarea id="reply-text" class="textarea ${hwClass}" ${roAttr} placeholder="${placeholderText}"></textarea>
+    
+    <div id="reply-quote-area" style="margin-top: 25px;">
+        <div id="reply-quote-preview" class="quote-preview-box" style="display:none; background: #fff;">
+            <div class="text" id="reply-quote-text"></div>
+            <button class="btn-remove" onclick="removeAttachedQuote()">移除</button>
+        </div>
+        <button id="btn-add-reply-quote" class="btn" style="background:transparent; color:#d4af37; border-color:#d4af37; padding: 8px 18px; font-size: 0.95rem; width: auto;" onclick="openQuoteAttachmentSelector('reply')">🔖 附上語錄小卡</button>
+    </div>
+ 
+    <div style="text-align: center; border-top: 1px dashed rgba(160, 140, 120, 0.3); margin-top: 30px; padding-top: 30px;">
+        <button class="btn" style="padding: 12px 40px; background: var(--color-replies);" id="btn-send-reply">寄出回信</button>
+    </div>
+</div>`;
                     }
                     
                     // 將生成的 HTML 塞入畫面
@@ -2589,7 +2703,7 @@ window.openFreeReadingEditor = function() {
                                 btnSend.disabled = true; 
                                 btnSend.innerText = "封裝寄出中...";
                                 
-                                playAnim('reply', id, partnerUid, txt);
+                             playAnim('reply', id, partnerUid, { text: txt, quoteId: currentAttachedQuoteId });
                                 
                                 // 送出後清除這封信的回信草稿
                                 sessionStorage.removeItem('draft_reply_' + id);
@@ -2669,7 +2783,10 @@ else processReply(letterId, partnerUid, ObjectData);
                     db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: ts });
                     if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
                     else db.ref(`unassigned_letters/${ref.key}`).set({ senderUid: currentUser.uid });
-                  db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
+              db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, attachedQuoteId: data.quoteId || null, timestamp: ts }).then(() => {
+ 
+// 並在底下的重置區塊加上清除語錄狀態：
+removeAttachedQuote();
                         isSubmittingLog = false; 
                         
                         // 【新增】成功寄出後，清除這四個欄位的 SessionStorage 暫存
@@ -2761,26 +2878,33 @@ function processRandomTask(data) {
 
         
 
-       function processReply(id, pUid, text) {
-            const ts = firebase.database.ServerValue.TIMESTAMP;
-            
-            // 👇 修改：先去資料庫檢查這封信是否為「首次回覆」
-            db.ref(`user_threads/${currentUser.uid}/${id}/hasReplied`).once('value').then(snap => {
-                const isFirstReply = !snap.val(); // 如果原本是 false 或是 null，代表是第一次回覆
+      function processReply(id, pUid, ObjectData) {
+    const ts = firebase.database.ServerValue.TIMESTAMP;
+    
+    db.ref(`user_threads/${currentUser.uid}/${id}/hasReplied`).once('value').then(snap => {
+        const isFirstReply = !snap.val();
+        
+        // 👇 寫入 text 與 attachedQuoteId
+        db.ref(`conversations/${id}`).push({
+            senderUid: currentUser.uid,
+            text: ObjectData.text,
+            attachedQuoteId: ObjectData.quoteId || null,
+            timestamp: ts
+        }).then(() => {
+            if (pUid) db.ref(`user_threads/${pUid}/${id}`).update({ hasUnread: true, lastUpdated: ts, hasBeenRepliedTo: true });
+            db.ref(`user_threads/${currentUser.uid}/${id}`).update({ hasUnread: false, hasReplied: true, lastUpdated: ts }).then(() => {
+                isSubmittingReply = false;
+                removeAttachedQuote(); // 寄出後清除語錄狀態
+                closeChatModal();
+                showToast("回信已成功寄出！");
                 
-                db.ref(`conversations/${id}`).push({ senderUid: currentUser.uid, text, timestamp: ts }).then(() => {
-                    if (pUid) db.ref(`user_threads/${pUid}/${id}`).update({ hasUnread: true, lastUpdated: ts, hasBeenRepliedTo: true });
-                    db.ref(`user_threads/${currentUser.uid}/${id}`).update({ hasUnread: false, hasReplied: true, lastUpdated: ts }).then(() => { 
-                        isSubmittingReply = false; closeChatModal(); showToast("回信已成功寄出！");
-                        
-                        // 👇👇👇 加上這段：如果是首次回覆，給予 1000 積分並觸發抽獎動畫
-                        if (isFirstReply) {
-                            addPointsAndGacha(1000, true);
-                        }
-                    });
-                });
+                if (isFirstReply) {
+                    addPointsAndGacha(1000, true);
+                }
             });
-        }
+        });
+    });
+}
 
    
 
@@ -2795,7 +2919,7 @@ function processRandomTask(data) {
                 const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ fileName: selectedFileName, mimeType: 'image/jpeg', base64: selectedFileBase64 }) });
                 const responseText = await response.text(); let result = JSON.parse(responseText); if (!result.success) throw new Error(result.error || "上傳未成功");
                 const combinedText = `【目前進度】\n第 ${page} 頁\n\n【思考問題】\n${question}\n\n【閱讀心得】\n${text}`;
-                playAnim('log', null, null, { title: title, text: combinedText, imageUrl: result.url });
+               playAnim('log', null, null, { title: title, text: combinedText, imageUrl: result.url, quoteId: currentAttachedQuoteId });
             } catch (error) { alert("圖片上傳發生異常：" + error.message); isSubmittingLog = false; btn.innerText = "封裝寄出心得"; btn.disabled = false; }
         }
 
@@ -7773,6 +7897,88 @@ function startGachaDrawProcess() {
         };
     }
 })();
+
+
+
+
+
+// =====================================================================
+// 🔖 隨信附上語錄系統
+// =====================================================================
+let currentAttachedQuoteId = null; // 記錄當前選中的語錄 ID
+let quoteAttachmentContext = 'log'; // 'log' 或 'reply'，記錄是哪裡呼叫的
+ 
+// 開啟挑選視窗
+window.openQuoteAttachmentSelector = function(context) {
+    quoteAttachmentContext = context;
+    const grid = document.getElementById('quote-selector-grid');
+    const emptyMsg = document.getElementById('quote-selector-empty');
+    grid.innerHTML = '';
+    
+    // 過濾出玩家已擁有的語錄
+    const ownedIds = Object.keys(window.userQuotes || {});
+    
+    if (ownedIds.length === 0) {
+        grid.style.display = 'none';
+        emptyMsg.style.display = 'block';
+    } else {
+        grid.style.display = 'grid';
+        emptyMsg.style.display = 'none';
+        
+        ownedIds.forEach(id => {
+            if (LIT_QUOTES[id]) {
+                const q = LIT_QUOTES[id];
+                const item = document.createElement('div');
+                item.className = `quote-selector-item ${currentAttachedQuoteId === id ? 'selected' : ''}`;
+                item.innerHTML = `
+                    <div style="font-family: var(--font-serif); font-size: 1.05rem; color: #4a4238; line-height: 1.6; margin-bottom: 10px;">「${q.text}」</div>
+                    <div style="font-size: 0.85rem; color: #8b7355; text-align: right;">— ${q.author}</div>
+                `;
+                item.onclick = () => selectQuoteForAttachment(id);
+                grid.appendChild(item);
+            }
+        });
+    }
+    
+    document.getElementById('modal-quote-selector').style.display = 'flex';
+};
+ 
+window.closeQuoteAttachmentSelector = function() {
+    document.getElementById('modal-quote-selector').style.display = 'none';
+};
+ 
+window.selectQuoteForAttachment = function(id) {
+    currentAttachedQuoteId = id;
+    const q = LIT_QUOTES[id];
+    
+    // 更新對應的預覽 UI
+    if (quoteAttachmentContext === 'log') {
+        document.getElementById('log-quote-preview').style.display = 'flex';
+        document.getElementById('log-quote-text').innerText = `「${q.text}」— ${q.author}`;
+        document.getElementById('btn-add-log-quote').style.display = 'none';
+    } else if (quoteAttachmentContext === 'reply') {
+        document.getElementById('reply-quote-preview').style.display = 'flex';
+        document.getElementById('reply-quote-text').innerText = `「${q.text}」— ${q.author}`;
+        document.getElementById('btn-add-reply-quote').style.display = 'none';
+    }
+    
+    closeQuoteAttachmentSelector();
+};
+ 
+window.removeAttachedQuote = function() {
+    currentAttachedQuoteId = null;
+    if (quoteAttachmentContext === 'log') {
+        document.getElementById('log-quote-preview').style.display = 'none';
+        document.getElementById('btn-add-log-quote').style.display = 'inline-flex';
+    } else if (quoteAttachmentContext === 'reply') {
+        document.getElementById('reply-quote-preview').style.display = 'none';
+        document.getElementById('btn-add-reply-quote').style.display = 'inline-flex';
+    }
+};
+
+
+
+        
         
         
     </script>
