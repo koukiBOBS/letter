@@ -7780,7 +7780,8 @@ const crystalGlassMat = new THREE.MeshStandardMaterial({
         flap.rotation.x = -0.25;
         flap.name = "gachaFlap";
         chuteGrp.add(tunnelTop, tunnelBot, tunnelL, tunnelR, flap);
-       // 3.8 玻璃圓柱罩 (取代原本的半圓頂)
+        // 3.8 玻璃圓頂罩
+    // 3.8 玻璃圓柱罩 (取代原本的半圓頂)
         // 使用 openEnded=true (最後一個參數) 移除上下底面，因為被蓋住了看不到，藉此節省手機效能
         const glassBodyHeight = 4.4;
         const glassBody = new THREE.Mesh(new THREE.CylinderGeometry(4.0, 4.0, glassBodyHeight, 32, 1, true), crystalGlassMat);
