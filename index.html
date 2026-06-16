@@ -3699,6 +3699,29 @@ function createFabricTexture(baseColorHex) {
     return tex;
 }
 
+
+
+// ✨ 生成假玻璃透光陰影貼圖 (零效能負擔)
+function createGlassShadowTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    
+    const cx = 128, cy = 128;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 128);
+    // 模擬光線穿透玻璃球體後，在邊緣聚焦成一圈光環的物理現象
+    grad.addColorStop(0, 'rgba(255, 255, 255, 0.04)');   // 中心微光透射
+    grad.addColorStop(0.6, 'rgba(255, 255, 255, 0.0)');  // 中間暗帶
+    grad.addColorStop(0.85, 'rgba(255, 255, 255, 0.25)');// 邊緣強烈折射聚光圈
+    grad.addColorStop(0.95, 'rgba(255, 255, 255, 0.05)');// 光暈暈開
+    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 256, 256);
+    return new THREE.CanvasTexture(canvas);
+}
+
+        
 // ⚙️ 生成磨砂/粉體塗層金屬紋理 (用於扭蛋機)
 function createPowderMetalTexture(baseColorHex) {
     const canvas = document.createElement('canvas');
@@ -7673,6 +7696,25 @@ function buildDetailedGachaMachine() {
     gachaMachineGrp.position.set(-25, 0, 3);
         gachaMachineGrp.rotation.y = Math.PI / 5; // 微微傾斜面向玩家
         scene.add(gachaMachineGrp);
+
+
+// 🌟 零效能負擔的假玻璃焦散 (投射在地板上的透光影子)
+    const fakeCaustics = new THREE.Mesh(
+        new THREE.PlaneGeometry(16, 16),
+        new THREE.MeshBasicMaterial({
+            map: createGlassShadowTexture(),
+            transparent: true,
+            blending: THREE.AdditiveBlending, // 👈 關鍵：疊加發光，讓原本黑色的影子透出光環
+            depthWrite: false,
+            opacity: 0.85
+        })
+    );
+    fakeCaustics.rotation.x = -Math.PI / 2;
+    // 配合陽光照射方向，將光斑微微朝左後方 (即影子的方向) 偏移，高度設為 0.05 避免與地板破圖
+    fakeCaustics.position.set(-1.8, 0.05, 1.8); 
+    gachaMachineGrp.add(fakeCaustics);
+
+    
  
        const morandiCoralMat = new THREE.MeshStandardMaterial({
     map: createPowderMetalTexture('#da604f'), // 加上磨砂紋理
