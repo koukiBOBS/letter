@@ -4593,15 +4593,23 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     const savedRatio = localStorage.getItem('roomCurtainRatio');
     curtainRatio = savedRatio !== null ? parseFloat(savedRatio) : 1.0; 
     
+// ==========================================
+    // 🪟 窗簾系統 (包含左右窗簾與金屬桿的總群組)
+    // ==========================================
+    const masterCurtainGrp = new THREE.Group();
+    // 綁定道具 ID，這樣未解鎖時整個群組會一起隱藏，拍照時也會整組一起拍！
+    masterCurtainGrp.userData.itemId = 'curtain'; 
+    scene.add(masterCurtainGrp);
+
     const curtainMat = new THREE.MeshStandardMaterial({color: 0x8f9fa6, roughness: 0.9, side: THREE.DoubleSide});
     
     leftCurtainGrp = new THREE.Group();
     leftCurtainGrp.position.set(-15, 19, -16.5);
-    scene.add(leftCurtainGrp);
+    masterCurtainGrp.add(leftCurtainGrp); // 裝入總群組
     
     rightCurtainGrp = new THREE.Group();
     rightCurtainGrp.position.set(15, 19, -16.5);
-    scene.add(rightCurtainGrp);
+    masterCurtainGrp.add(rightCurtainGrp); // 裝入總群組
     
     for(let i=0; i<8; i++) {
         const foldL = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 38, 12), curtainMat);
@@ -4629,51 +4637,28 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     
     applyCurtainRatio(); 
 
-
-
-// ==========================================
-    // 🪟 新增：金屬窗簾桿與支撐架
-    // ==========================================
+    // --- 金屬窗簾桿與支撐架 ---
     const rodGroup = new THREE.Group();
-    // 窗簾高度為 38 (中心點19 + 一半19)，所以桿子設在 y=38.2 剛好壓在窗簾上方
     rodGroup.position.set(0, 38.2, -16.6); 
-    scene.add(rodGroup);
+    masterCurtainGrp.add(rodGroup); // 裝入總群組
 
-    // 採用深色啞光金屬材質
     const rodMat = new THREE.MeshStandardMaterial({color: 0x2c3e50, metalness: 0.7, roughness: 0.3}); 
     
-    // 1. 橫向主桿
     const mainRod = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 34, 16), rodMat);
-    mainRod.rotation.z = Math.PI / 2; // 轉為水平
+    mainRod.rotation.z = Math.PI / 2;
     mainRod.castShadow = true;
     rodGroup.add(mainRod);
 
-    // 2. 兩側圓形裝飾頭 (Finials)
     const finialGeo = new THREE.SphereGeometry(0.5, 16, 16);
     const finialL = new THREE.Mesh(finialGeo, rodMat);
-    finialL.position.set(-17, 0, 0);
-    finialL.castShadow = true;
-    rodGroup.add(finialL);
-    
+    finialL.position.set(-17, 0, 0); finialL.castShadow = true; rodGroup.add(finialL);
     const finialR = new THREE.Mesh(finialGeo, rodMat);
-    finialR.position.set(17, 0, 0);
-    finialR.castShadow = true;
-    rodGroup.add(finialR);
+    finialR.position.set(17, 0, 0); finialR.castShadow = true; rodGroup.add(finialR);
 
-    // 3. 連接牆壁的支撐架 (左、中、右)
     const bracketGeo = new THREE.BoxGeometry(0.2, 1.2, 1.2);
-    const bracketL = new THREE.Mesh(bracketGeo, rodMat);
-    bracketL.position.set(-15, -0.2, -0.4); 
-    rodGroup.add(bracketL);
-    
-    const bracketR = new THREE.Mesh(bracketGeo, rodMat);
-    bracketR.position.set(15, -0.2, -0.4); 
-    rodGroup.add(bracketR);
-    
-    const bracketC = new THREE.Mesh(bracketGeo, rodMat);
-    bracketC.position.set(0, -0.2, -0.4); 
-    rodGroup.add(bracketC);
-
+    const bracketL = new THREE.Mesh(bracketGeo, rodMat); bracketL.position.set(-15, -0.2, -0.4); rodGroup.add(bracketL);
+    const bracketR = new THREE.Mesh(bracketGeo, rodMat); bracketR.position.set(15, -0.2, -0.4); rodGroup.add(bracketR);
+    const bracketC = new THREE.Mesh(bracketGeo, rodMat); bracketC.position.set(0, -0.2, -0.4); rodGroup.add(bracketC);
 
     
 
