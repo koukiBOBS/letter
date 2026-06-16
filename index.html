@@ -5445,11 +5445,8 @@ else if (type === 'painting') {
                 
                 let newPos = hit.point.clone().sub(dragOffset);
                 
-             const halfW = dragTarget.userData.frameW / 2;
+                const halfW = dragTarget.userData.frameW / 2;
                 const halfH = dragTarget.userData.frameH / 2;
-                
-                // 👇 1. 大幅縮小防撞邊距 (從 2.5 降為 0.5)，給予極大自由度
-                const obstacleMargin = 0.5;
                 const cornerMargin = 0.5;   
                 
                 const safeXMin = -58.7 + halfW + cornerMargin;
@@ -5457,122 +5454,33 @@ else if (type === 'painting') {
                 const safeZMin = -16.7 + halfW + cornerMargin;
                 const safeZMax =  58.7 - halfW - cornerMargin;
                 
-                // 👇 2. 放寬上下極限，允許畫作掛得更低 (靠近地板) 或更高 (靠近天花板)
                 const minY = 3 + halfH;
                 const maxY = 39 - halfH;
                 newPos.y = Math.max(minY, Math.min(maxY, newPos.y));
                 
-                // ==========================================
-                // 🛑 A. 建築結構防穿模 (極度寬鬆的軟碰撞)
-                // ==========================================
+                // 🛑 牆壁基本邊界 (已移除所有窗戶、門、冷氣機與其他家具的排斥阻擋)
                 if (n.z > 0.5) { // 🧱 後牆
                     newPos.z = hit.point.z;
                     dragTarget.rotation.y = Math.PI;
                     newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
                 }
-               else if (n.z < -0.5) { // 🪟 前牆 (玻璃趟門)
+                else if (n.z < -0.5) { // 🪟 前牆
                     newPos.z = hit.point.z;
                     dragTarget.rotation.y = 0;
                     newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
-                    // 已經完全解除窗戶阻擋，讓畫作移動絕對順暢
                 }
-                else if (n.x > 0.5) { // 🎹 右牆 (冷氣機)
+                else if (n.x > 0.5) { // 🎹 右牆
                     newPos.x = hit.point.x;
                     dragTarget.rotation.y = -Math.PI / 2;
                     newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
-                    
-                    // 👇 冷氣機核心區域
-                    const acLeft = -12.5;
-                    const acRight = 2.5;
-                    const acBottom = 27.5;
-                    
-                    if (newPos.y > acBottom && newPos.z > acLeft && newPos.z < acRight) {
-                        let penBot = newPos.y - acBottom;
-                        let penLeft = newPos.z - acLeft;
-                        let penRight = acRight - newPos.z;
-                        let minPen = Math.min(penBot, penLeft, penRight);
-                        if (minPen === penBot) newPos.y = acBottom;
-                        else if (minPen === penLeft) newPos.z = acLeft;
-                        else newPos.z = acRight;
-                    }
                 }
-                else if (n.x < -0.5) { // 🚪 左牆 (木趟門)
+                else if (n.x < -0.5) { // 🚪 左牆
                     newPos.x = hit.point.x;
                     dragTarget.rotation.y = Math.PI / 2;
                     newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
-                    
-                    // 👇 木門核心區域
-                    const doorLeft = -7.5;
-                    const doorRight = 7.5;
-                    const doorTop = 27.5;
-                    
-                    if (newPos.y < doorTop && newPos.z > doorLeft && newPos.z < doorRight) {
-                        let penTop = doorTop - newPos.y;
-                        let penLeft = newPos.z - doorLeft;
-                        let penRight = doorRight - newPos.z;
-                        let minPen = Math.min(penTop, penLeft, penRight);
-                        if (minPen === penTop) newPos.y = doorTop;
-                        else if (minPen === penLeft) newPos.z = doorLeft;
-                        else newPos.z = doorRight;
-                    }
                 }
  
-                // ==========================================
-                // 🧲 B. 通用牆面家具互斥 (畫作、書櫃、時鐘、鋼琴 完美防重疊)
-                // ==========================================
-                const wallItemTypes = ['painting', 'bookcase', 'clock', 'piano'];
-                
-                for (let iter = 0; iter < 2; iter++) {
-                    interactables.forEach(item => {
-                        let other = item.parent;
-                        if (!other) other = item;
-                        
-                        if (item.userData && wallItemTypes.includes(item.userData.type) && other !== dragTarget && other.visible) {
-                            
-                            // 判斷是否在同一面牆 (比較旋轉角度)
-                            const normalize = (a) => { let res = a % (Math.PI * 2); return res < 0 ? res + Math.PI * 2 : res; };
-                            const diff = Math.abs(normalize(dragTarget.rotation.y) - normalize(other.rotation.y || 0));
-                            
-                            if (diff < 0.1 || Math.abs(diff - Math.PI * 2) < 0.1) {
-                                const isZWall = (Math.abs(n.z) > 0.5);
-                                
-                                // 動態獲取目標家具的尺寸與高度
-                                let otherW = other.userData.frameW || 10;
-                                let otherH = other.userData.frameH || 10;
-                                let otherY = other.position.y;
- 
-                                if (item.userData.type === 'piano') { otherW = 20; otherH = 16; otherY = 8; }
-                                else if (item.userData.type === 'bookcase') { otherW = 22; otherH = 30; otherY = 15.02; }
- 
-                                const otherHalfW = otherW / 2;
-                                const otherHalfH = otherH / 2;
-                                
-                                const minDx = halfW + otherHalfW + 1.0;
-                                const minDy = halfH + otherHalfH + 1.0;
-                                
-                                const dx = isZWall ? Math.abs(newPos.x - other.position.x) : Math.abs(newPos.z - other.position.z);
-                                const dy = Math.abs(newPos.y - otherY);
-                                
-                                if (dx < minDx && dy < minDy) {
-                                    const overlapX = minDx - dx;
-                                    const overlapY = minDy - dy;
-                                    
-                                    // 畫作可以上下左右滑開，取最短路徑推開
-                                    if (overlapX < overlapY) {
-                                        if (isZWall) newPos.x += overlapX * (newPos.x > other.position.x ? 1 : -1);
-                                        else newPos.z += overlapX * (newPos.z > other.position.z ? 1 : -1);
-                                    } else {
-                                        newPos.y += overlapY * (newPos.y > otherY ? 1 : -1);
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
-                
-                // ==========================================
-                // 🛡️ C. 最後二次約束邊界
-                // ==========================================
+                // 🛡️ 最後防穿牆約束
                 newPos.y = Math.max(minY, Math.min(maxY, newPos.y));
                 if (Math.abs(n.z) > 0.5) newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
                 else newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
