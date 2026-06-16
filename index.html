@@ -1226,10 +1226,76 @@
     .quote-selector-content { padding: 25px 20px; }
     .quote-selector-grid { grid-template-columns: 1fr; }
 }
+
+
+
+
+
+        /* --- 極簡任務備忘通知 UI --- */
+#welcome-memo-overlay {
+    position: fixed; inset: 0; background: rgba(20, 18, 16, 0.85); backdrop-filter: blur(12px);
+    z-index: 99999; display: none; align-items: center; justify-content: center; opacity: 0;
+}
+.welcome-memo-card {
+    background-color: var(--letter-paper); border: 1px solid #dcd5c9; border-radius: 4px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.4), inset 0 0 40px rgba(180, 160, 130, 0.05);
+    padding: 50px 40px; width: 90%; max-width: 400px;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+}
+.memo-header {
+    font-family: var(--font-serif); font-size: 1.4rem; color: var(--letter-ink);
+    letter-spacing: 4px; text-align: center; margin-bottom: 40px;
+    border-bottom: 1px solid #dcd5c9; padding-bottom: 15px;
+}
+.memo-list { display: flex; flex-direction: column; gap: 20px; margin-bottom: 40px; }
+.memo-row {
+    display: flex; align-items: center; padding-left: 15px; position: relative;
+}
+/* 左側的狀態線條與圓點 (取代 Emoji) */
+.memo-row::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 2px;
+}
+.memo-row::after {
+    content: ''; position: absolute; left: -2px; top: 50%; transform: translateY(-50%);
+    width: 7px; height: 7px; border-radius: 50%; background: var(--letter-paper); border: 2px solid;
+}
+.memo-row.overdue::before { background: #c25953; }
+.memo-row.overdue::after { border-color: #c25953; }
+.memo-row.upcoming::before { background: #548ca8; }
+.memo-row.upcoming::after { border-color: #548ca8; }
+
+.memo-content { flex-grow: 1; display: flex; justify-content: space-between; align-items: center; }
+.memo-title-group { display: flex; flex-direction: column; gap: 4px; }
+.memo-label { font-family: var(--font-sans); font-size: 0.75rem; letter-spacing: 1px; font-weight: 600; }
+.overdue .memo-label { color: #c25953; }
+.upcoming .memo-label { color: #548ca8; }
+.memo-type { font-family: var(--font-serif); font-size: 1.1rem; color: #4a4238; }
+.memo-date { font-family: var(--font-sans); font-size: 1.2rem; color: #4a4238; font-weight: 300; letter-spacing: 1px;}
+
+.btn-memo-close {
+    width: 100%; background: transparent; border: 1px solid #dcd5c9; color: #8b7355;
+    padding: 12px 0; font-family: var(--font-serif); font-size: 1.1rem; letter-spacing: 2px;
+    cursor: pointer; transition: 0.3s;
+}
+.btn-memo-close:hover { background: rgba(139, 115, 85, 0.05); border-color: #8b7355; }
+
+        
         
     </style>
 </head>
 <body>
+
+
+
+<!-- 進入頁面時的任務備忘通知 -->
+<div id="welcome-memo-overlay">
+    <div class="welcome-memo-card" id="welcome-memo-card">
+        <div class="memo-header">待辦事項</div>
+        <div class="memo-list" id="welcome-memo-list"></div>
+        <button class="btn-memo-close" onclick="closeWelcomeMemo()">知悉</button>
+    </div>
+</div>
+    
 
      <!-- 👇 新增這行：隱藏的音訊播放器 👇 -->
     <audio id="rthk-audio" style="display:none;"></audio>
@@ -2637,6 +2703,12 @@ function renderTasks() {
             if (indicatorTasks) {
                 indicatorTasks.visible = hasPendingTasks;
             }
+
+
+// 在它的下方加入這行呼叫：
+checkAndShowWelcomeMemo(readingTasks, randomTasks, submittedReadingDates, submittedRandomDates);
+
+            
 
         });
     });
@@ -8072,7 +8144,92 @@ window.removeAttachedQuote = function() {
 
 
 
-        
+        // 關閉備忘錄動畫
+window.closeWelcomeMemo = function() {
+    gsap.to("#welcome-memo-card", {y: 20, opacity: 0, duration: 0.3});
+    gsap.to("#welcome-memo-overlay", {opacity: 0, duration: 0.3, delay: 0.1, onComplete: () => {
+        document.getElementById('welcome-memo-overlay').style.display = 'none';
+    }});
+};
+
+// 檢查並顯示登入備忘錄
+function checkAndShowWelcomeMemo(readingTasks, randomTasks, submittedReading, submittedRandom) {
+    if (typeof isDevUser === 'function' && isDevUser(currentUser.email)) return; // 老師略過
+
+    let pendingTasks = [];
+    const now = Date.now();
+
+    // 輔助函數：將任務資料整理進陣列
+    function processTasks(taskArray, submittedArray, typeName) {
+        taskArray.forEach(dateStr => {
+            if (!submittedArray.includes(dateStr)) {
+                // 截止日為開放日 + 2天
+                const deadlineTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
+                const isOverdue = now > deadlineTime;
+                pendingTasks.push({
+                    type: typeName,
+                    deadlineTime: deadlineTime,
+                    isOverdue: isOverdue
+                });
+            }
+        });
+    }
+
+    processTasks(readingTasks, submittedReading, '閱讀');
+    processTasks(randomTasks, submittedRandom, '探索');
+
+    if (pendingTasks.length === 0) return; // 全部交齊，不顯示
+
+    // 分類與排序
+    let overdueTasks = pendingTasks.filter(t => t.isOverdue).sort((a, b) => a.deadlineTime - b.deadlineTime);
+    let upcomingTasks = pendingTasks.filter(t => !t.isOverdue).sort((a, b) => a.deadlineTime - b.deadlineTime);
+
+    let listHtml = '';
+    
+    // 輔助函數：格式化日期為 MM.DD
+    const formatDate = (ts) => {
+        const d = new Date(ts);
+        return `${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+    };
+
+    // 1. 渲染所有欠交任務
+    overdueTasks.forEach(t => {
+        listHtml += `
+            <div class="memo-row overdue">
+                <div class="memo-content">
+                    <div class="memo-title-group">
+                        <span class="memo-label">逾期未交</span>
+                        <span class="memo-type">${t.type}</span>
+                    </div>
+                    <span class="memo-date">${formatDate(t.deadlineTime)}</span>
+                </div>
+            </div>
+        `;
+    });
+
+    // 2. 渲染最靠近的一次即將到來任務 (只取1筆，避免畫面過長)
+    if (upcomingTasks.length > 0) {
+        const nextTask = upcomingTasks[0];
+        listHtml += `
+            <div class="memo-row upcoming">
+                <div class="memo-content">
+                    <div class="memo-title-group">
+                        <span class="memo-label">最近截止</span>
+                        <span class="memo-type">${nextTask.type}</span>
+                    </div>
+                    <span class="memo-date">${formatDate(nextTask.deadlineTime)}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    // 寫入並顯示動畫
+    document.getElementById('welcome-memo-list').innerHTML = listHtml;
+    const overlay = document.getElementById('welcome-memo-overlay');
+    overlay.style.display = 'flex';
+    gsap.to(overlay, {opacity: 1, duration: 0.4, delay: 1.0}); // 稍微延遲，等房間載入好再彈出
+    gsap.fromTo("#welcome-memo-card", {y: 30, opacity: 0}, {y: 0, opacity: 1, duration: 0.6, ease: "power3.out", delay: 1.0});
+}
         
         
     </script>
