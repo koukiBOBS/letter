@@ -3664,12 +3664,14 @@ function applyCurtainRatio() {
     }
     
     // 4. 窗外大樓發光
+   // 4. 窗外大樓發光
     animScenery.buildings.forEach(b => {
         if(Array.isArray(b.material)) {
             // 索引 0, 1, 4, 5 代表四面牆，我們只讓牆壁的窗戶發光
             [0, 1, 4, 5].forEach(i => {
-                b.material[i].emissiveIntensity = p.windowLight ? (isNight ? 4.0 : 1.5) : 0.0;
-                b.material[i].emissive.setHex(p.windowLight ? 0xffea88 : 0x000000);
+                // 👇 將亮度調低 (夜晚 1.5，黃昏 0.5)，並將顏色改為柔和的暖黃色 (0xffdfa0)
+                b.material[i].emissiveIntensity = p.windowLight ? (isNight ? 1.5 : 0.5) : 0.0;
+                b.material[i].emissive.setHex(p.windowLight ? 0xffdfa0 : 0x000000);
             });
         }
     });
@@ -5500,18 +5502,27 @@ benchGrp = new THREE.Group();
     const distRoofMat = new THREE.MeshStandardMaterial({color: 0x2c3a47, roughness: 0.9});
     const distMaterials = [distBMat, distBMat, distRoofMat, distRoofMat, distBMat, distBMat];
 
-    // 建立 100 棟遠景大廈，作為背景牆擋住後方的海與山，同時點綴摩天輪後方
-    for(let i=0; i<100; i++) {
-        let xPos = -150 + Math.random() * 2300; // 範圍從左側大橋涵蓋到右側極遠處
-        let zPos = -100 - Math.random() * 120;  // 放在近景大廈的後方 (-100 ~ -220)
-        let height = 150 + Math.random() * 300; // 遠景大廈更高大
-        let width = 30 + Math.random() * 60;
+    // 👇 將遠景大廈的迴圈替換為這段：
+    // 建立遠景大廈，作為背景牆擋住後方的海與山，同時點綴摩天輪後方
+    for(let i=0; i<45; i++) { // 數量減少到 45 棟，避免過度密集
+        // 刻意讓開中央 (-70 到 70 之間不放遠景大廈)，還原附圖的視野空隙
+        let isLeft = Math.random() > 0.5;
+        let xPos = isLeft ? (-70 - Math.random() * 800) : (70 + Math.random() * 800); 
+        
+        let zPos = -100 - Math.random() * 120;  
+        let height = 100 + Math.random() * 150; // 高度降低，避免擋住天空與陽光
+        let width = 30 + Math.random() * 50;
+        
         let b = new THREE.Mesh(new THREE.BoxGeometry(width, height, width), distMaterials);
         b.position.set(xPos, height/2 - 20, zPos);
+        
+        // ❌ 關鍵：遠景大廈絕對不能產生陰影，否則會把整個城市跟房間的光線遮死！
+        b.castShadow = false; 
+        b.receiveShadow = true;
+        
         balconyOnlyGroup.add(b);
-        animScenery.buildings.push(b); // 加入陣列，讓這些遠景大廈在晚上也能自動亮燈！
+        animScenery.buildings.push(b); 
     }
-    // 👆👆👆 新增結束 👆👆👆
 
     // 2. 替換馬路與行人路 (長度由 360 改為 5000)
     const roadWidth = 26;
@@ -5826,15 +5837,15 @@ interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitB
 // --- 修訂：降低早中窗外過曝感，並設定黃昏開窗簾時不開燈 ---
 // --- 修訂：將中午的光線 (dir) 從純白改為微暖白 ---
 function setEnvironmentPhase(phaseStr) {
-    const envPhases = {
+   const envPhases = {
         // 晨：降低天空底部與霧氣亮度，避免窗外白茫茫過曝
         dawn: { skyTop: 0x7a8b98, skyBot: 0xd0b8a8, fog: 0xd0b8a8, dir: 0xffe4cc, int: 0.65, windowLight: false, shadow: true, ceilingOn: false, lightPos: {x: 45, y: 15, z: -50} },
         
-        // 午：【關鍵修改】將 dir 改為 0xfff6ea (微暖白)，讓陽光有一點點溫度感
+        // 午：將 dir 改為 0xfff6ea (微暖白)，讓陽光有一點點溫度感
         noon: { skyTop: 0x40a0d0, skyBot: 0xbae0ff, fog: 0xbae0ff, dir: 0xfff6ea, int: 0.95, windowLight: false, shadow: true, ceilingOn: false, lightPos: {x: 35, y: 28, z: -45} }, 
         
-        // 暮：打開窗簾時不開燈，享受純粹夕陽
-        dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, dir: 0xffaa66, int: 0.8, windowLight: true, shadow: true, ceilingOn: false, lightPos: {x: -45, y: 12, z: -50} }, 
+        // 👇 將 dusk 整行替換為以下設定：天空改為唯美粉橘色，調高光源位置避免被大廈完全遮擋
+        dusk: { skyTop: 0x8a7d8c, skyBot: 0xdf9b82, fog: 0xdf9b82, dir: 0xffb788, int: 0.75, windowLight: true, shadow: true, ceilingOn: false, lightPos: {x: -35, y: 35, z: -50} }, 
         
         // 夜：微弱偏藍的月光，夜晚必須強制開燈
         night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x1a2235, dir: 0x404055, int: 0.1, windowLight: true, shadow: false, ceilingOn: true, lightPos: {x: -20, y: 30, z: -40} }
