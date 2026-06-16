@@ -7091,7 +7091,7 @@ window.toggleReadingLog = function() {
         });
     }
 
-  // 3. 建造精緻的八角扭蛋機 (移除透明托盤，改為簡潔出口)
+// 3. 建造精緻的八角扭蛋機
     function buildDetailedGachaMachine() {
         gachaMachineGrp = new THREE.Group();
         gachaMachineGrp.position.set(-48, 0, 25);
@@ -7105,7 +7105,7 @@ window.toggleReadingLog = function() {
             color: 0xe5c158, metalness: 0.88, roughness: 0.18
         });
         const deepIronMat = new THREE.MeshStandardMaterial({
-            color: 0x1f2122, metalness: 0.6, roughness: 0.5
+            color: 0x555555, metalness: 0.6, roughness: 0.5 // 移除純黑，改為低調深鐵色
         });
         const polishedSilverMat = new THREE.MeshStandardMaterial({
             color: 0xe1e8eb, metalness: 0.9, roughness: 0.12
@@ -7129,61 +7129,69 @@ window.toggleReadingLog = function() {
         const baseTopTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.26, 4.26, 0.3, 32, 1, true), champagneGoldMat);
         baseTopTrim.position.y = 6.85;
         gachaMachineGrp.add(baseTopTrim);
-        // 3.3 水平金屬操作台
-        const ledge = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.3, 1.8), champagneGoldMat);
-        ledge.position.set(0, 5.0, 3.8);
-        gachaMachineGrp.add(ledge);
-        // 3.4 投幣孔面板
-        const coinPanel = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.4, 0.2), deepIronMat);
-        coinPanel.position.set(0, 4.2, 4.25);
-        gachaMachineGrp.add(coinPanel);
-        // 3.5 🔑 蝴蝶鑰匙
+        // ==========================================
+        // 3.3 香檳金水平控制台 (取代黑色的垂直面板，與機身完美融合)
+        // ==========================================
+        const controlDeck = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.5, 2.0), champagneGoldMat);
+        controlDeck.position.set(0, 4.8, 3.6); // 稍微卡進圓柱體內，確保無縫相接
+        gachaMachineGrp.add(controlDeck);
+        
+        // ==========================================
+        // 3.4 扭蛋機的水平旋轉把手 (置於中央，繞 Y 軸旋轉)
+        // ==========================================
         const knobGrp = new THREE.Group();
-        knobGrp.position.set(0, 5.15, 3.8);
+        knobGrp.position.set(-0.4, 5.05, 4.2); // 平放於控制台上方
         knobGrp.name = "gachaKnob";
         
-        const knobPin = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.5, 16), polishedSilverMat);
-        knobPin.position.y = 0.25;
-        knobGrp.add(knobPin);
-        const knobWingL = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.1, 0.35), polishedSilverMat);
-        knobWingL.position.set(0.4, 0.4, 0);
-        const knobWingR = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.1, 0.35), polishedSilverMat);
-        knobWingR.position.set(-0.4, 0.4, 0);
+        // 旋鈕的亮銀色圓盤底座
+        const knobBase = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.1, 32), polishedSilverMat);
+        knobBase.position.y = 0.05;
+        knobGrp.add(knobBase);
         
-        const knobCap = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.2, 16), champagneGoldMat);
-        knobCap.position.y = 0.45;
-        knobGrp.add(knobWingL, knobWingR, knobCap);
+        // 旋鈕的立體抓手
+        const knobHandle = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.4, 1.2), polishedSilverMat);
+        knobHandle.position.y = 0.3;
+        knobGrp.add(knobHandle);
+        
         gachaMachineGrp.add(knobGrp);
-        // 3.6 投幣槽
-        const slot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 0.15), new THREE.MeshBasicMaterial({color: 0x000000}));
-        slot.position.set(0, 4.2, 4.36);
-        gachaMachineGrp.add(slot);
-        // 3.7 🕳️ 簡潔的金屬出口通道 (直接掉落地板)
+        
+        // ==========================================
+        // 3.5 精緻的銀色投幣口 (置於右側)
+        // ==========================================
+        const coinSlotBase = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.1, 0.8), polishedSilverMat);
+        coinSlotBase.position.set(1.1, 5.06, 4.2);
+        gachaMachineGrp.add(coinSlotBase);
+        
+        // 投幣孔凹槽 (用深灰色代替純黑)
+        const coinSlotHole = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.5), deepIronMat);
+        coinSlotHole.position.set(1.1, 5.06, 4.2);
+        gachaMachineGrp.add(coinSlotHole);
+        // 3.6 🕳️ 簡潔的金屬出口通道
         chuteGrp = new THREE.Group();
         chuteGrp.position.set(0, 2.5, 4.1);
         gachaMachineGrp.add(chuteGrp);
-        // A. 深邃內部洞穴
-        const holeInner = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 1.2), new THREE.MeshBasicMaterial({color: 0x050505}));
+        // 內部洞穴
+        const holeInner = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 1.2), deepIronMat);
         holeInner.position.set(0, 0, -0.5);
         chuteGrp.add(holeInner);
-        // B. 金屬邊框
+        // 金屬邊框
         const frameMat = new THREE.MeshStandardMaterial({color: 0xe1e8eb, metalness: 0.9, roughness: 0.3});
         const tunnelTop = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 0.6), frameMat); tunnelTop.position.set(0, 0.85, -0.1);
         const tunnelBot = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 0.6), frameMat); tunnelBot.position.set(0, -0.85, -0.1);
         const tunnelL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 0.6), frameMat); tunnelL.position.set(-0.85, 0, -0.1);
         const tunnelR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 0.6), frameMat); tunnelR.position.set(0.85, 0, -0.1);
         
-        // 微掀的金屬擋板 (命名以便動畫調用)
+        // 金屬擋板
         const flap = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 0.05), deepIronMat);
         flap.position.set(0, 0.05, 0.2);
         flap.rotation.x = -0.25;
         flap.name = "gachaFlap";
         chuteGrp.add(tunnelTop, tunnelBot, tunnelL, tunnelR, flap);
-        // 3.8 玻璃圓頂罩
+        // 3.7 玻璃圓頂罩
         const dome = new THREE.Mesh(new THREE.SphereGeometry(4.1, 32, 32, 0, Math.PI*2, 0, Math.PI/2), crystalGlassMat);
         dome.position.y = 7;
         gachaMachineGrp.add(dome);
-        // 3.9 頂蓋飾圈
+        // 3.8 頂蓋飾圈
         const topCapTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.15, 4.15, 0.3, 32, 1, true), champagneGoldMat);
         topCapTrim.position.y = 11.1;
         gachaMachineGrp.add(topCapTrim);
@@ -7194,7 +7202,7 @@ window.toggleReadingLog = function() {
         const pinnacle = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), champagneGoldMat);
         pinnacle.position.y = 15.4;
         gachaMachineGrp.add(pinnacle);
-        // 3.10 莫蘭迪低飽和雙色扭蛋球
+        // 3.9 莫蘭迪低飽和雙色扭蛋球
         const morandiColors = [0xbc8a8f, 0x8fa397, 0xa39284, 0x8aa3b0, 0xb8a38f, 0xc59e8f];
         const halfSphereGeoTop = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, 0, Math.PI/2);
         const halfSphereGeoBot = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, Math.PI/2, Math.PI/2);
@@ -7330,7 +7338,7 @@ function startGachaDrawProcess() {
         const dirZ = Math.cos(rotY);
         // 扭蛋掉落在地板上的世界座標
         const dropWorldX = -48 + 6.0 * dirX;
-        const dropWorldY = 2.5; // 扭蛋半徑 0.65，貼齊地板 y=0
+        const dropWorldY = 2.8; // 扭蛋半徑 0.65，貼齊地板 y=0
         const dropWorldZ = 25 + 6.0 * dirZ;
         const camTargetX = dropWorldX;
         const camTargetY = dropWorldY;
