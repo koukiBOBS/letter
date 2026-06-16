@@ -3642,6 +3642,49 @@ function restoreObjectPositions() {
 
 
 
+// 🧵 生成布料十字纖維紋理 (零效能負擔)
+function createFabricTexture(baseColorHex) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = baseColorHex;
+    ctx.fillRect(0, 0, 512, 512);
+    // 畫出經緯紗線的交織感
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+    for(let i=0; i<512; i+=4) {
+        ctx.fillRect(i, 0, 1, 512); // 直紋
+        ctx.fillRect(0, i, 512, 1); // 橫紋
+    }
+    // 增加微小的不規則雜訊增加真實感
+    for(let i=0; i<8000; i++) {
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)';
+        ctx.fillRect(Math.random()*512, Math.random()*512, 2, 2);
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(4, 4); // 讓纖維看起來更細緻
+    return tex;
+}
+
+// ⚙️ 生成磨砂/粉體塗層金屬紋理 (用於扭蛋機)
+function createPowderMetalTexture(baseColorHex) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = baseColorHex;
+    ctx.fillRect(0, 0, 256, 256);
+    // 密集的微小顆粒模擬啞光噴砂金屬
+    for(let i=0; i<15000; i++) {
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
+        ctx.fillRect(Math.random()*256, Math.random()*256, 1, 1);
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+
+
         
         function createWoodTexture() {
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
@@ -4601,29 +4644,52 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     masterCurtainGrp.userData.itemId = 'curtain'; 
     scene.add(masterCurtainGrp);
 
-    const curtainMat = new THREE.MeshStandardMaterial({color: 0x8f9fa6, roughness: 0.9, side: THREE.DoubleSide});
+   // 採用剛才寫好的布料紋理，提升質感
+    const curtainMat = new THREE.MeshStandardMaterial({
+        map: createFabricTexture('#8f9fa6'), 
+        roughness: 0.95, 
+        side: THREE.DoubleSide
+    });
     
     leftCurtainGrp = new THREE.Group();
     leftCurtainGrp.position.set(-15, 19, -16.5);
-    masterCurtainGrp.add(leftCurtainGrp); // 裝入總群組
+    masterCurtainGrp.add(leftCurtainGrp);
     
     rightCurtainGrp = new THREE.Group();
     rightCurtainGrp.position.set(15, 19, -16.5);
-    masterCurtainGrp.add(rightCurtainGrp); // 裝入總群組
+    masterCurtainGrp.add(rightCurtainGrp);
     
-    for(let i=0; i<8; i++) {
-        const foldL = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 38, 12), curtainMat);
-        foldL.position.set(i*1.8 + 0.9, 0, (i%2)*0.6);
-        foldL.scale.z = 0.4;
-        foldL.castShadow = true;
-        leftCurtainGrp.add(foldL);
-        
-        const foldR = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 38, 12), curtainMat);
-        foldR.position.set(-(i*1.8 + 0.9), 0, (i%2)*0.6);
-        foldR.scale.z = 0.4;
-        foldR.castShadow = true;
-        rightCurtainGrp.add(foldR);
+    // 💡 核心優化：用一張帶有波浪數學公式的平面，取代多個圓柱體
+    const foldGeoL = new THREE.PlaneGeometry(15, 38, 40, 1);
+    const foldGeoR = new THREE.PlaneGeometry(15, 38, 40, 1);
+    
+    // 將平面軸心移到邊緣，這樣拉窗簾時才會往兩側縮
+    foldGeoL.translate(7.5, 0, 0); 
+    foldGeoR.translate(-7.5, 0, 0);
+
+    // 透過數學正弦波 (Sine Wave) 把平面的頂點推成波浪狀
+    const posL = foldGeoL.attributes.position;
+    for (let i = 0; i < posL.count; i++) {
+        const x = posL.getX(i);
+        posL.setZ(i, Math.sin(x * 1.5) * 1.0); // 產生皺褶
     }
+    foldGeoL.computeVertexNormals(); // 重新計算光影反射面
+
+    const posR = foldGeoR.attributes.position;
+    for (let i = 0; i < posR.count; i++) {
+        const x = posR.getX(i);
+        posR.setZ(i, Math.sin(x * 1.5) * 1.0); // 產生皺褶
+    }
+    foldGeoR.computeVertexNormals();
+
+    const clothL = new THREE.Mesh(foldGeoL, curtainMat);
+    clothL.castShadow = true;
+    leftCurtainGrp.add(clothL);
+
+    const clothR = new THREE.Mesh(foldGeoR, curtainMat);
+    clothR.castShadow = true;
+    rightCurtainGrp.add(clothR);
+    
     
     const hitL = new THREE.Mesh(new THREE.BoxGeometry(15, 38, 4), new THREE.MeshBasicMaterial({visible:false}));
     hitL.position.set(7.5, 0, 0);
@@ -7554,18 +7620,21 @@ function buildDetailedGachaMachine() {
         gachaMachineGrp.rotation.y = Math.PI / 5; // 微微傾斜面向玩家
         scene.add(gachaMachineGrp);
  
-        const morandiCoralMat = new THREE.MeshStandardMaterial({
-            color: 0xda604f, metalness: 0.15, roughness: 0.25
-        });
-        const champagneGoldMat = new THREE.MeshStandardMaterial({
-            color: 0xe5c158, metalness: 0.88, roughness: 0.18
-        });
-        const deepIronMat = new THREE.MeshStandardMaterial({
-            color: 0x1f2122, metalness: 0.6, roughness: 0.5
-        });
-        const polishedSilverMat = new THREE.MeshStandardMaterial({
-            color: 0xe1e8eb, metalness: 0.9, roughness: 0.12
-        });
+       const morandiCoralMat = new THREE.MeshStandardMaterial({
+    map: createPowderMetalTexture('#da604f'), // 加上磨砂紋理
+    metalness: 0.15, roughness: 0.6
+});
+const deepIronMat = new THREE.MeshStandardMaterial({
+    map: createPowderMetalTexture('#1f2122'), // 加上磨砂紋理
+    metalness: 0.6, roughness: 0.7
+});
+// (champagneGoldMat 和 polishedSilverMat 保持原樣，因為金色和銀色通常是光滑的)
+const champagneGoldMat = new THREE.MeshStandardMaterial({
+    color: 0xe5c158, metalness: 0.88, roughness: 0.18
+});
+const polishedSilverMat = new THREE.MeshStandardMaterial({
+    color: 0xe1e8eb, metalness: 0.9, roughness: 0.12
+});
         // --- 1. 改進：扭蛋機大圓頂材質 (高透明、高反射玻璃) ---
 const crystalGlassMat = new THREE.MeshPhysicalMaterial({
     color: 0xffffff,
