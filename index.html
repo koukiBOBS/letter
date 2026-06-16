@@ -2368,24 +2368,28 @@ function renderTasks() {
 
 
 // --- 新增：重置並準備日曆資料 ---
+        // --- 新增：重置並準備日曆資料 ---
             calendarTasksData = {};
             const todayReset = new Date().setHours(0,0,0,0);
 
-            function addCalTask(dateStr, type, doneRecord) {
-    if (!calendarTasksData[dateStr]) calendarTasksData[dateStr] = [];
-    let status = 'pending';
-    
-    // 開放日 + 2天 (即隔天 23:59:59 截止)
-    const limitTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
+            // 修改：加入 deadlineStr 參數，讓印章蓋在截止日那格
+            function addCalTask(releaseDateStr, deadlineStr, type, doneRecord) {
+                if (!calendarTasksData[deadlineStr]) calendarTasksData[deadlineStr] = [];
+                let status = 'pending';
+                
+                // 判斷逾期依然使用開放日 + 2天
+                const limitTime = new Date(releaseDateStr).setHours(0,0,0,0) + (86400000 * 2);
 
-    if (doneRecord) {
-        const submitTime = new Date(doneRecord.timestamp).getTime();
-        status = (submitTime < limitTime) ? 'ontime' : 'late';
-    } else {
-        status = (Date.now() >= limitTime) ? 'overdue' : 'pending';
-    }
-    calendarTasksData[dateStr].push({ type, status });
-}
+                if (doneRecord) {
+                    const submitTime = new Date(doneRecord.timestamp).getTime();
+                    status = (submitTime < limitTime) ? 'ontime' : 'late';
+                } else {
+                    status = (Date.now() >= limitTime) ? 'overdue' : 'pending';
+                }
+                
+                // 將任務寫入日曆的「截止日」那一格
+                calendarTasksData[deadlineStr].push({ type, status });
+            }
 
 
             
@@ -2425,7 +2429,7 @@ function renderTasks() {
                 const limitTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
                 const isLate = !done && Date.now() >= limitTime;
                 
-                addCalTask(dateStr, 'reading', rMap[dateStr]);
+               addCalTask(dateStr, deadlineStr, 'reading', rMap[dateStr]);
                 if (unlocked && !done) { hasPendingTasks = true; }
 
                 const el = document.createElement('div'); 
@@ -2507,7 +2511,7 @@ function renderTasks() {
                 const isLate = !done && Date.now() >= limitTime;
                 
                 const randRecord = randMap[dateStr];
-                addCalTask(dateStr, 'random', randRecord);
+           addCalTask(dateStr, deadlineStr, 'random', randRecord);
                 if (!done) { hasPendingTasks = true; }
 
                 const el = document.createElement('div'); 
@@ -2601,7 +2605,7 @@ function renderTasks() {
                 
                 // 📝 寫入日曆資料
                 const randRecord = randMap[dateStr];
-                addCalTask(dateStr, 'random', randRecord);
+              addCalTask(dateStr, deadlineStr, 'random', randRecord);
 
                 if (!done) { hasPendingTasks = true; }
 
