@@ -5540,15 +5540,15 @@ else if (type === 'painting') {
                                 let otherW = other.userData.frameW || 10;
                                 let otherH = other.userData.frameH || 10;
                                 let otherY = other.position.y;
-
+ 
                                 if (item.userData.type === 'piano') { otherW = 20; otherH = 16; otherY = 8; }
                                 else if (item.userData.type === 'bookcase') { otherW = 22; otherH = 30; otherY = 15.02; }
-
+ 
                                 const otherHalfW = otherW / 2;
                                 const otherHalfH = otherH / 2;
                                 
-                                const minDx = halfW + otherHalfW + 1.0; 
-                                const minDy = halfH + otherHalfH + 1.0; 
+                                const minDx = halfW + otherHalfW + 1.0;
+                                const minDy = halfH + otherHalfH + 1.0;
                                 
                                 const dx = isZWall ? Math.abs(newPos.x - other.position.x) : Math.abs(newPos.z - other.position.z);
                                 const dy = Math.abs(newPos.y - otherY);
