@@ -7474,6 +7474,37 @@ window.toggleReadingLog = function() {
         gsap.fromTo("#gacha-confirm-paper", {y: 30, opacity: 0}, {y: 0, opacity: 1, duration: 0.5, ease: "power3.out"});
     };
  
+// 打開扭蛋確認視窗
+    window.openGachaConfirm = function() {
+        const unownedIds = Object.keys(LIT_QUOTES).filter(id => !window.userQuotes[id]);
+        const isAllCollected = unownedIds.length === 0;
+ 
+        const overlay = document.getElementById('gacha-confirm-overlay');
+        const textEl = overlay.querySelector('.confirm-text');
+        
+        // 判斷是否已全收集，給予不同提示
+        if (isAllCollected) {
+            textEl.innerHTML = `您已集齊所有名家語錄！<br>現在可以不受限制自由轉動，隨機重溫佳句。`;
+        } else {
+            textEl.innerHTML = `提筆落墨，文字有靈。<br>確認要花費 <span style="color:#da604f; font-weight:bold;">500 積分</span> 轉動機身，喚醒一段名家語錄嗎？`;
+        }
+ 
+        overlay.style.display = 'flex';
+        gsap.to(overlay, {opacity: 1, duration: 0.3});
+        gsap.fromTo("#gacha-confirm-paper", {y: 30, opacity: 0}, {y: 0, opacity: 1, duration: 0.5, ease: "power3.out"});
+    };
+ 
+    // 關閉扭蛋確認視窗
+    window.closeGachaConfirm = function() {
+        const overlay = document.getElementById('gacha-confirm-overlay');
+        if (!overlay) return;
+        gsap.to("#gacha-confirm-paper", {y: 20, opacity: 0, duration: 0.3});
+        gsap.to(overlay, {opacity: 0, duration: 0.3, delay: 0.1, onComplete: () => {
+            overlay.style.display = 'none';
+        }});
+    };
+ 
+    // 確認扣款並抽獎
     window.confirmGachaDraw = function() {
         const unownedIds = Object.keys(LIT_QUOTES).filter(id => !window.userQuotes[id]);
         const isAllCollected = unownedIds.length === 0;
@@ -7482,7 +7513,7 @@ window.toggleReadingLog = function() {
         if (!isAllCollected) {
             if (userPoints < 500) {
                 alert("您的積分不足 500 分，無法轉動扭蛋機！\n請多完成任務來獲取積分。");
-                closeGachaConfirm();
+                window.closeGachaConfirm(); // 加入 window. 前綴防錯
                 return;
             }
             
@@ -7491,14 +7522,20 @@ window.toggleReadingLog = function() {
             db.ref(`users/${currentUser.uid}/points`).set(userPoints);
             
             // 實時更新畫面右上角的積分數字
-            document.getElementById('user-points-text').innerText = userPoints;
-            showToast("已扣除 500 積分！機器開始運轉...");
+            const pointsEl = document.getElementById('user-points-text');
+            if (pointsEl) pointsEl.innerText = userPoints;
+            
+            showToast("💰 已扣除 500 積分！機器開始運轉...");
         } else {
-            showToast("全圖鑑達成，自由重溫模式開啟！");
+            showToast("✨ 全圖鑑達成，自由重溫模式開啟！");
         }
  
-        closeGachaConfirm();
-        startGachaDrawProcess();
+        window.closeGachaConfirm(); // 加入 window. 前綴防錯
+        
+        // 確保啟動抽籤動畫
+        if (typeof startGachaDrawProcess === 'function') {
+            startGachaDrawProcess();
+        }
     };
 
 function startGachaDrawProcess() {
