@@ -7203,29 +7203,36 @@ window.toggleReadingLog = function() {
         flap.rotation.x = -0.2; // 微微往外掀開
         chuteGrp.add(fTop, fBot, fL, fR, flap);
  
-        // C. 打造有厚度、不透明的實體接球兜 (半圓柱體)
-        const trayMat = new THREE.MeshStandardMaterial({
-            color: 0xda604f, // 配合機身底座的珊瑚紅
-            metalness: 0.15,
-            roughness: 0.4,
-            side: THREE.DoubleSide // 👈 關鍵：雙面渲染讓它不再透明，產生實體厚度感
+      // C. 打造帶有物理厚度感的高階透明壓克力托盤
+        const acrylicMat = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,        // 純淨底色
+            transmission: 0.85,     // 高透光度，呈現玻璃質感
+            opacity: 1.0,           // 配合 transmission 使用
+            transparent: true,      // 開啟透明運算
+            roughness: 0.15,        // 微微的表面粗糙度，讓光線在表面形成高光反射，避免完全隱形
+            metalness: 0.1,         // 增加一點反光質感
+            ior: 1.5,               // 壓克力/玻璃的真實折射率
+            thickness: 0.5,         // 模擬物理厚度，讓折射效果更明顯
+            clearcoat: 1.0,         // 表面覆蓋亮光層，增加立體感
+            clearcoatRoughness: 0.1,
+            side: THREE.DoubleSide  // 雙面渲染，展現兜的內壁與外壁
         });
         
         // 兜的本體 (半圓柱橫放)
         const scoopGeo = new THREE.CylinderGeometry(1.2, 1.2, 2.2, 32, 1, false, 0, Math.PI);
-        const scoop = new THREE.Mesh(scoopGeo, trayMat);
+        const scoop = new THREE.Mesh(scoopGeo, acrylicMat);
         scoop.rotation.z = Math.PI / 2;
         scoop.rotation.x = Math.PI / 2;
         scoop.position.set(0, 0.8, 1.2); // 放在洞口正下方延伸出
         
         // 兜的左右兩側封口
         const capGeo = new THREE.CircleGeometry(1.2, 32, 0, Math.PI);
-        const capL = new THREE.Mesh(capGeo, trayMat);
+        const capL = new THREE.Mesh(capGeo, acrylicMat);
         capL.position.set(-1.1, 0.8, 1.2); capL.rotation.set(Math.PI/2, -Math.PI/2, 0);
-        const capR = new THREE.Mesh(capGeo, trayMat);
+        const capR = new THREE.Mesh(capGeo, acrylicMat);
         capR.position.set(1.1, 0.8, 1.2); capR.rotation.set(Math.PI/2, Math.PI/2, 0);
         
-        // 兜的金色邊緣防護圈
+        // 兜的金色邊緣防護圈 (保留金邊，能完美勾勒出透明托盤的輪廓)
         const rimGeo = new THREE.CylinderGeometry(1.25, 1.25, 2.3, 32, 1, true, 0, Math.PI);
         const rim = new THREE.Mesh(rimGeo, champagneGoldMat);
         rim.rotation.set(Math.PI/2, 0, Math.PI/2);
