@@ -524,14 +524,61 @@
 }
  
 /* 擬真縫線裝飾 */
+/* === 1. 修正我的資產虛線遮擋問題 === */
 .wallet-content::after {
-    content: '';
-    position: absolute;
-    inset: 6px;
-    border: 1px dashed rgba(212, 175, 55, 0.35); /* 金線感 */
-    border-radius: 6px;
-    pointer-events: none;
-    z-index: 10;
+    display: none !important; /* 移除原本會隨內容捲動並遮擋點擊的虛線 */
+}
+.wallet-content {
+    outline: 1px dashed rgba(212, 175, 55, 0.35);
+    outline-offset: -8px; /* 改用 outline 畫內縮虛線，固定且不受捲動影響 */
+}
+ 
+/* === 2. 修正分頁標籤在手機版擠壓換行的問題 === */
+#modal-inbox .room-modal-content > div:nth-of-type(1),
+#modal-tasks .room-modal-content > div:nth-of-type(1),
+.wallet-tabs {
+    display: flex !important;
+    gap: 15px !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    scrollbar-width: none; /* 隱藏 Firefox 捲軸 */
+    -ms-overflow-style: none; /* 隱藏 IE 捲軸 */
+    -webkit-overflow-scrolling: touch;
+}
+#modal-inbox .room-modal-content > div:nth-of-type(1)::-webkit-scrollbar,
+#modal-tasks .room-modal-content > div:nth-of-type(1)::-webkit-scrollbar,
+.wallet-tabs::-webkit-scrollbar {
+    display: none; /* 隱藏 Chrome/Safari 捲軸 */
+}
+ 
+/* 確保按鈕本身不會變形 */
+.tab-btn-custom, .wallet-tab-btn {
+    flex-shrink: 0 !important;
+}
+ 
+/* 針對手機：靠左對齊並啟用水平滑動 */
+@media (max-width: 768px) {
+    #modal-inbox .room-modal-content > div:nth-of-type(1),
+    #modal-tasks .room-modal-content > div:nth-of-type(1),
+    .wallet-tabs {
+        justify-content: flex-start !important;
+        padding-bottom: 15px !important;
+        margin-bottom: 25px !important;
+    }
+    .tab-btn-custom, .wallet-tab-btn {
+        font-size: 1.05rem !important;
+        padding: 8px 12px !important;
+    }
+}
+ 
+/* 針對電腦：維持置中對齊 */
+@media (min-width: 769px) {
+    #modal-inbox .room-modal-content > div:nth-of-type(1),
+    #modal-tasks .room-modal-content > div:nth-of-type(1),
+    .wallet-tabs {
+        justify-content: center !important;
+        overflow-x: visible !important;
+    }
 }
  
 .wallet-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(212, 175, 55, 0.2); padding-bottom: 20px; margin-bottom: 30px; position: relative; z-index: 2; }
@@ -7409,21 +7456,47 @@ window.toggleReadingLog = function() {
     }
 
     window.openGachaConfirm = function() {
+        const unownedIds = Object.keys(LIT_QUOTES).filter(id => !window.userQuotes[id]);
+        const isAllCollected = unownedIds.length === 0;
+ 
         const overlay = document.getElementById('gacha-confirm-overlay');
+        const textEl = overlay.querySelector('.confirm-text');
+        
+        // 判斷是否已全收集，給予不同提示
+        if (isAllCollected) {
+            textEl.innerHTML = `您已集齊所有名家語錄！<br>現在可以不受限制自由轉動，隨機重溫佳句。`;
+        } else {
+            textEl.innerHTML = `提筆落墨，文字有靈。<br>確認要花費 <span style="color:#da604f; font-weight:bold;">500 積分</span> 轉動機身，喚醒一段名家語錄嗎？`;
+        }
+ 
         overlay.style.display = 'flex';
         gsap.to(overlay, {opacity: 1, duration: 0.3});
         gsap.fromTo("#gacha-confirm-paper", {y: 30, opacity: 0}, {y: 0, opacity: 1, duration: 0.5, ease: "power3.out"});
     };
-
-    window.closeGachaConfirm = function() {
-        const overlay = document.getElementById('gacha-confirm-overlay');
-        gsap.to("#gacha-confirm-paper", {y: 20, opacity: 0, duration: 0.3});
-        gsap.to(overlay, {opacity: 0, duration: 0.3, delay: 0.1, onComplete: () => {
-            overlay.style.display = 'none';
-        }});
-    };
-
+ 
     window.confirmGachaDraw = function() {
+        const unownedIds = Object.keys(LIT_QUOTES).filter(id => !window.userQuotes[id]);
+        const isAllCollected = unownedIds.length === 0;
+ 
+        // 如果還沒收集完，必須扣除 500 積分
+        if (!isAllCollected) {
+            if (userPoints < 500) {
+                alert("您的積分不足 500 分，無法轉動扭蛋機！\n請多完成任務來獲取積分。");
+                closeGachaConfirm();
+                return;
+            }
+            
+            // 扣除積分並寫入 Firebase 伺服器
+            userPoints -= 500;
+            db.ref(`users/${currentUser.uid}/points`).set(userPoints);
+            
+            // 實時更新畫面右上角的積分數字
+            document.getElementById('user-points-text').innerText = userPoints;
+            showToast("已扣除 500 積分！機器開始運轉...");
+        } else {
+            showToast("全圖鑑達成，自由重溫模式開啟！");
+        }
+ 
         closeGachaConfirm();
         startGachaDrawProcess();
     };
