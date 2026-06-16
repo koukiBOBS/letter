@@ -3962,7 +3962,7 @@ function createHKVehicle(type, direction) {
     // 加入到可點擊陣列中 (請確保 interactables 變數可被存取)
     interactables.push(hitBox);
 }
-    }
+ 
     else { // 私家車 (多色)
         const carColors = [0x111111, 0xdddddd, 0x223388, 0x882222, 0x444444];
         const bodyMat = new THREE.MeshStandardMaterial({color: carColors[Math.floor(Math.random()*carColors.length)]});
