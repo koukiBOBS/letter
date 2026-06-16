@@ -2406,7 +2406,7 @@ function renderTasks() {
           // ==========================================
             // 📖 1. 渲染閱讀任務卡片
             // ==========================================
-            readingTasks.forEach((dateStr, i) => {
+          readingTasks.forEach((dateStr, i) => {
                 const unlocked = new Date().setHours(0,0,0,0) >= new Date(dateStr).setHours(0,0,0,0);
                 const done = submittedReadingDates.includes(dateStr);
                 
@@ -2426,7 +2426,11 @@ function renderTasks() {
                 // --- 視覺化精緻排版 ---
                 let dateHtml = '';
                 if (!unlocked) {
-                    dateHtml = `<span class="task-date" style="color:#94a3b8;">🔒 ${dateStr} 開放</span>`;
+                    // 🌟 【修改這裡】：未開放時，也會顯示帶有虛線邊框的灰色截止日徽章
+                    dateHtml = `
+                        <span class="task-date" style="display:block; margin-bottom:8px; color:#94a3b8;">🔒 預計開放: ${dateStr}</span>
+                        <span style="display:inline-block; font-size:0.8rem; background:#f8fafc; color:#94a3b8; padding:5px 12px; border-radius:20px; font-weight:bold; border:1px dashed #cbd5e1;">⏳ 截止: ${deadlineStr}</span>
+                    `;
                 } else if (done) {
                     dateHtml = `<span class="task-date" style="color:#6b8e73; font-weight:bold;">✓ 已完成</span>`;
                 } else {
@@ -2455,7 +2459,6 @@ function renderTasks() {
                 }; 
                 rGrid.appendChild(el);
             });
-
             // ==========================================
             // 📸 2. 渲染生活探索卡片
             // ==========================================
