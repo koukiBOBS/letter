@@ -1702,12 +1702,33 @@
         
 
         let allowedEmailsWhitelist = [];
+        window.currentUserConfig = { role: 'student', canType: false };
 
 
 // 判斷是否為老師 Email ( @ccckyc.edu.hk 結尾，且 @ 之前沒有任何數字 )
+// 判斷是否為老師
 function isTeacherEmail(email) {
-    return email && /^[^\d@]+@ccckyc\.edu\.hk$/.test(email);
+    if (!email) return false;
+    // 如果是判斷當前登入者，直接依據 Firebase 下載的權限
+    if (currentUser && email.toLowerCase() === currentUser.email.toLowerCase()) {
+        return window.currentUserConfig.role === 'teacher';
+    }
+    // 如果是判斷其他人（例如信件配對時的對象），則使用正規表達式檢查
+    return /^[^\d@]+@ccckyc\.edu\.hk$/.test(email.toLowerCase());
 }
+
+// 判斷是否允許鍵盤打字
+function isTypingAllowed(email) {
+    // 只要身分是老師，或是 Firebase 中特別設定 canType: true 的學生
+    return window.currentUserConfig.role === 'teacher' || window.currentUserConfig.canType;
+}
+
+// 判斷是否開啟開發面板
+function isDevUser(email) {
+    // 只有身分為老師的人才能看見開發面板
+    return window.currentUserConfig.role === 'teacher';
+}
+
 
 
 window.switchWalletTab = function(tab) {
@@ -1888,11 +1909,25 @@ auth.onAuthStateChanged(user => {
         const encodedEmail = email.replace(/\./g, ',');
 
         db.ref(`special_users/${encodedEmail}`).once('value').then(snap => {
-            const isSpecialUser = snap.val() === true; 
+            const specialData = snap.val(); 
             const isCCCKYC = email.endsWith('@ccckyc.edu.hk');
-            const isKenchan = email.includes('kenchan');
 
-            if (!isCCCKYC && !isKenchan && !isSpecialUser) {
+            // 1. 解析 Firebase 中的特許權限 (相容舊的 true 寫法)
+            if (specialData && typeof specialData === 'object') {
+                window.currentUserConfig.role = specialData.role || 'student';
+                window.currentUserConfig.canType = specialData.canType === true;
+            } else if (specialData === true) {
+                window.currentUserConfig.role = 'student';
+            }
+
+            // 2. 如果是正牌老師電郵，自動賦予最高權限
+            if (/^[^\d@]+@ccckyc\.edu\.hk$/.test(email)) {
+                window.currentUserConfig.role = 'teacher';
+                window.currentUserConfig.canType = true;
+            }
+
+            // 3. 資格審查：不是本校學生，且不在特許名單內，踢出
+            if (!isCCCKYC && !specialData) {
                 alert("很抱歉，您的電郵不符合註冊與登入資格。");
                 auth.signOut();
                 return; 
@@ -2747,7 +2782,7 @@ else processReply(letterId, partnerUid, ObjectData);
                 // 【新增】隔離對象：排除自己，且老師只能配對老師、學生只能配對學生
                 let eligibleUids = Object.keys(users).filter(u => {
                     if (u === currentUser.uid) return false;
-                    const targetIsTeacher = isTeacherEmail(users[u].email);
+                  const targetIsTeacher = (users[u].classId === 'teacher_class') || isTeacherEmail(users[u].email);
                     return isMeTeacher === targetIsTeacher;
                 });
                 
@@ -2824,7 +2859,7 @@ function processRandomTask(data) {
         // 【新增】隔離對象
         let eligibleUids = Object.keys(users).filter(u => {
             if (u === currentUser.uid) return false;
-            const targetIsTeacher = isTeacherEmail(users[u].email);
+          const targetIsTeacher = (users[u].classId === 'teacher_class') || isTeacherEmail(users[u].email);
             return isMeTeacher === targetIsTeacher;
         });
         
@@ -6769,36 +6804,7 @@ function closeGacha() {
         
 
 
-// 👇 新增：專門判斷是否允許使用鍵盤打字
-function isTypingAllowed(email) {
-    if (!email) return false;
-    const lowerEmail = email.toLowerCase();
-    // 老師，或是指定的這兩個測試帳號，皆可打字
-    if (isTeacherEmail(lowerEmail)) return true;
-    if (lowerEmail === 'kenchan20131@gmail.com' || lowerEmail === 'kenchan20141@gmail.com') return true;
-    return false;
-}
- 
-// === 1. 開發面板權限與收合邏輯 ===
-function isDevUser(email) {
-    if (!email) return false;
-    const lowerEmail = email.toLowerCase();
- 
-    // ⛔ 【絕對排除】：這兩個測試帳號直接當作普通學生，剝奪開發面板與防作弊豁免權！
-    if (lowerEmail === 'kenchan20131@gmail.com' || lowerEmail === 'kenchan20141@gmail.com') return false;
- 
-    // ✅ 條件一：包含 kenchan 的其他帳號 (如 kenchan 開發主帳號)
-    if (lowerEmail.includes('kenchan')) return true;
-    
-    // ✅ 條件二：@ccckyc.edu.hk 且 @ 前面不能有數字 (老師)
-    const isTeacher = /^[^\d@]+@ccckyc\.edu\.hk$/.test(lowerEmail);
-    if (isTeacher) return true;
- 
-    // ✅ 條件三：存在於 Firebase 資料庫的 allowed_emails 特許名單中
-    if (allowedEmailsWhitelist.includes(lowerEmail)) return true;
- 
-    return false;
-}
+
 
 
 
