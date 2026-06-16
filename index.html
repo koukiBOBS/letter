@@ -2403,73 +2403,111 @@ function renderTasks() {
             if (readingTasks.length === 0 && freeReadingLetters.length === 0) {
                 rGrid.innerHTML = '<div class="empty-state"><p>目前尚未有閱讀任務與自由撰寫紀錄。</p></div>';
             }
-          readingTasks.forEach((dateStr, i) => {
-                // 1. 判斷是否解鎖
+          // ==========================================
+            // 📖 1. 渲染閱讀任務卡片
+            // ==========================================
+            readingTasks.forEach((dateStr, i) => {
                 const unlocked = new Date().setHours(0,0,0,0) >= new Date(dateStr).setHours(0,0,0,0);
                 const done = submittedReadingDates.includes(dateStr);
                 
-                // 2. 計算 48 小時後的截止日期 (發放日 + 1 天)
-                const dDate = new Date(new Date(dateStr).getTime() + 86400000);
-                const deadlineStr = `${dDate.getFullYear()}-${String(dDate.getMonth()+1).padStart(2,'0')}-${String(dDate.getDate()).padStart(2,'0')}`;
+                // 計算 48 小時後的截止日
+                let dDate = new Date(new Date(dateStr).getTime() + 86400000);
+                let deadlineStr = `${dDate.getFullYear()}-${String(dDate.getMonth()+1).padStart(2,'0')}-${String(dDate.getDate()).padStart(2,'0')}`;
                 
-                // 3. 判斷是否逾期
                 const limitTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
                 const isLate = !done && Date.now() >= limitTime;
                 
-                // 📝 寫入日曆資料
                 addCalTask(dateStr, 'reading', rMap[dateStr]);
-
                 if (unlocked && !done) { hasPendingTasks = true; }
 
                 const el = document.createElement('div'); 
                 el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
                 
-                // 4. 動態生成日期的 UI (包含發放與截止)
+                // --- 視覺化精緻排版 ---
                 let dateHtml = '';
                 if (!unlocked) {
-                    // 未解鎖 (灰階顯示開放日)
-                    dateHtml = `<span class="task-date">🔒 ${dateStr} 開放</span>`;
+                    dateHtml = `<span class="task-date" style="color:#94a3b8;">🔒 ${dateStr} 開放</span>`;
                 } else if (done) {
-                    // 已完成 (顯示發放日即可)
-                    dateHtml = `<span class="task-date">${dateStr} 發放</span>`;
+                    dateHtml = `<span class="task-date" style="color:#6b8e73; font-weight:bold;">✓ 已完成</span>`;
                 } else {
-                    // 解鎖未完成 (突顯截止日期)
                     if (isLate) {
                         dateHtml = `
-                            <span class="task-date" style="display:block; margin-bottom:4px;">${dateStr} 發放</span>
-                            <span style="display:inline-block; font-size:0.8rem; background:#fee2e2; color:#ef4444; padding:4px 10px; border-radius:12px; font-weight:bold;">⚠️ 逾期 (限期: ${deadlineStr})</span>
+                            <span class="task-date" style="display:block; margin-bottom:8px; color:#94a3b8;">發放: ${dateStr}</span>
+                            <span style="display:inline-block; font-size:0.8rem; background:#fee2e2; color:#ef4444; padding:5px 12px; border-radius:20px; font-weight:bold; box-shadow:0 2px 4px rgba(239,68,68,0.1);">⚠️ 逾期 (限: ${deadlineStr})</span>
                         `;
                     } else {
                         dateHtml = `
-                            <span class="task-date" style="display:block; margin-bottom:4px;">${dateStr} 發放</span>
-                            <span style="display:inline-block; font-size:0.8rem; background:#f0f5f1; color:#57785e; padding:4px 10px; border-radius:12px; border:1px solid #c3d6c8;">⏳ 截止: ${deadlineStr}</span>
+                            <span class="task-date" style="display:block; margin-bottom:8px; color:#94a3b8;">發放: ${dateStr}</span>
+                            <span style="display:inline-block; font-size:0.8rem; background:#f0f5f1; color:#57785e; padding:5px 12px; border-radius:20px; font-weight:bold; border:1px solid #c3d6c8; box-shadow:0 2px 4px rgba(87,120,94,0.05);">⏳ 截止: ${deadlineStr}</span>
                         `;
                     }
                 }
 
-                // 組合卡片內容
-                el.innerHTML = `
-                    <span class="task-num">第 ${i+1} 回閱讀</span>
-                    ${dateHtml}
-                `;
+                el.innerHTML = `<span class="task-num" style="margin-bottom:10px;">第 ${i+1} 回閱讀</span>${dateHtml}`;
                 
-                // 點擊事件
                 el.onclick = () => {
-                    if(done) {
-                        openChatModal(rMap[dateStr].id);
-                    } else if(unlocked) {
+                    if(done) openChatModal(rMap[dateStr].id);
+                    else if(unlocked) {
                         if(hasUnrepliedLetters) return alert("您有尚未回覆的信件，請先回覆。");
-                        selectedTaskIndex = i; 
-                        selectedTaskDate = dateStr;
-                        rGrid.style.display = 'none'; 
-                        document.getElementById('write-editor').style.display = 'block';
-                    } else {
-                        alert("時空未到，尚未開放。");
-                    }
+                        selectedTaskIndex = i; selectedTaskDate = dateStr;
+                        rGrid.style.display = 'none'; document.getElementById('write-editor').style.display = 'block';
+                    } else alert("時空未到，尚未開放。");
                 }; 
                 rGrid.appendChild(el);
             });
 
+            // ==========================================
+            // 📸 2. 渲染生活探索卡片
+            // ==========================================
+            if (randomTasks.length === 0) randGrid.innerHTML = '<div class="empty-state"><p>目前尚未設定探索任務。</p></div>';
+            
+            randomTasks.forEach((dateStr, i) => {
+                const unlocked = true; 
+                const done = submittedRandomDates.includes(dateStr);
+                
+                // 計算 48 小時後的截止日
+                let dDate = new Date(new Date(dateStr).getTime() + 86400000);
+                let deadlineStr = `${dDate.getFullYear()}-${String(dDate.getMonth()+1).padStart(2,'0')}-${String(dDate.getDate()).padStart(2,'0')}`;
+                
+                const limitTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
+                const isLate = !done && Date.now() >= limitTime;
+                
+                const randRecord = randMap[dateStr];
+                addCalTask(dateStr, 'random', randRecord);
+                if (!done) { hasPendingTasks = true; }
+
+                const el = document.createElement('div'); 
+                el.className = `task-card ${done ? 'completed' : ''}`;
+                
+                // --- 視覺化精緻排版 ---
+                let dateHtml = '';
+                if (done) {
+                    dateHtml = `<span class="task-date" style="color:#6b8e73; font-weight:bold;">✓ 已完成</span>`;
+                } else {
+                    if (isLate) {
+                        dateHtml = `
+                            <span class="task-date" style="display:block; margin-bottom:8px; color:#94a3b8;">發放: ${dateStr}</span>
+                            <span style="display:inline-block; font-size:0.8rem; background:#fee2e2; color:#ef4444; padding:5px 12px; border-radius:20px; font-weight:bold; box-shadow:0 2px 4px rgba(239,68,68,0.1);">⚠️ 逾期 (限: ${deadlineStr})</span>
+                        `;
+                    } else {
+                        dateHtml = `
+                            <span class="task-date" style="display:block; margin-bottom:8px; color:#94a3b8;">發放: ${dateStr}</span>
+                            <span style="display:inline-block; font-size:0.8rem; background:#fff1eb; color:#c25953; padding:5px 12px; border-radius:20px; font-weight:bold; border:1px solid #fbdcd5; box-shadow:0 2px 4px rgba(194,89,83,0.05);">⏳ 截止: ${deadlineStr}</span>
+                        `;
+                    }
+                    if (drawnTasksData[dateStr]) { 
+                        dateHtml += `<div style="margin-top:12px; font-size:0.8rem; color:#8b7355; font-weight:600; letter-spacing:1px;">已抽籤，待繳交</div>`; 
+                    }
+                }
+
+                el.innerHTML = `<span class="task-num" style="margin-bottom:10px;">第 ${i+1} 回探索</span>${dateHtml}`;
+                
+                el.onclick = () => {
+                    if(done) openChatModal(randMap[dateStr].letterId);
+                    else handleRandomTaskClick(dateStr);
+                }; 
+                randGrid.appendChild(el);
+            });
 // --- 渲染「自由撰寫」的紀錄卡片 ---
             freeReadingLetters.forEach((l) => {
                 const el = document.createElement('div'); 
