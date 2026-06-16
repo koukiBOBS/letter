@@ -5322,7 +5322,8 @@ benchGrp = new THREE.Group();
 
     // 🌉 1. 無盡延伸的青馬大橋 (往左開 -X 方向)
     const bridgeGroup = new THREE.Group();
-    bridgeGroup.position.set(-30, 0, 4); // 起點校正
+  // 👇 找到這行，把 -30 改回原本的 -140
+    bridgeGroup.position.set(-140, 0, 4);
     balconyOnlyGroup.add(bridgeGroup);
 
     const towerMat = new THREE.MeshStandardMaterial({color: 0xd0d4d9, roughness: 0.6});
@@ -5514,8 +5515,9 @@ benchGrp = new THREE.Group();
         carGroup.rotation.y = Math.PI / 2; 
         
         // 為了避免車流太死板，給予每一台車微小的隨機速度差異 (0.35 ~ 0.45)
-        const randomSpeed = 0.35 + (Math.random() * 0.1); 
-        carGroup.userData = { speed: randomSpeed * direction, type: 'vehicle' }; 
+      const randomSpeed = 0.9 + (Math.random() * 0.3); 
+        
+        carGroup.userData = { speed: randomSpeed * direction, type: 'vehicle' };
         
         balconyOnlyGroup.add(carGroup);
         animScenery.cars.push(carGroup); 
