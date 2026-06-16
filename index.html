@@ -2081,6 +2081,7 @@ function signIn() {
         db.ref('classes/teacher_class').update({ name: "老師" }); 
     }
 
+    // 更新完整的 user 檔案
     db.ref(`users/${currentUser.uid}`).set({ 
         name, 
         email: currentUser.email, 
@@ -2088,18 +2089,25 @@ function signIn() {
         receivedCount: 0, 
         receivedRandomCount: 0 
     }).then(() => { 
-        // 【修訂】註冊完成後，也將 classId 記錄到本地變數
+        // 👇 【新增】：同時建立輕量級的 user_meta，專供配對使用
+        db.ref(`user_meta/${currentUser.uid}`).set({
+            email: currentUser.email,
+            classId: classId,
+            receivedCount: 0,
+            lastLoginTime: firebase.database.ServerValue.TIMESTAMP
+        });
+
         currentUser.classId = classId; 
         document.getElementById('user-name').innerText = name; 
         hideAuthOverlay(); 
         initApp(); 
-    }); 
+    });
 }
         function hideAuthOverlay() { gsap.to("#auth-overlay", { opacity: 0, duration: 0.6, onComplete: () => { document.getElementById('auth-overlay').style.display = 'none'; }}); }
 
 function initApp() { 
-    db.ref(`users/${currentUser.uid}/lastLoginTime`).set(firebase.database.ServerValue.TIMESTAMP);
-
+   // 👇 將最後上線時間寫入輕量級的 user_meta，而不是肥大的 users 節點
+    db.ref(`user_meta/${currentUser.uid}/lastLoginTime`).set(firebase.database.ServerValue.TIMESTAMP);
     db.ref(`users/${currentUser.uid}`).on('value', snap => {
         let data = snap.val() || {};
         userPoints = data.points || 0;
@@ -2147,7 +2155,7 @@ function initApp() {
     // 3. 預熱完成後，才把白色的登入介面優雅地淡出 (這樣就不會黑屏了！)
     hideAuthOverlay();
 
-    healPool();
+
     db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); 
     setupNotifications(); 
     loadMailbox(); 
@@ -3016,17 +3024,22 @@ else processReply(letterId, partnerUid, ObjectData);
           
                 if (eligibleUids.length > 0) {
                     if (selectedTaskIndex === 'free') {
-                        // ✨ 自由撰寫邏輯：發送給「最近上線」的同學
-                        eligibleUids.sort((a, b) => {
-                            let timeA = users[a].lastLoginTime || 0;
-                            let timeB = users[b].lastLoginTime || 0;
-                            return timeB - timeA; // 降序排列 (時間越大代表越晚登入，排在越前面)
-                        });
-                        rec = eligibleUids[0]; // 取最上面第一位 (最近上線的同學)
-                        
-                        // 為了不干擾常規任務的公平性，自由信件我們依然稍微加總收到次數
-                        db.ref(`users/${rec}/receivedCount`).set((users[rec].receivedCount || 0) + 1);
-                    } else {
+    // ✨ 自由撰寫邏輯：發送給「最近上線的前 3 名同學」中的隨機一位
+    eligibleUids.sort((a, b) => {
+        let timeA = users[a].lastLoginTime || 0;
+        let timeB = users[b].lastLoginTime || 0;
+        return timeB - timeA; // 降序排列
+    });
+    
+    // 取最多前 3 名 (如果全班不到 3 人則取實際人數)
+    let topK = Math.min(3, eligibleUids.length);
+    
+    // 從這 topK 人中隨機抽一位
+    rec = eligibleUids[Math.floor(Math.random() * topK)];
+    
+    // 為了不干擾常規任務的公平性，自由信件我們依然稍微加總收到次數
+    db.ref(`users/${rec}/receivedCount`).set((users[rec].receivedCount || 0) + 1);
+} else {
                         // 📖 常規任務邏輯：維持原本的「收到信件最少」的公平分配
                         let minCount = Infinity; 
                         eligibleUids.forEach(uid => { 
@@ -3067,6 +3080,7 @@ removeAttachedQuote();
                         
                         // 👇👇👇 加上這行：完成閱讀心得給予 1000 積分並觸發抽獎動畫
                         addPointsAndGacha(1000, true);
+                    healPool(); // ✅ 新增：在寄信成功後，順便幫系統分配一封孤兒信
                     });
                 });
             });
@@ -3138,6 +3152,7 @@ function processRandomTask(data) {
                 
                 // 👇👇👇 加上這行：完成探索任務給予 500 積分（通常不觸發強制抽獎動畫，只加分）
                 addPointsAndGacha(500, false);
+            healPool(); // ✅ 新增：在寄信成功後，順便幫系統分配一封孤兒信
             });
         });
     });
@@ -3183,11 +3198,25 @@ function processRandomTask(data) {
             if (isSubmittingLog) return; isSubmittingLog = true; const btn = document.getElementById('btn-submit-task'); btn.innerText = "圖片上傳與封裝中..."; btn.disabled = true;
 
             try {
-                const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ fileName: selectedFileName, mimeType: 'image/jpeg', base64: selectedFileBase64 }) });
-                const responseText = await response.text(); let result = JSON.parse(responseText); if (!result.success) throw new Error(result.error || "上傳未成功");
-                const combinedText = `【目前進度】\n第 ${page} 頁\n\n【思考問題】\n${question}\n\n【閱讀心得】\n${text}`;
-               playAnim('log', null, null, { title: title, text: combinedText, imageUrl: result.url, quoteId: currentAttachedQuoteId });
-            } catch (error) { alert("圖片上傳發生異常：" + error.message); isSubmittingLog = false; btn.innerText = "封裝寄出心得"; btn.disabled = false; }
+        const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ fileName: selectedFileName, mimeType: 'image/jpeg', base64: selectedFileBase64 }) });
+        const responseText = await response.text(); 
+        let result = JSON.parse(responseText); 
+        
+        if (!result.success) throw new Error(result.error || "上傳未成功");
+        
+        // 👇 【新增】：嚴格安全攔截！確保回傳的是真正的 URL 網址，絕不能是 Base64！
+        if (!result.url || result.url.startsWith('data:image')) {
+            throw new Error("圖片伺服器回傳格式錯誤，為保護系統已終止傳送。");
+        }
+
+        const combinedText = `【目前進度】\n第 ${page} 頁\n\n【思考問題】\n${question}\n\n【閱讀心得】\n${text}`;
+        playAnim('log', null, null, { title: title, text: combinedText, imageUrl: result.url, quoteId: currentAttachedQuoteId });
+    } catch (error) { 
+        alert("圖片上傳發生異常：" + error.message); 
+        isSubmittingLog = false; 
+        btn.innerText = "封裝寄出心得"; 
+        btn.disabled = false; 
+    }
         }
 
   function loadUserPlant() {
@@ -4025,18 +4054,25 @@ async function submitRandomTask() {
     const btn = document.getElementById('btn-submit-random');
     btn.innerText = "相片上傳與封裝中..."; btn.disabled = true;
 
-    try {
+   try {
         const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ fileName: selectedFileName, mimeType: 'image/jpeg', base64: selectedFileBase64 }) });
-        const responseText = await response.text(); let result = JSON.parse(responseText); 
+        const responseText = await response.text(); 
+        let result = JSON.parse(responseText); 
+        
         if (!result.success) throw new Error("上傳未成功");
+        
+        // 👇 【新增】：嚴格安全攔截！確保回傳的是真正的 URL 網址
+        if (!result.url || result.url.startsWith('data:image')) {
+            throw new Error("圖片伺服器回傳格式錯誤，為保護系統已終止傳送。");
+        }
         
         // 觸發 3D 動畫，並將 type 設為 'random'
         playAnim('random', null, null, { text: note, imageUrl: result.url });
     } catch (error) { 
         alert("圖片上傳發生異常：" + error.message); 
-        btn.innerText = "封裝完成任務"; btn.disabled = false; 
+        btn.innerText = "封裝完成任務"; 
+        btn.disabled = false; 
     }
-}
 
 /* =========================================
  * 隨機任務：3D 籤筒動畫 (THREE.js)
