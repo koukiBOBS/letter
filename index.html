@@ -4668,17 +4668,29 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     foldGeoR.translate(-7.5, 0, 0);
 
     // 透過數學正弦波 (Sine Wave) 把平面的頂點推成波浪狀
+   // 透過數學正弦波，加上隨機相位與次級波浪，產生不規則的真實皺褶
+    const randomPhaseL = Math.random() * Math.PI * 2; // 左窗簾隨機起點
+    const randomPhaseR = Math.random() * Math.PI * 2; // 右窗簾隨機起點
+
     const posL = foldGeoL.attributes.position;
     for (let i = 0; i < posL.count; i++) {
         const x = posL.getX(i);
-        posL.setZ(i, Math.sin(x * 1.5) * 1.0); // 產生皺褶
+        const y = posL.getY(i);
+        // 主波浪 (1.5頻率) + 次級小波浪 (3.0頻率) + 垂直自然下垂微調
+        let z = Math.sin(x * 1.5 + randomPhaseL) * 1.0; 
+        z += Math.sin(x * 3.0 + randomPhaseL) * 0.25; 
+        posL.setZ(i, z);
     }
     foldGeoL.computeVertexNormals(); // 重新計算光影反射面
 
     const posR = foldGeoR.attributes.position;
     for (let i = 0; i < posR.count; i++) {
         const x = posR.getX(i);
-        posR.setZ(i, Math.sin(x * 1.5) * 1.0); // 產生皺褶
+        const y = posR.getY(i);
+        // 右窗簾頻率與左窗簾稍微不同 (1.4 vs 1.5)，徹底打破對稱感
+        let z = Math.sin(x * 1.4 + randomPhaseR) * 1.1; 
+        z += Math.sin(x * 2.8 + randomPhaseR) * 0.2; 
+        posR.setZ(i, z);
     }
     foldGeoR.computeVertexNormals();
 
