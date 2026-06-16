@@ -7307,10 +7307,23 @@ function buildDetailedGachaMachine() {
         const polishedSilverMat = new THREE.MeshStandardMaterial({
             color: 0xe1e8eb, metalness: 0.9, roughness: 0.12
         });
-        const crystalGlassMat = new THREE.MeshPhysicalMaterial({
-            color: 0xffffff, transmission: 0.97, roughness: 0.02,
-            ior: 1.5, thickness: 0.22, transparent: true
-        });
+        // --- 1. 改進：扭蛋機大圓頂材質 (高透明、高反射玻璃) ---
+const crystalGlassMat = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
+    metalness: 0.0,
+    roughness: 0.05,          // 稍微有一點點粗糙度，能捕捉光暈
+    transmission: 0.9,        // 降低到 0.9，讓玻璃有一點實體感
+    ior: 1.52,                // 玻璃的折射率
+    thickness: 1.0,           // 模擬玻璃厚度產生的折射
+    specularIntensity: 1,     // 高光強度
+    specularColor: 0xffffff,
+    clearcoat: 1.0,           // 表面塗層（如鋼琴漆般的反射）
+    clearcoatRoughness: 0.0,
+    transparent: true,
+    envMapIntensity: 1.5      // 增強對環境光的反射感
+});
+ 
+
  
         // 3.1 八角珊瑚紅金屬底座
         const baseGeo = new THREE.CylinderGeometry(4.2, 4.2, 7, 32);
@@ -7396,9 +7409,17 @@ function buildDetailedGachaMachine() {
         const halfSphereGeoTop = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, 0, Math.PI/2);
         const halfSphereGeoBot = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, Math.PI/2, Math.PI/2);
         
-        const frostedGlassMat = new THREE.MeshPhysicalMaterial({
-            color: 0xffffff, transmission: 0.94, roughness: 0.18, transparent: true, thickness: 0.04
-        });
+      const frostedGlassMat = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
+    transmission: 0.5,        // 較低的透光度，產生「磨砂」或「厚塑料」感
+    roughness: 0.3,           // 增加粗糙度，讓光線散射
+    metalness: 0.0,
+    thickness: 0.2,           // 殼的厚度
+    ior: 1.45,
+    clearcoat: 0.5,           // 表面仍保留一點微弱的反光
+    transparent: true,
+    opacity: 1.0
+});
         for(let i=0; i<80; i++) {
             const capGrp = new THREE.Group();
             const col = morandiColors[Math.floor(Math.random() * morandiColors.length)];
