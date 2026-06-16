@@ -7091,7 +7091,7 @@ window.toggleReadingLog = function() {
         });
     }
 
-   // 3. 建造精緻的八角扭蛋機 (優化高階物理材質、徑向尺寸偏置防閃爍、莫蘭迪珊瑚橘)
+  // 3. 建造精緻的八角扭蛋機 (移除透明托盤，改為簡潔出口)
     function buildDetailedGachaMachine() {
         gachaMachineGrp = new THREE.Group();
         gachaMachineGrp.position.set(-48, 0, 25);
@@ -7122,7 +7122,7 @@ window.toggleReadingLog = function() {
         mBase.castShadow = true;
         mBase.receiveShadow = true;
         gachaMachineGrp.add(mBase);
-        // 3.2 裝飾金邊 (openEnded = true 挖空底面防閃爍)
+        // 3.2 裝飾金邊
         const baseBottomTrim = new THREE.Mesh(new THREE.CylinderGeometry(4.26, 4.26, 0.3, 32, 1, true), champagneGoldMat);
         baseBottomTrim.position.y = 0.15;
         gachaMachineGrp.add(baseBottomTrim);
@@ -7133,7 +7133,7 @@ window.toggleReadingLog = function() {
         const ledge = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.3, 1.8), champagneGoldMat);
         ledge.position.set(0, 5.0, 3.8);
         gachaMachineGrp.add(ledge);
-        // 3.4 投幣孔面板 (✅ 修正：移至出口通道上方，避免重疊閃爍)
+        // 3.4 投幣孔面板
         const coinPanel = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.4, 0.2), deepIronMat);
         coinPanel.position.set(0, 4.2, 4.25);
         gachaMachineGrp.add(coinPanel);
@@ -7158,50 +7158,27 @@ window.toggleReadingLog = function() {
         const slot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.8, 0.15), new THREE.MeshBasicMaterial({color: 0x000000}));
         slot.position.set(0, 4.2, 4.36);
         gachaMachineGrp.add(slot);
-        // 3.7 🕳️ 無縫連接的金屬通道與高透壓克力托盤
+        // 3.7 🕳️ 簡潔的金屬出口通道 (直接掉落地板)
         chuteGrp = new THREE.Group();
         chuteGrp.position.set(0, 2.5, 4.1);
         gachaMachineGrp.add(chuteGrp);
-        // A. 深邃內部洞穴 (✅ 退至內部，徹底消除重合閃爍)
+        // A. 深邃內部洞穴
         const holeInner = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 1.2), new THREE.MeshBasicMaterial({color: 0x050505}));
         holeInner.position.set(0, 0, -0.5);
         chuteGrp.add(holeInner);
-        // B. 金屬通道 (讓機身與托盤完美過渡)
+        // B. 金屬邊框
         const frameMat = new THREE.MeshStandardMaterial({color: 0xe1e8eb, metalness: 0.9, roughness: 0.3});
-        const tunnelTop = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 1.2), frameMat); tunnelTop.position.set(0, 0.85, 0.2);
-        const tunnelBot = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 1.2), frameMat); tunnelBot.position.set(0, -0.85, 0.2);
-        const tunnelL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 1.2), frameMat); tunnelL.position.set(-0.85, 0, 0.2);
-        const tunnelR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 1.2), frameMat); tunnelR.position.set(0.85, 0, 0.2);
+        const tunnelTop = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 0.6), frameMat); tunnelTop.position.set(0, 0.85, -0.1);
+        const tunnelBot = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.1, 0.6), frameMat); tunnelBot.position.set(0, -0.85, -0.1);
+        const tunnelL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 0.6), frameMat); tunnelL.position.set(-0.85, 0, -0.1);
+        const tunnelR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.8, 0.6), frameMat); tunnelR.position.set(0.85, 0, -0.1);
         
-        // 微掀的金屬擋板
+        // 微掀的金屬擋板 (命名以便動畫調用)
         const flap = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 0.05), deepIronMat);
-        flap.position.set(0, 0.05, 0.7);
+        flap.position.set(0, 0.05, 0.2);
         flap.rotation.x = -0.25;
+        flap.name = "gachaFlap";
         chuteGrp.add(tunnelTop, tunnelBot, tunnelL, tunnelR, flap);
-        // C. 高透壓克力接球兜 (✅ 重製：採用無縫 U型槽設計)
-        const acrylicMat = new THREE.MeshPhysicalMaterial({
-            color: 0xffffff, transmission: 0.85, opacity: 1.0, transparent: true,      
-            roughness: 0.15, metalness: 0.1, ior: 1.5, thickness: 0.5,         
-            clearcoat: 1.0, clearcoatRoughness: 0.1, side: THREE.DoubleSide
-        });
-        
-        // U型槽主體：半徑 1.4，剛好寬裕容納半徑 0.65 的扭蛋
-        const scoopGeo = new THREE.CylinderGeometry(1.4, 1.4, 1.8, 32, 1, false, 0, Math.PI);
-        scoopGeo.rotateZ(Math.PI / 2); // 轉為向下凸出的 U 型槽
-        const scoop = new THREE.Mesh(scoopGeo, acrylicMat);
-        scoop.position.set(0, 0.55, 2.2); // 精準與金屬通道底部對齊
-        
-        // U型槽兩側封口防掉落
-        const capGeo = new THREE.CircleGeometry(1.4, 32, 0, Math.PI);
-        capGeo.rotateZ(Math.PI);
-        capGeo.rotateY(Math.PI / 2);
-        
-        const capL = new THREE.Mesh(capGeo, acrylicMat);
-        capL.position.set(-0.9, 0.55, 2.2);
-        const capR = new THREE.Mesh(capGeo, acrylicMat);
-        capR.position.set(0.9, 0.55, 2.2);
-        
-        chuteGrp.add(scoop, capL, capR);
         // 3.8 玻璃圓頂罩
         const dome = new THREE.Mesh(new THREE.SphereGeometry(4.1, 32, 32, 0, Math.PI*2, 0, Math.PI/2), crystalGlassMat);
         dome.position.y = 7;
@@ -7217,7 +7194,7 @@ window.toggleReadingLog = function() {
         const pinnacle = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), champagneGoldMat);
         pinnacle.position.y = 15.4;
         gachaMachineGrp.add(pinnacle);
-        // 3.10 莫蘭迪低飽和雙色扭蛋球 (80顆)
+        // 3.10 莫蘭迪低飽和雙色扭蛋球
         const morandiColors = [0xbc8a8f, 0x8fa397, 0xa39284, 0x8aa3b0, 0xb8a38f, 0xc59e8f];
         const halfSphereGeoTop = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, 0, Math.PI/2);
         const halfSphereGeoBot = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, Math.PI/2, Math.PI/2);
@@ -7264,7 +7241,6 @@ window.toggleReadingLog = function() {
         gachaMachineGrp.add(hitBox);
         interactables.push(hitBox);
  
-        // 內部柔和暖光
         const mLight = new THREE.PointLight(0xfff5e6, 1.0, 12);
         mLight.position.set(0, 9, 0);
         gachaMachineGrp.add(mLight);
@@ -7343,7 +7319,7 @@ window.toggleReadingLog = function() {
         startGachaDrawProcess();
     };
 
- function startGachaDrawProcess() {
+function startGachaDrawProcess() {
         isGachaPlaying = true;
         controls.enabled = false;
         // 5.1 備份當前用家視角
@@ -7352,16 +7328,16 @@ window.toggleReadingLog = function() {
         const rotY = gachaMachineGrp.rotation.y;
         const dirX = Math.sin(rotY);
         const dirZ = Math.cos(rotY);
-        // 托盤出口大約世界坐標
-        const trayWorldX = -48 + 3.8 * dirX;
-        const trayWorldY = 1.0;
-        const trayWorldZ = 25 + 3.8 * dirZ;
-        const camTargetX = trayWorldX;
-        const camTargetY = trayWorldY;
-        const camTargetZ = trayWorldZ;
-        const camIdealX = trayWorldX + 9.5 * dirX;
-        const camIdealY = trayWorldY + 2.2;
-        const camIdealZ = trayWorldZ + 9.5 * dirZ;
+        // 扭蛋掉落在地板上的世界座標
+        const dropWorldX = -48 + 6.0 * dirX;
+        const dropWorldY = 0.65; // 扭蛋半徑 0.65，貼齊地板 y=0
+        const dropWorldZ = 25 + 6.0 * dirZ;
+        const camTargetX = dropWorldX;
+        const camTargetY = dropWorldY;
+        const camTargetZ = dropWorldZ;
+        const camIdealX = dropWorldX + 9.5 * dirX;
+        const camIdealY = dropWorldY + 3.0; // 鏡頭稍微向下俯視地板上的扭蛋
+        const camIdealZ = dropWorldZ + 9.5 * dirZ;
         const tl = gsap.timeline();
         // 平滑推進鏡頭
         tl.to(camera.position, {
@@ -7371,7 +7347,7 @@ window.toggleReadingLog = function() {
             x: camTargetX, y: camTargetY, z: camTargetZ, duration: 1.2, ease: "power2.inOut",
             onUpdate: () => controls.update()
         }, "<")
-        // 5.3 水平旋扭按鍵與內部激烈攪拌特效
+        // 5.3 水平旋扭按鍵與內部攪拌特效
         .call(() => {
             const knob = gachaMachineGrp.getObjectByName("gachaKnob");
             if (knob) {
@@ -7400,48 +7376,44 @@ window.toggleReadingLog = function() {
                 });
             });
         }, null, "+=0.1")
-        // 5.4 扭蛋從洞穴深處滾下至托盤
+        // 5.4 扭蛋從洞穴深處滾落至地板
         .call(() => {
             const dropCap = capsulePool[Math.floor(Math.random() * capsulePool.length)].clone();
-            // 📍 起點：深邃洞口內部 (藏在擋板後面)
+            // 📍 起點：深邃洞口內部
             dropCap.position.set(0, 2.5, 3.5);
             gachaMachineGrp.add(dropCap);
             const dropTimeline = gsap.timeline();
             
-            // 滾落拋物線 (✅ 精準算入新U型托盤的物理座標)
-            // 托盤U型槽底部Y = -0.85，加上扭蛋半徑0.65，著陸高度Y = -0.2
-            // chuteGrp本身在 Y=2.5，世界坐標 Y = 2.5 - 0.2 = 2.3
-            // U型槽中心 Z = 2.2，chuteGrp Z = 4.1，世界坐標 Z = 4.1 + 2.2 = 6.3
+            // 物理互動：金屬擋板被衝出來的扭蛋推開
+            const flap = gachaMachineGrp.getObjectByName("gachaFlap");
+            if (flap) {
+                gsap.to(flap.rotation, {
+                    x: -1.0,
+                    duration: 0.2,
+                    yoyo: true,
+                    repeat: 1,
+                    ease: "power1.inOut"
+                });
+            }
+ 
+            // 滾落拋物線：直接彈落至機身外側的地板，保證不穿模
             dropTimeline.to(dropCap.position, {
-                x: 0,
-                y: 2.3,     // 👈 完美著陸高度，不再穿模
-                z: 6.3,     // 👈 剛好落在 U型槽 正中央
+                x: (Math.random() - 0.5) * 1.0, // 落地時帶點隨機左右偏移
+                y: 0.65,    // 👈 高度剛好貼齊地板
+                z: 6.0,     // 👈 Z軸足夠外拋，遠離半徑4.2的機身底座
                 duration: 1.0,
                 ease: "bounce.out"
             })
             .to(dropCap.rotation, {
-                x: Math.random() * 6,
-                y: Math.random() * 6,
+                x: Math.random() * 8,
+                y: Math.random() * 8,
                 duration: 1.0
             }, "<");
-            // 托盤受撞擊的物理微震
-            if (chuteGrp) {
-                dropTimeline.to(chuteGrp.position, {
-                    y: 2.45,
-                    duration: 0.1,
-                    yoyo: true,
-                    repeat: 1
-                }, "-=0.2")
-                .to(chuteGrp.position, {
-                    y: 2.5,
-                    duration: 0.15
-                });
-            }
-            // 扭蛋化光消失並彈出詩歌卡片
+            // 扭蛋在地板上稍微停留後，化光消失並彈出詩歌卡片
             dropTimeline.to(dropCap.scale, {
                 x: 0, y: 0, z: 0,
                 duration: 0.4,
-                delay: 0.6,
+                delay: 0.8, // 👈 延長在地上的停留時間，讓玩家看清楚
                 onComplete: () => {
                     gachaMachineGrp.remove(dropCap);
                     executeDrawLogic();
@@ -7463,7 +7435,6 @@ window.toggleReadingLog = function() {
             });
         }
     }
-
 
 
     // 6. 建立佳句展示窗
