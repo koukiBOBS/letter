@@ -2412,7 +2412,7 @@ function renderTasks() {
                 return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
             };
 
-            // ==========================================
+          // ==========================================
             // 📖 1. 渲染閱讀任務卡片
             // ==========================================
             readingTasks.forEach((dateStr, i) => {
@@ -2431,6 +2431,12 @@ function renderTasks() {
                 const el = document.createElement('div'); 
                 el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
                 
+                // 🛑 核心修復：強制移除 CSS 中的全灰濾鏡，讓未解鎖的卡片保留鮮明色彩！
+                if (!unlocked) {
+                    el.style.filter = "none"; 
+                    el.style.opacity = "0.75"; // 稍微半透明即可，不要變灰
+                }
+
                 // --- 雙色時間軸 UI 設計 ---
                 let startColor = '#548ca8'; // 開放日：莫蘭迪藍
                 let endColor = isLate ? '#ef4444' : '#d98a6c'; // 截止日：紅色(逾期) 或 莫蘭迪橘(正常)
@@ -2440,12 +2446,12 @@ function renderTasks() {
 
                 if (!unlocked) {
                     // 未開放：保留鮮明顏色，加上鎖頭，線條改為虛線
-                    startIcon = '<span style="font-size:0.8rem; margin-right:3px;">🔒</span>';
+              
                     lineStyle = `border-top: 2px dashed #cbd5e1; background: transparent;`;
                 } else {
                     // 已開放：雙色漸層實線
                     lineStyle = `background: linear-gradient(to right, ${startColor}, ${endColor});`;
-                    if (isLate) endIcon = '<span style="font-size:0.8rem; margin-left:4px;">⚠️</span>';
+    
                 }
 
                 let dateHtml = '';
