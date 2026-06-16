@@ -5367,6 +5367,7 @@ benchGrp = new THREE.Group();
         b.position.set(xPos, height/2 - 10, zPos);
         balconyOnlyGroup.add(b);
     }
+
  // 🎡 【精緻版】海濱摩天輪
     const fwContainer = new THREE.Group();
     fwContainer.position.set(110, -5, -35); 
@@ -5483,7 +5484,7 @@ benchGrp = new THREE.Group();
         sceneryGroup.add(b); animScenery.buildings.push(b); 
     });
 
-    // 馬路與行人路 (長度從 160 改為 360，連接大橋)
+    // 2. 替換馬路與行人路 (長度由 360 改為 5000)
     const roadWidth = 26;
     const road = new THREE.Mesh(new THREE.PlaneGeometry(5000, roadWidth), new THREE.MeshStandardMaterial({map: createAsphaltTexture(), roughness: 0.9})); 
     road.rotation.x = -Math.PI/2; road.position.set(0, -4.9, 4); road.receiveShadow = true; balconyOnlyGroup.add(road);
@@ -5521,6 +5522,7 @@ benchGrp = new THREE.Group();
     }
 
     // 路邊樹木 (跟隨馬路延伸，種植範圍改為 -160 到 160)
+    // 3. 替換路邊樹木 (種植範圍擴大到 -2000 到 2000)
     const trunkMat = new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 0.9});
     for (let i = -2000; i <= 2000; i += 18) { // 稍微拉開樹距，避免過多
         if (Math.abs(i) < 8) continue; 
@@ -5547,6 +5549,7 @@ benchGrp = new THREE.Group();
         }); 
     }
 
+    
     // 我的房間底座 (完全保留原樣)
     const myBuildingBaseMat = new THREE.MeshStandardMaterial({color: 0xdbd4cc, roughness: 1.0}); 
     
@@ -6854,7 +6857,9 @@ function animateRoom() {
     // 只要視線掃到「窗外的虛擬區域」，或是玩家正站在露台上，就判定為正在看窗外
     let isLookingOutside = isAtBalcony || cameraFrustum.intersectsBox(outsideWorldBox);
  
-  // ==========================================
+    // 只有當視線掃到窗外時，才去計算耗費 CPU 的海浪、雲朵、車輛與摩天輪
+    if (isLookingOutside) {
+      // ==========================================
         // 1. 車輛邏輯 (配合無盡道路延伸)
         // ==========================================
         let refX = (isRidingBus && activeBus) ? activeBus.position.x : 0;
@@ -8901,20 +8906,6 @@ function getOffBus() {
             }
         });
         if (busInteriorGrp) activeBus.remove(busInteriorGrp);
-    }
- if (activeBus) {
-        activeBus.children.forEach(child => {
-            if (child.isMesh && child.userData.wasVisible !== undefined) {
-                child.visible = child.userData.wasVisible;
-            }
-        });
-        if (busInteriorGrp) activeBus.remove(busInteriorGrp);
-
-        // 👇 將開到極遠處的巴士，偷偷傳送回房間窗外的可視範圍內
-        let modX = activeBus.position.x % 360;
-        if(modX > 180) modX -= 360;
-        if(modX < -180) modX += 360;
-        activeBus.position.x = modX;
     }
     activeBus = null;
 
