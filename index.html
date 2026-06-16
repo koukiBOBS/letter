@@ -5463,7 +5463,7 @@ else if (type === 'painting') {
                 newPos.y = Math.max(minY, Math.min(maxY, newPos.y));
                 
                 // ==========================================
-                // 🛑 A. 建築結構防穿模 (窗戶、木門、冷氣)
+                // 🛑 A. 建築結構防穿模 (極度寬鬆的軟碰撞)
                 // ==========================================
                 if (n.z > 0.5) { // 🧱 後牆
                     newPos.z = hit.point.z;
@@ -5475,13 +5475,13 @@ else if (type === 'painting') {
                     dragTarget.rotation.y = 0;
                     newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
                     
-                    const winLeft = -15.5 - halfW - obstacleMargin;
-                    const winRight = 15.5 + halfW + obstacleMargin;
-                    const winTop = 28.5 + halfH + obstacleMargin;
+                    // 👇 移除 halfW 的嚴格限制，只防護窗戶的核心區域
+                    const winLeft = -14.5;
+                    const winRight = 14.5;
+                    const winTop = 27.5;
                     
                     if (newPos.y < winTop && newPos.x > winLeft && newPos.x < winRight) {
-                        // 👇 3. 智能判斷：如果畫作太高，上面塞不下，就強制只允許往左右滑開，防止卡在半空中
-                        let penTop = (winTop <= maxY) ? (winTop - newPos.y) : Infinity;
+                        let penTop = winTop - newPos.y;
                         let penLeft = newPos.x - winLeft;
                         let penRight = winRight - newPos.x;
                         
@@ -5496,12 +5496,13 @@ else if (type === 'painting') {
                     dragTarget.rotation.y = -Math.PI / 2;
                     newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
                     
-                    const acLeft = -13.5 - halfW - obstacleMargin;
-                    const acRight = 3.5 + halfW + obstacleMargin;
-                    const acBottom = 28.5 - halfH - obstacleMargin;
+                    // 👇 冷氣機核心區域
+                    const acLeft = -12.5;
+                    const acRight = 2.5;
+                    const acBottom = 27.5;
                     
                     if (newPos.y > acBottom && newPos.z > acLeft && newPos.z < acRight) {
-                        let penBot = (acBottom >= minY) ? (newPos.y - acBottom) : Infinity;
+                        let penBot = newPos.y - acBottom;
                         let penLeft = newPos.z - acLeft;
                         let penRight = acRight - newPos.z;
                         let minPen = Math.min(penBot, penLeft, penRight);
@@ -5515,12 +5516,13 @@ else if (type === 'painting') {
                     dragTarget.rotation.y = Math.PI / 2;
                     newPos.z = Math.max(safeZMin, Math.min(safeZMax, newPos.z));
                     
-                    const doorLeft = -8.5 - halfW - obstacleMargin;
-                    const doorRight = 8.5 + halfW + obstacleMargin;
-                    const doorTop = 28.5 + halfH + obstacleMargin;
+                    // 👇 木門核心區域
+                    const doorLeft = -7.5;
+                    const doorRight = 7.5;
+                    const doorTop = 27.5;
                     
                     if (newPos.y < doorTop && newPos.z > doorLeft && newPos.z < doorRight) {
-                        let penTop = (doorTop <= maxY) ? (doorTop - newPos.y) : Infinity;
+                        let penTop = doorTop - newPos.y;
                         let penLeft = newPos.z - doorLeft;
                         let penRight = doorRight - newPos.z;
                         let minPen = Math.min(penTop, penLeft, penRight);
