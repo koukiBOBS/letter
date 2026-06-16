@@ -8172,15 +8172,80 @@ function startGachaDrawProcess() {
                 duration: 1.0
             }, "<");
             // 扭蛋在地板上稍微停留後，化光消失並彈出詩歌卡片
-            dropTimeline.to(dropCap.scale, {
-                x: 0, y: 0, z: 0,
-                duration: 0.4,
-                delay: 0.8, // 👈 延長在地上的停留時間，讓玩家看清楚
-                onComplete: () => {
-                    gachaMachineGrp.remove(dropCap);
-                    executeDrawLogic();
-                }
+            // ==========================================
+            // ✨ 細緻扭蛋破開動畫 (取代原本的直接消失)
+            // ==========================================
+            
+            // 獲取扭蛋的各個零件 (依據生成的順序)
+            const topHalf = dropCap.children[0];
+            const botHalf = dropCap.children[1];
+            const seam = dropCap.children[2];
+            const scroll = dropCap.children[3];
+            const ribbon = dropCap.children[4];
+
+            // 💡 建立一顆小光源，製造開箱發光效果
+            const burstLight = new THREE.PointLight(0xd4af37, 0, 10);
+            burstLight.position.y = 0.5;
+            dropCap.add(burstLight);
+
+            // ✨ 建立星光粒子特效
+            const particleGrp = new THREE.Group();
+            dropCap.add(particleGrp);
+            const pCanvas = document.createElement('canvas');
+            pCanvas.width = 16; pCanvas.height = 16;
+            const pCtx = pCanvas.getContext('2d');
+            pCtx.fillStyle = '#fff'; pCtx.beginPath(); pCtx.arc(8,8,6,0,Math.PI*2); pCtx.fill();
+            const pMat = new THREE.SpriteMaterial({ 
+                map: new THREE.CanvasTexture(pCanvas), 
+                color: 0xd4af37, transparent: true, blending: THREE.AdditiveBlending 
             });
+            
+            // 生成 10 顆小星星
+            for(let i=0; i<10; i++) {
+                let p = new THREE.Sprite(pMat);
+                p.scale.set(0, 0, 0); // 初始隱藏
+                particleGrp.add(p);
+            }
+
+            dropTimeline
+                // 1. 落地後的短暫停頓 (營造期待感)
+                .addLabel("breakOpen", "+=0.7") 
+                
+                // 2. 破殼：上半部彈飛、下半部微震、金屬環掉落
+                .to(topHalf.position, { y: 2.5, x: (Math.random()-0.5)*2, z: (Math.random()-0.5)*2, duration: 0.6, ease: "power2.out" }, "breakOpen")
+                .to(topHalf.rotation, { x: Math.PI, z: Math.PI/2, duration: 0.6 }, "breakOpen")
+                .to(seam.position, { y: -0.6, duration: 0.4, ease: "bounce.out" }, "breakOpen")
+                .to(seam.rotation, { x: Math.PI/2 + 0.2, duration: 0.4 }, "breakOpen")
+                .to(botHalf.position, { y: -0.2, duration: 0.2, yoyo: true, repeat: 1 }, "breakOpen")
+
+                // 3. 核心：紙卷與緞帶優雅浮空並放大，同時自轉
+                .to([scroll.position, ribbon.position], { y: 2.8, duration: 1.0, ease: "back.out(1.2)" }, "breakOpen")
+                .to([scroll.scale, ribbon.scale], { x: 3.5, y: 3.5, z: 3.5, duration: 1.0, ease: "back.out(1.2)" }, "breakOpen")
+                .to([scroll.rotation, ribbon.rotation], { y: "+=" + Math.PI*2, duration: 1.2, ease: "power2.out" }, "breakOpen")
+
+                // 4. 光效與粒子噴發
+                .to(burstLight, { intensity: 3.0, duration: 0.4, yoyo: true, repeat: 1 }, "breakOpen")
+                .call(() => {
+                    particleGrp.children.forEach(p => {
+                        gsap.to(p.scale, { x: 0.4, y: 0.4, duration: 0.2 });
+                        gsap.to(p.position, {
+                            x: (Math.random()-0.5)*3, y: Math.random()*3, z: (Math.random()-0.5)*3,
+                            duration: 0.6 + Math.random()*0.4, ease: "power2.out"
+                        });
+                        gsap.to(p.scale, { x: 0, y: 0, duration: 0.3, delay: 0.4 + Math.random()*0.2 });
+                    });
+                }, null, "breakOpen")
+
+                // 5. 漸隱外殼，只留下紙卷
+                .to([topHalf.scale, botHalf.scale, seam.scale], { x: 0, y: 0, z: 0, duration: 0.3 }, "breakOpen+=0.4")
+
+                // 6. 紙卷化作強光消失，過渡到 UI 畫面
+                .addLabel("vanish", "+=0.6")
+                .to([scroll.scale, ribbon.scale], { x: 0, y: 0, z: 0, duration: 0.3, ease: "power2.in" }, "vanish")
+                .call(() => {
+                    gachaMachineGrp.remove(dropCap);
+                    executeDrawLogic(); // 彈出語錄卡片 UI
+                });
         }, null, "+=1.5");
  
         function executeDrawLogic() {
