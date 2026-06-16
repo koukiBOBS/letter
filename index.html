@@ -2039,14 +2039,15 @@ function initApp() {
     initHandwriting();
     auditAntiCheat(); 
 
-    if (isTeacherEmail(currentUser.email)) {
-        document.querySelectorAll('.handwrite-only').forEach(el => { 
-            el.removeAttribute('readonly'); 
-            el.classList.remove('handwrite-only'); 
-            let placeholder = el.nextElementSibling; 
-            if (placeholder && placeholder.classList.contains('handwrite-placeholder')) { 
-                placeholder.style.display = 'none'; 
-            } 
+ // 👇 套用新的打字權限判斷
+    if (isTypingAllowed(currentUser.email)) {
+        document.querySelectorAll('.handwrite-only').forEach(el => {
+            el.removeAttribute('readonly');
+            el.classList.remove('handwrite-only');
+            let placeholder = el.nextElementSibling;
+            if (placeholder && placeholder.classList.contains('handwrite-placeholder')) {
+                placeholder.style.display = 'none';
+            }
         });
     }
 
@@ -2644,11 +2645,12 @@ window.openFreeReadingEditor = function() {
                         </div>`;
                     });
 
-                    if (canReply) {
-                        let isTeacher = isTeacherEmail(currentUser.email);
-                        let hwClass = isTeacher ? '' : 'handwrite-only';
-                        let roAttr = isTeacher ? '' : 'readonly';
-                        let placeholderText = isTeacher ? '請輸入您的回音...（最少 100 字）' : '點此喚出全螢幕書寫板，一筆一劃寫下您的回音...（最少 100 字）';
+               if (canReply) {
+                        // 👇 改為使用 isTypingAllowed 判斷是否解除手寫限制
+                        let canType = isTypingAllowed(currentUser.email);
+                        let hwClass = canType ? '' : 'handwrite-only';
+                        let roAttr = canType ? '' : 'readonly';
+                        let placeholderText = canType ? '請輸入您的回音...（最少 100 字）' : '點此喚出全螢幕書寫板，一筆一劃寫下您的回音...（最少 100 字）';
 
                        contentHTML += `<div class="letter-sheet reply-sheet my-letter">
     <div class="letter-header-meta">
@@ -2680,7 +2682,7 @@ window.openFreeReadingEditor = function() {
 
                         // 安全檢查：確保真的有找到輸入框才綁定事件
                         if (replyInput) {
-                            if (!isTeacherEmail(currentUser.email)) {
+                        if (!isTypingAllowed(currentUser.email)) {
                                 replyInput.addEventListener('click', function() { openHwKeyboard(this); });
                             }
                             
@@ -6767,27 +6769,41 @@ function closeGacha() {
         
 
 
-        // === 1. 開發面板權限與收合邏輯 ===
+// 👇 新增：專門判斷是否允許使用鍵盤打字
+function isTypingAllowed(email) {
+    if (!email) return false;
+    const lowerEmail = email.toLowerCase();
+    // 老師，或是指定的這兩個測試帳號，皆可打字
+    if (isTeacherEmail(lowerEmail)) return true;
+    if (lowerEmail === 'kenchan20131@gmail.com' || lowerEmail === 'kenchan20141@gmail.com') return true;
+    return false;
+}
+ 
 // === 1. 開發面板權限與收合邏輯 ===
 function isDevUser(email) {
     if (!email) return false;
     const lowerEmail = email.toLowerCase();
-
-    // ⛔ 【絕對排除】：若是這個測試帳號，直接當作普通學生，剝奪面板！
-    if (lowerEmail === 'kenchan20131@gmail.com') return false;
-
-    // ✅ 條件一：包含 kenchan 的其他帳號
+ 
+    // ⛔ 【絕對排除】：這兩個測試帳號直接當作普通學生，剝奪開發面板與防作弊豁免權！
+    if (lowerEmail === 'kenchan20131@gmail.com' || lowerEmail === 'kenchan20141@gmail.com') return false;
+ 
+    // ✅ 條件一：包含 kenchan 的其他帳號 (如 kenchan 開發主帳號)
     if (lowerEmail.includes('kenchan')) return true;
     
     // ✅ 條件二：@ccckyc.edu.hk 且 @ 前面不能有數字 (老師)
     const isTeacher = /^[^\d@]+@ccckyc\.edu\.hk$/.test(lowerEmail);
     if (isTeacher) return true;
-
+ 
     // ✅ 條件三：存在於 Firebase 資料庫的 allowed_emails 特許名單中
     if (allowedEmailsWhitelist.includes(lowerEmail)) return true;
-
+ 
     return false;
 }
+
+
+
+
+        
 
 function toggleDevPanel() {
     const panel = document.getElementById('dev-test-panel');
