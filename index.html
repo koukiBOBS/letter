@@ -3409,20 +3409,32 @@ const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 
         let glassDoorL, glassDoorR; // 新增這兩個變數來控制玻璃門
 
 
-// --- 雙層巴士乘坐系統 ---
+// --- 雙層巴士乘坐系統 (無縫延續無盡地圖版) ---
 let isRidingBus = false;
 let activeBus = null;
 let busInteriorGrp = null; 
 let preRideCameraState = { pos: new THREE.Vector3(), target: new THREE.Vector3(), fov: 50 };
 let busBumpAnim = null;
 
-// 🎨 零效能生成：防滑膠粒地板紋理
+// 無盡旅程專屬變數
+let busSpeed = 1.8;
+let busDirection = 1;
+let endlessWorldGrp = null;
+let endlessObjects = [];
+let endlessRoad, endlessSea;
+let endlessMatsInitialized = false;
+
+// 香港大廈柔和漆色
+const hkColors = [0xd6eaf8, 0xfadbd8, 0xfcf3cf, 0xe8eaef, 0xd5d8dc, 0xaed6f1, 0xedbb99];
+let endlessBTex, endlessETex, endlessRoofMat, detailMat;
+
+// 🎨 零效能生成：防滑膠粒地板紋理 (保留)
 function createBusFloorTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 256; canvas.height = 256;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#222222'; ctx.fillRect(0, 0, 256, 256);
-    ctx.fillStyle = '#111111'; // 防滑凸起圓點
+    ctx.fillStyle = '#111111';
     for(let i=0; i<256; i+=12) {
         for(let j=0; j<256; j+=12) {
             ctx.beginPath(); ctx.arc(i+6, j+6, 2.5, 0, Math.PI*2); ctx.fill();
@@ -3430,24 +3442,24 @@ function createBusFloorTexture() {
     }
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(4, 12); // 延展到整個車廂長度
+    tex.repeat.set(4, 12);
     return tex;
 }
 
-// 🎨 零效能生成：車廂內壁微顆粒塑膠紋理
+// 🎨 零效能生成：車廂內壁微顆粒塑膠紋理 (保留)
 function createPlasticTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 256; canvas.height = 256;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#e8e6df'; ctx.fillRect(0, 0, 256, 256);
-    for(let i=0; i<8000; i++) { // 極細微雜訊，增加漫反射質感
+    for(let i=0; i<8000; i++) {
         ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)';
         ctx.fillRect(Math.random()*256, Math.random()*256, 2, 2);
     }
     return new THREE.CanvasTexture(canvas);
 }
 
-// 🎨 零效能生成：九巴座椅底色紋理
+// 🎨 零效能生成：九巴座椅底色紋理 (保留)
 function createSeatTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 128; canvas.height = 128;
@@ -3465,32 +3477,23 @@ function createSeatTexture() {
     return tex;
 }
 
-// 🎨 零效能生成：紅色尼龍編織布料 (頭枕與椅背用)
+// 🎨 零效能生成：紅色尼龍編織布料 (保留)
 function createNylonTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 256; canvas.height = 256;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#a32929'; ctx.fillRect(0, 0, 256, 256); // 經典暗紅色
-    
-    // 十字交織纖維
+    ctx.fillStyle = '#a32929'; ctx.fillRect(0, 0, 256, 256);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-    for(let i=0; i<256; i+=4) {
-        ctx.fillRect(i, 0, 1, 256); // 直紋
-        ctx.fillRect(0, i, 256, 1); // 橫紋
-    }
-    // 尼龍的微弱反光絲線
+    for(let i=0; i<256; i+=4) { ctx.fillRect(i, 0, 1, 256); ctx.fillRect(0, i, 256, 1); }
     ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-    for(let i=2; i<256; i+=4) {
-        ctx.fillRect(i, 0, 1, 256);
-        ctx.fillRect(0, i, 256, 1);
-    }
+    for(let i=2; i<256; i+=4) { ctx.fillRect(i, 0, 1, 256); ctx.fillRect(0, i, 256, 1); }
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
     tex.repeat.set(3, 3);
     return tex;
 }
 
-// 🎨 零效能生成：LED 點陣報站螢幕
+// 🎨 零效能生成：LED 點陣報站螢幕 (保留)
 function createLEDSign() {
     const canvas = document.createElement('canvas');
     canvas.width = 512; canvas.height = 128;
@@ -3506,11 +3509,9 @@ function createLEDSign() {
     return new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas) });
 }
 
-// 🛠️ 打造高質感、無死角的「上層車廂」
+// 🛠️ 打造高質感、無死角的「上層車廂」 (你滿意的車廂保留)
 function createBusInterior() {
     const grp = new THREE.Group();
-
-    // 1. 車廂外殼 (套用新生成的質感貼圖)
     const wallMat = new THREE.MeshStandardMaterial({ map: createPlasticTexture(), roughness: 0.95 });
     const floorMat = new THREE.MeshStandardMaterial({ map: createBusFloorTexture(), roughness: 0.7 });
     
@@ -3526,7 +3527,6 @@ function createBusInterior() {
     const wallR = new THREE.Mesh(sideGeo, wallMat);
     wallR.rotation.y = -Math.PI / 2; wallR.position.set(1.7, -0.8, -1.0); grp.add(wallR);
 
-    // 2. 🪟 帶有反光的玻璃車窗
     const glassMat = new THREE.MeshStandardMaterial({ 
         color: 0xffffff, transparent: true, opacity: 0.15, 
         roughness: 0.0, metalness: 1.0, 
@@ -3543,7 +3543,6 @@ function createBusInterior() {
     const glassR = new THREE.Mesh(sideGlassGeo, glassMat);
     glassR.rotation.y = -Math.PI / 2; glassR.position.set(1.7, 0.5, -1.0); grp.add(glassR);
 
-    // 3. 完美連接天地線的車窗支柱 (高度 2.4，Y中心 0.4)
     for (let z = -4.5; z <= 2; z += 1.6) {
         const pillarL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.4, 0.18), wallMat);
         pillarL.position.set(-1.64, 0.4, z); grp.add(pillarL);
@@ -3551,17 +3550,15 @@ function createBusInterior() {
         pillarR.position.set(1.64, 0.4, z); grp.add(pillarR);
     }
 
-    // 4. 儀表板與報站屏
     const dash = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.8, 1.0), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 }));
     dash.position.set(0, -0.8, -4.2); grp.add(dash);
 
     const ledPanel = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.25), createLEDSign());
     ledPanel.position.set(0, 1.4, -4.4); ledPanel.rotation.x = 0.05; grp.add(ledPanel);
 
-    // 5. 💺 高質感多排座椅 (移除金屬環，套用尼龍布紋理)
     const sMat = new THREE.MeshStandardMaterial({ map: createSeatTexture(), roughness: 0.9 });
-    const sBackMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.7 }); // 灰色塑膠椅背
-    const nylonMat = new THREE.MeshStandardMaterial({ map: createNylonTexture(), roughness: 0.95 }); // 質感尼龍布
+    const sBackMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.7 });
+    const nylonMat = new THREE.MeshStandardMaterial({ map: createNylonTexture(), roughness: 0.95 });
 
     function createPremiumSeat(x, z) {
         const seatGrp = new THREE.Group();
@@ -3569,46 +3566,176 @@ function createBusInterior() {
         
         const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.15, 0.6), sMat);
         cushion.position.set(0, 0.3, 0.1); seatGrp.add(cushion);
-
         const back = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.8, 0.15), sMat);
         back.position.set(0, 0.75, 0.35); back.rotation.x = -0.15; seatGrp.add(back);
-
         const backCover = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.8, 0.05), sBackMat);
         backCover.position.set(0, 0.75, 0.43); backCover.rotation.x = -0.15; seatGrp.add(backCover);
-
-        // 尼龍布質感的頭枕
         const head = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.28, 0.15), nylonMat);
         head.position.set(0, 1.25, 0.42); head.rotation.x = -0.15; seatGrp.add(head);
-
-        // 尼龍布質感的椅背頂部 (取代原本的金屬環)
         const topPad = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.1, 0.18), nylonMat);
         topPad.position.set(0, 1.42, 0.42); topPad.rotation.x = -0.15; seatGrp.add(topPad);
 
         return seatGrp;
     }
 
-    // 建立 4 排座椅營造深邃景深
     const rows = [-3.2, -1.6, 0.2, 1.8]; 
     rows.forEach(zPos => {
-        grp.add(createPremiumSeat(-1.2, zPos)); // 左靠窗
-        grp.add(createPremiumSeat(-0.5, zPos)); // 左走道
-        grp.add(createPremiumSeat(0.5, zPos));  // 右走道
-        grp.add(createPremiumSeat(1.2, zPos));  // 右靠窗
+        grp.add(createPremiumSeat(-1.2, zPos)); grp.add(createPremiumSeat(-0.5, zPos)); 
+        grp.add(createPremiumSeat(0.5, zPos));  grp.add(createPremiumSeat(1.2, zPos));  
     });
 
-    // 6. 天花板燈帶
     const lightMat = new THREE.MeshBasicMaterial({ color: 0xfffae6 });
     const lightL = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 10), lightMat);
     lightL.rotation.x = Math.PI / 2; lightL.position.set(-0.8, 1.59, -1.0); grp.add(lightL);
     const lightR = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 10), lightMat);
     lightR.rotation.x = Math.PI / 2; lightR.position.set(0.8, 1.59, -1.0); grp.add(lightR);
 
-    // 柔和環境光照亮材質細節
     const cabinLight = new THREE.PointLight(0xffffff, 0.4, 10);
     cabinLight.position.set(0, 1.0, -1.5); grp.add(cabinLight);
 
     return grp;
 }
+
+// ===============================================
+// 🚗 新增：無盡香港地圖系統 (精緻度高，效能極低)
+// ===============================================
+
+// 初始化共用材質 (確保零效能負擔)
+function initEndlessMaterials() {
+    if (endlessMatsInitialized) return;
+    endlessBTex = createBuildingTexture();
+    endlessETex = createBuildingEmissiveTexture();
+    endlessRoofMat = new THREE.MeshStandardMaterial({color: 0x334455, roughness: 0.9});
+    detailMat = new THREE.MeshStandardMaterial({color: 0xdcdcdc, roughness: 0.8}); // 冷氣機/露台材質
+    endlessMatsInitialized = true;
+}
+
+// 🏗️ 產生極致精緻但零效能負擔的「香港特色建築」 (無文字，純幾何與密密麻麻的冷氣)
+function createHKBuildingBlock() {
+    const grp = new THREE.Group();
+    const w = 15 + Math.random() * 20;
+    const d = 15 + Math.random() * 10;
+    const h = 60 + Math.random() * 120; // 高低錯落的香港大廈
+
+    const color = hkColors[Math.floor(Math.random() * hkColors.length)];
+    const mat = new THREE.MeshStandardMaterial({
+        color: color, roughness: 0.9,
+        map: endlessBTex, emissiveMap: endlessETex, emissive: 0xffffff, emissiveIntensity: 1.2
+    });
+
+    const mainBox = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), [mat, mat, endlessRoofMat, endlessRoofMat, mat, mat]);
+    mainBox.scale.set(w, h, d);
+    mainBox.position.y = h / 2;
+    mainBox.castShadow = true;
+    grp.add(mainBox);
+
+    // 💡 效能魔法：使用 InstancedMesh 批量生成密密麻麻的「冷氣機與外推露台」
+    const maxDetails = 60;
+    const detailGeo = new THREE.BoxGeometry(1, 1, 1);
+    const detailInstanced = new THREE.InstancedMesh(detailGeo, detailMat, maxDetails);
+    
+    const dummy = new THREE.Object3D();
+    let count = 0;
+    
+    for (let y = 15; y < h - 10; y += 10) {
+        for (let x = -w/2 + 2; x < w/2 - 2; x += 6) {
+            if (count >= maxDetails) break;
+            if (Math.random() > 0.4) {
+                const isBalcony = Math.random() > 0.7; // 30%機率外推露台，70%冷氣機
+                dummy.position.set(x, y, d/2);
+                if (isBalcony) dummy.scale.set(4, 3, 2);
+                else dummy.scale.set(1.5, 1.2, 0.8);
+                dummy.updateMatrix();
+                detailInstanced.setMatrixAt(count++, dummy.matrix);
+            }
+        }
+    }
+    detailInstanced.count = count;
+    grp.add(detailInstanced);
+    
+    // 物件池重新洗牌的函式，當被搬到前方時改變高度與顏色
+    grp.userData = { 
+        isBuilding: true,
+        randomize: function(obj) {
+            const newH = 60 + Math.random() * 120;
+            obj.children[0].scale.y = newH;
+            obj.children[0].position.y = newH / 2;
+            obj.children[0].material[0].color.setHex(hkColors[Math.floor(Math.random() * hkColors.length)]);
+        }
+    };
+    return grp;
+}
+
+// 🌉 產生青馬大橋段落
+function createBridgeBlock() {
+    const grp = new THREE.Group();
+    const towerMat = new THREE.MeshStandardMaterial({color: 0xd0d4d9, roughness: 0.6});
+    const cableMat = new THREE.MeshStandardMaterial({color: 0x333333, roughness: 0.5});
+    
+    const t1 = new THREE.Mesh(new THREE.BoxGeometry(8, 120, 6), towerMat); t1.position.set(0, 30, -22); grp.add(t1);
+    const t2 = new THREE.Mesh(new THREE.BoxGeometry(8, 120, 6), towerMat); t2.position.set(0, 30, 22); grp.add(t2);
+    const cross1 = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 44), towerMat); cross1.position.set(0, 60, 0); grp.add(cross1);
+    
+    const cL = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 300), cableMat); cL.position.set(100, 30, -22); cL.rotation.z = Math.PI/3.5; grp.add(cL);
+    const cL2 = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 300), cableMat); cL2.position.set(-100, 30, -22); cL2.rotation.z = -Math.PI/3.5; grp.add(cL2);
+    
+    grp.userData = { randomize: function(){} }; // 橋塔不需改變外觀
+    return grp;
+}
+
+// 初始化無盡旅程場景
+function initEndlessJourney(direction) {
+    initEndlessMaterials();
+    if (!endlessWorldGrp) {
+        endlessWorldGrp = new THREE.Group();
+        scene.add(endlessWorldGrp);
+        
+        // 建立無盡延伸的地板與海面 (跟隨相機移動，利用紋理偏移產生速度感)
+        const roadMat = new THREE.MeshStandardMaterial({map: createAsphaltTexture(), roughness: 0.9});
+        endlessRoad = new THREE.Mesh(new THREE.PlaneGeometry(2000, 40), roadMat);
+        endlessRoad.rotation.x = -Math.PI/2; endlessRoad.position.y = -4.9;
+        endlessWorldGrp.add(endlessRoad);
+
+        const seaMat = new THREE.MeshStandardMaterial({color: 0x1a3b5c, roughness: 0.1, metalness: 0.8, flatShading: true});
+        endlessSea = new THREE.Mesh(new THREE.PlaneGeometry(2000, 800, 60, 40), seaMat);
+        endlessSea.rotation.x = -Math.PI/2; endlessSea.position.y = -18;
+        
+        endlessSea.userData.originalZ = [];
+        const posAttr = endlessSea.geometry.attributes.position;
+        for(let i=0; i<posAttr.count; i++) endlessSea.userData.originalZ.push(posAttr.getZ(i));
+        endlessWorldGrp.add(endlessSea);
+    }
+    
+    endlessWorldGrp.visible = true;
+    
+    // 清除舊池
+    endlessObjects.forEach(obj => endlessWorldGrp.remove(obj));
+    endlessObjects = [];
+
+    // 在巴士前方很遠處開始鋪設無盡物件
+    const startX = direction > 0 ? 300 : -300;
+    
+    if (direction > 0) {
+        // 👉 往右開 (進入城市)：鋪設香港特色大廈
+        for (let i = 0; i < 20; i++) {
+            const bL = createHKBuildingBlock();
+            bL.position.set(startX + i * 50, -5, -25 - Math.random() * 5);
+            endlessWorldGrp.add(bL); endlessObjects.push(bL);
+            
+            const bR = createHKBuildingBlock();
+            bR.position.set(startX + i * 50 + 25, -5, 25 + Math.random() * 5);
+            endlessWorldGrp.add(bR); endlessObjects.push(bR);
+        }
+    } else {
+        // 👈 往左開 (進入大橋)：鋪設青馬大橋橋塔
+        for (let i = 0; i < 8; i++) {
+            const tower = createBridgeBlock();
+            tower.position.set(startX - i * 200, -5, 0);
+            endlessWorldGrp.add(tower); endlessObjects.push(tower);
+        }
+    }
+}
+
 
 let leftCurtainGrp, rightCurtainGrp; 
 let curtainRatio = 1.0;
@@ -6807,6 +6934,7 @@ function animateRoom() {
     requestAnimationFrame(animateRoom);
     // 1. 如果畫面被 UI 遮擋，或手機退到背景(縮小網頁)，直接罷工不計算，釋放 100% 效能！
     if (isRoomPaused() || !isAppActive) return;
+    
     // 更新視錐體矩陣 (取得目前攝影機看得到的範圍)
     if (camera) {
         camera.updateMatrixWorld();
@@ -6814,17 +6942,13 @@ function animateRoom() {
         cameraFrustum.setFromProjectionMatrix(cameraViewProjectionMatrix);
     }
  
-// 🔄 實時指南針 (支援原地轉身的鏡像反轉)
+    // 🔄 實時指南針
     const knobDial = document.getElementById('knob-dial');
     if (knobDial && camera && controls && !window.isKnobDragging) {
         const dx = controls.target.x - camera.position.x;
         const dz = controls.target.z - camera.position.z;
-        
-        // 根據目前的視角模式，翻轉 X 與 Z 軸方向
-        // 模式一(望窗)：正前方為 -Z。 模式二(望櫃)：正前方為 +Z，且左右相反
         const refX = (window.knobMode === 2) ? -dx : dx;
         const refZ = (window.knobMode === 2) ? dz : -dz; 
-        
         const angleDeg = Math.atan2(refX, refZ) * (180 / Math.PI);
         knobDial.style.transform = `rotate(${angleDeg}deg)`;
     }
@@ -6832,48 +6956,69 @@ function animateRoom() {
     if(controls) controls.update();
     
     // ==========================================
-    // ⚡ 效能優化區：精準判斷是否看到窗外
+    // ⚡ 效能優化區：無盡旅程與窗外風景動畫
     // ==========================================
- 
-    // 只要視線掃到「窗外的虛擬區域」，或是玩家正站在露台上，就判定為正在看窗外
     let isLookingOutside = isAtBalcony || cameraFrustum.intersectsBox(outsideWorldBox);
  
-    // 只有當視線掃到窗外時，才去計算耗費 CPU 的海浪、雲朵、車輛與摩天輪
+    if (isRidingBus) {
+        // 1. 車廂與鏡頭真實在 3D 世界中往前推進
+        busInteriorGrp.position.x += busSpeed * busDirection;
+        
+        // 2. 讓無盡海面與馬路「跟著車子走」，並用貼圖偏移創造相對速度
+        if (typeof endlessRoad !== 'undefined' && endlessRoad && endlessSea) {
+            endlessRoad.position.x = busInteriorGrp.position.x;
+            endlessRoad.material.map.offset.x = (busInteriorGrp.position.x * 0.015);
+            
+            endlessSea.position.x = busInteriorGrp.position.x;
+            // 運算海面波浪
+            const time = Date.now() * 0.0015;
+            const posAttr = endlessSea.geometry.attributes.position;
+            for(let i=0; i<posAttr.count; i++) {
+                const x = posAttr.getX(i);
+                const y = posAttr.getY(i);
+                const wave = Math.sin(x * 0.05 + time) * 1.5 + Math.cos(y * 0.05 + time) * 1.5;
+                posAttr.setZ(i, endlessSea.userData.originalZ[i] + wave);
+            }
+            posAttr.needsUpdate = true;
+        }
+
+        // 3. 物件池 (Object Pooling) 核心邏輯
+        // 如果建築物/橋塔被拋在車後，將它瞬間搬到車子前方極遠處，並隨機變更外觀，達成無盡不重複循環
+        if (typeof endlessObjects !== 'undefined') {
+            endlessObjects.forEach(obj => {
+                const relativeX = (obj.position.x - busInteriorGrp.position.x) * busDirection;
+                if (relativeX < -250) { // 已被車子拋在後方 250 單位
+                    obj.position.x += 1250 * busDirection; // 將它搬到前方 1000 單位處
+                    if (obj.userData.randomize) obj.userData.randomize(obj);
+                }
+            });
+        }
+    } 
+    
+    // 即使在車上，原本的背景車輛與摩天輪還是會繼續運作 (當作起步時的背景點綴)
     if (isLookingOutside) {
-        // 1. 車輛邏輯
         animScenery.cars.forEach(c => {
             c.position.x += c.userData.speed;
             if(c.position.x > 180) c.position.x = -180;
             else if(c.position.x < -180) c.position.x = 180;
         });
- 
-        // 2. 🎡 摩天輪
-        if(typeof ferrisWheelGrp !== 'undefined') {
-            const rotationSpeed = 0.0015;
-            ferrisWheelGrp.rotation.z -= rotationSpeed;
-            if (typeof fwCabins !== 'undefined') {
-                fwCabins.forEach(cabin => {
-                    cabin.rotation.z = -ferrisWheelGrp.rotation.z;
-                });
-            }
+        
+        if (typeof ferrisWheelGrp !== 'undefined') {
+            ferrisWheelGrp.rotation.z -= 0.0015;
+            if (typeof fwCabins !== 'undefined') fwCabins.forEach(cabin => cabin.rotation.z = -ferrisWheelGrp.rotation.z);
         }
  
-        // 3. 🌊 海水波浪 (最耗效能的頂點運算)
-        if (typeof sea !== 'undefined') {
+        if (!isRidingBus && typeof sea !== 'undefined') {
             const time = Date.now() * 0.0015;
             const posAttr = sea.geometry.attributes.position;
             for(let i=0; i<posAttr.count; i++) {
-                const x = posAttr.getX(i);
-                const y = posAttr.getY(i);
-                // 這裡使用 Date.now()，所以即使暫停計算，重新看海時波浪也會完美接上，不會有跳動感！
-                const wave1 = Math.sin(x * 0.04 + time) * 1.5;
-                const wave2 = Math.cos(y * 0.03 + time * 0.8) * 1.5;
+                const wave1 = Math.sin(posAttr.getX(i) * 0.04 + time) * 1.5;
+                const wave2 = Math.cos(posAttr.getY(i) * 0.03 + time * 0.8) * 1.5;
                 posAttr.setZ(i, sea.userData.originalZ[i] + wave1 + wave2);
             }
             posAttr.needsUpdate = true;
         }
  
-        // 4. ☁️ 雲朵飄動
         if (typeof clouds !== 'undefined' && clouds.length > 0) {
             clouds.forEach(c => {
                 c.userData.angle -= c.userData.speed;
@@ -6883,13 +7028,12 @@ function animateRoom() {
             });
         }
     }
- 
+
     // ==========================================
     // 室內動畫 (永遠計算，因為就在身邊)
     // ==========================================
     if(indicatorLeft && indicatorLeft.visible) { indicatorLeft.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorLeft.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
     if(indicatorRight && indicatorRight.visible) { indicatorRight.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; indicatorRight.rotation.y = Math.sin(Date.now()*0.002)*0.2; }
-    
     if(indicatorTasks && indicatorTasks.visible && clipboard) {
         indicatorTasks.position.x = clipboard.position.x;
         indicatorTasks.position.z = clipboard.position.z;
@@ -6899,7 +7043,6 @@ function animateRoom() {
     
     // 時鐘
     if(clockHourHand && clockMinHand && clockSecHand) {
-        // 優化：只在視線內有看到時鐘時才更新指針
         if (cameraFrustum.intersectsObject(clockHourHand.children[0])) {
             const now = new Date();
             const hkTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (8 * 3600000));
@@ -8791,70 +8934,57 @@ function checkAndShowWelcomeMemo(readingTasks, randomTasks, submittedReading, su
 
 
 
-// 🚌 上下車邏輯與終極防轉向 BUG 修復
+// 🚌 上下車邏輯 (舊邏輯銜接新邏輯)
 function rideBus(busHitBox) {
     if (isRidingBus) return;
     isRidingBus = true;
     activeBus = busHitBox.userData.vehicleObj;
-    const direction = busHitBox.userData.direction;
+    busDirection = busHitBox.userData.direction;
 
     preRideCameraState.pos.copy(camera.position);
     preRideCameraState.target.copy(controls.target);
     preRideCameraState.fov = camera.fov;
 
-    // 鎖死控制器
     if (!window.originalControlsUpdate) window.originalControlsUpdate = controls.update;
-    controls.update = function() {
-        if (isRidingBus) return;
-        window.originalControlsUpdate.call(controls);
-    };
+    controls.update = function() { if (!isRidingBus) window.originalControlsUpdate.call(controls); };
 
-    activeBus.children.forEach(child => {
-        if (child.isMesh && child !== busHitBox) {
-            child.userData.wasVisible = child.visible;
-            child.visible = false;
-        }
-    });
-
+    // 1. 生成車廂，直接放置在目前外部巴士的世界座標上 (完美銜接舊場景)
     if (!busInteriorGrp) busInteriorGrp = createBusInterior();
-    activeBus.add(busInteriorGrp);
+    scene.add(busInteriorGrp);
+    activeBus.getWorldPosition(busInteriorGrp.position);
+    busInteriorGrp.rotation.set(0, busDirection > 0 ? Math.PI : 0, 0);
 
-    const camZPos = direction > 0 ? 3.5 : -3.5;
-    busInteriorGrp.position.set(0, 4.2, camZPos);
-    busInteriorGrp.rotation.set(0, direction > 0 ? Math.PI : 0, 0);
+    // 隱藏外部巴士外殼避免穿模
+    activeBus.visible = false;
+
+    // 2. 初始化前方的無盡地圖物件池
+    initEndlessJourney(busDirection);
 
     controls.enabled = false;
     document.getElementById('btn-return-room').style.display = 'none';
     if(document.getElementById('mobile-cam-knob')) document.getElementById('mobile-cam-knob').style.display = 'none';
 
-    const targetWorldPos = new THREE.Vector3(0, 4.2, camZPos).applyMatrix4(activeBus.matrixWorld);
-    gsap.to(camera.position, {
-        x: targetWorldPos.x, y: targetWorldPos.y, z: targetWorldPos.z,
-        duration: 1.2, ease: "power2.inOut"
-    });
+    // 3. 電影級運鏡：相機飛入車廂
+    const camZPos = busDirection > 0 ? 3.5 : -3.5;
+    const targetWorldPos = new THREE.Vector3(0, 0.4, 0).applyMatrix4(busInteriorGrp.matrixWorld);
     
+    gsap.to(camera.position, { x: targetWorldPos.x, y: targetWorldPos.y, z: targetWorldPos.z, duration: 1.2, ease: "power2.inOut" });
     gsap.to(camera, { fov: 75, duration: 1.2, onUpdate: () => camera.updateProjectionMatrix() });
 
-    const lookAheadWorldPos = new THREE.Vector3(0, 4.2, direction > 0 ? 30 : -30).applyMatrix4(activeBus.matrixWorld);
+    const lookAheadWorldPos = new THREE.Vector3(0, 0.4, 30).applyMatrix4(busInteriorGrp.matrixWorld);
     gsap.to(controls.target, {
         x: lookAheadWorldPos.x, y: lookAheadWorldPos.y, z: lookAheadWorldPos.z,
         duration: 1.2, ease: "power2.inOut",
         onComplete: () => {
+            // 將攝影機綁定到車廂內
             busInteriorGrp.add(camera);
             camera.position.set(0, 0.4, 0);
             camera.rotation.set(0, 0, 0);
             
-            // 🚌 極度輕微的車體震動 (平穩路感)
-            busBumpAnim = gsap.to(camera.position, {
-                y: 0.408, // 只震動 0.008 單位
-                duration: 0.6, // 放慢震動頻率
-                yoyo: true, 
-                repeat: -1, 
-                ease: "sine.inOut"
-            });
-            
+            // 輕微路感震動
+            busBumpAnim = gsap.to(camera.position, { y: 0.408, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
             document.getElementById('btn-getoff-bus').style.display = 'flex';
-            showToast("🚌 歡迎搭乘九龍巴士，請緊握扶手。");
+            showToast("🚌 歡迎搭乘，前方景色將無盡延伸。");
         }
     });
 }
@@ -8866,25 +8996,20 @@ function getOffBus() {
 
     if (busBumpAnim) { busBumpAnim.kill(); busBumpAnim = null; }
 
+    // 將相機退回主場景
     const worldPos = new THREE.Vector3();
     camera.getWorldPosition(worldPos);
     scene.add(camera);
     camera.position.copy(worldPos);
 
-    if (activeBus) {
-        activeBus.children.forEach(child => {
-            if (child.isMesh && child.userData.wasVisible !== undefined) {
-                child.visible = child.userData.wasVisible;
-            }
-        });
-        if (busInteriorGrp) activeBus.remove(busInteriorGrp);
-    }
-    activeBus = null;
+    if (busInteriorGrp) scene.remove(busInteriorGrp);
+    if (endlessWorldGrp) endlessWorldGrp.visible = false;
+    
+    // 恢復外部巴士
+    if (activeBus) activeBus.visible = true;
 
-    gsap.to(camera.position, {
-        x: preRideCameraState.pos.x, y: preRideCameraState.pos.y, z: preRideCameraState.pos.z,
-        duration: 1.2, ease: "power2.inOut"
-    });
+    // 將鏡頭飛回房間原本位置
+    gsap.to(camera.position, { x: preRideCameraState.pos.x, y: preRideCameraState.pos.y, z: preRideCameraState.pos.z, duration: 1.2, ease: "power2.inOut" });
     gsap.to(camera, { fov: preRideCameraState.fov, duration: 1.2, onUpdate: () => camera.updateProjectionMatrix() });
     
     if (window.originalControlsUpdate) controls.update = window.originalControlsUpdate;
