@@ -5470,26 +5470,11 @@ else if (type === 'painting') {
                     dragTarget.rotation.y = Math.PI;
                     newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
                 }
-                else if (n.z < -0.5) { // 🪟 前牆 (玻璃趟門)
+               else if (n.z < -0.5) { // 🪟 前牆 (玻璃趟門)
                     newPos.z = hit.point.z;
                     dragTarget.rotation.y = 0;
                     newPos.x = Math.max(safeXMin, Math.min(safeXMax, newPos.x));
-                    
-                    // 👇 移除 halfW 的嚴格限制，只防護窗戶的核心區域
-                    const winLeft = -14.5;
-                    const winRight = 14.5;
-                    const winTop = 27.5;
-                    
-                    if (newPos.y < winTop && newPos.x > winLeft && newPos.x < winRight) {
-                        let penTop = winTop - newPos.y;
-                        let penLeft = newPos.x - winLeft;
-                        let penRight = winRight - newPos.x;
-                        
-                        let minPen = Math.min(penTop, penLeft, penRight);
-                        if (minPen === penTop) newPos.y = winTop;
-                        else if (minPen === penLeft) newPos.x = winLeft;
-                        else newPos.x = winRight;
-                    }
+                    // 已經完全解除窗戶阻擋，讓畫作移動絕對順暢
                 }
                 else if (n.x > 0.5) { // 🎹 右牆 (冷氣機)
                     newPos.x = hit.point.x;
