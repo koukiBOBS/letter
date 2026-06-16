@@ -3412,54 +3412,59 @@ const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 
         // --- 雙層巴士乘坐系統 ---
 let isRidingBus = false;
 let activeBus = null;
-let busInteriorGrp = null; // 精緻的車廂內裝
+let busInteriorGrp = null; 
 let preRideCameraState = { pos: new THREE.Vector3(), target: new THREE.Vector3(), fov: 50 };
 
-// 🛠️ 打造低效能高細緻的「上層車頭內裝」
 function createBusInterior() {
     const grp = new THREE.Group();
-    
-    // 港式巴士經典的黃色扶手欄杆
-    const handrailMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, metalness: 0.3, roughness: 0.4 });
-    const barGeo = new THREE.CylinderGeometry(0.06, 0.06, 3.2, 16);
-    const horizBar = new THREE.Mesh(barGeo, handrailMat);
-    horizBar.rotation.z = Math.PI / 2;
-    horizBar.position.set(0, -0.6, 5.2); // 擋風玻璃前方的橫桿
-    grp.add(horizBar);
 
-    const vertBar = new THREE.Mesh(barGeo, handrailMat);
-    vertBar.position.set(1.4, -1.0, 5.0); // 右側直桿
-    grp.add(vertBar);
-
-    // 擋風玻璃窗框與車體內部
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.8 });
-    const dashboard = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.5, 0.8), frameMat);
-    dashboard.position.set(0, -1.0, 5.6);
+    // 儀表板基座 (在相機前方偏下)
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.9 });
+    const dashboard = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.6, 1.2), frameMat);
+    dashboard.position.set(0, -0.6, -1.5); // 位於鏡頭前方 1.5 的位置
     grp.add(dashboard);
 
+    // 黑色防反光顯示面板區
+    const panelMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.7 });
+    const dashPanel = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.1, 0.5), panelMat);
+    dashPanel.position.set(0, -0.28, -1.3);
+    dashPanel.rotation.x = Math.PI / 16;
+    grp.add(dashPanel);
+
+    // 左右兩側的 A 柱
     const pillarL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.5, 0.2), frameMat);
-    pillarL.position.set(-1.6, 0.2, 5.6);
+    pillarL.position.set(-1.6, 0.6, -1.8);
+    pillarL.rotation.x = -0.05;
     grp.add(pillarL);
 
     const pillarR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.5, 0.2), frameMat);
-    pillarR.position.set(1.6, 0.2, 5.6);
+    pillarR.position.set(1.6, 0.6, -1.8);
+    pillarR.rotation.x = -0.05;
     grp.add(pillarR);
 
-    // 稍微帶點污漬的反光擋風玻璃
+    // 港島雙層巴士經典的黃色扶手欄杆
+    const handrailMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, metalness: 0.1, roughness: 0.4 });
+    const barGeo = new THREE.CylinderGeometry(0.04, 0.04, 3.3, 8);
+    const horizBar = new THREE.Mesh(barGeo, handrailMat);
+    horizBar.rotation.z = Math.PI / 2;
+    horizBar.position.set(0, -0.2, -1.1); 
+    grp.add(horizBar);
+
+    // 右側垂直扶手
+    const vertGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.8, 8);
+    const vertBar = new THREE.Mesh(vertGeo, handrailMat);
+    vertBar.position.set(1.2, 0.4, -1.1); 
+    grp.add(vertBar);
+
+    // 玻璃與微弱的污漬反光 (DoubleSide 確保雙面可見)
     const glassMat = new THREE.MeshStandardMaterial({
         color: 0xffffff, transparent: true, opacity: 0.15,
-        roughness: 0.1, metalness: 0.8
+        roughness: 0.05, metalness: 0.8, side: THREE.DoubleSide
     });
-    const windshield = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2.5), glassMat);
-    windshield.position.set(0, 0.2, 5.5);
+    const windshield = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 2.2), glassMat);
+    windshield.position.set(0, 0.6, -1.9);
+    windshield.rotation.x = -0.05; // 稍微傾斜的擋風玻璃
     grp.add(windshield);
-
-    // 儀表板上的冷氣出風口 (細節)
-    const ventMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-    const vent = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.15), ventMat);
-    vent.position.set(0, -0.76, 5.21);
-    vent.rotation.x = -Math.PI / 2;
-    grp.add(vent);
 
     return grp;
 }
@@ -8639,57 +8644,58 @@ function checkAndShowWelcomeMemo(readingTasks, randomTasks, submittedReading, su
 
 
 
-        function rideBus(busHitBox) {
+       function rideBus(busHitBox) {
     if (isRidingBus) return;
     isRidingBus = true;
     activeBus = busHitBox.userData.vehicleObj;
     const direction = busHitBox.userData.direction;
 
-    // 紀錄上車前的視角，方便下車時還原
+    // 1. 備份陽台視角
     preRideCameraState.pos.copy(camera.position);
     preRideCameraState.target.copy(controls.target);
     preRideCameraState.fov = camera.fov;
 
-    // 如果內裝還沒建立，先建立
+    // 2. 掛載車廂內裝到巴士上
     if (!busInteriorGrp) busInteriorGrp = createBusInterior();
-    
-    // 根據巴士行駛方向調整內裝的方向
-    busInteriorGrp.rotation.y = direction > 0 ? 0 : Math.PI;
     activeBus.add(busInteriorGrp);
 
-    // 禁用控制器與按鈕
+    // 💡 關鍵修正：將內裝放置在上層車頭的位置，並根據行駛方向旋轉
+    const camZPos = direction > 0 ? 3.5 : -3.5;
+    busInteriorGrp.position.set(0, 4.2, camZPos);
+    busInteriorGrp.rotation.set(0, direction > 0 ? Math.PI : 0, 0);
+
+    // 3. 關閉干擾 UI
     controls.enabled = false;
     document.getElementById('btn-return-room').style.display = 'none';
     if(document.getElementById('mobile-cam-knob')) document.getElementById('mobile-cam-knob').style.display = 'none';
 
-    // 計算巴士上層車頭的「世界座標」作為運鏡終點
-    const upperDeckLocalPos = new THREE.Vector3(0, 4.2, direction > 0 ? 3.5 : -3.5); // 上層最前排
-    const targetWorldPos = upperDeckLocalPos.clone().applyMatrix4(activeBus.matrixWorld);
-
-    // 平滑運鏡：飛入巴士
+    // 4. 計算上車的世界座標並進行飛入動畫
+    const targetWorldPos = new THREE.Vector3(0, 4.2, camZPos).applyMatrix4(activeBus.matrixWorld);
     gsap.to(camera.position, {
         x: targetWorldPos.x, y: targetWorldPos.y, z: targetWorldPos.z,
         duration: 1.2, ease: "power2.inOut"
     });
     
-    // 將 FOV 拉廣，製造車速很快的錯覺
-    gsap.to(camera, { fov: 80, duration: 1.2, onUpdate: () => camera.updateProjectionMatrix() });
+    // 增加廣角製造速度感
+    gsap.to(camera, { fov: 75, duration: 1.2, onUpdate: () => camera.updateProjectionMatrix() });
 
-    // 視線望向前方路面
+    // 讓鏡頭看向車頭前方
     const lookAheadWorldPos = new THREE.Vector3(0, 4.2, direction > 0 ? 30 : -30).applyMatrix4(activeBus.matrixWorld);
     gsap.to(controls.target, {
         x: lookAheadWorldPos.x, y: lookAheadWorldPos.y, z: lookAheadWorldPos.z,
         duration: 1.2, ease: "power2.inOut",
         onUpdate: () => controls.update(),
         onComplete: () => {
-            // 💡 運鏡結束後，真正的魔法來了：將攝影機設為巴士的子物件！
+            // 💡 運鏡結束，正式切換父子層關係 (綁定到車上)
             activeBus.add(camera);
             
-            // 相機轉為 Local 座標
-            camera.position.set(0, 4.2, direction > 0 ? 3.5 : -3.5);
-            camera.rotation.set(0, direction > 0 ? 0 : Math.PI, 0); // 直視前方
+            // 重置 Local 座標，讓相機與內裝完全重合
+            camera.position.set(0, 4.2, camZPos);
             
-            // 顯示下車鐘
+            // 💡 終極修復：強制讓相機在 Local 空間看向正前方
+            const lookZ = direction > 0 ? 10 : -10;
+            camera.lookAt(camera.position.x, camera.position.y, lookZ);
+            
             document.getElementById('btn-getoff-bus').style.display = 'flex';
             showToast("🚌 您已登上九龍巴士，享受這趟旅程吧。");
         }
@@ -8699,23 +8705,21 @@ function checkAndShowWelcomeMemo(readingTasks, randomTasks, submittedReading, su
 function getOffBus() {
     if (!isRidingBus) return;
     isRidingBus = false;
-
-    // 隱藏下車鐘
     document.getElementById('btn-getoff-bus').style.display = 'none';
 
-    // 💡 解除綁定：把相機還給場景，並將其位置轉換回世界座標
+    // 1. 將攝影機退回世界座標系
     const worldPos = new THREE.Vector3();
     camera.getWorldPosition(worldPos);
     scene.add(camera);
     camera.position.copy(worldPos);
 
-    // 移除內裝模型，節省效能
+    // 2. 卸載並隱藏內裝，節省效能
     if (activeBus && busInteriorGrp) {
         activeBus.remove(busInteriorGrp);
     }
     activeBus = null;
 
-    // 平滑運鏡：退回原本的露台視角
+    // 3. 飛回原本的露台位置
     gsap.to(camera.position, {
         x: preRideCameraState.pos.x, y: preRideCameraState.pos.y, z: preRideCameraState.pos.z,
         duration: 1.2, ease: "power2.inOut"
