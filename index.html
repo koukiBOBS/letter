@@ -5515,7 +5515,7 @@ benchGrp = new THREE.Group();
         carGroup.rotation.y = Math.PI / 2; 
         
         // 為了避免車流太死板，給予每一台車微小的隨機速度差異 (0.35 ~ 0.45)
-      const randomSpeed = 0.9 + (Math.random() * 0.3); 
+      const randomSpeed = 0.5 + (Math.random() * 0.3); 
         
         carGroup.userData = { speed: randomSpeed * direction, type: 'vehicle' };
         
