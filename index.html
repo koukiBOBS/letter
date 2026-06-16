@@ -7250,8 +7250,9 @@ window.toggleReadingLog = function() {
   // 3. 建造精緻的八角扭蛋機 (移除透明托盤，改為簡潔出口)
     function buildDetailedGachaMachine() {
         gachaMachineGrp = new THREE.Group();
-        gachaMachineGrp.position.set(-48, 0, 25);
-        gachaMachineGrp.rotation.y = Math.PI / 3;
+   // 移至地氈左方，方便點擊且不會被書桌擋住
+        gachaMachineGrp.position.set(-28, 0, 14);
+        gachaMachineGrp.rotation.y = Math.PI / 5; // 微微傾斜面向玩家
         scene.add(gachaMachineGrp);
  
         const morandiCoralMat = new THREE.MeshStandardMaterial({
@@ -7548,9 +7549,10 @@ function startGachaDrawProcess() {
         const dirX = Math.sin(rotY);
         const dirZ = Math.cos(rotY);
         // 扭蛋掉落在地板上的世界座標
-        const dropWorldX = -48 + 6.0 * dirX;
-        const dropWorldY = 3.1; // 扭蛋半徑 0.65，貼齊地板 y=0
-        const dropWorldZ = 25 + 6.0 * dirZ;
+      // 動態抓取扭蛋機現在的實際位置，計算掉落座標
+        const dropWorldX = gachaMachineGrp.position.x + 6.0 * dirX;
+        const dropWorldY = 3.2; // 扭蛋半徑 0.65，貼齊地板 y=0
+        const dropWorldZ = gachaMachineGrp.position.z + 6.0 * dirZ;
         const camTargetX = dropWorldX;
         const camTargetY = dropWorldY;
         const camTargetZ = dropWorldZ;
