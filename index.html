@@ -7810,21 +7810,23 @@ function startGachaDrawProcess() {
     };
 
     // 8. 覆寫收集冊
-// 8. 覆寫收集冊 (雙分頁支援)
-    function hijackWalletRender() {
-        const originalRenderWalletGrid = window.renderWalletGrid;
-        window.renderWalletGrid = function() {
-            originalRenderWalletGrid();
-            
-            // 指向專屬的語錄 Grid 容器
-            const gridQuotes = document.getElementById('collection-grid-quotes');
-            if (!gridQuotes) return;
+function hijackWalletRender() {
+    const originalRenderWalletGrid = window.renderWalletGrid;
+    window.renderWalletGrid = function() {
+        originalRenderWalletGrid();
+        
+        const gridQuotes = document.getElementById('collection-grid-quotes');
+        if (!gridQuotes) return;
+        
+        // 延遲 50ms 避開視窗彈出的動畫，並使用 DocumentFragment 批次插入，徹底解決卡頓
+        setTimeout(() => {
             gridQuotes.innerHTML = '';
- 
+            const frag = document.createDocumentFragment();
+
             Object.keys(LIT_QUOTES).forEach(id => {
                 const isOwned = window.userQuotes[id];
                 const card = document.createElement('div');
- 
+
                 if (!isOwned) {
                     card.className = 'quote-card-item locked';
                     card.style.background = 'rgba(255, 255, 255, 0.05)';
@@ -7838,7 +7840,7 @@ function startGachaDrawProcess() {
                 } else {
                     const q = LIT_QUOTES[id];
                     card.className = 'quote-card-item';
-                    card.style.background = '#efeae2'; // 抽到的保留紙張質感
+                    card.style.background = '#efeae2'; 
                     card.innerHTML = `
                         <div class="quote-preview-text">「${q.text}」</div>
                         <div class="quote-author-badge">— ${q.author}</div>
@@ -7848,10 +7850,12 @@ function startGachaDrawProcess() {
                         showQuoteUI(id);
                     };
                 }
-                gridQuotes.appendChild(card);
+                frag.appendChild(card);
             });
-        };
-    }
+            gridQuotes.appendChild(frag);
+        }, 50); 
+    };
+}
 })();
 
 
