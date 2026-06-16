@@ -2431,10 +2431,14 @@ function renderTasks() {
                 const el = document.createElement('div'); 
                 el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
                 
-                // 🛑 核心修復：強制移除 CSS 中的全灰濾鏡，讓未解鎖的卡片保留鮮明色彩！
+              // 🛑 核心修復：強制移除 CSS 中的全灰濾鏡，讓時間軸保留鮮明色彩，
+                // 但同時將「未開放」卡片的整體背景改為灰色，加強鎖定感。
                 if (!unlocked) {
                     el.style.filter = "none"; 
-                    el.style.opacity = "0.75"; // 稍微半透明即可，不要變灰
+                    el.style.opacity = "0.85"; 
+                    el.style.backgroundColor = "#f1f5f9"; // 淺灰藍背景
+                    el.style.borderColor = "#cbd5e1";     // 灰色邊框
+                    el.style.borderStyle = "dashed";      // 虛線邊框增加未解鎖的視覺感
                 }
 
                 // --- 雙色時間軸 UI 設計 ---
