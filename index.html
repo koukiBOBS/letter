@@ -2603,49 +2603,18 @@ window.openFreeReadingEditor = function() {
                     const lastMsg = messages[msgKeys[msgKeys.length - 1]]; 
                     const canReply = lastMsg && lastMsg.senderUid !== currentUser.uid && l.type !== 'random';
 
-                   msgKeys.forEach((key, index) => {
-                        const m = messages[key];
-                        const isMe = m.senderUid === currentUser.uid;
-                        const d = new Date(m.timestamp);
-                        const tStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-                        
-                        let formattedText = escapeHtml(m.text)
-                            .replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀頁數</span>')
-                            .replace(/【思考問題】/g, '<span class="letter-section-divider">思考問題</span>')
-                            .replace(/【閱讀心得】/g, '<span class="letter-section-divider">閱讀感悟</span>')
-                            .replace(/【探索任務】/g, '<span class="letter-section-divider">探索任務</span>')
-                            .replace(/【備註與感悟】/g, '<span class="letter-section-divider">備註與感悟</span>');
-                        
-                        let imgTag = m.imageUrl ? `<a href="${m.imageUrl}" target="_blank" class="letter-img-wrap"><img src="${m.imageUrl}" class="letter-img" loading="lazy"></a>` : '';
-                        
-                        // 👇 確保這兩行存在，這就是報錯的原因
-                        let sheetClass = isMe ? 'my-letter' : (l.type === 'random' ? 'partner-random' : 'partner-reading');
-                        let headerLabel = isMe ? '✍️ 我的手札' : (l.type === 'random' ? '📸 筆友的探索' : '📬 筆友的心得');
+                   sgKeys.forEach((key, index) => {
  
-                        // 👇 附加的語錄卡片邏輯
-                        let attachedQuoteHtml = '';
-                        if (m.attachedQuoteId && LIT_QUOTES[m.attachedQuoteId]) {
-                            const q = LIT_QUOTES[m.attachedQuoteId];
-                            attachedQuoteHtml = `
-                                <div class="letter-attached-quote">
-                                    <div class="quote-mark">❝</div>
-                                    <div class="quote-text">${q.text}</div>
-                                    <div class="quote-author">— ${q.author}《${q.book}》</div>
-                                </div>
-                            `;
-                        }
- 
-                        // 👇 組裝成最終的 HTML
-                        contentHTML += `<div class="letter-sheet ${sheetClass}">
-                            <div class="letter-header-meta">
-                                <span>${headerLabel}</span>
-                                <span>${tStr}</span>
-                            </div>
-                            <div class="letter-text">${formattedText}</div>
-                            ${attachedQuoteHtml}
-                            ${imgTag}
-                        </div>`;
-                    });
+// 然後將底下的 contentHTML += 改成這樣（插入 ${attachedQuoteHtml}）：
+contentHTML += `<div class="letter-sheet ${sheetClass}">
+    <div class="letter-header-meta">
+        <span>${headerLabel}</span>
+        <span>${tStr}</span>
+    </div>
+    <div class="letter-text">${formattedText}</div>
+    ${attachedQuoteHtml}
+    ${imgTag}
+</div>`;
                     });
 
                     if (canReply) {
