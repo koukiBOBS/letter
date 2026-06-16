@@ -2020,13 +2020,20 @@ auth.onAuthStateChanged(user => {
                 if (data && data.name) { 
                     document.getElementById('user-name').innerText = data.name; 
                     
-                    if (isTeacherEmail(user.email) && data.classId !== 'teacher_class') {
-                        db.ref(`users/${user.uid}`).update({ classId: 'teacher_class' });
-                        db.ref('classes/teacher_class').update({ name: "老師" });
-                        currentUser.classId = 'teacher_class'; 
-                    } else {
-                        currentUser.classId = data.classId || 'default'; 
-                    }
+                   if (isTeacherEmail(user.email)) {
+    if (data.classId !== 'teacher_class') {
+        db.ref(`users/${user.uid}`).update({ classId: 'teacher_class' });
+        db.ref('classes/teacher_class').update({ name: "老師" });
+    }
+    currentUser.classId = 'teacher_class'; 
+} else {
+    // 解決方案：如果身分被降級回學生，但資料庫仍殘留老師班級，則自動重置為預設班
+    if (data.classId === 'teacher_class') {
+        db.ref(`users/${user.uid}`).update({ classId: 'default' });
+        data.classId = 'default';
+    }
+    currentUser.classId = data.classId || 'default'; 
+}
                     
                     initApp(); // 開始載入 3D 房間
                 } 
