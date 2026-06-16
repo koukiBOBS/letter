@@ -5982,12 +5982,12 @@ else if (type === 'painting') {
                     }
                 }
 
-           // ==========================================
+                // ==========================================
                 // 🧲 通用牆面家具互斥 (書櫃碰撞排斥)
                 // ==========================================
                 const wallItemTypes = ['painting', 'bookcase', 'clock', 'piano'];
                 
-                for (let iter = 0; iter < 3; iter++) {
+                for (let iter = 0; iter < 2; iter++) {
                     interactables.forEach(item => {
                         let other = item.parent;
                         if (!other) other = item;
@@ -6010,27 +6010,17 @@ else if (type === 'painting') {
                                 const otherHalfW = otherW / 2;
                                 const otherHalfH = otherH / 2;
                                 
-                                const minDx = halfW + otherHalfW + 1.5; 
-                                const minDy = 15 + otherHalfH + 1.5; // 書櫃貼地，一半高度固定為15
+                                const minDx = halfW + otherHalfW + 1.0; 
+                                const minDy = 15 + otherHalfH + 1.0; // 書櫃的 halfH 是 15
                                 
-                                let hPos = isZWall ? newPos.x : newPos.z;
-                                let otherHPos = isZWall ? other.position.x : other.position.z;
-
-                                // 書櫃因為不能離地，我們只做水平推擠
-                                let penLeft  = hPos - (otherHPos - minDx);
-                                let penRight = (otherHPos + minDx) - hPos;
-                                let isVerticalOverlap = Math.abs(newPos.y - otherY) < minDy;
-
-                                // 如果高度有重疊，且水平也撞到了，就強制左右推開
-                                if (isVerticalOverlap && penLeft > 0 && penRight > 0) {
-                                    if (penLeft < penRight) {
-                                        hPos = otherHPos - minDx;
-                                    } else {
-                                        hPos = otherHPos + minDx;
-                                    }
-                                    
-                                    if (isZWall) newPos.x = hPos;
-                                    else newPos.z = hPos;
+                                const dx = isZWall ? Math.abs(newPos.x - other.position.x) : Math.abs(newPos.z - other.position.z);
+                                const dy = Math.abs(newPos.y - otherY);
+                                
+                                // 書櫃撞到東西，只能強制在水平方向推開 (因為書櫃不能離地)
+                                if (dx < minDx && dy < minDy) {
+                                    const overlapX = minDx - dx;
+                                    if (isZWall) newPos.x += overlapX * (newPos.x > other.position.x ? 1 : -1);
+                                    else newPos.z += overlapX * (newPos.z > other.position.z ? 1 : -1);
                                 }
                             }
                         }
