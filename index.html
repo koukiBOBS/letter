@@ -5358,6 +5358,8 @@ benchGrp = new THREE.Group();
     });
 
     // 🏙️ 2. 朦朧的東九龍/港島遠景剪影 (往右開 +X 方向，過了摩天輪後)
+   // 👇 請將以下這整段完全刪除：
+    // 🏙️ 2. 朦朧的東九龍/港島遠景剪影 (往右開 +X 方向，過了摩天輪後)
     const distantCityMat = new THREE.MeshStandardMaterial({color: 0x2c3a47, roughness: 1.0}); // 深沉的藍灰色
     for(let i=0; i<60; i++) {
         let xPos = 200 + Math.random() * 2000; // 延伸到極遠的 2200
@@ -5458,11 +5460,13 @@ benchGrp = new THREE.Group();
 
     // 【修訂三：綠色且宏偉的遠景山脈】 (保留原樣)
     const mountainMat = new THREE.MeshStandardMaterial({color: 0x365942, roughness: 1.0});
-    for(let i=0; i<6; i++) {
-        const mtn = new THREE.Mesh(new THREE.ConeGeometry(80 + Math.random()*50, 150 + Math.random()*100, 32), mountainMat);
-        mtn.position.set(-120 + i*50 + (Math.random()-0.5)*20, 60, -130 - Math.random()*20);
+    for(let i=0; i<8; i++) { // 稍微增加山峰數量
+        const mtn = new THREE.Mesh(new THREE.ConeGeometry(120 + Math.random()*80, 250 + Math.random()*150, 32), mountainMat);
+        // 將 Z 軸大幅推遠至 -280，避免穿插在城市大廈之間
+        mtn.position.set(-200 + i*80 + (Math.random()-0.5)*30, 80, -280 - Math.random()*40);
         sceneryGroup.add(mtn);
     }
+
 
     // 【修訂一：解決大廈發光 BUG 與超出馬路問題】 (保留原樣)
     const buildingTex = createBuildingTexture();
@@ -5477,13 +5481,37 @@ benchGrp = new THREE.Group();
     ];
    const roofMat = new THREE.MeshStandardMaterial({color: 0x334455, roughness: 0.9}); // 純色無發光的屋頂材質
     buildingsData.forEach(bd => { 
-        // 將材質改為陣列：[右, 左, 上(屋頂), 下(底座), 前, 後]
         const materials = [bd.c, bd.c, roofMat, roofMat, bd.c, bd.c];
         const b = new THREE.Mesh(new THREE.BoxGeometry(12+Math.random()*6, bd.h, 12+Math.random()*6), materials); 
         b.position.set(bd.x, bd.h/2 - 5, bd.z); 
         b.castShadow = true; b.receiveShadow = true; 
         sceneryGroup.add(b); animScenery.buildings.push(b); 
     });
+
+    // 👇👇👇 請在近景大廈迴圈結束後，貼上這段全新的遠景大廈 👇👇👇
+    const distBMat = new THREE.MeshStandardMaterial({
+        color: 0x6a7b8c, // 稍微偏藍灰的顏色，製造大氣透視的遠景感
+        roughness: 0.9, 
+        map: buildingTex,         // 套用窗戶貼圖
+        emissiveMap: emissiveTex, // 套用夜間發光貼圖
+        emissive: 0xffffff, 
+        emissiveIntensity: 0.0 
+    });
+    const distRoofMat = new THREE.MeshStandardMaterial({color: 0x2c3a47, roughness: 0.9});
+    const distMaterials = [distBMat, distBMat, distRoofMat, distRoofMat, distBMat, distBMat];
+
+    // 建立 100 棟遠景大廈，作為背景牆擋住後方的海與山，同時點綴摩天輪後方
+    for(let i=0; i<100; i++) {
+        let xPos = -150 + Math.random() * 2300; // 範圍從左側大橋涵蓋到右側極遠處
+        let zPos = -100 - Math.random() * 120;  // 放在近景大廈的後方 (-100 ~ -220)
+        let height = 150 + Math.random() * 300; // 遠景大廈更高大
+        let width = 30 + Math.random() * 60;
+        let b = new THREE.Mesh(new THREE.BoxGeometry(width, height, width), distMaterials);
+        b.position.set(xPos, height/2 - 20, zPos);
+        balconyOnlyGroup.add(b);
+        animScenery.buildings.push(b); // 加入陣列，讓這些遠景大廈在晚上也能自動亮燈！
+    }
+    // 👆👆👆 新增結束 👆👆👆
 
     // 2. 替換馬路與行人路 (長度由 360 改為 5000)
     const roadWidth = 26;
