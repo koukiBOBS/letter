@@ -2371,21 +2371,19 @@ function renderTasks() {
             calendarTasksData = {};
             const todayReset = new Date().setHours(0,0,0,0);
 
-           function addCalTask(dateStr, type, doneRecord) {
-    if (!calendarTasksData[dateStr]) calendarTasksData[dateStr] = [];
-    let status = 'pending';
-    
-    // 開放日 + 2天 (即隔天 23:59:59 截止)
-    const limitTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
+            function addCalTask(dateStr, type, doneRecord) {
+                if (!calendarTasksData[dateStr]) calendarTasksData[dateStr] = [];
+                let status = 'pending';
+                const deadline = new Date(dateStr).setHours(0,0,0,0);
 
-    if (doneRecord) {
-        const submitTime = new Date(doneRecord.timestamp).getTime();
-        status = (submitTime < limitTime) ? 'ontime' : 'late';
-    } else {
-        status = (Date.now() >= limitTime) ? 'overdue' : 'pending';
-    }
-    calendarTasksData[dateStr].push({ type, status });
-}
+                if (doneRecord) {
+                    const submitTime = new Date(doneRecord.timestamp).setHours(0,0,0,0);
+                    status = (submitTime <= deadline) ? 'ontime' : 'late';
+                } else {
+                    status = (todayReset > deadline) ? 'overdue' : 'pending';
+                }
+                calendarTasksData[dateStr].push({ type, status });
+            }
 
 
             
@@ -2460,17 +2458,10 @@ function renderTasks() {
             });
 
             if (randomTasks.length === 0) randGrid.innerHTML = '<div class="empty-state"><p>目前尚未設定探索任務。</p></div>';
-          randomTasks.forEach((dateStr, i) => {
+            randomTasks.forEach((dateStr, i) => {
                 const unlocked = true; 
                 const done = submittedRandomDates.includes(dateStr);
-                
-                // 計算真正的截止日期 (發放日的隔天)
-                let dDate = new Date(new Date(dateStr).getTime() + 86400000);
-                let deadlineStr = `${dDate.getFullYear()}-${String(dDate.getMonth()+1).padStart(2,'0')}-${String(dDate.getDate()).padStart(2,'0')}`;
-                
-                // 超過 48 小時視為逾期
-                const limitTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
-                const isLate = !done && Date.now() >= limitTime;
+                const isLate = !done && new Date().setHours(0,0,0,0) > new Date(dateStr).setHours(0,0,0,0);
                 
                 // 📝 寫入日曆資料
                 const randRecord = randMap[dateStr];
@@ -2481,13 +2472,11 @@ function renderTasks() {
                 const el = document.createElement('div'); 
                 el.className = `task-card ${done ? 'completed' : ''}`;
                 
-                let dateTextHtml = `<span class="task-date">${deadlineStr} 截止</span>`;
+                let dateTextHtml = `<span class="task-date">${dateStr} 截止</span>`;
                 if (isLate) {
-                    dateTextHtml = `<span class="task-date" style="color: #ef4444; font-weight: bold;">⚠️ 已逾期 (限期: ${deadlineStr})</span>`;
+                    dateTextHtml = `<span class="task-date" style="color: #ef4444; font-weight: bold;">⚠️ 已逾期 (限期: ${dateStr})</span>`;
                 }
 
-
-              
                 el.innerHTML = `<span class="task-num">第 ${i+1} 回探索</span>${dateTextHtml}`;
                 if (!done && drawnTasksData[dateStr]) { el.innerHTML += `<div style="margin-top:10px; font-size:0.8rem; color:#8b7355; font-weight:600;">已抽籤，待繳交</div>`; }
                 
@@ -6925,28 +6914,59 @@ window.devSimulateReceiveReply = function() {
 
 // 🍂 檢查並執行破產清算
 function checkAndTriggerBankruptcy(readingTasks, randomTasks, submittedReading, submittedRandom) {
+    // 1. 開發者與老師享有豁免權
     if (typeof isDevUser === 'function' && isDevUser(currentUser.email)) return;
 
     let isBankrupt = false;
-    const now = Date.now();
+    const todayReset = new Date().setHours(0,0,0,0);
 
-    // 檢查閱讀任務 (截止後，逾期滿 4 天 = 發放日後滿 6 天)
+    // 2. 檢查閱讀任務是否逾期超過 3 天 (即 >= 4 天)
     for (let dateStr of readingTasks) {
         if (!submittedReading.includes(dateStr)) {
-            let limitTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
-            if (now - limitTime >= 86400000 * 4) { isBankrupt = true; break; }
-        }
-    }
-
-    // 檢查探索任務
-    if (!isBankrupt) {
-        for (let dateStr of randomTasks) {
-            if (!submittedRandom.includes(dateStr)) {
-                let limitTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
-                if (now - limitTime >= 86400000 * 4) { isBankrupt = true; break; }
+            let deadline = new Date(dateStr).setHours(0,0,0,0);
+            if (Math.floor((todayReset - deadline) / 86400000) >= 4) {
+                isBankrupt = true; break;
             }
         }
     }
+
+    // 3. 如果閱讀沒事，繼續檢查探索任務
+    if (!isBankrupt) {
+        for (let dateStr of randomTasks) {
+            if (!submittedRandom.includes(dateStr)) {
+                let deadline = new Date(dateStr).setHours(0,0,0,0);
+                if (Math.floor((todayReset - deadline) / 86400000) >= 4) {
+                    isBankrupt = true; break;
+                }
+            }
+        }
+    }
+
+    // 4. 如果確認破產，執行懲罰
+// 4. 如果確認破產，執行懲罰
+    if (isBankrupt) {
+        db.ref(`users/${currentUser.uid}`).once('value').then(snap => {
+            let data = snap.val() || {};
+            let pts = data.points || 0;
+            let inv = data.inventory || {};
+            let quotes = data.quotes || {}; // 👈 檢查語錄資產
+            
+            // 只要有分數、有道具，或有語錄，就清空
+            if (pts > 0 || Object.keys(inv).length > 0 || Object.keys(quotes).length > 0) {
+                // 💥 執行清算：積分歸零、道具全砍、文學碎片全燒毀
+                db.ref(`users/${currentUser.uid}/points`).set(0);
+                db.ref(`users/${currentUser.uid}/inventory`).remove();
+                db.ref(`users/${currentUser.uid}/quotes`).remove(); // 👈 沒收語錄
+                
+                // 清空本地變數
+                window.userQuotes = {};
+                
+                // 彈出破產宣告視窗
+                document.getElementById('modal-bankruptcy').style.display = 'flex';
+            }
+        });
+    }
+}
 
 // 點擊「默默承受」後重新整理畫面
 function acceptBankruptcy() {
@@ -7402,7 +7422,7 @@ const crystalGlassMat = new THREE.MeshPhysicalMaterial({
         topCap.position.y = 11.2;
         topCap.castShadow = true;
         gachaMachineGrp.add(topCap);
-   
+
         // 3.10 莫蘭迪低飽和雙色扭蛋球
         const morandiColors = [0xbc8a8f, 0x8fa397, 0xa39284, 0x8aa3b0, 0xb8a38f, 0xc59e8f];
         const halfSphereGeoTop = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, 0, Math.PI/2);
@@ -7790,23 +7810,21 @@ function startGachaDrawProcess() {
     };
 
     // 8. 覆寫收集冊
-function hijackWalletRender() {
-    const originalRenderWalletGrid = window.renderWalletGrid;
-    window.renderWalletGrid = function() {
-        originalRenderWalletGrid();
-        
-        const gridQuotes = document.getElementById('collection-grid-quotes');
-        if (!gridQuotes) return;
-        
-        // 延遲 50ms 避開視窗彈出的動畫，並使用 DocumentFragment 批次插入，徹底解決卡頓
-        setTimeout(() => {
+// 8. 覆寫收集冊 (雙分頁支援)
+    function hijackWalletRender() {
+        const originalRenderWalletGrid = window.renderWalletGrid;
+        window.renderWalletGrid = function() {
+            originalRenderWalletGrid();
+            
+            // 指向專屬的語錄 Grid 容器
+            const gridQuotes = document.getElementById('collection-grid-quotes');
+            if (!gridQuotes) return;
             gridQuotes.innerHTML = '';
-            const frag = document.createDocumentFragment();
-
+ 
             Object.keys(LIT_QUOTES).forEach(id => {
                 const isOwned = window.userQuotes[id];
                 const card = document.createElement('div');
-
+ 
                 if (!isOwned) {
                     card.className = 'quote-card-item locked';
                     card.style.background = 'rgba(255, 255, 255, 0.05)';
@@ -7820,7 +7838,7 @@ function hijackWalletRender() {
                 } else {
                     const q = LIT_QUOTES[id];
                     card.className = 'quote-card-item';
-                    card.style.background = '#efeae2'; 
+                    card.style.background = '#efeae2'; // 抽到的保留紙張質感
                     card.innerHTML = `
                         <div class="quote-preview-text">「${q.text}」</div>
                         <div class="quote-author-badge">— ${q.author}</div>
@@ -7830,16 +7848,10 @@ function hijackWalletRender() {
                         showQuoteUI(id);
                     };
                 }
-                frag.appendChild(card);
+                gridQuotes.appendChild(card);
             });
-            gridQuotes.appendChild(frag);
-        }, 50); 
-    };
-}
-
-
-
-    
+        };
+    }
 })();
 
 
