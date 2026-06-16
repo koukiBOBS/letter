@@ -3642,6 +3642,39 @@ function restoreObjectPositions() {
 
 
 
+// ✨ 生成假玻璃反光貼圖 (零效能負擔，模擬窗戶與燈光倒影)
+function createFakeGlassReflection() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    
+    // 暗色漸層底
+    const grad = ctx.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0, '#111111');
+    grad.addColorStop(0.5, '#444444');
+    grad.addColorStop(1, '#111111');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 512, 256);
+    
+    // 畫兩個柔和的方形假窗戶反光
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.filter = 'blur(4px)'; // 邊緣柔化
+    ctx.fillRect(100, 80, 50, 100);
+    ctx.fillRect(170, 80, 50, 100);
+    
+    // 畫一個強烈的圓形聚光燈反光
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.beginPath(); ctx.arc(400, 100, 25, 0, Math.PI*2); ctx.fill();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    // 關鍵設定：告訴 Three.js 這是一張包裹整個環境的反射貼圖
+    tex.mapping = THREE.EquirectangularReflectionMapping; 
+    return tex;
+}
+
+        
+
+
 // 🧵 生成布料十字纖維紋理 (零效能負擔)
 function createFabricTexture(baseColorHex) {
     const canvas = document.createElement('canvas');
@@ -7648,20 +7681,20 @@ const polishedSilverMat = new THREE.MeshStandardMaterial({
     color: 0xe1e8eb, metalness: 0.9, roughness: 0.12
 });
         // --- 1. 改進：扭蛋機大圓頂材質 (高透明、高反射玻璃) ---
-const crystalGlassMat = new THREE.MeshPhysicalMaterial({
-    color: 0xffffff,
-    metalness: 0.0,
-    roughness: 0.05,          // 稍微有一點點粗糙度，能捕捉光暈
-    transmission: 0.9,        // 降低到 0.9，讓玻璃有一點實體感
-    ior: 1.52,                // 玻璃的折射率
-    thickness: 1.0,           // 模擬玻璃厚度產生的折射
-    specularIntensity: 1,     // 高光強度
-    specularColor: 0xffffff,
-    clearcoat: 1.0,           // 表面塗層（如鋼琴漆般的反射）
-    clearcoatRoughness: 0.0,
+// 生成共用的反光貼圖
+const fakeGlassEnv = createFakeGlassReflection();
+
+const crystalGlassMat = new THREE.MeshStandardMaterial({
+    color: 0xcceeff,       // 極淡的冰晶藍色，賦予實體感
+    metalness: 1.0,        // 鏡面反射拉到最滿
+    roughness: 0.05,       // 表面極度光滑
+    envMap: fakeGlassEnv,  // 🌟 貼上假反光，產生漂亮的彎曲倒影
+    envMapIntensity: 2.0,  // 反光強度
     transparent: true,
-    envMapIntensity: 1.5      // 增強對環境光的反射感
+    opacity: 0.35,         // 降低透明度，讓它不會像空氣
+    side: THREE.DoubleSide // 渲染內外雙面，增加厚度感
 });
+
  
 
  
@@ -7747,16 +7780,15 @@ const crystalGlassMat = new THREE.MeshPhysicalMaterial({
         const halfSphereGeoTop = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, 0, Math.PI/2);
         const halfSphereGeoBot = new THREE.SphereGeometry(0.65, 16, 16, 0, Math.PI*2, Math.PI/2, Math.PI/2);
         
-      const frostedGlassMat = new THREE.MeshPhysicalMaterial({
+     const frostedGlassMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
-    transmission: 0.5,        // 較低的透光度，產生「磨砂」或「厚塑料」感
-    roughness: 0.3,           // 增加粗糙度，讓光線散射
-    metalness: 0.0,
-    thickness: 0.2,           // 殼的厚度
-    ior: 1.45,
-    clearcoat: 0.5,           // 表面仍保留一點微弱的反光
+    metalness: 0.6,        // 帶有一點金屬質感的塑膠反光
+    roughness: 0.4,        // 磨砂粗糙感
+    envMap: fakeGlassEnv,  // 🌟 共用相同的反光貼圖
+    envMapIntensity: 1.0,
     transparent: true,
-    opacity: 1.0
+    opacity: 0.5,          // 半透明效果
+    side: THREE.DoubleSide
 });
         for(let i=0; i<80; i++) {
             const capGrp = new THREE.Group();
