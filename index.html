@@ -4651,17 +4651,17 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
         side: THREE.DoubleSide
     });
     
-    leftCurtainGrp = new THREE.Group();
-    leftCurtainGrp.position.set(-15, 19, -16.5);
+   leftCurtainGrp = new THREE.Group();
+    leftCurtainGrp.position.set(-15, 14.5, -16.5); // 中心點下降到 14.5
     masterCurtainGrp.add(leftCurtainGrp);
     
     rightCurtainGrp = new THREE.Group();
-    rightCurtainGrp.position.set(15, 19, -16.5);
+    rightCurtainGrp.position.set(15, 14.5, -16.5); // 中心點下降到 14.5
     masterCurtainGrp.add(rightCurtainGrp);
     
     // 💡 核心優化：用一張帶有波浪數學公式的平面，取代多個圓柱體
-    const foldGeoL = new THREE.PlaneGeometry(15, 38, 40, 1);
-    const foldGeoR = new THREE.PlaneGeometry(15, 38, 40, 1);
+    const foldGeoL = new THREE.PlaneGeometry(15, 29, 40, 1); // 高度縮減為 29
+    const foldGeoR = new THREE.PlaneGeometry(15, 29, 40, 1); // 高度縮減為 29
     
     // 將平面軸心移到邊緣，這樣拉窗簾時才會往兩側縮
     foldGeoL.translate(7.5, 0, 0); 
@@ -4691,12 +4691,12 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     rightCurtainGrp.add(clothR);
     
     
-    const hitL = new THREE.Mesh(new THREE.BoxGeometry(15, 38, 4), new THREE.MeshBasicMaterial({visible:false}));
+   const hitL = new THREE.Mesh(new THREE.BoxGeometry(15, 29, 4), new THREE.MeshBasicMaterial({visible:false})); // 高度改為 29
     hitL.position.set(7.5, 0, 0);
     hitL.userData = { type: 'curtain', side: 'left' };
     leftCurtainGrp.add(hitL);
     
-    const hitR = new THREE.Mesh(new THREE.BoxGeometry(15, 38, 4), new THREE.MeshBasicMaterial({visible:false}));
+    const hitR = new THREE.Mesh(new THREE.BoxGeometry(15, 29, 4), new THREE.MeshBasicMaterial({visible:false})); // 高度改為 29
     hitR.position.set(-7.5, 0, 0);
     hitR.userData = { type: 'curtain', side: 'right' };
     rightCurtainGrp.add(hitR);
@@ -4704,8 +4704,8 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     applyCurtainRatio(); 
 
     // --- 金屬窗簾桿與支撐架 ---
-    const rodGroup = new THREE.Group();
-    rodGroup.position.set(0, 38.2, -16.6); 
+      const rodGroup = new THREE.Group();
+    rodGroup.position.set(0, 29.2, -16.6); // 高度降到窗戶正上方 (y=29.2)
     masterCurtainGrp.add(rodGroup); // 裝入總群組
 
     const rodMat = new THREE.MeshStandardMaterial({color: 0x2c3e50, metalness: 0.7, roughness: 0.3}); 
