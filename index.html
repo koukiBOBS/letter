@@ -7248,10 +7248,10 @@ window.toggleReadingLog = function() {
     }
 
   // 3. 建造精緻的八角扭蛋機 (移除透明托盤，改為簡潔出口)
-function buildDetailedGachaMachine() {
-    gachaMachineGrp = new THREE.Group();
-    // 移至地氈左方前側，搬前並稍微往中央靠，方便點擊
-    gachaMachineGrp.position.set(-22, 0, 18);
+    function buildDetailedGachaMachine() {
+        gachaMachineGrp = new THREE.Group();
+   // 移至地氈左方，方便點擊且不會被書桌擋住
+        gachaMachineGrp.position.set(-36, 0, 14);
         gachaMachineGrp.rotation.y = Math.PI / 5; // 微微傾斜面向玩家
         scene.add(gachaMachineGrp);
  
