@@ -9358,88 +9358,175 @@ window.devSimulateShoppingStreet = function() {
 // 🎨 零效能紋理生成工廠 (港式風情)
 // =====================================================================
 
-// 1. 香港經典「紙皮石」馬賽克外牆
+// =====================================================================
+// 🎨 極限擬真紋理生成工廠 (無外部圖片，純程式碼最高細節)
+// =====================================================================
+
+// 1. 舊式唐樓「紙皮石」馬賽克外牆 (加入光影倒角與歲月水痕)
 function createMosaicTileTexture(baseColor) {
-    const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256; const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#cccccc'; ctx.fillRect(0, 0, 256, 256);
-    const tileSize = 8; const gap = 1;
-    for(let y=0; y<256; y+=tileSize) {
-        for(let x=0; x<256; x+=tileSize) {
-            ctx.fillStyle = Math.random() > 0.85 ? '#ffffff' : baseColor;
-            ctx.globalAlpha = 0.7 + Math.random() * 0.3;
+    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#9c9c9c'; ctx.fillRect(0, 0, 512, 512); // 水泥底色
+    const tileSize = 16; const gap = 2;
+    
+    for(let y=0; y<512; y+=tileSize) {
+        for(let x=0; x<512; x+=tileSize) {
+            // 隨機掉落的磁磚
+            if(Math.random() > 0.95) {
+                // 剝落處露出深色水泥與污漬
+                ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x, y, tileSize, tileSize);
+                continue;
+            }
+            
+            // 磁磚主色
+            ctx.fillStyle = Math.random() > 0.85 ? '#f0f0f0' : baseColor;
+            ctx.globalAlpha = 0.85 + Math.random() * 0.15;
             ctx.fillRect(x+gap, y+gap, tileSize-gap*2, tileSize-gap*2);
+            
+            // ✨ 立體倒角 (高光與陰影)
+            ctx.globalAlpha = 1.0;
+            ctx.fillStyle = 'rgba(255,255,255,0.4)'; // 左上高光
+            ctx.fillRect(x+gap, y+gap, tileSize-gap*2, 1);
+            ctx.fillRect(x+gap, y+gap, 1, tileSize-gap*2);
+            ctx.fillStyle = 'rgba(0,0,0,0.3)'; // 右下陰影
+            ctx.fillRect(x+gap, y+tileSize-gap-1, tileSize-gap*2, 1);
+            ctx.fillRect(x+tileSize-gap-1, y+gap, 1, tileSize-gap*2);
         }
+    }
+    
+    // 🌧️ 歲月水滴流痕 (Weathering)
+    for(let i=0; i<40; i++) {
+        const grad = ctx.createLinearGradient(0, 0, 0, 512);
+        grad.addColorStop(0, `rgba(0,0,0,${Math.random()*0.4})`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(Math.random()*512, 0, Math.random()*8+2, 512 * (0.3 + Math.random()*0.7));
     }
     const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
 }
 
-// 2. 舊式金屬鐵閘
-function createRollerShutterTexture() {
-    const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256; const ctx = canvas.getContext('2d');
-    const grad = ctx.createLinearGradient(0, 0, 0, 256); grad.addColorStop(0, '#555'); grad.addColorStop(0.5, '#999'); grad.addColorStop(1, '#444');
-    ctx.fillStyle = grad; ctx.fillRect(0, 0, 256, 256);
-    for(let y=0; y<256; y+=16) { ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, y, 256, 2); ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(0, y+2, 256, 2); }
+// 2. 工業風清水模 / 舊牆面 (加入斑駁與水漬)
+function createConcreteTexture() {
+    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#4a4a4a'; ctx.fillRect(0, 0, 512, 512);
+    
+    // 粗糙顆粒
+    for(let i=0; i<30000; i++) {
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.1)';
+        ctx.fillRect(Math.random()*512, Math.random()*512, 2, 2);
+    }
+    
+    // 🌧️ 大片漏水霉斑
+    for(let i=0; i<20; i++) {
+        const r = 20 + Math.random()*50;
+        const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+        grad.addColorStop(0, `rgba(0,0,0,${0.2 + Math.random()*0.3})`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.save();
+        ctx.translate(Math.random()*512, Math.random()*512);
+        ctx.scale(1, 2 + Math.random()*3); // 拉長流痕
+        ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+    }
     const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
 }
 
-// 3. 香港經典紅色人行道拼花地磚 (取代灰馬路)
+// 3. 香港經典紅地磚 (加入真實立體溝槽與磨損)
 function createRedBrickPaving() {
-    const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256; const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#8b4534'; ctx.fillRect(0, 0, 256, 256); // 陶紅色底
-    const w = 32, h = 16, gap = 2;
-    for(let y=0; y<256; y+=h) {
+    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#5c3a21'; ctx.fillRect(0, 0, 512, 512); // 溝槽深色底
+    const w = 64, h = 32, gap = 4;
+    
+    for(let y=0; y<512; y+=h) {
         let offset = (y/h % 2 === 0) ? 0 : w/2;
-        for(let x=-w; x<256; x+=w) {
-            ctx.fillStyle = Math.random() > 0.5 ? '#b24c38' : '#9c3d2a'; 
+        for(let x=-w; x<512; x+=w) {
+            // 磚塊主色 (帶有色差)
+            ctx.fillStyle = Math.random() > 0.5 ? '#b8513b' : '#a6412d'; 
             ctx.fillRect(x + offset + gap, y + gap, w - gap*2, h - gap*2);
-            ctx.fillStyle = 'rgba(0,0,0,0.06)'; ctx.fillRect(x + offset + gap + Math.random()*w/2, y + gap + Math.random()*h/2, 2, 2); // 污漬
+            
+            // ✨ 邊緣磨損高光與陰影
+            ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x + offset + gap, y + gap, w - gap*2, 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x + offset + gap, y + h - gap - 2, w - gap*2, 2);
+            ctx.fillRect(x + offset + w - gap - 2, y + gap, 2, h - gap*2);
+            
+            // 表面坑洞
+            ctx.fillStyle = 'rgba(0,0,0,0.15)'; 
+            for(let i=0; i<5; i++) ctx.fillRect(x + offset + gap + Math.random()*(w-gap*2), y + gap + Math.random()*(h-gap*2), 3, 3);
         }
     }
-    const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(15, 20); return tex;
+    
+    // 隨機路面髒污
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath(); ctx.arc(256, 256, 150, 0, Math.PI*2); ctx.fill(); // 中心大片污漬
+    
+    const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(10, 10); return tex;
 }
 
-// 4. 綠色鐵皮排檔紋理 (波浪板)
-function createCorrugatedMetalTexture(colorHex) {
-    const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 128; const ctx = canvas.getContext('2d');
-    ctx.fillStyle = colorHex; ctx.fillRect(0, 0, 128, 128);
-    for(let x=0; x<128; x+=8) {
-        ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.fillRect(x, 0, 2, 128);
-        ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x+4, 0, 3, 128);
+// 4. 舊式金屬鐵閘 (加入生鏽與凹凸感)
+function createRollerShutterTexture() {
+    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, 512); grad.addColorStop(0, '#666'); grad.addColorStop(0.5, '#aaa'); grad.addColorStop(1, '#555');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, 512, 512);
+    
+    // 金屬波浪立體感
+    for(let y=0; y<512; y+=32) { 
+        ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, y, 512, 4); // 深溝
+        ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(0, y+4, 512, 4); // 高光
+    }
+    
+    // 🟤 生鏽痕跡
+    for(let i=0; i<30; i++) {
+        ctx.fillStyle = `rgba(139, 69, 19, ${0.2 + Math.random()*0.4})`;
+        ctx.beginPath(); ctx.ellipse(Math.random()*512, Math.random()*512, Math.random()*40, Math.random()*10, 0, 0, Math.PI*2); ctx.fill();
     }
     const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
 }
 
-// 5. 帆布遮陽篷紋理 (帶點條紋污漬)
-function createAwningTexture(colorHex) {
-    const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256; const ctx = canvas.getContext('2d');
-    ctx.fillStyle = colorHex; ctx.fillRect(0, 0, 256, 256);
-    ctx.fillStyle = 'rgba(0,0,0,0.1)';
-    for(let i=0; i<256; i+=16) ctx.fillRect(i, 0, 2, 256); // 直條紋
-    for(let i=0; i<1000; i++) { ctx.fillStyle = 'rgba(0,0,0,0.03)'; ctx.fillRect(Math.random()*256, Math.random()*256, 10, 10); } // 水漬
-    const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
-}
-
-// 6. 霓虹招牌 (支援橫向與直向)
+// 5. 香港霓虹燈招牌 (加入鐵架背網與光暈)
 function createNeonSign(text, bgColor, neonColor, isVertical) {
     const canvas = document.createElement('canvas');
-    canvas.width = isVertical ? 128 : 512; canvas.height = isVertical ? 512 : 128;
+    canvas.width = isVertical ? 256 : 512; canvas.height = isVertical ? 1024 : 256;
     const ctx = canvas.getContext('2d');
+    
+    // 招牌底色與髒污
     ctx.fillStyle = bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    for(let i=0; i<5000; i++) { ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fillRect(Math.random()*canvas.width, Math.random()*canvas.height, 2, 2); }
+    
+    // ⛓️ 招牌背後的金屬支撐鐵架格紋
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 4;
+    for(let x=0; x<canvas.width; x+=32) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
+    for(let y=0; y<canvas.height; y+=32) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
     
     // 鐵鏽邊框
-    ctx.strokeStyle = '#111'; ctx.lineWidth = 8; ctx.strokeRect(4, 4, canvas.width-8, canvas.height-8);
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 12; ctx.strokeRect(6, 6, canvas.width-12, canvas.height-12);
     
-    ctx.fillStyle = '#ffffff'; ctx.shadowColor = neonColor; ctx.shadowBlur = 20;
-    ctx.font = 'bold 50px "Noto Serif TC", serif';
+    // 💡 霓虹玻璃管發光字體
+    ctx.font = 'bold 110px "Noto Serif TC", serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     
-    if (isVertical) {
-        const chars = text.split('');
-        const startY = 256 - (chars.length * 60) / 2 + 30;
-        chars.forEach((c, i) => { ctx.fillText(c, 64, startY + i * 60); ctx.fillText(c, 64, startY + i * 60); });
-    } else {
-        ctx.fillText(text, 256, 64); ctx.fillText(text, 256, 64);
+    // 第一層：擴散的大光暈
+    ctx.fillStyle = neonColor; ctx.globalAlpha = 0.4; ctx.filter = 'blur(15px)';
+    drawText();
+    
+    // 第二層：玻璃管邊緣色
+    ctx.fillStyle = neonColor; ctx.globalAlpha = 0.8; ctx.filter = 'blur(4px)';
+    drawText();
+    
+    // 第三層：玻璃管核心白光
+    ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 1.0; ctx.filter = 'none';
+    ctx.lineWidth = 6; ctx.strokeStyle = '#ffffff';
+    
+    function drawText() {
+        if (isVertical) {
+            const chars = text.split('');
+            const startY = (canvas.height - chars.length * 120) / 2 + 60;
+            chars.forEach((c, i) => { ctx.fillText(c, canvas.width/2, startY + i * 120); });
+        } else {
+            ctx.fillText(text, canvas.width/2, canvas.height/2);
+        }
     }
+    
+    drawText();
     return new THREE.CanvasTexture(canvas);
 }
 
