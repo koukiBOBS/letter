@@ -6953,13 +6953,16 @@ function animateRoom() {
             else if(c.position.x < refX - 800) c.position.x = refX + 800;
         });
  
-        // 🎡 摩天輪、海浪、雲朵邏輯保持不變...
+        // 2. 🎡 摩天輪
         if(typeof ferrisWheelGrp !== 'undefined') {
-            ferrisWheelGrp.rotation.z -= 0.0015;
-            fwCabins.forEach(cabin => cabin.rotation.z = -ferrisWheelGrp.rotation.z);
+            const rotationSpeed = 0.0015;
+            ferrisWheelGrp.rotation.z -= rotationSpeed;
+            if (typeof fwCabins !== 'undefined') {
+                fwCabins.forEach(cabin => {
+                    cabin.rotation.z = -ferrisWheelGrp.rotation.z;
+                });
+            }
         }
-        // (海浪與雲朵代碼請保留你原本的內容)
-    }
  
         // 3. 🌊 海水波浪 (最耗效能的頂點運算)
         if (typeof sea !== 'undefined') {
@@ -6986,7 +6989,6 @@ function animateRoom() {
             });
         }
     }
- 
     // ==========================================
     // 室內動畫 (永遠計算，因為就在身邊)
     // ==========================================
