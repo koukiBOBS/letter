@@ -3514,8 +3514,7 @@ function createLEDSign() {
 // 🛠️ 打造高質感、無死角的「上層車廂」
 function createBusInterior() {
     const grp = new THREE.Group();
-
-    // 1. 車廂外殼 (套用新生成的質感貼圖)
+ 
     const wallMat = new THREE.MeshStandardMaterial({ map: createPlasticTexture(), roughness: 0.95 });
     const floorMat = new THREE.MeshStandardMaterial({ map: createBusFloorTexture(), roughness: 0.7 });
     
@@ -3524,96 +3523,86 @@ function createBusInterior() {
     
     const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 10), wallMat);
     ceiling.rotation.x = Math.PI / 2; ceiling.position.set(0, 1.6, -1.0); grp.add(ceiling);
-
+ 
     const sideGeo = new THREE.PlaneGeometry(10, 0.8);
     const wallL = new THREE.Mesh(sideGeo, wallMat);
     wallL.rotation.y = Math.PI / 2; wallL.position.set(-1.7, -0.8, -1.0); grp.add(wallL);
     const wallR = new THREE.Mesh(sideGeo, wallMat);
     wallR.rotation.y = -Math.PI / 2; wallR.position.set(1.7, -0.8, -1.0); grp.add(wallR);
-
-    // 2. 🪟 帶有反光的玻璃車窗
-    const glassMat = new THREE.MeshStandardMaterial({ 
-        color: 0xffffff, transparent: true, opacity: 0.15, 
-        roughness: 0.0, metalness: 1.0, 
+ 
+    const glassMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff, transparent: true, opacity: 0.15,
+        roughness: 0.0, metalness: 1.0,
         envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
-        envMapIntensity: 2.0, side: THREE.DoubleSide 
+        envMapIntensity: 2.0, side: THREE.DoubleSide
     });
-
+ 
     const windshield = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 2.2), glassMat);
     windshield.position.set(0, 0.5, -4.5); windshield.rotation.x = -0.08; grp.add(windshield);
-
+ 
     const sideGlassGeo = new THREE.PlaneGeometry(10, 1.8);
     const glassL = new THREE.Mesh(sideGlassGeo, glassMat);
     glassL.rotation.y = Math.PI / 2; glassL.position.set(-1.7, 0.5, -1.0); grp.add(glassL);
     const glassR = new THREE.Mesh(sideGlassGeo, glassMat);
     glassR.rotation.y = -Math.PI / 2; glassR.position.set(1.7, 0.5, -1.0); grp.add(glassR);
-
-    // 3. 完美連接天地線的車窗支柱 (高度 2.4，Y中心 0.4)
+ 
     for (let z = -4.5; z <= 2; z += 1.6) {
         const pillarL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.4, 0.18), wallMat);
         pillarL.position.set(-1.64, 0.4, z); grp.add(pillarL);
         const pillarR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.4, 0.18), wallMat);
         pillarR.position.set(1.64, 0.4, z); grp.add(pillarR);
     }
-
-    // 4. 儀表板與報站屏
+ 
     const dash = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.8, 1.0), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 }));
     dash.position.set(0, -0.8, -4.2); grp.add(dash);
-
+ 
     const ledPanel = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.25), createLEDSign());
     ledPanel.position.set(0, 1.4, -4.4); ledPanel.rotation.x = 0.05; grp.add(ledPanel);
-
-    // 5. 💺 高質感多排座椅 (移除金屬環，套用尼龍布紋理)
+ 
     const sMat = new THREE.MeshStandardMaterial({ map: createSeatTexture(), roughness: 0.9 });
-    const sBackMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.7 }); // 灰色塑膠椅背
-    const nylonMat = new THREE.MeshStandardMaterial({ map: createNylonTexture(), roughness: 0.95 }); // 質感尼龍布
-
+    const sBackMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.7 });
+    const nylonMat = new THREE.MeshStandardMaterial({ map: createNylonTexture(), roughness: 0.95 });
+ 
     function createPremiumSeat(x, z) {
         const seatGrp = new THREE.Group();
         seatGrp.position.set(x, -1.2, z);
-        
         const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.15, 0.6), sMat);
         cushion.position.set(0, 0.3, 0.1); seatGrp.add(cushion);
-
         const back = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.8, 0.15), sMat);
         back.position.set(0, 0.75, 0.35); back.rotation.x = -0.15; seatGrp.add(back);
-
         const backCover = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.8, 0.05), sBackMat);
         backCover.position.set(0, 0.75, 0.43); backCover.rotation.x = -0.15; seatGrp.add(backCover);
-
-        // 尼龍布質感的頭枕
         const head = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.28, 0.15), nylonMat);
         head.position.set(0, 1.25, 0.42); head.rotation.x = -0.15; seatGrp.add(head);
-
-        // 尼龍布質感的椅背頂部 (取代原本的金屬環)
         const topPad = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.1, 0.18), nylonMat);
         topPad.position.set(0, 1.42, 0.42); topPad.rotation.x = -0.15; seatGrp.add(topPad);
-
         return seatGrp;
     }
-
-    // 建立 4 排座椅營造深邃景深
-    const rows = [-3.2, -1.6, 0.2, 1.8]; 
+ 
+    // 💡 重要修改：調整 Z 軸座標，避開 Z=0 (相機位置)
+    // 讓相機位於 -0.8 和 0.8 之間的安全區
+    const rows = [-4.0, -2.4, -0.8, 0.8, 2.4];
     rows.forEach(zPos => {
-        grp.add(createPremiumSeat(-1.2, zPos)); // 左靠窗
-        grp.add(createPremiumSeat(-0.5, zPos)); // 左走道
-        grp.add(createPremiumSeat(0.5, zPos));  // 右走道
-        grp.add(createPremiumSeat(1.2, zPos));  // 右靠窗
+        grp.add(createPremiumSeat(-1.2, zPos));
+        grp.add(createPremiumSeat(-0.5, zPos));
+        grp.add(createPremiumSeat(0.5, zPos));  
+        grp.add(createPremiumSeat(1.2, zPos));  
     });
-
-    // 6. 天花板燈帶
+ 
     const lightMat = new THREE.MeshBasicMaterial({ color: 0xfffae6 });
     const lightL = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 10), lightMat);
     lightL.rotation.x = Math.PI / 2; lightL.position.set(-0.8, 1.59, -1.0); grp.add(lightL);
     const lightR = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 10), lightMat);
     lightR.rotation.x = Math.PI / 2; lightR.position.set(0.8, 1.59, -1.0); grp.add(lightR);
-
-    // 柔和環境光照亮材質細節
+ 
     const cabinLight = new THREE.PointLight(0xffffff, 0.4, 10);
     cabinLight.position.set(0, 1.0, -1.5); grp.add(cabinLight);
-
+ 
     return grp;
 }
+
+
+        
 
 let leftCurtainGrp, rightCurtainGrp; 
 let curtainRatio = 1.0;
@@ -6882,58 +6871,61 @@ function animateRoom() {
     
     let isLookingOutside = isAtBalcony || cameraFrustum.intersectsBox(outsideWorldBox);
     if (isLookingOutside) {
-        // 🚦 1. 車輛更新與防撞
+        const busRefX = (isRidingBus && activeBus) ? activeBus.position.x : null;
+ 
         animScenery.cars.forEach(c => {
             let speed = c.userData.speed;
             const direction = speed > 0 ? 1 : -1;
             
+            // 🚦 1. 增強版防撞邏輯：距離前車 55 單位就減速
             animScenery.cars.forEach(other => {
                 if (c === other) return;
                 if (c.position.z === other.position.z) {
                     let dist = (other.position.x - c.position.x) * direction;
-                    if (dist > 0 && dist < 25) speed *= 0.8;
+                    if (dist > 0 && dist < 55) speed *= 0.7; 
                 }
             });
  
             c.position.x += speed;
             
+            // 💡 2. 解決穿模：如果你正在坐車，隱藏那些會跟你重疊的車
+            if (isRidingBus && activeBus && c !== activeBus) {
+                const distToBus = Math.abs(c.position.x - activeBus.position.x);
+                // 如果其他車距離你小於 20 單位，暫時隱藏它，防止它「飛進」車廂
+                c.visible = distToBus > 20;
+            } else {
+                c.visible = true;
+            }
+ 
             // 景觀循環
-            let refX = (isRidingBus && activeBus) ? activeBus.position.x : 0;
-            if(c.position.x > refX + 300) c.position.x = refX - 300;
-            else if(c.position.x < refX - 300) c.position.x = refX + 300;
+            let loopCenter = (busRefX !== null) ? busRefX : 0;
+            if(c.position.x > loopCenter + 300) c.position.x = loopCenter - 300;
+            else if(c.position.x < loopCenter - 300) c.position.x = loopCenter + 300;
         });
  
-        // 🌉 2. 巴士乘客專屬：動態隧道過渡與環境清理
+        // 🌉 3. 隧道過渡與建築清理
         if (isRidingBus && activeBus) {
             const busX = activeBus.position.x;
-            const dir = activeBus.userData.direction;
- 
-            // 當巴士移動超過 150 單位（離開市中心真實地圖範圍）時進入隧道
-            if (Math.abs(busX) > 150) {
+            // 離開摩天輪/青馬大橋地圖範圍 (約 180 單位) 後進隧道
+            if (Math.abs(busX) > 180) {
                 if (!tunnelMesh) {
                     tunnelMesh = createTunnel();
                     balconyOnlyGroup.add(tunnelMesh);
                 }
-                
-                // 隧道跟隨巴士並顯示
                 tunnelMesh.position.x = Math.floor(busX / 100) * 100;
                 tunnelMesh.visible = true;
- 
-                // 【解決色塊問題】：進入隧道後，隱藏市中心所有建築 (sceneryGroup 內的建築)
-                // 這樣迎面而來就不會有穿模的大廈色塊
+                // 進入隧道後隱藏建築，消除窗外多餘色塊
                 animScenery.buildings.forEach(b => b.visible = false);
             } else {
                 if (tunnelMesh) tunnelMesh.visible = false;
-                // 在市中心範圍內，確保建築物是可見的
                 animScenery.buildings.forEach(b => b.visible = true);
             }
         } else {
             if (tunnelMesh) tunnelMesh.visible = false;
-            // 非乘車狀態，確保所有建築正常顯示
             animScenery.buildings.forEach(b => b.visible = true);
         }
  
-        // 🎡 摩天輪與海浪動畫 (保持不變)
+        // 其他動畫 (保持一致)
         if(typeof ferrisWheelGrp !== 'undefined') {
             ferrisWheelGrp.rotation.z -= 0.0015;
             if (typeof fwCabins !== 'undefined') {
@@ -6952,11 +6944,115 @@ function animateRoom() {
             posAttr.needsUpdate = true;
         }
     }
+ 
     if(indicatorLeft && indicatorLeft.visible) { indicatorLeft.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; }
     if(indicatorRight && indicatorRight.visible) { indicatorRight.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; }
     if(renderer && scene && camera) renderer.render(scene, camera);
 }
-
+ 
+function animateRoom() {
+    requestAnimationFrame(animateRoom);
+    if (isRoomPaused() || !isAppActive) return;
+    
+    if (camera) {
+        camera.updateMatrixWorld();
+        cameraViewProjectionMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+        cameraFrustum.setFromProjectionMatrix(cameraViewProjectionMatrix);
+    }
+ 
+    const knobDial = document.getElementById('knob-dial');
+    if (knobDial && camera && controls && !window.isKnobDragging) {
+        const dx = controls.target.x - camera.position.x;
+        const dz = controls.target.z - camera.position.z;
+        const refX = (window.knobMode === 2) ? -dx : dx;
+        const refZ = (window.knobMode === 2) ? dz : -dz;
+        const angleDeg = Math.atan2(refX, refZ) * (180 / Math.PI);
+        knobDial.style.transform = `rotate(${angleDeg}deg)`;
+    }
+       
+    if(controls) controls.update();
+    
+    let isLookingOutside = isAtBalcony || cameraFrustum.intersectsBox(outsideWorldBox);
+    if (isLookingOutside) {
+        const busRefX = (isRidingBus && activeBus) ? activeBus.position.x : null;
+ 
+        animScenery.cars.forEach(c => {
+            let speed = c.userData.speed;
+            const direction = speed > 0 ? 1 : -1;
+            
+            // 🚦 1. 增強版防撞邏輯：距離前車 55 單位就減速
+            animScenery.cars.forEach(other => {
+                if (c === other) return;
+                if (c.position.z === other.position.z) {
+                    let dist = (other.position.x - c.position.x) * direction;
+                    if (dist > 0 && dist < 55) speed *= 0.7; 
+                }
+            });
+ 
+            c.position.x += speed;
+            
+            // 💡 2. 解決穿模：如果你正在坐車，隱藏那些會跟你重疊的車
+            if (isRidingBus && activeBus && c !== activeBus) {
+                const distToBus = Math.abs(c.position.x - activeBus.position.x);
+                // 如果其他車距離你小於 20 單位，暫時隱藏它，防止它「飛進」車廂
+                c.visible = distToBus > 20;
+            } else {
+                c.visible = true;
+            }
+ 
+            // 景觀循環
+            let loopCenter = (busRefX !== null) ? busRefX : 0;
+            if(c.position.x > loopCenter + 300) c.position.x = loopCenter - 300;
+            else if(c.position.x < loopCenter - 300) c.position.x = loopCenter + 300;
+        });
+ 
+        // 🌉 3. 隧道過渡與建築清理
+        if (isRidingBus && activeBus) {
+            const busX = activeBus.position.x;
+            // 離開摩天輪/青馬大橋地圖範圍 (約 180 單位) 後進隧道
+            if (Math.abs(busX) > 180) {
+                if (!tunnelMesh) {
+                    tunnelMesh = createTunnel();
+                    balconyOnlyGroup.add(tunnelMesh);
+                }
+                tunnelMesh.position.x = Math.floor(busX / 100) * 100;
+                tunnelMesh.visible = true;
+                // 進入隧道後隱藏建築，消除窗外多餘色塊
+                animScenery.buildings.forEach(b => b.visible = false);
+            } else {
+                if (tunnelMesh) tunnelMesh.visible = false;
+                animScenery.buildings.forEach(b => b.visible = true);
+            }
+        } else {
+            if (tunnelMesh) tunnelMesh.visible = false;
+            animScenery.buildings.forEach(b => b.visible = true);
+        }
+ 
+        // 其他動畫 (保持一致)
+        if(typeof ferrisWheelGrp !== 'undefined') {
+            ferrisWheelGrp.rotation.z -= 0.0015;
+            if (typeof fwCabins !== 'undefined') {
+                fwCabins.forEach(cabin => cabin.rotation.z = -ferrisWheelGrp.rotation.z);
+            }
+        }
+        if (typeof sea !== 'undefined') {
+            const time = Date.now() * 0.0015;
+            const posAttr = sea.geometry.attributes.position;
+            for(let i=0; i<posAttr.count; i++) {
+                const x = posAttr.getX(i); const y = posAttr.getY(i);
+                const wave1 = Math.sin(x * 0.04 + time) * 1.5;
+                const wave2 = Math.cos(y * 0.03 + time * 0.8) * 1.5;
+                posAttr.setZ(i, sea.userData.originalZ[i] + wave1 + wave2);
+            }
+            posAttr.needsUpdate = true;
+        }
+    }
+ 
+    if(indicatorLeft && indicatorLeft.visible) { indicatorLeft.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; }
+    if(indicatorRight && indicatorRight.visible) { indicatorRight.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; }
+    if(renderer && scene && camera) renderer.render(scene, camera);
+}
+ 
 
 
         
@@ -8805,24 +8901,16 @@ function rideBus(busHitBox) {
     activeBus = busHitBox.userData.vehicleObj;
     const direction = busHitBox.userData.direction;
  
-    // 備份原始相機狀態
     preRideCameraState.pos.copy(camera.position);
     preRideCameraState.target.copy(controls.target);
     preRideCameraState.fov = camera.fov;
  
-    // 1. 【優化起始點】：如果是往摩天輪方向(direction > 0)，將巴士傳送到摩天輪前方(X=80)
-    // 如果是往大橋方向(direction < 0)，則維持或微調起始點
-    if (direction > 0) {
-        activeBus.position.x = 80;
-    } else {
-        activeBus.position.x = -130; // 往大橋方向起始點
-    }
+    // 💡 調整起始位置：往摩天輪(dir>0)從 X=80 開始；往大橋(dir<0)從 X=-120 開始
+    activeBus.position.x = (direction > 0) ? 80 : -120;
  
-    // 鎖死控制器
     if (!window.originalControlsUpdate) window.originalControlsUpdate = controls.update;
     controls.update = function() { if (isRidingBus) return; window.originalControlsUpdate.call(controls); };
  
-    // 隱藏巴士原本的外部模型，準備進入內部視角
     activeBus.children.forEach(child => {
         if (child.isMesh && child !== busHitBox) {
             child.userData.wasVisible = child.visible;
@@ -8830,11 +8918,9 @@ function rideBus(busHitBox) {
         }
     });
  
-    // 建立或獲取內部車廂
     if (!busInteriorGrp) busInteriorGrp = createBusInterior();
     activeBus.add(busInteriorGrp);
  
-    // 視角定位：保持你滿意的車內設計
     const camZPos = direction > 0 ? 3.5 : -3.5;
     busInteriorGrp.position.set(0, 4.2, camZPos);
     busInteriorGrp.rotation.set(0, direction > 0 ? Math.PI : 0, 0);
@@ -8842,7 +8928,6 @@ function rideBus(busHitBox) {
     controls.enabled = false;
     document.getElementById('btn-return-room').style.display = 'none';
  
-    // 🎬 啟動倒計時系統
     busRideTimer = 150;
     document.getElementById('bus-bell-container').style.display = 'block';
     
@@ -8860,7 +8945,6 @@ function rideBus(busHitBox) {
         }
     }, 1000);
  
-    // 平滑運鏡進入車廂
     const targetWorldPos = new THREE.Vector3(0, 4.2, camZPos).applyMatrix4(activeBus.matrixWorld);
     gsap.to(camera.position, { x: targetWorldPos.x, y: targetWorldPos.y, z: targetWorldPos.z, duration: 1.2, ease: "power2.inOut" });
     gsap.to(camera, { fov: 75, duration: 1.2, onUpdate: () => camera.updateProjectionMatrix() });
@@ -8870,11 +8954,9 @@ function rideBus(busHitBox) {
         x: lookAheadWorldPos.x, y: lookAheadWorldPos.y, z: lookAheadWorldPos.z,
         duration: 1.2, ease: "power2.inOut",
         onComplete: () => {
-            // 【核心保留】：將相機鎖定在車廂內部群組
             busInteriorGrp.add(camera);
-            camera.position.set(0, 0.4, 0);
+            camera.position.set(0, 0.4, 0); // 這裡 Z=0，配合上面座椅行距
             camera.rotation.set(0, 0, 0);
-            // 車廂晃動效果
             busBumpAnim = gsap.to(camera.position, { y: 0.408, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
             showToast("🚌 旅途中，請在 2:00 至 2:30 之間按鐘準備下車。");
         }
