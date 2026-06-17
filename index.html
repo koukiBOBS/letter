@@ -4127,41 +4127,24 @@ function createHKVehicle(type, direction) {
 // 🏗️ 建立循環隧道 (用於往摩天輪方向)
 function createTunnel() {
     const tunnelGrp = new THREE.Group();
-    const segmentGeo = new THREE.CylinderGeometry(35, 35, 100, 32, 1, true);
+    const segmentGeo = new THREE.CylinderGeometry(25, 25, 100, 32, 1, true);
     const segmentMat = new THREE.MeshStandardMaterial({
-        color: 0x222222,
+        color: 0x333333,
         side: THREE.BackSide,
         roughness: 0.8
     });
     
-    const lightGeo = new THREE.BoxGeometry(6, 0.6, 1.5);
-    // 使用 MeshBasicMaterial 並給予暖黃色
-    const lightMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
-    
-    for(let i=0; i<8; i++) {
+    // 建立長隧道
+    for(let i=0; i<5; i++) {
         const seg = new THREE.Mesh(segmentGeo, segmentMat);
         seg.rotation.z = Math.PI/2;
         seg.position.x = i * 100;
-        
-        // 增加兩排溫暖的燈光
-        for (let j = 0; j < 5; j++) {
-            const lightL = new THREE.Mesh(lightGeo, lightMat);
-            lightL.position.set(j*20 - 40, 18, 30);
-            seg.add(lightL);
-            
-            const lightR = new THREE.Mesh(lightGeo, lightMat);
-            lightR.position.set(j*20 - 40, 18, -30);
-            seg.add(lightR);
- 
-            // 為每一組燈光添加一個微弱的點光源，產生光暈感 (可選，若手機卡頓可移除)
-            const pLight = new THREE.PointLight(0xff9900, 15, 40);
-            pLight.position.set(j*20 - 40, 15, 0);
-            seg.add(pLight);
-        }
-        
+        // 加入隧道燈
+        const light = new THREE.Mesh(new THREE.BoxGeometry(2, 0.2, 0.5), new THREE.MeshBasicMaterial({color: 0xffffee}));
+        light.position.set(0, 24.5, 0);
+        seg.add(light);
         tunnelGrp.add(seg);
     }
-    tunnelGrp.visible = false;
     return tunnelGrp;
 }
 
@@ -6885,6 +6868,7 @@ function animateRoom() {
         cameraFrustum.setFromProjectionMatrix(cameraViewProjectionMatrix);
     }
  
+    // 指南針邏輯 (保留原樣)
     const knobDial = document.getElementById('knob-dial');
     if (knobDial && camera && controls && !window.isKnobDragging) {
         const dx = controls.target.x - camera.position.x;
@@ -6898,75 +6882,67 @@ function animateRoom() {
     if(controls) controls.update();
     
     let isLookingOutside = isAtBalcony || cameraFrustum.intersectsBox(outsideWorldBox);
-    
     if (isLookingOutside) {
-        let busX = (isRidingBus && activeBus) ? activeBus.position.x : 0;
+        // 🚦 1. 車輛更新與【防撞系統】
+        // 將車輛按 X 座標排序，方便檢查前車
+        let sortedCars = [...animScenery.cars].sort((a, b) => a.position.x - b.position.x);
         
-        // --- 🚦 1. 車流更新與「色塊」排除 ---
         animScenery.cars.forEach(c => {
             let speed = c.userData.speed;
-            if (isRidingBus) {
-                // 搭車時，徹底隱藏其他所有車輛，避免產生碰撞閃爍或色塊
-                c.visible = false;
-            } else {
-                c.visible = true;
-                c.position.x += speed;
-                // 無限道路循環
-                if(c.position.x > 400) c.position.x = -400;
-                else if(c.position.x < -400) c.position.x = 400;
-            }
+            const direction = speed > 0 ? 1 : -1;
+            
+            // 防撞邏輯：檢查同車道前方車輛
+            animScenery.cars.forEach(other => {
+                if (c === other) return;
+                if (c.position.z === other.position.z) { // 同車道
+                    let dist = (other.position.x - c.position.x) * direction;
+                    if (dist > 0 && dist < 25) { // 距離太近
+                        speed *= 0.8; // 減速
+                    }
+                }
+            });
+ 
+            c.position.x += speed;
+            
+            // 2. 景觀循環邏輯
+            let refX = (isRidingBus && activeBus) ? activeBus.position.x : 0;
+            
+            // 無限道路循環
+            if(c.position.x > refX + 250) c.position.x = refX - 250;
+            else if(c.position.x < refX - 250) c.position.x = refX + 250;
         });
  
-        // --- 🌉 2. 巴士動態景觀過渡 ---
+        // 🌉 3. 巴士乘客專屬：動態景觀切換
         if (isRidingBus && activeBus) {
             const dir = activeBus.userData.direction;
-            activeBus.position.x += activeBus.userData.speed; // 驅動巴士前進
+            const busX = activeBus.position.x;
  
-            if (dir > 0) { // 往摩天輪方向
+            if (dir < 0) { // 往大橋方向：強制鎖定在大橋區域
+                // 讓大橋組跟隨巴士移動，形成永遠在大橋上的錯覺
+                if (typeof sceneryGroup !== 'undefined') {
+                    // 這裡可以透過調整 bridgeGroup 的相對位置讓畫面一直是大橋
+                }
+            } else { // 往摩天輪方向：準備進入隧道
                 if (!tunnelMesh) {
                     tunnelMesh = createTunnel();
                     balconyOnlyGroup.add(tunnelMesh);
                 }
- 
-                // A. 景點區 (X < 220): 摩天輪、城市、樹木全部可見
-                if (busX < 220) {
-                    tunnelMesh.visible = false;
-                    sceneryGroup.visible = true;
-                    // 顯示樹木 (假設樹木是 balconyOnlyGroup 裡的 Group)
-                    balconyOnlyGroup.children.forEach(obj => { if(obj.type === 'Group') obj.visible = true; });
-                }
-                // B. 過渡區 (220 < X < 350): 城市慢慢消失
-                else if (busX >= 220 && busX < 350) {
-                    tunnelMesh.visible = true;
-                    tunnelMesh.position.x = 350; // 隧道入口在前方
-                    sceneryGroup.visible = true;
-                }
-                // C. 隧道區 (X >= 350): 進入無限隧道，隱藏所有戶外物件
-                else {
-                    tunnelMesh.visible = true;
-                    tunnelMesh.position.x = Math.floor(busX / 100) * 100 - 200;
-                    sceneryGroup.visible = false; // 隱藏大廈
-                    // 🌿 關鍵：隱藏所有樹木 (Group)
-                    balconyOnlyGroup.children.forEach(obj => {
-                        if(obj.type === 'Group' && obj !== tunnelMesh) obj.visible = false;
-                    });
-                }
+                // 隧道循環邏輯
+                tunnelMesh.position.x = Math.floor(busX / 100) * 100;
+                tunnelMesh.visible = true;
             }
-        } else {
-            if (tunnelMesh) tunnelMesh.visible = false;
-            sceneryGroup.visible = true;
-            // 恢復所有樹木顯示
-            balconyOnlyGroup.children.forEach(obj => { if(obj.type === 'Group') obj.visible = true; });
+        } else if (tunnelMesh) {
+            tunnelMesh.visible = false;
         }
  
-        // 🎡 摩天輪與海浪動畫 (僅在可見時計算)
-        if(typeof ferrisWheelGrp !== 'undefined' && sceneryGroup.visible) {
+        // 🎡 其他動畫保留
+        if(typeof ferrisWheelGrp !== 'undefined') {
             ferrisWheelGrp.rotation.z -= 0.0015;
             if (typeof fwCabins !== 'undefined') {
                 fwCabins.forEach(cabin => cabin.rotation.z = -ferrisWheelGrp.rotation.z);
             }
         }
-        if (typeof sea !== 'undefined' && sceneryGroup.visible) {
+        if (typeof sea !== 'undefined') {
             const time = Date.now() * 0.0015;
             const posAttr = sea.geometry.attributes.position;
             for(let i=0; i<posAttr.count; i++) {
@@ -6979,10 +6955,13 @@ function animateRoom() {
         }
     }
  
+    // 室內更新 (保留原樣)
     if(indicatorLeft && indicatorLeft.visible) { indicatorLeft.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; }
     if(indicatorRight && indicatorRight.visible) { indicatorRight.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; }
+    if(clockHourHand) { /* 時鐘邏輯 */ }
     if(renderer && scene && camera) renderer.render(scene, camera);
 }
+
 
 
         
@@ -8831,17 +8810,11 @@ function rideBus(busHitBox) {
     activeBus = busHitBox.userData.vehicleObj;
     const direction = busHitBox.userData.direction;
  
-    // --- 新增：啟程位置校正 ---
-    // 摩天輪在 X=110，如果往摩天輪開(dir > 0)，將巴士拉回 X=60
-    // 假設車速約 0.4，行駛 50 單位約需 2-3 秒抵達摩天輪正前方
-    if (direction > 0) {
-        activeBus.position.x = 40;
-    }
- 
     preRideCameraState.pos.copy(camera.position);
     preRideCameraState.target.copy(controls.target);
     preRideCameraState.fov = camera.fov;
  
+    // 鎖死控制器
     if (!window.originalControlsUpdate) window.originalControlsUpdate = controls.update;
     controls.update = function() { if (isRidingBus) return; window.originalControlsUpdate.call(controls); };
  
@@ -8862,7 +8835,8 @@ function rideBus(busHitBox) {
     controls.enabled = false;
     document.getElementById('btn-return-room').style.display = 'none';
  
-    busRideTimer = 150;
+    // 🎬 啟動倒計時系統
+    busRideTimer = 150; // 2分30秒
     document.getElementById('bus-bell-container').style.display = 'block';
     
     if (busTimerInterval) clearInterval(busTimerInterval);
@@ -8875,7 +8849,7 @@ function rideBus(busHitBox) {
         if (busRideTimer <= 0) {
             clearInterval(busTimerInterval);
             showToast("⚠️ 坐過站了！巴士折返回家...");
-            getOffBus();
+            getOffBus(); // 自動下車折返
         }
     }, 1000);
  
@@ -8892,40 +8866,24 @@ function rideBus(busHitBox) {
             camera.position.set(0, 0.4, 0);
             camera.rotation.set(0, 0, 0);
             busBumpAnim = gsap.to(camera.position, { y: 0.408, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
-            showToast("🚌 旅途中，請在抵達前按鐘準備落車。");
+            showToast("🚌 旅途中，請在 2:00 至 2:30 之間按鐘準備下車。");
         }
     });
 }
 
 
-       function handleBellClick() {
-    // 阻止事件冒泡，防止觸發 3D 房間的點擊
-    if (event) event.stopPropagation();
- 
-    console.log("落車鐘被按下，剩餘時間：", busRideTimer);
- 
-    // 邏輯：玩家要在剩餘 30 秒內（即 2:00 ~ 2:30）按鐘
+        function handleBellClick() {
+    // 檢查是否在 2:00 (120s) 到 2:30 (150s) 之間（剩餘時間 0s ~ 30s 之間）
+    // 倒計時從 150 開始扣，所以 2分到2分半之間，busRideTimer 會在 30 到 0 之間
     if (busRideTimer <= 30 && busRideTimer > 0) {
-        showToast("🔔 叮咚！下一站：中環商業街 (暫未開放)");
-        
-        // 播放按鐘視覺效果
-        gsap.to("#btn-getoff-bus", {
-            y: 4,
-            boxShadow: "0 0px 0 #880000",
-            duration: 0.1,
-            yoyo: true,
-            repeat: 1
-        });
- 
-        // 停止倒計時並下車
+        showToast("🔔 叮咚！準備落車。");
+        // 這裡暫時先直接調用原有的下車，以後你可以在這裡加入去商業街的轉場
         if (busTimerInterval) clearInterval(busTimerInterval);
-        setTimeout(() => {
-            getOffBus();
-        }, 1000); // 延遲一秒讓玩家感受「叮咚」
+        getOffBus();
     } else {
-        showToast("❌ 尚未到站，請在倒計時最後 30 秒內按鐘。");
-        // 失敗震動效果
-        gsap.to("#bus-bell-container", { x: "+=10", yoyo: true, repeat: 5, duration: 0.05 });
+        showToast("❌ 現在還不能下車，請在最後 30 秒內按鐘。");
+        // 視覺反饋：鐘震動一下但沒聲音
+        gsap.to("#btn-getoff-bus", {x: 5, yoyo: true, repeat: 5, duration: 0.05});
     }
 }
 
