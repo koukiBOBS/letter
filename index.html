@@ -9612,110 +9612,111 @@ window.devSimulateShoppingStreet = function() {
 
 
 /* =====================================================================
- * 🏙️ 香港海濱商店街系統 (完整修訂版：包含細節模型、書法字、玻璃質感)
+ * 🏙️ 香港海濱商店街系統 (全功能修訂版：包含地磚、書法字、玻璃與邊界)
  * ===================================================================== */
-let streetScene = null;
-let isAtStreet = false;
 
-// 1. 舊式唐樓馬賽克磁磚紋理
-function createMosaicTileTexture(baseColor) {
+// --- 1. 紋理生成器 (Textures) ---
+
+// 香港經典紅地磚
+function createRedBrickPaving() {
     const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#9c9c9c'; ctx.fillRect(0, 0, 512, 512); 
-    const tileSize = 16; const gap = 2;
-    for(let y=0; y<512; y+=tileSize) {
-        for(let x=0; x<512; x+=tileSize) {
-            if(Math.random() > 0.95) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x, y, tileSize, tileSize); continue; }
-            ctx.fillStyle = Math.random() > 0.85 ? '#f0f0f0' : baseColor;
-            ctx.globalAlpha = 0.85 + Math.random() * 0.15;
-            ctx.fillRect(x+gap, y+gap, tileSize-gap*2, tileSize-gap*2);
-            ctx.globalAlpha = 1.0; ctx.fillStyle = 'rgba(255,255,255,0.4)'; 
-            ctx.fillRect(x+gap, y+gap, tileSize-gap*2, 1); ctx.fillRect(x+gap, y+gap, 1, tileSize-gap*2);
-            ctx.fillStyle = 'rgba(0,0,0,0.3)'; 
-            ctx.fillRect(x+gap, y+tileSize-gap-1, tileSize-gap*2, 1); ctx.fillRect(x+tileSize-gap-1, y+gap, 1, tileSize-gap*2);
+    ctx.fillStyle = '#5c3a21'; ctx.fillRect(0, 0, 512, 512); 
+    const w = 64, h = 32, gap = 4;
+    for(let y=0; y<512; y+=h) {
+        let offset = (y/h % 2 === 0) ? 0 : w/2;
+        for(let x=-w; x<512; x+=w) {
+            ctx.fillStyle = Math.random() > 0.5 ? '#b8513b' : '#a6412d'; 
+            ctx.fillRect(x + offset + gap, y + gap, w - gap*2, h - gap*2);
+            ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(x + offset + gap, y + gap, w - gap*2, 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x + offset + gap, y + h - gap - 2, w - gap*2, 2);
         }
     }
-    const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
+    const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(10, 15); return tex;
 }
 
-// 2. [新增] 精緻香港郵筒 (圓頭、帶細節)
-function createDetailedPostbox() {
+// 書法字霓虹招牌
+function createNeonSign(text, bgColor, neonColor, isVertical) {
+    const canvas = document.createElement('canvas'); canvas.width = isVertical ? 256 : 512; canvas.height = isVertical ? 1024 : 256; const ctx = canvas.getContext('2d');
+    ctx.fillStyle = bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // 使用楷體營造書法感
+    ctx.font = 'bold 110px "STKaiti", "Kaiti", "Noto Serif TC", serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    function drawText() {
+        if (isVertical) {
+            const chars = text.split(''); const startY = (canvas.height - chars.length * 125) / 2 + 62;
+            chars.forEach((c, i) => { ctx.fillText(c, canvas.width/2, startY + i * 125); });
+        } else { ctx.fillText(text, canvas.width/2, canvas.height/2); }
+    }
+    ctx.fillStyle = neonColor; ctx.globalAlpha = 0.3; ctx.filter = 'blur(15px)'; drawText();
+    ctx.fillStyle = neonColor; ctx.globalAlpha = 0.8; ctx.filter = 'blur(4px)'; drawText();
+    ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 1.0; ctx.filter = 'none'; drawText();
+    return new THREE.CanvasTexture(canvas);
+}
+
+// --- 2. 細節模型生成 (Detailed Models) ---
+
+// [新增] 香港 T 型路牌
+function createStreetSign(name) {
     const grp = new THREE.Group();
-    const mat = new THREE.MeshStandardMaterial({color: 0x006b3c, roughness: 0.3, metalness: 0.4});
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.5, 0.4, 16), new THREE.MeshStandardMaterial({color:0x222222}));
-    base.position.y = 0.2; grp.add(base);
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 5.5, 24), mat);
-    body.position.y = 3.15; body.castShadow = true; grp.add(body);
-    const dome = new THREE.Mesh(new THREE.SphereGeometry(1.2, 24, 12, 0, Math.PI*2, 0, Math.PI/2), mat);
-    dome.position.y = 5.9; grp.add(dome);
-    const slot = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.3, 1.6), new THREE.MeshBasicMaterial({color:0x000}));
-    slot.position.set(-1.15, 4.8, 0); grp.add(slot);
-    const plate = new THREE.Mesh(new THREE.PlaneGeometry(1, 1.5), new THREE.MeshStandardMaterial({color:0xdddddd}));
-    plate.position.set(-1.21, 3, 0); plate.rotation.y = -Math.PI/2; grp.add(plate);
+    const postMat = new THREE.MeshStandardMaterial({color: 0x555555, metalness: 0.9, roughness: 0.1, envMap: createFakeGlassReflection()});
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 12), postMat); post.position.y = 6; grp.add(post);
+    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 256; const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0,0,512,256); ctx.strokeStyle = '#000'; ctx.lineWidth = 12; ctx.strokeRect(15,15,482,226);
+    ctx.fillStyle = '#000'; ctx.font = 'bold 80px "STKaiti", "Kaiti", serif'; ctx.textAlign = 'center'; ctx.fillText(name, 256, 155);
+    const board = new THREE.Mesh(new THREE.BoxGeometry(6, 2.8, 0.2), new THREE.MeshStandardMaterial({color:0xffffff})); board.position.y = 10; grp.add(board);
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(5.8, 2.6), new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(canvas)})); label.position.set(0, 10, 0.11); grp.add(label);
     return grp;
 }
 
-// 3. [新增] 消防栓 (三頭細節)
+// [新增] 精緻郵筒
+function createDetailedPostbox() {
+    const grp = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({color: 0x006b3c, roughness: 0.3, metalness: 0.4});
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.5, 0.4, 16), new THREE.MeshStandardMaterial({color:0x222222})); base.position.y = 0.2; grp.add(base);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 5.5, 24), mat); body.position.y = 3.15; grp.add(body);
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(1.2, 24, 12, 0, Math.PI*2, 0, Math.PI/2), mat); dome.position.y = 5.9; grp.add(dome);
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.3, 1.6), new THREE.MeshBasicMaterial({color:0x000})); slot.position.set(-1.15, 4.8, 0); grp.add(slot);
+    return grp;
+}
+
+// [新增] 消防栓
 function createDetailedHydrant() {
     const grp = new THREE.Group();
     const mat = new THREE.MeshStandardMaterial({color: 0xcc2222, roughness: 0.3, metalness: 0.5});
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 3, 16), mat);
-    body.position.y = 1.5; grp.add(body);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 12), mat);
-    head.position.y = 3; grp.add(head);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 3, 16), mat); body.position.y = 1.5; grp.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 12), mat); head.position.y = 3; grp.add(head);
     const vGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.6, 12);
     const v1 = new THREE.Mesh(vGeo, mat); v1.rotation.z = Math.PI/2; v1.position.set(0.6, 2.8, 0); grp.add(v1);
     const v2 = new THREE.Mesh(vGeo, mat); v2.rotation.x = Math.PI/2; v2.position.set(0, 2.8, 0.6); grp.add(v2);
     return grp;
 }
 
-// 4. [新增] 香港 T 型路牌 (書法字體)
-function createStreetSign(name) {
+// [新增] 商店內部裝設
+function createShopInterior() {
     const grp = new THREE.Group();
-    const postMat = new THREE.MeshStandardMaterial({color: 0x555555, metalness: 0.8, roughness: 0.2});
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 12, 12), postMat);
-    post.position.y = 6; grp.add(post);
-    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 256; const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#fff'; ctx.fillRect(0,0,512,256);
-    ctx.strokeStyle = '#000'; ctx.lineWidth = 12; ctx.strokeRect(15,15,482,226);
-    ctx.fillStyle = '#000'; ctx.font = 'bold 85px "STKaiti", "Kaiti", "Noto Serif TC", serif'; ctx.textAlign = 'center';
-    ctx.fillText(name, 256, 155);
-    const board = new THREE.Mesh(new THREE.BoxGeometry(6, 2.8, 0.2), new THREE.MeshStandardMaterial({color:0xffffff}));
-    board.position.y = 10; grp.add(board);
-    const label = new THREE.Mesh(new THREE.PlaneGeometry(5.8, 2.6), new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(canvas)}));
-    label.position.set(0, 10, 0.11); grp.add(label);
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(1, 10, 8), new THREE.MeshStandardMaterial({color: 0x4a321f})); shelf.position.set(6, 5, 0); grp.add(shelf);
+    const counter = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 6), new THREE.MeshStandardMaterial({color: 0x332211})); counter.position.set(2, 2, 4); grp.add(counter);
+    const warmLight = new THREE.PointLight(0xffcc88, 1.5, 20); warmLight.position.set(3, 8, 0); grp.add(warmLight);
     return grp;
 }
 
-// 5. [新增] 店舖內部裝飾 (讓店鋪看起來是開門的)
-function createShopInterior(type) {
-    const grp = new THREE.Group();
-    const shelfMat = new THREE.MeshStandardMaterial({color: 0x4a321f});
-    const shelf = new THREE.Mesh(new THREE.BoxGeometry(8, 10, 1), shelfMat);
-    shelf.position.set(6, 5, 0); grp.add(shelf);
-    const backLight = new THREE.PointLight(0xffaa66, 1.2, 15);
-    backLight.position.set(4, 7, 0); grp.add(backLight);
-    return grp;
-}
+// --- 3. 建築與場景組裝 (Assembly) ---
 
-// 6. 唐樓生成 (修正冷氣機位置與玻璃質感)
 function createTangLauUpperFloors(x, z, width, baseColor) {
     const floorGrp = new THREE.Group();
     const wallMat = new THREE.MeshStandardMaterial({map: createMosaicTileTexture(baseColor), roughness: 0.9});
-    const building = new THREE.Mesh(new THREE.BoxGeometry(width, 60, 25), wallMat);
-    building.position.set(x, 45, z); building.castShadow = true; building.receiveShadow = true; floorGrp.add(building);
+    const building = new THREE.Mesh(new THREE.BoxGeometry(width, 60, 25), wallMat); building.position.set(x, 45, z); building.castShadow = true; floorGrp.add(building);
 
+    // 玻璃質感 (套用室內生成的反射貼圖)
     const winGlassMat = new THREE.MeshStandardMaterial({
-        color: 0xebf8ff, metalness: 0.9, roughness: 0.05, 
-        transparent: true, opacity: 0.4, 
+        color: 0xebf8ff, metalness: 0.9, roughness: 0.05, transparent: true, opacity: 0.4, 
         envMap: createFakeGlassReflection(), envMapIntensity: 1.2
     });
 
     for(let fy=20; fy<=65; fy+=10) {
         for(let fz=z-8; fz<=z+8; fz+=6) {
             const win = new THREE.Mesh(new THREE.PlaneGeometry(3.8, 5.2), winGlassMat);
-            win.position.set(x - width/2 - 0.1, fy, fz); win.rotation.y = -Math.PI/2;
-            floorGrp.add(win);
-            // 冷氣機掛在窗戶下方
+            win.position.set(x - width/2 - 0.1, fy, fz); win.rotation.y = -Math.PI/2; floorGrp.add(win);
+            // 冷氣機精確位置：窗戶正下方
             if (Math.random() > 0.4) { 
                 const ac = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.4, 2.4), new THREE.MeshStandardMaterial({color:0xeeeeee}));
                 ac.position.set(x - width/2 - 0.8, fy - 3.8, fz); ac.castShadow = true; floorGrp.add(ac);
@@ -9725,74 +9726,47 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     return floorGrp;
 }
 
-// 7. 霓虹燈招牌 (書法字體)
-function createNeonSign(text, bgColor, neonColor, isVertical) {
-    const canvas = document.createElement('canvas'); canvas.width = isVertical ? 256 : 512; canvas.height = isVertical ? 1024 : 256; const ctx = canvas.getContext('2d');
-    ctx.fillStyle = bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = '#222'; ctx.lineWidth = 12; ctx.strokeRect(6, 6, canvas.width-12, canvas.height-12);
-    ctx.font = 'bold 110px "STKaiti", "Kaiti", serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    function drawText() {
-        if (isVertical) {
-            const chars = text.split(''); const startY = (canvas.height - chars.length * 125) / 2 + 62;
-            chars.forEach((c, i) => { ctx.fillText(c, canvas.width/2, startY + i * 125); });
-        } else { ctx.fillText(text, canvas.width/2, canvas.height/2); }
-    }
-    ctx.fillStyle = neonColor; ctx.globalAlpha = 0.4; ctx.filter = 'blur(15px)'; drawText();
-    ctx.fillStyle = neonColor; ctx.globalAlpha = 0.8; ctx.filter = 'blur(4px)'; drawText();
-    ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 1.0; ctx.filter = 'none'; drawText();
-    return new THREE.CanvasTexture(canvas);
-}
-
-// 8. 商店街場景組裝
 function buildShoppingStreet() {
     streetScene = new THREE.Scene();
     const streetAmbient = new THREE.AmbientLight(0xffffff, 0.4); streetAmbient.name = 'streetAmbient'; streetScene.add(streetAmbient);
     const streetDir = new THREE.DirectionalLight(0xffeedd, 1.0); streetDir.name = 'streetDir'; streetDir.position.set(30, 80, 50); streetDir.castShadow = true; streetScene.add(streetDir);
 
-    const streetMat = new THREE.MeshStandardMaterial({map: createRedBrickPaving(), roughness: 1.0});
-    const street = new THREE.Mesh(new THREE.PlaneGeometry(150, 200), streetMat); street.rotation.x = -Math.PI/2; street.receiveShadow = true; streetScene.add(street);
+    // 地面
+    const street = new THREE.Mesh(new THREE.PlaneGeometry(150, 200), new THREE.MeshStandardMaterial({map: createRedBrickPaving()}));
+    street.rotation.x = -Math.PI/2; street.receiveShadow = true; streetScene.add(street);
 
     const buildingsGrp = new THREE.Group(); buildingsGrp.position.set(20, 0, 0); streetScene.add(buildingsGrp);
-    const shopGlassMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.35, envMap: createFakeGlassReflection() });
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.9, roughness: 0.05, transparent: true, opacity: 0.3, envMap: createFakeGlassReflection() });
 
-    // 店舖 A：文苑文具
+    // 店舖 A
     const statGrp = new THREE.Group(); statGrp.position.set(0, 0, 15);
     statGrp.add(createTangLauUpperFloors(7.5, 0, 15, '#8fbc8f'));
-    const statWindow = new THREE.Mesh(new THREE.BoxGeometry(0.2, 10, 18), shopGlassMat); statWindow.position.set(0, 5, 0); statGrp.add(statWindow);
-    const doorA = new THREE.Mesh(new THREE.BoxGeometry(0.2, 10, 5), shopGlassMat); doorA.position.set(0, 5, 6); doorA.rotation.y = 0.5; statGrp.add(doorA);
-    statGrp.add(createShopInterior('stationery')); 
+    const winA = new THREE.Mesh(new THREE.BoxGeometry(0.1, 10, 18), glassMat); winA.position.set(0, 5, 0); statGrp.add(winA);
+    const doorA = new THREE.Mesh(new THREE.BoxGeometry(0.1, 10, 5), glassMat); doorA.position.set(0, 5, 6); doorA.rotation.y = 0.4; statGrp.add(doorA);
+    statGrp.add(createShopInterior());
     const texA = createNeonSign('文苑', '#111', '#00ffcc', false);
-    const signA = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 10), new THREE.MeshStandardMaterial({map: texA, emissiveMap: texA}));
-    signA.position.set(-0.6, 13, 0); signA.userData = { isNeon: true }; statGrp.add(signA);
+    const signA = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 10), new THREE.MeshStandardMaterial({map: texA, emissiveMap: texA})); signA.position.set(-0.6, 13, 0); signA.userData = {isNeon:true}; statGrp.add(signA);
     buildingsGrp.add(statGrp);
 
-    // 店舖 B：黑膠唱片
-    const recGrp = new THREE.Group(); recGrp.position.set(0, 0, -15);
-    recGrp.add(createTangLauUpperFloors(7.5, 0, 15, '#c28585')); 
-    const recWindow = new THREE.Mesh(new THREE.BoxGeometry(0.2, 10, 18), shopGlassMat); recWindow.position.set(0, 5, 0); recGrp.add(recWindow);
-    recGrp.add(createShopInterior('record'));
-    const texB = createNeonSign('黑膠唱片', '#111', '#ff00aa', true);
-    const signB = new THREE.Mesh(new THREE.BoxGeometry(4, 16, 0.4), new THREE.MeshStandardMaterial({map: texB, emissiveMap: texB}));
-    signB.position.set(-5, 20, -5); signB.rotation.y = -Math.PI/6; signB.userData = { isNeon: true }; recGrp.add(signB);
-    buildingsGrp.add(recGrp);
-
-    // 街道裝飾
-    const sign1 = createStreetSign("海濱道"); sign1.position.set(11, 0, 35); streetScene.add(sign1);
+    // 街道細節
+    const sign1 = createStreetSign("海濱行人專用區"); sign1.position.set(11, 0, 35); streetScene.add(sign1);
     const pBox = createDetailedPostbox(); pBox.position.set(11, 0, 10); streetScene.add(pBox);
     const hydrant = createDetailedHydrant(); hydrant.position.set(11, 0, -5); streetScene.add(hydrant);
 
-    // 路燈 (金屬質感)
+    // 金屬路燈
     const poleMat = new THREE.MeshStandardMaterial({color: 0x222222, metalness: 0.9, roughness: 0.2, envMap: createFakeGlassReflection()});
     for (let z of [45, 0, -45]) {
         const lampGrp = new THREE.Group(); lampGrp.position.set(12, 0, z);
-        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 22, 12), poleMat); pole.position.y = 11; lampGrp.add(pole);
-        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 8), new THREE.MeshStandardMaterial({emissive:0xffddaa, emissiveIntensity:0}));
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 22), poleMat); pole.position.y = 11; lampGrp.add(pole);
+        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 8), new THREE.MeshStandardMaterial({emissive:0xffddaa, emissiveIntensity:0})); 
         bulb.position.set(-4.5, 21.6, 0); bulb.userData = { isStreetLight: true }; lampGrp.add(bulb);
+        const pl = new THREE.PointLight(0xffddaa, 0, 40); pl.name = 'realLight'; bulb.add(pl);
         streetScene.add(lampGrp);
     }
 }
 
-// 🌆 同步商店街環境
+// --- 4. 行走系統與同步 (System) ---
+
 function syncStreetEnvironment() {
     if (!streetScene || !currentEnvParams) return;
     const p = currentEnvParams;
@@ -9804,7 +9778,38 @@ function syncStreetEnvironment() {
             if (child.userData.isNeon) child.material.emissiveIntensity = isNightOrDusk ? 2.5 : 0;
             if (child.userData.isStreetLight) child.material.emissiveIntensity = isNightOrDusk ? 2.0 : 0;
         }
+        if (child.isPointLight && child.name === 'realLight') child.intensity = isNightOrDusk ? 1.5 : 0;
     });
+}
+
+// 請將原本 initCameraKnob 內的 walkUpdateLoop 替換如下：
+function walkUpdateLoop() {
+    requestAnimationFrame(walkUpdateLoop);
+    if (!window.isWalkMode || isRoomPaused()) return;
+    let currentWalk = window.walkVel;
+    let currentTurn = window.turnVel;
+    if (window.walkKeys.w) currentWalk = -0.6;
+    if (window.walkKeys.s) currentWalk = 0.6;
+    if (window.walkKeys.a) currentTurn = 0.045;
+    if (window.walkKeys.d) currentTurn = -0.045;
+
+    if (Math.abs(currentWalk) > 0.01 || Math.abs(currentTurn) > 0.01) {
+        let dir = new THREE.Vector3(); camera.getWorldDirection(dir); dir.y = 0; dir.normalize();
+        if (Math.abs(currentTurn) > 0.01) dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), currentTurn);
+
+        let nextX = camera.position.x + dir.x * -currentWalk;
+        let nextZ = camera.position.z + dir.z * -currentWalk;
+
+        if (isAtStreet) {
+            // 🏙️ 商店街邊界：行人道空間 (X: -10 ~ 13, Z: -95 ~ 95)
+            nextX = Math.max(-10, Math.min(13, nextX));
+            nextZ = Math.max(-95, Math.min(95, nextZ));
+        } else {
+            // 🏠 房間邊界 (略過，維持原本)
+        }
+        camera.position.x = nextX; camera.position.z = nextZ; camera.position.y = 16; 
+        controls.target.copy(camera.position).add(dir.multiplyScalar(20));
+    }
 }
 
 
