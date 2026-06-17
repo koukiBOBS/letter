@@ -4039,77 +4039,7 @@ function createAsphaltTexture() {
 }
 
 // 2. 港式車輛生成工廠 (包含紅的、小巴、雙層巴士、私家車)
-function createHKVehicle(type, direction) {
-    const vGroup = new THREE.Group();
-    const glassMat = new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.1, metalness: 0.8});
-    const wheelMat = new THREE.MeshStandardMaterial({color: 0x1a1a1a, roughness: 0.9});
-    const lightMatF = new THREE.MeshStandardMaterial({color: 0xffffee, emissive: 0xffffee, emissiveIntensity: 1.0}); // 車頭燈
-    const lightMatR = new THREE.MeshStandardMaterial({color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.8}); // 車尾燈
-
-    function addBox(w, h, d, mat, y, z) {
-        const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-        mesh.position.set(0, y, z); mesh.castShadow = true; vGroup.add(mesh); return mesh;
-    }
-    function addWheels(w, rad, zPos) {
-        const wGeo = new THREE.CylinderGeometry(rad, rad, w+0.2, 16);
-        const wheel = new THREE.Mesh(wGeo, wheelMat);
-        wheel.rotation.z = Math.PI/2; wheel.position.set(0, rad, zPos); wheel.castShadow = true; vGroup.add(wheel);
-    }
-    function addLights(w, y, zFront, zRear) {
-        const lfL = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.2), lightMatF); lfL.position.set(-w/2+0.5, y, zFront); vGroup.add(lfL);
-        const lfR = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.2), lightMatF); lfR.position.set(w/2-0.5, y, zFront); vGroup.add(lfR);
-        const lrL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.2), lightMatR); lrL.position.set(-w/2+0.4, y, zRear); vGroup.add(lrL);
-        const lrR = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.2), lightMatR); lrR.position.set(w/2-0.4, y, zRear); vGroup.add(lrR);
-    }
-
-    if(type === 'taxi') { // 市區紅的
-        const bodyMat = new THREE.MeshStandardMaterial({color: 0xb22222});
-        const roofMat = new THREE.MeshStandardMaterial({color: 0xdddddd});
-        addBox(2.2, 0.8, 5.5, bodyMat, 0.8, 0); // 車身
-        addBox(1.9, 0.7, 2.8, roofMat, 1.5, -0.2); // 車頂
-        addBox(1.8, 0.6, 2.7, glassMat, 1.5, -0.2); // 窗戶
-        addBox(0.6, 0.2, 0.4, lightMatF, 1.9, -0.2); // TAXX 燈箱
-        addWheels(2.2, 0.4, 1.6); addWheels(2.2, 0.4, -1.6);
-        addLights(2.2, 0.9, direction > 0 ? 2.76 : -2.76, direction > 0 ? -2.76 : 2.76);
-    } 
-    else if(type === 'minibus') { // 紅/綠頂小巴
-        const bodyMat = new THREE.MeshStandardMaterial({color: 0xf4f1d6});
-        const roofColor = Math.random() > 0.5 ? 0xb22222 : 0x228b22; // 紅或綠頂
-        const roofMat = new THREE.MeshStandardMaterial({color: roofColor});
-        addBox(2.6, 2.2, 7.5, bodyMat, 1.5, 0); // 車身
-        addBox(2.6, 0.2, 7.5, roofMat, 2.7, 0); // 顏色車頂
-        addBox(2.7, 1.0, 7.6, glassMat, 1.8, 0); // 環繞車窗
-        addWheels(2.6, 0.5, 2.2); addWheels(2.6, 0.5, -2.2);
-        addLights(2.6, 1.0, direction > 0 ? 3.76 : -3.76, direction > 0 ? -3.76 : 3.76);
-    } 
-  else if(type === 'bus') { // 雙層巴士
-        const busColors = [0xddb822, 0xeeeeee, 0xcc2222]; // 九巴黃/城巴白/龍運紅
-        const bodyMat = new THREE.MeshStandardMaterial({color: busColors[Math.floor(Math.random()*busColors.length)]});
-        addBox(3.2, 4.8, 12, bodyMat, 2.8, 0); // 龐大車身
-        addBox(3.3, 1.2, 12.1, glassMat, 2.0, 0); // 下層環繞窗
-        addBox(3.3, 1.2, 12.1, glassMat, 4.2, 0); // 上層環繞窗
-        addWheels(3.2, 0.6, 3.5); addWheels(3.2, 0.6, -3.5); addWheels(3.2, 0.6, -4.8); // 三軸
-        addLights(3.2, 1.2, direction > 0 ? 6.01 : -6.01, direction > 0 ? -6.01 : 6.01);
-        
-        // 👇 就是這四行：建立專屬於巴士的隱形點擊框 👇
-        const hitBox = new THREE.Mesh(new THREE.BoxGeometry(3.6, 5.5, 12.5), new THREE.MeshBasicMaterial({visible: false}));
-        hitBox.position.set(0, 2.4, 0);
-        hitBox.userData = { type: 'bus', vehicleObj: vGroup, direction: direction };
-        vGroup.add(hitBox);
-        interactables.push(hitBox); // 將點擊框註冊到互動陣列中
-    }
- 
-    else { // 私家車 (多色)
-        const carColors = [0x111111, 0xdddddd, 0x223388, 0x882222, 0x444444];
-        const bodyMat = new THREE.MeshStandardMaterial({color: carColors[Math.floor(Math.random()*carColors.length)]});
-        addBox(2.4, 0.9, 6.0, bodyMat, 0.85, 0); 
-        addBox(2.0, 0.8, 3.2, bodyMat, 1.7, -0.3); 
-        addBox(2.1, 0.7, 3.1, glassMat, 1.7, -0.3); 
-        addWheels(2.4, 0.45, 1.8); addWheels(2.4, 0.45, -1.8);
-        addLights(2.4, 1.0, direction > 0 ? 3.01 : -3.01, direction > 0 ? -3.01 : 3.01);
-    }
-    return vGroup;
-}
+nction createHKVehicle(typ
 
 
 
@@ -6873,40 +6803,40 @@ function animateRoom() {
     if (isLookingOutside) {
         const busRefX = (isRidingBus && activeBus) ? activeBus.position.x : null;
  
+        // 🚦 1. 車輛更新與強化避讓
         animScenery.cars.forEach(c => {
             let speed = c.userData.speed;
             const direction = speed > 0 ? 1 : -1;
             
-            // 🚦 1. 增強版防撞邏輯：距離前車 55 單位就減速
             animScenery.cars.forEach(other => {
                 if (c === other) return;
                 if (c.position.z === other.position.z) {
                     let dist = (other.position.x - c.position.x) * direction;
-                    if (dist > 0 && dist < 55) speed *= 0.7; 
+                    if (dist > 0 && dist < 55) speed *= 0.7;
                 }
             });
  
             c.position.x += speed;
             
-            // 💡 2. 解決穿模：如果你正在坐車，隱藏那些會跟你重疊的車
+            // 💡 關鍵修正：當乘坐巴士時，大幅提高隱藏距離，防止迎面而來的車輛「閃現」或穿過車體
             if (isRidingBus && activeBus && c !== activeBus) {
                 const distToBus = Math.abs(c.position.x - activeBus.position.x);
-                // 如果其他車距離你小於 20 單位，暫時隱藏它，防止它「飛進」車廂
-                c.visible = distToBus > 20;
+                // 距離低於 60 單位就隱藏，保證視野乾淨
+                c.visible = distToBus > 60;
             } else {
                 c.visible = true;
             }
  
-            // 景觀循環
             let loopCenter = (busRefX !== null) ? busRefX : 0;
-            if(c.position.x > loopCenter + 300) c.position.x = loopCenter - 300;
-            else if(c.position.x < loopCenter - 300) c.position.x = loopCenter + 300;
+            if(c.position.x > loopCenter + 350) c.position.x = loopCenter - 350;
+            else if(c.position.x < loopCenter - 350) c.position.x = loopCenter + 350;
         });
  
-        // 🌉 3. 隧道過渡與建築清理
+        // 🌉 2. 隧道、建築與【橋塔】過濾
         if (isRidingBus && activeBus) {
             const busX = activeBus.position.x;
-            // 離開摩天輪/青馬大橋地圖範圍 (約 180 單位) 後進隧道
+            
+            // A. 隧道邏輯
             if (Math.abs(busX) > 180) {
                 if (!tunnelMesh) {
                     tunnelMesh = createTunnel();
@@ -6914,18 +6844,29 @@ function animateRoom() {
                 }
                 tunnelMesh.position.x = Math.floor(busX / 100) * 100;
                 tunnelMesh.visible = true;
-                // 進入隧道後隱藏建築，消除窗外多餘色塊
                 animScenery.buildings.forEach(b => b.visible = false);
             } else {
                 if (tunnelMesh) tunnelMesh.visible = false;
                 animScenery.buildings.forEach(b => b.visible = true);
             }
+ 
+            // B. 💡 解決側邊橋塔問題：遍歷所有橋體零件，隱藏距離巴士太近的橋塔
+            balconyOnlyGroup.children.forEach(obj => {
+                if (obj.isGroup && obj.children.length > 10) { // 識別大橋組
+                    obj.children.forEach(part => {
+                        const distToBus = Math.abs(part.position.x + obj.position.x - busX);
+                        // 如果橋塔離巴士太近（避免穿過玻璃），則暫時關閉
+                        if (distToBus < 15) part.visible = false;
+                        else part.visible = true;
+                    });
+                }
+            });
         } else {
             if (tunnelMesh) tunnelMesh.visible = false;
             animScenery.buildings.forEach(b => b.visible = true);
         }
  
-        // 其他動畫 (保持一致)
+        // 🎡 旋轉與海浪
         if(typeof ferrisWheelGrp !== 'undefined') {
             ferrisWheelGrp.rotation.z -= 0.0015;
             if (typeof fwCabins !== 'undefined') {
@@ -6944,9 +6885,6 @@ function animateRoom() {
             posAttr.needsUpdate = true;
         }
     }
- 
-    if(indicatorLeft && indicatorLeft.visible) { indicatorLeft.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; }
-    if(indicatorRight && indicatorRight.visible) { indicatorRight.position.y = 6.5 + Math.sin(Date.now()*0.003)*0.2; }
     if(renderer && scene && camera) renderer.render(scene, camera);
 }
  
@@ -8905,7 +8843,7 @@ function rideBus(busHitBox) {
     preRideCameraState.target.copy(controls.target);
     preRideCameraState.fov = camera.fov;
  
-    // 💡 調整起始位置：往摩天輪(dir>0)從 X=80 開始；往大橋(dir<0)從 X=-120 開始
+    // 起始傳送點：往摩天輪方向從 80 點出發，往大橋方向從 -120 點出發
     activeBus.position.x = (direction > 0) ? 80 : -120;
  
     if (!window.originalControlsUpdate) window.originalControlsUpdate = controls.update;
@@ -8927,6 +8865,9 @@ function rideBus(busHitBox) {
  
     controls.enabled = false;
     document.getElementById('btn-return-room').style.display = 'none';
+    
+    // 💡 進入巴士時隱藏手機旋鈕，避免遮擋視野
+    if(document.getElementById('mobile-cam-knob')) document.getElementById('mobile-cam-knob').style.display = 'none';
  
     busRideTimer = 150;
     document.getElementById('bus-bell-container').style.display = 'block';
@@ -8937,12 +8878,7 @@ function rideBus(busHitBox) {
         let mins = Math.floor(busRideTimer / 60);
         let secs = busRideTimer % 60;
         document.getElementById('bus-timer').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        
-        if (busRideTimer <= 0) {
-            clearInterval(busTimerInterval);
-            showToast("⚠️ 坐過站了！巴士折返回家...");
-            getOffBus();
-        }
+        if (busRideTimer <= 0) getOffBus();
     }, 1000);
  
     const targetWorldPos = new THREE.Vector3(0, 4.2, camZPos).applyMatrix4(activeBus.matrixWorld);
@@ -8955,14 +8891,12 @@ function rideBus(busHitBox) {
         duration: 1.2, ease: "power2.inOut",
         onComplete: () => {
             busInteriorGrp.add(camera);
-            camera.position.set(0, 0.4, 0); // 這裡 Z=0，配合上面座椅行距
+            camera.position.set(0, 0.4, 0);
             camera.rotation.set(0, 0, 0);
             busBumpAnim = gsap.to(camera.position, { y: 0.408, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
-            showToast("🚌 旅途中，請在 2:00 至 2:30 之間按鐘準備下車。");
         }
     });
 }
-
 
         function handleBellClick() {
     // 檢查是否在 2:00 (120s) 到 2:30 (150s) 之間（剩餘時間 0s ~ 30s 之間）
@@ -8992,13 +8926,11 @@ function getOffBus() {
  
     if (busBumpAnim) { busBumpAnim.kill(); busBumpAnim = null; }
  
-    // 將相機移回場景根節點
     const worldPos = new THREE.Vector3();
     camera.getWorldPosition(worldPos);
     scene.add(camera);
     camera.position.copy(worldPos);
  
-    // 還原巴士外觀與建築可見性
     if (activeBus) {
         activeBus.children.forEach(child => {
             if (child.isMesh && child.userData.wasVisible !== undefined) {
@@ -9009,11 +8941,15 @@ function getOffBus() {
     }
     activeBus = null;
  
-    // 還原市中心建築
+    // 💡 恢復大橋所有零件的可見性
+    balconyOnlyGroup.children.forEach(obj => {
+        if (obj.isGroup) obj.children.forEach(part => part.visible = true);
+    });
+ 
+    animScenery.cars.forEach(c => c.visible = true);
     animScenery.buildings.forEach(b => b.visible = true);
     if (tunnelMesh) tunnelMesh.visible = false;
  
-    // 鏡頭回位動畫
     gsap.to(camera.position, {
         x: preRideCameraState.pos.x, y: preRideCameraState.pos.y, z: preRideCameraState.pos.z,
         duration: 1.2, ease: "power2.inOut"
