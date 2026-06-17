@@ -1931,30 +1931,41 @@ let busTimeLeft = 180;      // 總時長 3 分鐘 (180秒)
 let bellActiveTime = 0;     // 隨機出現的 3 秒鐘起始點
 let isBellActiveWindow = false; // 目前是否處於可按下的 3 秒內
 
-// 啟動巴士旅程 (在原本 rideBus 的相機動畫完成後呼叫)
+// ==========================================
+// 🚌 巴士乘車與落車鐘核心機制 (超明顯提示版)
+// ==========================================
+
+// 啟動巴士旅程
 function startBusJourney() {
     document.getElementById('bus-bell-box').style.display = 'flex';
     document.getElementById('bus-timer-display').style.display = 'block';
     
     busTimeLeft = 180;
+    isBellActiveWindow = false;
     updateBusTimerUI();
     
     // 隨機決定落車鐘亮起的時機 (確保在 175 秒 到 5 秒之間發生)
     bellActiveTime = Math.floor(Math.random() * 170) + 5; 
-    isBellActiveWindow = false;
     document.getElementById('btn-press-bell').classList.remove('active-window');
 
     if (busTimerInterval) clearInterval(busTimerInterval);
     
     busTimerInterval = setInterval(() => {
         busTimeLeft--;
-        updateBusTimerUI();
-
-        // 🟢 隨機的 3 秒窗口開啟
+        
+        // 🟢 隨機的 3 秒窗口開啟！(強烈提示)
         if (busTimeLeft === bellActiveTime) {
             isBellActiveWindow = true;
             document.getElementById('btn-press-bell').classList.add('active-window');
-            // ⚠️ 注意：此處不能播放聲音，否則會被瀏覽器安全機制攔截並導致計時器當機！改用純視覺閃爍。
+            
+            // 1. 畫面中央強烈文字提示
+            showToast("⚠️ 巴士即將到站，請盡快按下落車鐘！");
+            
+            // 2. 模擬九巴報站提示音「叮-咚」
+            try { 
+                playSynthTone(900); 
+                setTimeout(() => playSynthTone(700), 300); 
+            } catch(e) {}
         }
         
         // 🔴 3 秒窗口結束
@@ -1962,6 +1973,9 @@ function startBusJourney() {
             isBellActiveWindow = false;
             document.getElementById('btn-press-bell').classList.remove('active-window');
         }
+
+        // 每次扣秒都更新 UI (放在狀態判定之後，確保變色生效)
+        updateBusTimerUI();
 
         // ⏳ 時間耗盡：挑戰失敗
         if (busTimeLeft <= 0) {
@@ -1995,10 +2009,24 @@ function pressBusBell() {
     }
 }
 
+// 更新計時器介面 (加入發光警告)
 function updateBusTimerUI() {
     const m = Math.floor(busTimeLeft / 60).toString().padStart(2, '0');
     const s = (busTimeLeft % 60).toString().padStart(2, '0');
-    document.getElementById('bus-timer-display').innerText = `${m}:${s}`;
+    const display = document.getElementById('bus-timer-display');
+    
+    display.innerText = `${m}:${s}`;
+    
+    // 如果處於 3 秒可按狀態，計時器變為紅色並強烈閃爍
+    if (isBellActiveWindow) {
+        display.style.color = "#ff4444";
+        display.style.textShadow = "0 0 10px #ff0000";
+        display.style.animation = "bellFlash 0.3s infinite alternate";
+    } else {
+        display.style.color = "#dcd5c9";
+        display.style.textShadow = "none";
+        display.style.animation = "none";
+    }
 }
 
 
@@ -9078,6 +9106,11 @@ function checkAndShowWelcomeMemo(readingTasks, randomTasks, submittedReading, su
 function rideBus(busHitBox) {
     if (isRidingBus) return;
     isRidingBus = true;
+    
+    // 👇 【關鍵魔法】利用玩家點擊巴士的這瞬間，合法喚醒音效引擎，就不會被瀏覽器阻擋了！
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
     activeBus = busHitBox.userData.vehicleObj;
     const direction = busHitBox.userData.direction;
 
@@ -9127,7 +9160,6 @@ function rideBus(busHitBox) {
             camera.position.set(0, 0.4, 0);
             camera.rotation.set(0, 0, 0);
             
-            // 🚌 極度輕微的車體震動 (平穩路感)
             busBumpAnim = gsap.to(camera.position, {
                 y: 0.408,
                 duration: 0.6,
@@ -9139,11 +9171,12 @@ function rideBus(busHitBox) {
             showToast("🚌 歡迎搭乘九龍巴士，請留意落車時機。");
             
             // 啟動 3 分鐘小遊戲機制
-            startBusJourney();
+            if (typeof startBusJourney === 'function') {
+                startBusJourney();
+            }
         }
     });
 }
-
 // 終極安全版下車邏輯，保證不會因為按鈕遺失而報錯卡死
 function getOffBus() {
     if (!isRidingBus) return;
