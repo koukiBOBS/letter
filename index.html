@@ -1279,19 +1279,6 @@
 }
 .btn-memo-close:hover { background: rgba(139, 115, 85, 0.05); border-color: #8b7355; }
 
-
-
-    /* 落車鐘按下的動效 */
-    .bus-bell-btn:active {
-        transform: translateY(4px);
-        box-shadow: 0 4px 0 #1a1a1a, 0 5px 15px rgba(204,0,0,0.4);
-    }
-    .bus-bell-btn.bell-active {
-        background: #facc15 !important; /* 按下後變黃色，模擬巴士落車燈亮起 */
-        box-shadow: 0 0 30px rgba(250, 204, 21, 0.8) !important;
-    }
-
-
         
         
     </style>
@@ -1449,7 +1436,7 @@
     返回室內
 </button>
 
-<!-- 雙層巴士下車按鈕與倒計時 (精緻落車鐘設計) -->
+ <!-- 雙層巴士下車按鈕與倒計時 (精緻落車鐘設計) -->
 <div id="bus-bell-container" style="display:none; position:fixed; bottom:40px; left:50%; transform:translateX(-50%); z-index:4000; flex-direction:column; align-items:center; gap:15px;">
     <div id="bus-timer" style="color: #fff; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; font-family: 'Inter', sans-serif; font-size: 1.2rem; letter-spacing: 2px; border: 1px solid rgba(255,255,255,0.3); backdrop-filter: blur(5px);">02:30</div>
     <button id="btn-getoff-bus" class="bus-bell-btn" onclick="handleBellClick()" style="width: 80px; height: 80px; background: radial-gradient(circle, #ff4444 0%, #cc0000 100%); border: 5px solid #333; border-radius: 50%; box-shadow: 0 8px 0 #1a1a1a, 0 15px 25px rgba(204,0,0,0.4); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.1s active; outline: none;">
@@ -1458,6 +1445,18 @@
         </svg>
     </button>
 </div>
+ 
+<style>
+    /* 落車鐘按下的動效 */
+    .bus-bell-btn:active {
+        transform: translateY(4px);
+        box-shadow: 0 4px 0 #1a1a1a, 0 5px 15px rgba(204,0,0,0.4);
+    }
+    .bus-bell-btn.bell-active {
+        background: #facc15 !important; /* 按下後變黃色，模擬巴士落車燈亮起 */
+        box-shadow: 0 0 30px rgba(250, 204, 21, 0.8) !important;
+    }
+</style>
         
         <div class="room-header">
             <span class="user-info"><span id="user-name">載入中...</span></span>
@@ -3429,6 +3428,7 @@ let busInteriorGrp = null;
 let preRideCameraState = { pos: new THREE.Vector3(), target: new THREE.Vector3(), fov: 50 };
 let busBumpAnim = null;
 
+
         let tunnelGrp = null;
 let rideStartTime = 0;
 let busRideDirection = 0; // 1: 往摩天輪, -1: 往大橋
@@ -3631,7 +3631,7 @@ function createBusInterior() {
 
 
 
-        function createTunnel() {
+function createTunnel() {
     const grp = new THREE.Group();
     const tunnelGeo = new THREE.CylinderGeometry(40, 40, 500, 32, 1, true, Math.PI, Math.PI);
     const tunnelMat = new THREE.MeshStandardMaterial({
@@ -3657,6 +3657,12 @@ function createBusInterior() {
     scene.add(grp);
     return grp;
 }
+
+
+
+
+
+        
 
 let leftCurtainGrp, rightCurtainGrp; 
 let curtainRatio = 1.0;
@@ -6908,7 +6914,7 @@ function animateRoom() {
     let isLookingOutside = isAtBalcony || cameraFrustum.intersectsBox(outsideWorldBox);
  
     // 只有當視線掃到窗外時，才去計算耗費 CPU 的海浪、雲朵、車輛與摩天輪
-  if (isLookingOutside) {
+if (isLookingOutside) {
         // 1. 車輛邏輯 (含防撞系統)
         let refX = (isRidingBus && activeBus) ? activeBus.position.x : 0;
         
@@ -8980,9 +8986,9 @@ function getOffBus() {
     document.getElementById('bus-bell-container').style.display = 'none';
  
     // 2. 停止震動動畫
-    if (busBumpAnim) { 
-        busBumpAnim.kill(); 
-        busBumpAnim = null; 
+    if (busBumpAnim) {
+        busBumpAnim.kill();
+        busBumpAnim = null;
     }
  
     // 3. 恢復環境狀態：隱藏隧道，顯示原本的大廈與樹木
@@ -9015,17 +9021,17 @@ function getOffBus() {
  
     // 6. 執行回程運鏡動畫：移回上車前的位置與視角
     gsap.to(camera.position, {
-        x: preRideCameraState.pos.x, 
-        y: preRideCameraState.pos.y, 
+        x: preRideCameraState.pos.x,
+        y: preRideCameraState.pos.y,
         z: preRideCameraState.pos.z,
-        duration: 1.2, 
+        duration: 1.2,
         ease: "power2.inOut"
     });
     
-    gsap.to(camera, { 
-        fov: preRideCameraState.fov, 
-        duration: 1.2, 
-        onUpdate: () => camera.updateProjectionMatrix() 
+    gsap.to(camera, {
+        fov: preRideCameraState.fov,
+        duration: 1.2,
+        onUpdate: () => camera.updateProjectionMatrix()
     });
     
     // 7. 恢復 OrbitControls 控制權與 UI 顯示
@@ -9034,10 +9040,10 @@ function getOffBus() {
     }
     
     gsap.to(controls.target, {
-        x: preRideCameraState.target.x, 
-        y: preRideCameraState.target.y, 
+        x: preRideCameraState.target.x,
+        y: preRideCameraState.target.y,
         z: preRideCameraState.target.z,
-        duration: 1.2, 
+        duration: 1.2,
         ease: "power2.inOut",
         onUpdate: () => controls.update(),
         onComplete: () => {
@@ -9051,7 +9057,6 @@ function getOffBus() {
         }
     });
 }
- 
         
         
     </script>
