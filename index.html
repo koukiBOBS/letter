@@ -1939,10 +1939,14 @@ function updateBusTimerUI() {
 
 
 
-// 失敗懲罰處理
+// 失敗懲罰處理 (加入安全檢查防報錯)
 function failBusJourney(msg) {
-    document.getElementById('bus-bell-box').style.display = 'none';
-    document.getElementById('bus-timer-display').style.display = 'none';
+    const bellBox = document.getElementById('bus-bell-box');
+    if (bellBox) bellBox.style.display = 'none';
+    
+    const timerDisp = document.getElementById('bus-timer-display');
+    if (timerDisp) timerDisp.style.display = 'none';
+
     showToast(`❌ ${msg} \n(折返回家)`);
     
     // 延遲 2 秒後，呼叫原本的 getOffBus 鏡頭函數，把玩家送回房間
@@ -1951,10 +1955,13 @@ function failBusJourney(msg) {
     }, 2000);
 }
 
-// 成功進入商店街邏輯 (目前為擴充框架，先將玩家送回並彈出提示)
+// 成功進入商店街邏輯
 function enterShoppingStreet() {
-    document.getElementById('bus-bell-box').style.display = 'none';
-    document.getElementById('bus-timer-display').style.display = 'none';
+    const bellBox = document.getElementById('bus-bell-box');
+    if (bellBox) bellBox.style.display = 'none';
+    
+    const timerDisp = document.getElementById('bus-timer-display');
+    if (timerDisp) timerDisp.style.display = 'none';
     
     // 這裡預留給你未來繪製商店街地圖用的 Hook
     alert("🛍️ 成功抵達！未來這裡將切換至『商店街地圖』。\n(測試階段：點擊確定後先將您送回房間)");
@@ -9073,10 +9080,21 @@ function rideBus(busHitBox) {
     });
 }
 
+// 終極安全版下車邏輯，保證不會因為按鈕遺失而報錯卡死
 function getOffBus() {
     if (!isRidingBus) return;
     isRidingBus = false;
-    document.getElementById('btn-getoff-bus').style.display = 'none';
+    
+    // 安全隱藏落車按鈕與計時器 (若元素存在才隱藏)
+    const bellBox = document.getElementById('bus-bell-box');
+    if (bellBox) bellBox.style.display = 'none';
+    
+    const timerDisp = document.getElementById('bus-timer-display');
+    if (timerDisp) timerDisp.style.display = 'none';
+
+    // 如果程式碼裡還有殘留舊的下車按鈕，也安全地隱藏它
+    const oldBtn = document.getElementById('btn-getoff-bus');
+    if (oldBtn) oldBtn.style.display = 'none';
 
     if (busBumpAnim) { busBumpAnim.kill(); busBumpAnim = null; }
 
@@ -9095,6 +9113,7 @@ function getOffBus() {
     }
     activeBus = null;
 
+    // 將鏡頭平滑退回原本站在露台的位置
     gsap.to(camera.position, {
         x: preRideCameraState.pos.x, y: preRideCameraState.pos.y, z: preRideCameraState.pos.z,
         duration: 1.2, ease: "power2.inOut"
@@ -9109,9 +9128,15 @@ function getOffBus() {
         onUpdate: () => controls.update(),
         onComplete: () => {
             controls.enabled = true;
-            document.getElementById('btn-return-room').style.display = 'flex';
-            if(window.innerWidth <= 900 && document.getElementById('mobile-cam-knob')) {
-                document.getElementById('mobile-cam-knob').style.display = 'flex';
+            
+            // 安全顯示「返回室內」的按鈕
+            const returnBtn = document.getElementById('btn-return-room');
+            if (returnBtn) returnBtn.style.display = 'flex';
+            
+            // 安全顯示手機版的實時視角旋鈕
+            const knob = document.getElementById('mobile-cam-knob');
+            if(window.innerWidth <= 900 && knob) {
+                knob.style.display = 'flex';
             }
         }
     });
