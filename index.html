@@ -8048,8 +8048,7 @@ function acceptBankruptcy() {
 
 
 // 👇 移動端實時視角旋鈕與攝影機控制 (完美軌跡、廣角與方向修復版) 👇
-// 👇 移動端實時視角旋鈕與攝影機控制 (包含自由行走與雙擊切換模式) 👇
-// 👇 移動端實時視角旋鈕與攝影機控制 (包含自由行走與雙擊切換模式) 👇
+// 👇 移動端實時視角旋鈕與攝影機控制 (支援雙擊切換、本機記憶、實體防撞) 👇
 (function initCameraKnob() {
     const knob = document.getElementById('mobile-cam-knob');
     if(!knob) return;
@@ -8057,108 +8056,88 @@ function acceptBankruptcy() {
     window.isKnobDragging = false;
     window.knobMode = 1; // 1: 望窗(白色), 2: 望書櫃(木色)
     
-    // --- 行走模式專屬變數 ---
-    window.isWalkMode = false;
+    // 💡 1. 本機記憶：讀取用家上次的模式，預設為 'walk' (行走模式)
+    const savedMode = localStorage.getItem('preferredCamMode');
+    window.isWalkMode = (savedMode !== 'look'); 
+    
     window.walkVel = 0;
     window.turnVel = 0;
     window.walkKeys = { w: false, a: false, s: false, d: false };
+    
     let lastTapTime = 0;
-
     let currentSnappedAngle = null;
     let longPressTimer = null;
     let startX = 0, startY = 0;
+    let isCamInitialized = false;
 
-    if (controls) {
-        controls.minAzimuthAngle = -Infinity;
-        controls.maxAzimuthAngle = Infinity;
+    // --- 根據模式套用 UI 與相機限制 ---
+    function applyModeState() {
+        const knobCenter = document.querySelector('.knob-center');
+        const indicator = document.querySelector('.knob-indicator');
+        if(!knobCenter || !indicator || !controls) return;
+
+        if (window.isWalkMode) {
+            // 🚶‍♂️ 行走模式
+            controls.enabled = false;
+            controls.minAzimuthAngle = -Infinity;
+            controls.maxAzimuthAngle = Infinity;
+            controls.minPolarAngle = Math.PI / 2;
+            controls.maxPolarAngle = Math.PI / 2;
+            
+            knobCenter.style.background = '#6b8e73'; // 竹葉青綠
+            knobCenter.style.transform = `translate(0px, 0px) rotate(0deg)`;
+            indicator.style.background = '#fff';
+            
+            // 視角水平擺正
+            camera.position.y = 16;
+            let dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+            dir.y = 0; dir.normalize();
+            controls.target.copy(camera.position).add(dir.multiplyScalar(20));
+            controls.update();
+        } else {
+            // 👀 視角旋鈕模式
+            controls.minPolarAngle = 1.15;
+            controls.maxPolarAngle = Math.PI / 2 - 0.05;
+            
+            if (window.knobMode === 1) {
+                controls.minAzimuthAngle = -Math.PI / 2;
+                controls.maxAzimuthAngle = Math.PI / 2;
+                knobCenter.style.background = '#fff';
+            } else {
+                controls.minAzimuthAngle = Math.PI / 2;
+                controls.maxAzimuthAngle = Math.PI * 1.5;
+                knobCenter.style.background = '#e6d7c0';
+            }
+            
+            knobCenter.style.transform = `translate(0px, 0px)`;
+            indicator.style.background = 'var(--color-replies)';
+            controls.enabled = true;
+            
+            currentSnappedAngle = null;
+            applyKnobAngle(0, true);
+        }
     }
 
     // --- 雙擊切換：行走模式與原本視角模式 ---
     function toggleWalkMode() {
         window.isWalkMode = !window.isWalkMode;
-        const knobCenter = document.querySelector('.knob-center');
-        const indicator = document.querySelector('.knob-indicator');
-
-        if (window.isWalkMode) {
-            showToast("🚶‍♂️ 進入行走模式：拖曳按鈕或使用 WASD 控制移動轉向");
-            controls.enabled = false;
-            
-            // 🛑 核心修復：完全解開水平視角限制，強制平視，才能真正 360 度轉身
-            controls.minAzimuthAngle = -Infinity;
-            controls.maxAzimuthAngle = Infinity;
-            controls.minPolarAngle = Math.PI / 2;
-            controls.maxPolarAngle = Math.PI / 2;
-
-            // 轉換按鈕視覺
-            knobCenter.style.background = '#6b8e73'; 
-            knobCenter.style.transform = `translate(0px, 0px) rotate(0deg)`;
-            indicator.style.background = '#fff';
-            
-            // 進入時視角水平擺正，鎖定高度
-            camera.position.y = 16;
-            let dir = new THREE.Vector3();
-            camera.getWorldDirection(dir);
-            dir.y = 0;
-            dir.normalize();
-            controls.target.copy(camera.position).add(dir.multiplyScalar(20));
-            
-        } else {
-            showToast("👀 退出行走模式：恢復定點視角旋轉");
-            
-            // 恢復原有的上下視角限制
-            controls.minPolarAngle = 1.15;
-            controls.maxPolarAngle = Math.PI / 2 - 0.05;
-
-            // 恢復左右限制，取決於原來的模式
-            if (window.knobMode === 1) {
-                controls.minAzimuthAngle = -Math.PI / 2;
-                controls.maxAzimuthAngle = Math.PI / 2;
-            } else {
-                controls.minAzimuthAngle = Math.PI / 2;
-                controls.maxAzimuthAngle = Math.PI * 1.5;
-            }
-
-            knobCenter.style.transform = `translate(0px, 0px)`;
-            knobCenter.style.background = window.knobMode === 1 ? '#fff' : '#e6d7c0';
-            indicator.style.background = 'var(--color-replies)';
-            
-            controls.enabled = true;
-            
-            // 強制退回定點視角
-            currentSnappedAngle = null;
-            applyKnobAngle(0, true);
-        }
-        window.walkVel = 0;
-        window.turnVel = 0;
+        localStorage.setItem('preferredCamMode', window.isWalkMode ? 'walk' : 'look'); // 儲存設定
+        
+        showToast(window.isWalkMode ? "🚶‍♂️ 進入行走模式：拖曳按鈕移動，雙擊切換回旋鈕" : "👀 進入旋鈕模式：拖曳按鈕轉向，雙擊切換回行走");
+        applyModeState();
+        
+        window.walkVel = 0; window.turnVel = 0;
         window.isKnobDragging = false;
         window.walkKeys = { w: false, a: false, s: false, d: false };
     }
 
-    // --- 長按切換視角模式 (原本的功能) ---
+    // --- 長按切換：望窗 vs 望書櫃 (僅在旋鈕模式生效) ---
     function toggleKnobMode() {
         if (window.isWalkMode) return; 
         window.knobMode = (window.knobMode === 1) ? 2 : 1;
-        const knobCenter = document.querySelector('.knob-center');
-        
-        if (window.knobMode === 1) {
-            knobCenter.style.background = '#fff';
-            showToast("👀 視角切換：望向書桌與窗外");
-            if (controls && !isAtBalcony) {
-                controls.minAzimuthAngle = -Math.PI / 2;
-                controls.maxAzimuthAngle = Math.PI / 2;
-            }
-        } else {
-            knobCenter.style.background = '#e6d7c0'; 
-            showToast("👀 視角切換：望向房間與書櫃");
-            if (controls && !isAtBalcony) {
-                controls.minAzimuthAngle = Math.PI / 2;
-                controls.maxAzimuthAngle = Math.PI * 1.5;
-            }
-        }
-        
-        window.isKnobDragging = false; 
-        currentSnappedAngle = null; 
-        applyKnobAngle(0, true); 
+        applyModeState();
+        showToast(window.knobMode === 1 ? "👀 視角：望向窗外" : "👀 視角：望向書櫃");
     }
 
     // --- 原本的定點旋轉運鏡邏輯 ---
@@ -8170,17 +8149,7 @@ function acceptBankruptcy() {
         if (knobDial && !window.isWalkMode) knobDial.style.transform = `rotate(${snappedDeg}deg)`;
 
         if (controls && camera) {
-            let r;
-            if (forceWide) {
-                r = 59; 
-            } else {
-                const currentDx = camera.position.x - controls.target.x;
-                const currentDy = camera.position.y - controls.target.y;
-                const currentDz = camera.position.z - controls.target.z;
-                r = Math.sqrt(currentDx*currentDx + currentDy*currentDy + currentDz*currentDz);
-                r = Math.max(15, Math.min(59, r)); 
-            }
-
+            let r = forceWide ? 59 : Math.max(15, Math.min(59, camera.position.distanceTo(controls.target)));
             const baseCx = 0, baseCy = 16, baseCz = 20;
             let baseTx = 0, baseTy = 16, baseTz = 0;
 
@@ -8204,11 +8173,7 @@ function acceptBankruptcy() {
             const idealCamY = baseTy + (dirY / dirLen) * r;
             const idealCamZ = baseTz + (dirZ / dirLen) * r;
 
-            const clampedCamX = Math.max(-50, Math.min(50, idealCamX));
-            const clampedCamY = Math.max(3, Math.min(38, idealCamY));
-            const clampedCamZ = Math.max(-15, Math.min(55, idealCamZ));
-
-            gsap.to(camera.position, { x: clampedCamX, y: clampedCamY, z: clampedCamZ, duration: 0.8, ease: "power2.inOut" });
+            gsap.to(camera.position, { x: Math.max(-50, Math.min(50, idealCamX)), y: Math.max(3, Math.min(38, idealCamY)), z: Math.max(-15, Math.min(55, idealCamZ)), duration: 0.8, ease: "power2.inOut" });
             gsap.to(controls.target, { x: baseTx, y: baseTy, z: baseTz, duration: 0.8, ease: "power2.inOut", onUpdate: () => controls.update() });
         }
     }
@@ -8230,34 +8195,31 @@ function acceptBankruptcy() {
         let dy = cy - centerY;
 
         if (window.isWalkMode) {
-            // 🕹️ 行走模式：虛擬搖桿邏輯
             const maxRadius = rect.width / 2;
             const dist = Math.hypot(dx, dy);
-            if (dist > maxRadius) {
-                dx = (dx / dist) * maxRadius;
-                dy = (dy / dist) * maxRadius;
-            }
+            if (dist > maxRadius) { dx = (dx / dist) * maxRadius; dy = (dy / dist) * maxRadius; }
             
             const knobCenter = document.querySelector('.knob-center');
             if (knobCenter) knobCenter.style.transform = `translate(${dx}px, ${dy}px) rotate(0deg)`;
 
-            // 上下拖曳 = 前進/後退；左右拖曳 = 轉身
             window.walkVel = (dy / maxRadius) * 0.45; 
             window.turnVel = -(dx / maxRadius) * 0.035; 
         } else {
-            // 👁️ 原本模式：視角旋轉邏輯
             let rad = Math.atan2(cx - centerX, -(cy - centerY));
             let deg = rad * (180 / Math.PI);
             if (deg > 90 && deg <= 180) deg = 90;
             if (deg < -90 && deg >= -180) deg = -90;
-            let snappedDeg = Math.round(deg / 45) * 45;
-            applyKnobAngle(snappedDeg);
+            applyKnobAngle(Math.round(deg / 45) * 45);
         }
     }
 
     function handleDown(e) {
+        // 💡 阻擋手機上 MouseEvent 與 TouchEvent 重複觸發造成的「幽靈單擊」
+        if (e.type === 'mousedown' && ('ontouchstart' in window)) return; 
+
         const now = Date.now();
-        if (now - lastTapTime < 300) {
+        // 判斷雙擊 (350毫秒內點兩下)
+        if (now - lastTapTime < 350) {
             toggleWalkMode();
             if(longPressTimer) clearTimeout(longPressTimer);
             lastTapTime = 0;
@@ -8275,10 +8237,10 @@ function acceptBankruptcy() {
         handleKnobMove(e); 
     }
 
-    function handleUp() {
+    function handleUp(e) {
+        if (e.type === 'mouseup' && ('ontouchstart' in window)) return;
         window.isKnobDragging = false; 
-        window.walkVel = 0;
-        window.turnVel = 0;
+        window.walkVel = 0; window.turnVel = 0;
         if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
         
         if (window.isWalkMode) {
@@ -8288,7 +8250,7 @@ function acceptBankruptcy() {
     }
 
     knob.addEventListener('mousedown', handleDown);
-    knob.addEventListener('touchstart', (e) => { handleDown(e); }, {passive: false});
+    knob.addEventListener('touchstart', handleDown, {passive: false});
 
     window.addEventListener('mousemove', handleKnobMove);
     window.addEventListener('touchmove', (e) => { 
@@ -8309,9 +8271,16 @@ function acceptBankruptcy() {
         if (window.walkKeys.hasOwnProperty(key)) window.walkKeys[key] = false;
     });
 
-    // --- 🏃‍♂️ 物理引擎更新迴圈 (專責處理移動) ---
+    // --- 🏃‍♂️ 物理引擎更新迴圈與防撞邊界 ---
     function walkUpdateLoop() {
         requestAnimationFrame(walkUpdateLoop);
+        
+        // 當房間載入完畢，初始化設定套用
+        if (controls && !isCamInitialized) {
+            applyModeState();
+            isCamInitialized = true;
+        }
+
         if (!window.isWalkMode || isRoomPaused() || (typeof isAtBalcony !== 'undefined' && isAtBalcony)) return;
 
         let currentWalk = window.walkVel;
@@ -8322,35 +8291,58 @@ function acceptBankruptcy() {
         if (window.walkKeys.d) currentTurn = -0.035;
 
         if (Math.abs(currentWalk) > 0.01 || Math.abs(currentTurn) > 0.01) {
-            
-            // 🛑 核心修復：獲取真實相機面朝的方向
             let dir = new THREE.Vector3();
             camera.getWorldDirection(dir);
-            dir.y = 0; // 強制在平面移動
-            dir.normalize();
+            dir.y = 0; dir.normalize();
 
-            // 轉向邏輯
+            // 轉向
             if (Math.abs(currentTurn) > 0.01) {
-                // 使用旋轉矩陣來旋轉方向向量
-                const axis = new THREE.Vector3(0, 1, 0);
-                dir.applyAxisAngle(axis, currentTurn);
+                dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), currentTurn);
             }
 
-            // 前進後退邏輯
             let nextX = camera.position.x + dir.x * -currentWalk;
             let nextZ = camera.position.z + dir.z * -currentWalk;
 
-            // 房間邊界防穿牆 (X: -56 ~ 56, Z: -14 ~ 56)
-            nextX = Math.max(-56, Math.min(56, nextX));
-            nextZ = Math.max(-14, Math.min(56, nextZ));
+            // 💡 2. 防穿牆與家具實體碰撞系統 (AABB Bounding Box)
+            const playerRadius = 4.0; // 玩家的體積半徑
+
+            // 將玩家推出障礙物的函式
+            function pushOutRect(cx, cz, rx, rz, rw, rd) {
+                let hw = rw / 2 + playerRadius;
+                let hd = rd / 2 + playerRadius;
+                if (cx > rx - hw && cx < rx + hw && cz > rz - hd && cz < rz + hd) {
+                    let dL = cx - (rx - hw); let dR = (rx + hw) - cx;
+                    let dT = cz - (rz - hd); let dB = (rz + hd) - cz;
+                    let min = Math.min(dL, dR, dT, dB);
+                    if (min === dL) return {x: rx - hw, z: cz};
+                    if (min === dR) return {x: rx + hw, z: cz};
+                    if (min === dT) return {x: cx, z: rz - hd};
+                    return {x: cx, z: rz + hd};
+                }
+                return {x: cx, z: cz};
+            }
+
+            // A. 書桌碰撞 (X:0, Z:0, 寬:32, 深:16)
+            let p = pushOutRect(nextX, nextZ, 0, 0, 32, 16);
+            nextX = p.x; nextZ = p.z;
+
+            // B. 書櫃區碰撞 (後牆 X:0, Z:59, 寬:80, 深:10)
+            p = pushOutRect(nextX, nextZ, 0, 59, 80, 10);
+            nextX = p.x; nextZ = p.z;
+
+            // C. 鋼琴區碰撞 (右牆 X:58, Z:22, 寬:8, 深:18)
+            p = pushOutRect(nextX, nextZ, 58, 22, 8, 18);
+            nextX = p.x; nextZ = p.z;
+
+            // D. 房間絕對邊界
+            nextX = Math.max(-50, Math.min(50, nextX));
+            nextZ = Math.max(-10, Math.min(50, nextZ));
 
             camera.position.x = nextX;
             camera.position.z = nextZ;
             camera.position.y = 16; 
 
-            // 🛑 最關鍵的地方：同步更新 OrbitControls 的 Target
-            // OrbitControls 每幀都會強迫相機看向 Target，
-            // 所以我們只要把 Target 丟到相機正前方，相機就會跟著轉向，從而實現完美 360 度轉身！
+            // 同步控制器目標，達成完美 360 轉身
             controls.target.copy(camera.position).add(dir.multiplyScalar(20));
         }
     }
