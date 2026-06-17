@@ -2,16 +2,9 @@
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
-
-
-
-    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>閱讀人生</title>
-
-
-    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1286,6 +1279,61 @@
 }
 .btn-memo-close:hover { background: rgba(139, 115, 85, 0.05); border-color: #8b7355; }
 
+
+
+
+
+        /* --- 巴士系統 UI --- */
+#bus-timer-display {
+    position: fixed; top: 40px; left: 50%; transform: translateX(-50%);
+    background: rgba(10, 8, 5, 0.85); color: #dcd5c9; padding: 12px 30px;
+    border-radius: 30px; font-family: 'Courier New', Courier, monospace; font-size: 1.8rem; font-weight: bold;
+    z-index: 4000; display: none; border: 2px solid #5a5042; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px); letter-spacing: 2px;
+}
+
+.bus-bell-container {
+    position: fixed; bottom: 50px; right: 30px; z-index: 4000;
+    width: 70px; height: 110px;
+    background: linear-gradient(135deg, #facc15, #ca8a04); /* 經典黃色鐘盒 */
+    border-radius: 12px;
+    border: 2px solid #a16207;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    box-shadow: 
+        inset -3px -3px 8px rgba(0,0,0,0.2), 
+        inset 3px 3px 8px rgba(255,255,255,0.4),
+        0 10px 20px rgba(0,0,0,0.4);
+}
+
+.bell-button {
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #b91c1c, #7f1d1d); /* 預設暗紅色 */
+    border: 3px solid #7f1d1d;
+    cursor: pointer;
+    box-shadow: inset 0 2px 4px rgba(255,255,255,0.2), 0 5px 10px rgba(0,0,0,0.5);
+    transition: all 0.1s;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* 當隨機 3 秒來到時，按鈕發光提示 */
+.bell-button.active-window {
+    background: radial-gradient(circle at 30% 30%, #ff4444, #dc2626);
+    border-color: #f87171;
+    box-shadow: 0 0 20px #ef4444, inset 0 2px 8px rgba(255,255,255,0.6);
+    animation: pulseBell 0.4s infinite alternate;
+}
+
+.bell-button:active {
+    transform: scale(0.95) translateY(2px);
+    box-shadow: inset 0 4px 8px rgba(0,0,0,0.6);
+}
+
+@keyframes pulseBell { 
+    from { filter: brightness(1); } 
+    to { filter: brightness(1.3); } 
+}
         
         
     </style>
@@ -1334,6 +1382,16 @@
                 </div>
             </div>
 
+
+
+<div class="dev-section">
+                <div class="dev-sec-title">🚌 巴士系統測試</div>
+                <div class="dev-grid">
+                    <button class="dev-btn span-2 highlight" style="background:#0284c7; border-color:#0369a1;" onclick="devSimulateShoppingStreet()">🛍️ 一鍵成功落車進入商店街</button>
+                </div>
+            </div>
+
+            
             <div class="dev-section">
                 <div class="dev-sec-title">📝 派發任務 (全班即時解鎖)</div>
                 <div class="dev-grid">
@@ -1443,15 +1501,13 @@
     返回室內
 </button>
 
-        <!-- 雙層巴士下車按鈕 -->
-<button id="btn-getoff-bus" class="btn" style="display:none; position:fixed; bottom:40px; left:50%; transform:translateX(-50%); z-index:4000; background:rgba(204, 34, 34, 0.85); backdrop-filter:blur(5px); color:#fff; border: 2px solid #ff4444; box-shadow: 0 10px 25px rgba(204,34,34,0.3);" onclick="getOffBus()">
-    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" style="margin-right:8px;">
-        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-        <polyline points="16 17 21 12 16 7"></polyline>
-        <line x1="21" y1="12" x2="9" y2="12"></line>
-    </svg>
-    按下落車鐘
-</button>
+<!-- 巴士倒數計時器 -->
+        <div id="bus-timer-display">03:00</div>
+        
+        <!-- 擬真落車鐘 -->
+        <div id="bus-bell-box" class="bus-bell-container">
+            <button class="bell-button" id="btn-press-bell" onclick="pressBusBell()"></button>
+        </div>
         
         <div class="room-header">
             <span class="user-info"><span id="user-name">載入中...</span></span>
@@ -1795,6 +1851,118 @@
     <script>
 
 
+
+
+// ==========================================
+// 🚌 巴士乘車與落車鐘核心機制
+// ==========================================
+let busTimerInterval = null;
+let busTimeLeft = 180;      // 總時長 3 分鐘 (180秒)
+let bellActiveTime = 0;     // 隨機出現的 3 秒鐘起始點
+let isBellActiveWindow = false; // 目前是否處於可按下的 3 秒內
+
+// 啟動巴士旅程 (在原本 rideBus 的相機動畫完成後呼叫)
+function startBusJourney() {
+    document.getElementById('bus-bell-box').style.display = 'flex';
+    document.getElementById('bus-timer-display').style.display = 'block';
+    
+    busTimeLeft = 180;
+    updateBusTimerUI();
+    
+    // 隨機決定落車鐘亮起的時機 (確保在 175 秒 到 5 秒之間發生)
+    bellActiveTime = Math.floor(Math.random() * 170) + 5; 
+    isBellActiveWindow = false;
+    document.getElementById('btn-press-bell').classList.remove('active-window');
+
+    if (busTimerInterval) clearInterval(busTimerInterval);
+    
+    busTimerInterval = setInterval(() => {
+        busTimeLeft--;
+        updateBusTimerUI();
+
+        // 🟢 隨機的 3 秒窗口開啟
+        if (busTimeLeft === bellActiveTime) {
+            isBellActiveWindow = true;
+            document.getElementById('btn-press-bell').classList.add('active-window');
+            // 播放模擬的提示音 (可選)
+            playSynthTone(800); 
+        }
+        
+        // 🔴 3 秒窗口結束
+        if (busTimeLeft === bellActiveTime - 3) {
+            isBellActiveWindow = false;
+            document.getElementById('btn-press-bell').classList.remove('active-window');
+        }
+
+        // ⏳ 時間耗盡：挑戰失敗
+        if (busTimeLeft <= 0) {
+            clearInterval(busTimerInterval);
+            failBusJourney("時間到了！巴士已經駛過站了... 您錯過了下車時機。");
+        }
+    }, 1000);
+}
+
+function updateBusTimerUI() {
+    const m = Math.floor(busTimeLeft / 60).toString().padStart(2, '0');
+    const s = (busTimeLeft % 60).toString().padStart(2, '0');
+    document.getElementById('bus-timer-display').innerText = `${m}:${s}`;
+}
+
+// 點擊落車鐘按鈕
+function pressBusBell() {
+    if (!isRidingBus) return;
+    
+    // 模擬真實按鐘的聲音
+    playSynthTone(1200);
+
+    if (isBellActiveWindow) {
+        // 🎉 挑戰成功
+        clearInterval(busTimerInterval);
+        document.getElementById('btn-press-bell').classList.remove('active-window');
+        showToast("🔔 叮！成功按下落車鐘！準備下車...");
+        
+        setTimeout(() => {
+            enterShoppingStreet();
+        }, 1500);
+    } else {
+        // ❌ 挑戰失敗 (按錯時機)
+        clearInterval(busTimerInterval);
+        document.getElementById('btn-press-bell').classList.remove('active-window');
+        failBusJourney("按錯時機了！司機沒有理會你，巴士直接開回總站...");
+    }
+}
+
+// 失敗懲罰處理
+function failBusJourney(msg) {
+    document.getElementById('bus-bell-box').style.display = 'none';
+    document.getElementById('bus-timer-display').style.display = 'none';
+    showToast(`❌ ${msg} \n(折返回家)`);
+    
+    // 延遲 2 秒後，呼叫原本的 getOffBus 鏡頭函數，把玩家送回房間
+    setTimeout(() => {
+        getOffBus(); 
+    }, 2000);
+}
+
+// 成功進入商店街邏輯 (目前為擴充框架，先將玩家送回並彈出提示)
+function enterShoppingStreet() {
+    document.getElementById('bus-bell-box').style.display = 'none';
+    document.getElementById('bus-timer-display').style.display = 'none';
+    
+    // 這裡預留給你未來繪製商店街地圖用的 Hook
+    alert("🛍️ 成功抵達！未來這裡將切換至『商店街地圖』。\n(測試階段：點擊確定後先將您送回房間)");
+    
+    getOffBus(); // 目前先送回房間以免卡死
+}
+
+// 開發者面板測試按鈕：強制立刻觸發成功狀態
+window.devSimulateShoppingStreet = function() {
+    if (!isRidingBus) return alert("請先走到露台並點擊搭乘雙層巴士！");
+    clearInterval(busTimerInterval);
+    isBellActiveWindow = true; // 強制將狀態改為可按下
+    pressBusBell();
+};
+        
 
 
         
@@ -8883,8 +9051,8 @@ function rideBus(busHitBox) {
             
             // 🚌 極度輕微的車體震動 (平穩路感)
             busBumpAnim = gsap.to(camera.position, {
-                y: 0.408, 
-                duration: 0.6, 
+                y: 0.408,
+                duration: 0.6,
                 yoyo: true, 
                 repeat: -1, 
                 ease: "sine.inOut"
@@ -8893,9 +9061,7 @@ function rideBus(busHitBox) {
             showToast("🚌 歡迎搭乘九龍巴士，請留意落車時機。");
             
             // 啟動 3 分鐘小遊戲機制
-            if (typeof startBusJourney === 'function') {
-                startBusJourney();
-            }
+            startBusJourney();
         }
     });
 }
@@ -8903,10 +9069,7 @@ function rideBus(busHitBox) {
 function getOffBus() {
     if (!isRidingBus) return;
     isRidingBus = false;
-    
-    // 隱藏落車按鈕與計時器
-    if(document.getElementById('bus-bell-box')) document.getElementById('bus-bell-box').style.display = 'none';
-    if(document.getElementById('bus-timer-display')) document.getElementById('bus-timer-display').style.display = 'none';
+    document.getElementById('btn-getoff-bus').style.display = 'none';
 
     if (busBumpAnim) { busBumpAnim.kill(); busBumpAnim = null; }
 
