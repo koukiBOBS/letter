@@ -1286,59 +1286,107 @@
 
 
 
-        /* --- 巴士系統 UI --- */
-/* --- 巴士系統 UI --- */
+/* --- 巴士系統 UI (經典九巴款式 零效能擬真) --- */
 #bus-timer-display {
     position: fixed; top: 40px; left: 50%; transform: translateX(-50%);
     background: rgba(10, 8, 5, 0.85); color: #dcd5c9; padding: 12px 30px;
     border-radius: 30px; font-family: 'Courier New', Courier, monospace; font-size: 1.8rem; font-weight: bold;
     z-index: 4000; display: none; border: 2px solid #5a5042; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     backdrop-filter: blur(5px); letter-spacing: 2px;
-    pointer-events: auto; /* 👈 新增：讓計時器不會被穿透 */
+    pointer-events: auto;
 }
 
+/* 1. 黃色防滑扶手柱 */
 .bus-bell-container {
-    position: fixed; bottom: 50px; right: 30px; z-index: 4000;
-    width: 70px; height: 110px;
-    background: linear-gradient(135deg, #facc15, #ca8a04);
-    border-radius: 12px;
-    border: 2px solid #a16207;
+    position: fixed; bottom: 40px; right: 25px; z-index: 4000;
+    width: 48px; height: 180px;
+    background-color: #ffd700; /* 九巴黃 */
+    /* 利用雙重漸層畫出完美的菱形防滑膠粒紋理 */
+    background-image: 
+        linear-gradient(45deg, rgba(160, 110, 0, 0.25) 25%, transparent 25%, transparent 75%, rgba(160, 110, 0, 0.25) 75%, rgba(160, 110, 0, 0.25)), 
+        linear-gradient(135deg, rgba(160, 110, 0, 0.25) 25%, transparent 25%, transparent 75%, rgba(160, 110, 0, 0.25) 75%, rgba(160, 110, 0, 0.25));
+    background-size: 8px 8px; /* 顆粒大小 */
+    border-radius: 24px; /* 圓柱體 */
     display: none; flex-direction: column; align-items: center; justify-content: center;
+    /* 圓柱體的高光與兩側背光陰影 */
     box-shadow: 
-        inset -3px -3px 8px rgba(0,0,0,0.2), 
-        inset 3px 3px 8px rgba(255,255,255,0.4),
-        0 10px 20px rgba(0,0,0,0.4);
-    pointer-events: auto; /* 👈 新增：允許滑鼠點擊這個區塊 */
+        inset -12px 0 12px rgba(0,0,0,0.4), 
+        inset 6px 0 10px rgba(255,255,255,0.6),
+        0 10px 20px rgba(0,0,0,0.3);
+    pointer-events: auto;
 }
 
+/* 2. 黑色斜面塑膠底座 */
+.bell-housing {
+    position: relative;
+    width: 58px; height: 90px;
+    /* 模擬上方與下方的塑膠斜面光影 */
+    background: linear-gradient(to bottom, #111111 0%, #2a2a2a 15%, #222222 85%, #050505 100%);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 
+        -4px 0 8px rgba(0,0,0,0.5), 
+        4px 0 8px rgba(0,0,0,0.5),
+        inset 1px 0 2px rgba(255,255,255,0.1);
+}
+
+/* 模擬底座上下兩顆鎖緊在柱子上的十字螺絲 */
+.bell-housing::before, .bell-housing::after {
+    content: ''; position: absolute; left: 50%; transform: translateX(-50%);
+    width: 5px; height: 5px; border-radius: 50%; 
+    background: #666;
+    box-shadow: inset 1px 1px 2px rgba(0,0,0,0.8), 0 1px 1px rgba(255,255,255,0.1);
+}
+.bell-housing::before { top: 6px; }
+.bell-housing::after { bottom: 6px; }
+
+/* 3. 實體感強烈的紅色方形按鍵 */
 .bell-button {
-    width: 46px; height: 46px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, #b91c1c, #7f1d1d); /* 預設暗紅色 */
-    border: 3px solid #7f1d1d;
+    width: 34px; height: 42px;
+    background: #cc2222; /* 經典塑膠紅 */
+    border: none; border-radius: 3px;
     cursor: pointer;
-    box-shadow: inset 0 2px 4px rgba(255,255,255,0.2), 0 5px 10px rgba(0,0,0,0.5);
+    font-family: Arial, sans-serif;
+    font-size: 0.65rem; font-weight: bold; color: rgba(255,255,255,0.9);
+    letter-spacing: 0.5px;
+    display: flex; align-items: center; justify-content: center;
+    /* 立體厚度：右下角實體陰影 + 左上角高光 */
+    box-shadow: 
+        inset 1px 1px 2px rgba(255,255,255,0.4),
+        inset -1px -1px 2px rgba(0,0,0,0.3),
+        0 4px 0 #7f1d1d, /* 實體的按鍵厚度 */
+        0 6px 6px rgba(0,0,0,0.6);
     transition: all 0.1s;
     outline: none;
     -webkit-tap-highlight-color: transparent;
+    transform: translateY(-2px); /* 預設微微突起 */
 }
 
-/* 當隨機 3 秒來到時，按鈕發光提示 */
-.bell-button.active-window {
-    background: radial-gradient(circle at 30% 30%, #ff4444, #dc2626);
-    border-color: #f87171;
-    box-shadow: 0 0 20px #ef4444, inset 0 2px 8px rgba(255,255,255,0.6);
-    animation: pulseBell 0.4s infinite alternate;
-}
-
+/* 當按鍵被按下的物理回饋 (機械感) */
 .bell-button:active {
-    transform: scale(0.95) translateY(2px);
-    box-shadow: inset 0 4px 8px rgba(0,0,0,0.6);
+    transform: translateY(2px); /* 壓下去 */
+    box-shadow: 
+        inset 1px 1px 4px rgba(0,0,0,0.5),
+        0 0 0 #7f1d1d, /* 厚度消失 */
+        0 1px 2px rgba(0,0,0,0.4);
+    background: #aa1111;
 }
 
-@keyframes pulseBell { 
+/* 4. 隨機 3 秒時的亮燈提示狀態 */
+.bell-button.active-window {
+    background: #ff3333;
+    color: #ffffff;
+    box-shadow: 
+        inset 1px 1px 5px rgba(255,255,255,0.6),
+        0 4px 0 #991b1b,
+        0 0 15px #ff4444, /* 紅色發光暈影 */
+        0 6px 8px rgba(0,0,0,0.6);
+    animation: bellFlash 0.3s infinite alternate;
+}
+
+@keyframes bellFlash { 
     from { filter: brightness(1); } 
-    to { filter: brightness(1.3); } 
+    to { filter: brightness(1.2); } 
 }
         
         
@@ -1511,8 +1559,11 @@
         <div id="bus-timer-display">03:00</div>
         
         <!-- 擬真落車鐘 -->
+       <!-- 擬真落車鐘 (九巴經典款) -->
         <div id="bus-bell-box" class="bus-bell-container">
-            <button class="bell-button" id="btn-press-bell" onclick="pressBusBell()"></button>
+            <div class="bell-housing">
+                <button class="bell-button" id="btn-press-bell" onclick="pressBusBell()">STOP</button>
+            </div>
         </div>
         
         <div class="room-header">
