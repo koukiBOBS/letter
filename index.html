@@ -7099,7 +7099,7 @@ const outsideWorldBox = new THREE.Box3(
 function animateRoom() {
 
 // === 新增：如果身處商店街，完全跳過房間的渲染與計算 ===
-    if (isAtStreet && typeof streetScene !== 'undefined') {
+    if (typeof isAtStreet !== 'undefined' && isAtStreet && typeof streetScene !== 'undefined' && streetScene) {
         if(controls) controls.update();
         
         // 摩天輪在商店街的轉動
@@ -9551,8 +9551,11 @@ function buildShoppingStreet() {
 }
 
 // 🌆 同步商店街的時間與光影
+// 🌆 同步商店街的時間與光影
 function syncStreetEnvironment() {
-    if (!streetScene || !currentEnvParams) return;
+    // 🛡️ 加入 typeof 安全檢測，防止初始載入時找不到變數
+    if (typeof streetScene === 'undefined' || !streetScene || !currentEnvParams) return;
+    
     const p = currentEnvParams;
 
     // 設定獨立的霧氣與天空
