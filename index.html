@@ -8048,12 +8048,21 @@ function acceptBankruptcy() {
 
 
 // 👇 移動端實時視角旋鈕與攝影機控制 (完美軌跡、廣角與方向修復版) 👇
+// 👇 移動端實時視角旋鈕與攝影機控制 (包含自由行走與雙擊切換模式) 👇
 (function initCameraKnob() {
     const knob = document.getElementById('mobile-cam-knob');
     if(!knob) return;
 
     window.isKnobDragging = false;
     window.knobMode = 1; // 1: 望窗(白色), 2: 望書櫃(木色)
+    
+    // --- 行走模式專屬變數 ---
+    window.isWalkMode = false;
+    window.walkVel = 0;
+    window.turnVel = 0;
+    window.walkKeys = { w: false, a: false, s: false, d: false };
+    let lastTapTime = 0;
+
     let currentSnappedAngle = null;
     let longPressTimer = null;
     let startX = 0, startY = 0;
@@ -8063,8 +8072,49 @@ function acceptBankruptcy() {
         controls.maxAzimuthAngle = Infinity;
     }
 
-    // --- 長按切換視角模式 ---
-   function toggleKnobMode() {
+    // --- 雙擊切換：行走模式與原本視角模式 ---
+    function toggleWalkMode() {
+        window.isWalkMode = !window.isWalkMode;
+        const knobCenter = document.querySelector('.knob-center');
+        const indicator = document.querySelector('.knob-indicator');
+
+        if (window.isWalkMode) {
+            showToast("🚶‍♂️ 進入行走模式：拖曳按鈕或使用 WASD 控制移動轉向");
+            controls.enabled = false;
+            // 轉換按鈕視覺，表示進入搖桿模式
+            knobCenter.style.background = '#6b8e73'; // 竹葉青綠
+            knobCenter.style.transform = `translate(0px, 0px) rotate(0deg)`;
+            indicator.style.background = '#fff';
+            
+            // 進入時視角水平擺正
+            gsap.to(camera.rotation, {x: 0, z: 0, duration: 0.3});
+            gsap.to(camera.position, {y: 16, duration: 0.3}); // 固定身高
+        } else {
+            showToast("👀 退出行走模式：恢復定點視角旋轉");
+            
+            // 為了不讓 OrbitControls 亂跳，將目標點設定在相機正前方
+            let dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            controls.target.copy(camera.position).add(dir.multiplyScalar(20));
+            controls.enabled = true;
+            controls.update();
+
+            knobCenter.style.transform = `translate(0px, 0px)`;
+            if (window.knobMode === 1) {
+                knobCenter.style.background = '#fff';
+            } else {
+                knobCenter.style.background = '#e6d7c0';
+            }
+            indicator.style.background = 'var(--color-replies)';
+        }
+        window.walkVel = 0;
+        window.turnVel = 0;
+        window.isKnobDragging = false;
+        window.walkKeys = { w: false, a: false, s: false, d: false };
+    }
+
+    // --- 長按切換視角模式 (原本的功能) ---
+    function toggleKnobMode() {
+        if (window.isWalkMode) return; // 行走模式下停用長按切換
         window.knobMode = (window.knobMode === 1) ? 2 : 1;
         const knobCenter = document.querySelector('.knob-center');
         
@@ -8076,7 +8126,7 @@ function acceptBankruptcy() {
                 controls.maxAzimuthAngle = Math.PI / 2;
             }
         } else {
-            knobCenter.style.background = '#e6d7c0'; // 淡雅木色
+            knobCenter.style.background = '#e6d7c0'; 
             showToast("👀 視角切換：望向房間與書櫃");
             if (controls && !isAtBalcony) {
                 controls.minAzimuthAngle = Math.PI / 2;
@@ -8086,27 +8136,22 @@ function acceptBankruptcy() {
         
         window.isKnobDragging = false; 
         currentSnappedAngle = null; 
-        
-        // 👇 傳入 true，代表切換時「強制退回最廣角 (59)」
         applyKnobAngle(0, true); 
     }
 
-    // --- 執行「原地轉向」運鏡 (加入強制廣角參數) ---
+    // --- 原本的定點旋轉運鏡邏輯 ---
     function applyKnobAngle(snappedDeg, forceWide = false) {
-        // 如果角度沒變，且沒有強制更新廣角，就不用執行
         if (currentSnappedAngle === snappedDeg && !forceWide) return;
         currentSnappedAngle = snappedDeg;
 
         const knobDial = document.getElementById('knob-dial');
-        if (knobDial) knobDial.style.transform = `rotate(${snappedDeg}deg)`;
+        if (knobDial && !window.isWalkMode) knobDial.style.transform = `rotate(${snappedDeg}deg)`;
 
         if (controls && camera) {
             let r;
             if (forceWide) {
-                // 如果是切換模式，強制將距離拉遠至最廣角 (59)
                 r = 59; 
             } else {
-                // 否則維持玩家當下的縮放距離，上限配合 maxDistance 放寬到 59
                 const currentDx = camera.position.x - controls.target.x;
                 const currentDy = camera.position.y - controls.target.y;
                 const currentDz = camera.position.z - controls.target.z;
@@ -8114,119 +8159,175 @@ function acceptBankruptcy() {
                 r = Math.max(15, Math.min(59, r)); 
             }
 
-            // 2. 固定圓心站立點 (Camera Base)
             const baseCx = 0, baseCy = 16, baseCz = 20;
-            let baseTx = 0, baseTy = 16, baseTz = 0; // 看向的目標點
+            let baseTx = 0, baseTy = 16, baseTz = 0;
 
-            // 3. 🎯 根據模式與角度設定目標點 (Target)
             if (window.knobMode === 1) { 
-                // ⚪ 模式一：面向窗戶 (-Z)
-                if (snappedDeg === 0) { 
-                    baseTx=0; baseTy=10; baseTz=-10; 
-                } else if (snappedDeg === 45) { 
-                    baseTx=25; baseTy=10; baseTz=-5; 
-                } else if (snappedDeg === 90) { 
-                    baseTx=50; baseTy=10; baseTz=20; 
-                } else if (snappedDeg === -45) { 
-                    baseTx=-25; baseTy=10; baseTz=-5; 
-                } else if (snappedDeg === -90) { 
-                    baseTx=-50; baseTy=10; baseTz=20; 
-                }
+                if (snappedDeg === 0) { baseTx=0; baseTy=10; baseTz=-10; } 
+                else if (snappedDeg === 45) { baseTx=25; baseTy=10; baseTz=-5; } 
+                else if (snappedDeg === 90) { baseTx=50; baseTy=10; baseTz=20; } 
+                else if (snappedDeg === -45) { baseTx=-25; baseTy=10; baseTz=-5; } 
+                else if (snappedDeg === -90) { baseTx=-50; baseTy=10; baseTz=20; }
             } else { 
-                // 🟤 模式二：轉身面向書櫃 (+Z)
-                if (snappedDeg === 0) { 
-                    baseTx=0; baseTy=14; baseTz=55; 
-                } else if (snappedDeg === 45) { 
-                    baseTx=-25; baseTy=12; baseTz=50; 
-                } else if (snappedDeg === 90) { 
-                    baseTx=-50; baseTy=10; baseTz=20; 
-                } else if (snappedDeg === -45) { 
-                    baseTx=25; baseTy=12; baseTz=50; 
-                } else if (snappedDeg === -90) { 
-                    baseTx=50; baseTy=10; baseTz=20; 
-                }
+                if (snappedDeg === 0) { baseTx=0; baseTy=14; baseTz=55; } 
+                else if (snappedDeg === 45) { baseTx=-25; baseTy=12; baseTz=50; } 
+                else if (snappedDeg === 90) { baseTx=-50; baseTy=10; baseTz=20; } 
+                else if (snappedDeg === -45) { baseTx=25; baseTy=12; baseTz=50; } 
+                else if (snappedDeg === -90) { baseTx=50; baseTy=10; baseTz=20; }
             }
 
-            // 4. 根據「目標點到圓心」的向量，乘上廣角 (r)，算出相機最終位置
-            const dirX = baseCx - baseTx;
-            const dirY = baseCy - baseTy;
-            const dirZ = baseCz - baseTz;
+            const dirX = baseCx - baseTx; const dirY = baseCy - baseTy; const dirZ = baseCz - baseTz;
             const dirLen = Math.sqrt(dirX*dirX + dirY*dirY + dirZ*dirZ);
-            
             const idealCamX = baseTx + (dirX / dirLen) * r;
             const idealCamY = baseTy + (dirY / dirLen) * r;
             const idealCamZ = baseTz + (dirZ / dirLen) * r;
 
-            // 5. 🛑 絕對物理防穿牆結界 (配合 59 廣角，稍微放寬牆壁阻擋邊界)
             const clampedCamX = Math.max(-50, Math.min(50, idealCamX));
             const clampedCamY = Math.max(3, Math.min(38, idealCamY));
             const clampedCamZ = Math.max(-15, Math.min(55, idealCamZ));
 
-            // 6. GSAP 平滑運鏡
             gsap.to(camera.position, { x: clampedCamX, y: clampedCamY, z: clampedCamZ, duration: 0.8, ease: "power2.inOut" });
-            gsap.to(controls.target, { 
-                x: baseTx, y: baseTy, z: baseTz, 
-                duration: 0.8, ease: "power2.inOut", 
-                onUpdate: () => controls.update() 
-            });
+            gsap.to(controls.target, { x: baseTx, y: baseTy, z: baseTz, duration: 0.8, ease: "power2.inOut", onUpdate: () => controls.update() });
         }
     }
 
-    // --- 拖曳運算 ---
+    // --- 拖曳事件處理 (合併原本邏輯與新搖桿) ---
     function handleKnobMove(e) {
         if(!window.isKnobDragging || (typeof isAtBalcony !== 'undefined' && isAtBalcony)) return;
-
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
 
-        // 手指滑動超過 10px，取消長按判定，改為執行視角轉動
         if (longPressTimer && Math.hypot(cx - startX, cy - startY) > 10) {
-            clearTimeout(longPressTimer);
-            longPressTimer = null;
+            clearTimeout(longPressTimer); longPressTimer = null;
         }
 
         const rect = knob.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
+        let dx = cx - centerX;
+        let dy = cy - centerY;
 
-        let rad = Math.atan2(cx - centerX, -(cy - centerY));
-        let deg = rad * (180 / Math.PI);
+        if (window.isWalkMode) {
+            // 🕹️ 行走模式：虛擬搖桿邏輯
+            const maxRadius = rect.width / 2;
+            const dist = Math.hypot(dx, dy);
+            if (dist > maxRadius) {
+                dx = (dx / dist) * maxRadius;
+                dy = (dy / dist) * maxRadius;
+            }
+            
+            const knobCenter = document.querySelector('.knob-center');
+            if (knobCenter) knobCenter.style.transform = `translate(${dx}px, ${dy}px) rotate(0deg)`;
 
-        // 🛑 嚴格限制指針只能在「上半部」滑動 (-90度 到 90度)
-        if (deg > 90 && deg <= 180) deg = 90;
-        if (deg < -90 && deg >= -180) deg = -90;
-
-        let snappedDeg = Math.round(deg / 45) * 45;
-        applyKnobAngle(snappedDeg);
+            // 往下拖(dy正)是後退，往上拖是前進；往左(dx負)是左轉，往右是右轉
+            window.walkVel = (dy / maxRadius) * 0.45; 
+            window.turnVel = -(dx / maxRadius) * 0.035; 
+        } else {
+            // 👁️ 原本模式：視角旋轉邏輯
+            let rad = Math.atan2(cx - centerX, -(cy - centerY));
+            let deg = rad * (180 / Math.PI);
+            if (deg > 90 && deg <= 180) deg = 90;
+            if (deg < -90 && deg >= -180) deg = -90;
+            let snappedDeg = Math.round(deg / 45) * 45;
+            applyKnobAngle(snappedDeg);
+        }
     }
 
-    // --- 事件綁定 ---
-    knob.addEventListener('mousedown', (e) => { 
+    // --- 事件綁定核心 ---
+    function handleDown(e) {
+        // 雙擊檢測
+        const now = Date.now();
+        if (now - lastTapTime < 300) {
+            toggleWalkMode();
+            if(longPressTimer) clearTimeout(longPressTimer);
+            lastTapTime = 0;
+            return;
+        }
+        lastTapTime = now;
+
         window.isKnobDragging = true; 
-        startX = e.clientX; startY = e.clientY;
-        longPressTimer = setTimeout(toggleKnobMode, 400); // 0.4 秒觸發長按切換
+        startX = e.touches ? e.touches[0].clientX : e.clientX; 
+        startY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        if (!window.isWalkMode) {
+            longPressTimer = setTimeout(toggleKnobMode, 400); 
+        }
         handleKnobMove(e); 
-    });
-    knob.addEventListener('touchstart', (e) => { 
-        window.isKnobDragging = true; 
-        startX = e.touches[0].clientX; startY = e.touches[0].clientY;
-        longPressTimer = setTimeout(toggleKnobMode, 400);
-        handleKnobMove(e); 
-    }, {passive: false});
+    }
+
+    function handleUp() {
+        window.isKnobDragging = false; 
+        window.walkVel = 0;
+        window.turnVel = 0;
+        if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+        
+        // 放開搖桿時，中心點回彈
+        if (window.isWalkMode) {
+            const knobCenter = document.querySelector('.knob-center');
+            if(knobCenter) knobCenter.style.transform = `translate(0px, 0px) rotate(0deg)`;
+        }
+    }
+
+    knob.addEventListener('mousedown', handleDown);
+    knob.addEventListener('touchstart', (e) => { handleDown(e); }, {passive: false});
 
     window.addEventListener('mousemove', handleKnobMove);
     window.addEventListener('touchmove', (e) => { 
         if(window.isKnobDragging) { e.preventDefault(); handleKnobMove(e); }
     }, {passive: false});
 
-    window.addEventListener('mouseup', () => { 
-        window.isKnobDragging = false; 
-        if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('touchend', handleUp);
+
+    // --- ⌨️ 電腦端 WASD 鍵盤支援 ---
+    window.addEventListener('keydown', (e) => {
+        if (!window.isWalkMode) return;
+        const key = e.key.toLowerCase();
+        if (window.walkKeys.hasOwnProperty(key)) window.walkKeys[key] = true;
     });
-    window.addEventListener('touchend', () => { 
-        window.isKnobDragging = false; 
-        if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    window.addEventListener('keyup', (e) => {
+        const key = e.key.toLowerCase();
+        if (window.walkKeys.hasOwnProperty(key)) window.walkKeys[key] = false;
     });
+
+    // --- 🏃‍♂️ 物理引擎更新迴圈 (專責處理移動) ---
+    function walkUpdateLoop() {
+        requestAnimationFrame(walkUpdateLoop);
+        if (!window.isWalkMode || isRoomPaused() || (typeof isAtBalcony !== 'undefined' && isAtBalcony)) return;
+
+        // 統整速度 (鍵盤覆蓋觸控)
+        let currentWalk = window.walkVel;
+        let currentTurn = window.turnVel;
+        if (window.walkKeys.w) currentWalk = -0.45;
+        if (window.walkKeys.s) currentWalk = 0.45;
+        if (window.walkKeys.a) currentTurn = 0.035;
+        if (window.walkKeys.d) currentTurn = -0.035;
+
+        if (Math.abs(currentWalk) > 0.01 || Math.abs(currentTurn) > 0.01) {
+            // 轉向
+            camera.rotation.y += currentTurn;
+            camera.rotation.x = 0; // 行走時自動看正前方
+            camera.rotation.z = 0;
+
+            // 計算相機面朝方向 (忽略 Y 軸高度，只在平面移動)
+            let dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            dir.y = 0; 
+            dir.normalize();
+
+            let nextX = camera.position.x + dir.x * -currentWalk;
+            let nextZ = camera.position.z + dir.z * -currentWalk;
+
+            // 房間邊界防穿牆 (X: -56 ~ 56, Z: -16 ~ 56)
+            nextX = Math.max(-56, Math.min(56, nextX));
+            nextZ = Math.max(-14, Math.min(56, nextZ));
+
+            camera.position.x = nextX;
+            camera.position.z = nextZ;
+            camera.position.y = 16; // 鎖定人類視角身高
+        }
+    }
+    walkUpdateLoop(); // 啟動監聽迴圈
+
 })();
 
 // 新增或替換這個函數，專門用來渲染漂亮的索書卡
