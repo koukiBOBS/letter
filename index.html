@@ -4740,17 +4740,9 @@ function getIdealFov() {
     const isPortrait = window.innerHeight > window.innerWidth;
     return isPortrait ? 80 : 50;   // 觸控設備：直屏 80，橫屏退回 50
 }
-
-
-
-
-
         
         
       function initRoomScene() {
-        const sharedWoodMat = new THREE.MeshStandardMaterial({ 
-    map: createWoodTexture(), 
-    roughness: 0.6 
     const container = document.getElementById('room-canvas-container');
     scene = new THREE.Scene(); 
     scene.fog = new THREE.FogExp2(0xc5c1bc, 0.010);
@@ -5079,65 +5071,80 @@ ceilingLight.shadow.normalBias = 0.15;       // 👈 將 0.08 改為 0.15，消�
     const acBody = new THREE.Mesh(new THREE.BoxGeometry(2, 6, 16), new THREE.MeshStandardMaterial({color: 0xffffff, roughness: 0.3})); acGroup.add(acBody);
     const acVent = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1, 14), new THREE.MeshStandardMaterial({color: 0x111111})); acVent.position.set(-0.1, -2, 0); acGroup.add(acVent);
 
-
-        // 1. 在 createBookcase 函數外部定義一次（全域）
-const SHARED_BOOK_GEO = new THREE.BoxGeometry(1, 1, 1); // 單位幾何體
-const SHARED_BOOK_MAT = new THREE.MeshStandardMaterial({ roughness: 0.7 });
-
-    
-   function createBookcase(x, z) {
-        const shelfGroup = new THREE.Group();  shelfGroup.position.set(x, 15.02, z); scene.add(shelfGroup); const shelfMat = new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.8});
-        const shelfBack = new THREE.Mesh(new THREE.BoxGeometry(22, 30, 0.5), shelfMat); shelfGroup.add(shelfBack); const sideGeo = new THREE.BoxGeometry(0.5, 30, 6);
-        const leftSide = new THREE.Mesh(sideGeo, shelfMat); leftSide.position.set(-11, 0, -2.5); leftSide.castShadow = true; shelfGroup.add(leftSide); const rightSide = new THREE.Mesh(sideGeo, shelfMat); rightSide.position.set(11, 0, -2.5); rightSide.castShadow = true; shelfGroup.add(rightSide);
-        const topBotGeo = new THREE.BoxGeometry(22, 0.5, 6); const topBoard = new THREE.Mesh(topBotGeo, shelfMat); topBoard.position.set(0, 15, -2.5); topBoard.castShadow = true; shelfGroup.add(topBoard); const botBoard = new THREE.Mesh(topBotGeo, shelfMat); botBoard.position.set(0, -15, -2.5); botBoard.castShadow = true; shelfGroup.add(botBoard);
-        for(let sy = -10; sy <= 10; sy += 6.5) {
-            const shelfBoard = new THREE.Mesh(new THREE.BoxGeometry(21.5, 0.5, 5), shelfMat); shelfBoard.position.set(0, sy, -2.5); shelfBoard.castShadow = true; shelfGroup.add(shelfBoard);
-   
-
-// 2. 在 createBookcase 函數內部替換掉原本的 while 迴圈：
-const bookColors = [0x8b3a3a, 0x3a5f8b, 0x4f8b3a, 0x8b6b3a, 0x222222, 0xdddddd];
-const maxBooks = 300; // 預設最大書量
-const iMesh = new THREE.InstancedMesh(SHARED_BOOK_GEO, SHARED_BOOK_MAT, maxBooks);
-iMesh.castShadow = true;
-shelfGroup.add(iMesh);
-
-const dummy = new THREE.Object3D();
-let bookIdx = 0;
-
-for(let sy = -10; sy <= 10; sy += 6.5) {
-    let bx = -10;
-    while(bx < 10 && bookIdx < maxBooks) {
-        let bw = Math.random() * 0.8 + 0.3;
-        let bh = Math.random() * 2.5 + 3;
-        if(bx + bw > 10) break;
-
-        dummy.position.set(bx + bw/2, sy + bh/2 + 0.25, -2.5);
-        dummy.scale.set(bw - 0.05, bh, 4);
-        dummy.rotation.z = (Math.random() > 0.7) ? (Math.random() - 0.5) * 0.3 : 0;
-        dummy.updateMatrix();
-        
-        iMesh.setMatrixAt(bookIdx, dummy.matrix);
-        iMesh.setColorAt(bookIdx, new THREE.Color(bookColors[Math.floor(Math.random()*bookColors.length)]));
-        
-        bx += bw;
-        bookIdx++;
-    }
-}
-iMesh.count = bookIdx; // 修正實際顯示數量
+   let SHARED_BOOK_GEO = null;
+    let SHARED_BOOK_MAT = null;
+    function createBookcase(x, z) {
+        // 共用幾何體與材質，極大化節省記憶體
+        if (!SHARED_BOOK_GEO) {
+            SHARED_BOOK_GEO = new THREE.BoxGeometry(1, 1, 1);
+            SHARED_BOOK_MAT = new THREE.MeshStandardMaterial({ roughness: 0.7 });
         }
+        const shelfGroup = new THREE.Group();  
+        shelfGroup.position.set(x, 15.02, z); 
+        scene.add(shelfGroup); 
+        
+        const shelfMat = new THREE.MeshStandardMaterial({map: createWoodTexture(), roughness: 0.8});
+        const shelfBack = new THREE.Mesh(new THREE.BoxGeometry(22, 30, 0.5), shelfMat); 
+        shelfGroup.add(shelfBack); 
+        
+        const sideGeo = new THREE.BoxGeometry(0.5, 30, 6);
+        const leftSide = new THREE.Mesh(sideGeo, shelfMat); leftSide.position.set(-11, 0, -2.5); leftSide.castShadow = true; shelfGroup.add(leftSide); 
+        const rightSide = new THREE.Mesh(sideGeo, shelfMat); rightSide.position.set(11, 0, -2.5); rightSide.castShadow = true; shelfGroup.add(rightSide);
+        
+        const topBotGeo = new THREE.BoxGeometry(22, 0.5, 6); 
+        const topBoard = new THREE.Mesh(topBotGeo, shelfMat); topBoard.position.set(0, 15, -2.5); topBoard.castShadow = true; shelfGroup.add(topBoard); 
+        const botBoard = new THREE.Mesh(topBotGeo, shelfMat); botBoard.position.set(0, -15, -2.5); botBoard.castShadow = true; shelfGroup.add(botBoard);
 
-// 👇 新增：書櫃的拖曳判定框與碰撞屬性
+        // ⚡ 效能優化：將數百本書合併為一個繪圖指令 (InstancedMesh)
+        const bookColors = [0x8b3a3a, 0x3a5f8b, 0x4f8b3a, 0x8b6b3a, 0x222222, 0xdddddd];
+        const maxBooks = 300; 
+        const iMesh = new THREE.InstancedMesh(SHARED_BOOK_GEO, SHARED_BOOK_MAT, maxBooks);
+        iMesh.castShadow = true;
+        shelfGroup.add(iMesh);
+
+        const dummy = new THREE.Object3D();
+        let bookIdx = 0;
+
+        for(let sy = -10; sy <= 10; sy += 6.5) {
+            const shelfBoard = new THREE.Mesh(new THREE.BoxGeometry(21.5, 0.5, 5), shelfMat); 
+            shelfBoard.position.set(0, sy, -2.5); 
+            shelfBoard.castShadow = true; 
+            shelfGroup.add(shelfBoard);
+
+            let bx = -10;
+            while(bx < 10 && bookIdx < maxBooks) {
+                let bw = Math.random() * 0.8 + 0.3; 
+                let bh = Math.random() * 2.5 + 3; 
+                if(bx + bw > 10) break; 
+                
+                dummy.position.set(bx + bw/2, sy + bh/2 + 0.25, -2.5);
+                dummy.scale.set(bw - 0.05, bh, 4);
+                dummy.rotation.z = (Math.random() > 0.7) ? (Math.random() - 0.5) * 0.3 : 0;
+                dummy.updateMatrix();
+                
+                iMesh.setMatrixAt(bookIdx, dummy.matrix);
+                iMesh.setColorAt(bookIdx, new THREE.Color(bookColors[Math.floor(Math.random()*bookColors.length)]));
+                
+                bx += bw; 
+                bookIdx++;
+            }
+        }
+        iMesh.count = bookIdx;
+        iMesh.instanceMatrix.needsUpdate = true;
+        if (iMesh.instanceColor) iMesh.instanceColor.needsUpdate = true;
+
         const hitBox = new THREE.Mesh(new THREE.BoxGeometry(24, 32, 8), new THREE.MeshBasicMaterial({visible: false}));
         hitBox.userData = { type: 'bookcase' };
         shelfGroup.add(hitBox);
         interactables.push(hitBox);
         
-        // 賦予類似畫作的邊界計算屬性
         shelfGroup.userData.frameW = 22; 
         shelfGroup.userData.wallNormal = new THREE.Vector3(0, 0, 1);
        
-        return shelfGroup; // 這一行是修復無法隱藏的關鍵
+        return shelfGroup;
     }
+
+    
 // 替換原本的這三行
 const bc1 = createBookcase(-25, 59); if(bc1) bc1.userData.itemId = 'bookcase_1';
 const bc2 = createBookcase(0, 59); if(bc2) bc2.userData.itemId = 'bookcase_2';
@@ -5153,7 +5160,7 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
 
     
 
-
+    woodMat = new THREE.MeshStandardMaterial({ map: createWoodTexture(), roughness: 0.6 });
     desk = new THREE.Group(); scene.add(desk);
     const top = new THREE.Mesh(new THREE.BoxGeometry(28, 0.8, 14), woodMat); top.position.y = 8; top.receiveShadow = true; top.castShadow = true; desk.add(top);
     const legGeo = new THREE.CylinderGeometry(0.4, 0.3, 8, 16); [[-12,-5],[12,-5],[-12,5],[12,5]].forEach(pos => { const leg = new THREE.Mesh(legGeo, woodMat); leg.position.set(pos[0], 4, pos[1]); leg.castShadow = true; leg.receiveShadow = true; desk.add(leg); });
@@ -5838,44 +5845,69 @@ benchGrp = new THREE.Group();
 
     // 路邊樹木 (跟隨馬路延伸，種植範圍改為 -160 到 160)
     // 3. 替換路邊樹木 (種植範圍擴大到 -2000 到 2000)
-// 準備 InstancedMesh
-const treeCount = 600; // 預估總數
-const trunkIMesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.6, 4), new THREE.MeshStandardMaterial({color: 0x4a3728}), treeCount);
-const leafIMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(3, 8, 8), new THREE.MeshStandardMaterial({roughness: 0.9}), treeCount);
-trunkIMesh.castShadow = true;
-leafIMesh.castShadow = true;
-balconyOnlyGroup.add(trunkIMesh, leafIMesh);
+ // ⚡ 效能優化：實例化路邊樹木 (將數千個物件合體為 3 個)
+    const treeCount = 500; // 預估總數
+    const trunkIMesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.6, 4), new THREE.MeshStandardMaterial({color: 0x4a3728, roughness: 0.9}), treeCount);
+    const leafIMesh1 = new THREE.InstancedMesh(new THREE.SphereGeometry(3, 8, 8), new THREE.MeshStandardMaterial({roughness: 0.9}), treeCount);
+    const leafIMesh2 = new THREE.InstancedMesh(new THREE.SphereGeometry(2, 8, 8), new THREE.MeshStandardMaterial({roughness: 0.9}), treeCount);
+    
+    trunkIMesh.castShadow = true;
+    leafIMesh1.castShadow = true;
+    leafIMesh2.castShadow = true;
+    
+    balconyOnlyGroup.add(trunkIMesh, leafIMesh1, leafIMesh2);
 
-const dummy = new THREE.Object3D();
-let tIdx = 0;
+    const dummyT = new THREE.Object3D();
+    let tIdx = 0;
 
-for (let i = -2000; i <= 2000; i += 18) {
-    if (Math.abs(i) < 8) continue;
-    [21, -15].forEach(zPos => {
-        if(tIdx >= treeCount) return;
-        const scale = 0.7 + Math.random() * 0.8;
-        const x = i + (Math.random()-0.5)*4;
-        const z = zPos + (Math.random()-0.5)*1.5;
+    for (let i = -2000; i <= 2000; i += 18) {
+        if (Math.abs(i) < 8) continue; 
+        [roadWidth/2 + 8, -roadWidth/2 - 2].forEach(zPos => { 
+            if (tIdx >= treeCount) return;
+            
+            const hue = 0.25 + Math.random() * 0.1; 
+            const lightness = 0.2 + Math.random() * 0.2;
+            const leafColor = new THREE.Color().setHSL(hue, 0.6, lightness);
+            
+            const scale = 0.7 + Math.random() * 0.8; 
+            const xPos = i + (Math.random()-0.5)*4;
+            const zFinal = zPos + (Math.random()-0.5)*1.5;
+            const rotY = Math.random() * Math.PI;
 
-        // 設定樹幹
-        dummy.position.set(x, -4.5 + 2, z);
-        dummy.scale.set(scale, scale, scale);
-        dummy.updateMatrix();
-        trunkIMesh.setMatrixAt(tIdx, dummy.matrix);
+            // 1. 樹幹矩陣
+            dummyT.position.set(xPos, -4.5 + 2 * scale, zFinal);
+            dummyT.scale.set(scale, scale, scale);
+            dummyT.rotation.set(0, rotY, 0);
+            dummyT.updateMatrix();
+            trunkIMesh.setMatrixAt(tIdx, dummyT.matrix);
 
-        // 設定樹葉
-        dummy.position.set(x, -4.5 + 5, z);
-        dummy.scale.set(scale, scale * 1.2, scale);
-        dummy.updateMatrix();
-        leafIMesh.setMatrixAt(tIdx, dummy.matrix);
-        
-        // 給樹葉一點隨機綠色
-        const hue = 0.25 + Math.random() * 0.1;
-        leafIMesh.setColorAt(tIdx, new THREE.Color().setHSL(hue, 0.6, 0.2 + Math.random()*0.2));
-        
-        tIdx++;
-    });
-}
+            // 2. 主樹葉矩陣
+            dummyT.position.set(xPos, -4.5 + 5 * scale, zFinal);
+            dummyT.scale.set(scale, scale * 1.2, scale);
+            dummyT.updateMatrix();
+            leafIMesh1.setMatrixAt(tIdx, dummyT.matrix);
+            leafIMesh1.setColorAt(tIdx, leafColor);
+
+            // 3. 側邊樹葉矩陣
+            const leaf2X = xPos + Math.cos(rotY)*1.5*scale;
+            const leaf2Z = zFinal - Math.sin(rotY)*1.5*scale;
+            dummyT.position.set(leaf2X, -4.5 + 4.5 * scale, leaf2Z);
+            dummyT.scale.set(scale, scale, scale);
+            dummyT.updateMatrix();
+            leafIMesh2.setMatrixAt(tIdx, dummyT.matrix);
+            leafIMesh2.setColorAt(tIdx, leafColor);
+
+            tIdx++;
+        }); 
+    }
+    
+    // 通知顯示卡更新緩衝區
+    trunkIMesh.instanceMatrix.needsUpdate = true;
+    leafIMesh1.instanceMatrix.needsUpdate = true;
+    leafIMesh2.instanceMatrix.needsUpdate = true;
+    if (leafIMesh1.instanceColor) leafIMesh1.instanceColor.needsUpdate = true;
+    if (leafIMesh2.instanceColor) leafIMesh2.instanceColor.needsUpdate = true;
+
     
     // 我的房間底座 (完全保留原樣)
     const myBuildingBaseMat = new THREE.MeshStandardMaterial({color: 0xdbd4cc, roughness: 1.0}); 
