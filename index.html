@@ -3,8 +3,11 @@
 <html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>閱讀人生</title>
+
+    <link rel="icon" href="data:image/x-icon;base64,AA==">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1284,18 +1287,20 @@
 
 
         /* --- 巴士系統 UI --- */
+/* --- 巴士系統 UI --- */
 #bus-timer-display {
     position: fixed; top: 40px; left: 50%; transform: translateX(-50%);
     background: rgba(10, 8, 5, 0.85); color: #dcd5c9; padding: 12px 30px;
     border-radius: 30px; font-family: 'Courier New', Courier, monospace; font-size: 1.8rem; font-weight: bold;
     z-index: 4000; display: none; border: 2px solid #5a5042; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
     backdrop-filter: blur(5px); letter-spacing: 2px;
+    pointer-events: auto; /* 👈 新增：讓計時器不會被穿透 */
 }
 
 .bus-bell-container {
     position: fixed; bottom: 50px; right: 30px; z-index: 4000;
     width: 70px; height: 110px;
-    background: linear-gradient(135deg, #facc15, #ca8a04); /* 經典黃色鐘盒 */
+    background: linear-gradient(135deg, #facc15, #ca8a04);
     border-radius: 12px;
     border: 2px solid #a16207;
     display: none; flex-direction: column; align-items: center; justify-content: center;
@@ -1303,6 +1308,7 @@
         inset -3px -3px 8px rgba(0,0,0,0.2), 
         inset 3px 3px 8px rgba(255,255,255,0.4),
         0 10px 20px rgba(0,0,0,0.4);
+    pointer-events: auto; /* 👈 新增：允許滑鼠點擊這個區塊 */
 }
 
 .bell-button {
@@ -1884,8 +1890,7 @@ function startBusJourney() {
         if (busTimeLeft === bellActiveTime) {
             isBellActiveWindow = true;
             document.getElementById('btn-press-bell').classList.add('active-window');
-            // 播放模擬的提示音 (可選)
-            playSynthTone(800); 
+            // ⚠️ 注意：此處不能播放聲音，否則會被瀏覽器安全機制攔截並導致計時器當機！改用純視覺閃爍。
         }
         
         // 🔴 3 秒窗口結束
@@ -1902,18 +1907,12 @@ function startBusJourney() {
     }, 1000);
 }
 
-function updateBusTimerUI() {
-    const m = Math.floor(busTimeLeft / 60).toString().padStart(2, '0');
-    const s = (busTimeLeft % 60).toString().padStart(2, '0');
-    document.getElementById('bus-timer-display').innerText = `${m}:${s}`;
-}
-
 // 點擊落車鐘按鈕
 function pressBusBell() {
     if (!isRidingBus) return;
     
-    // 模擬真實按鐘的聲音
-    playSynthTone(1200);
+    // 由於點擊是「使用者主動行為」，這裡播放聲音是安全且合法的
+    try { playSynthTone(1200); } catch(e) {}
 
     if (isBellActiveWindow) {
         // 🎉 挑戰成功
@@ -1931,6 +1930,14 @@ function pressBusBell() {
         failBusJourney("按錯時機了！司機沒有理會你，巴士直接開回總站...");
     }
 }
+
+function updateBusTimerUI() {
+    const m = Math.floor(busTimeLeft / 60).toString().padStart(2, '0');
+    const s = (busTimeLeft % 60).toString().padStart(2, '0');
+    document.getElementById('bus-timer-display').innerText = `${m}:${s}`;
+}
+
+
 
 // 失敗懲罰處理
 function failBusJourney(msg) {
