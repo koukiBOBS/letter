@@ -1279,28 +1279,6 @@
 }
 .btn-memo-close:hover { background: rgba(139, 115, 85, 0.05); border-color: #8b7355; }
 
-
-
-/* --- 港式巴士下車鐘與計時器 --- */
-.bus-stop-bell {
-    position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
-    z-index: 5000; width: 80px; height: 80px; background: #cc2222;
-    border: 5px solid #dddddd; border-radius: 50%; cursor: pointer;
-    box-shadow: 0 0 20px rgba(204, 34, 34, 0.6), inset 0 0 10px rgba(0,0,0,0.3);
-    display: none; align-items: center; justify-content: center;
-    transition: all 0.2s;
-}
-.bus-stop-bell:active { transform: translateX(-50%) scale(0.9); background: #991111; }
-.bus-stop-bell svg { width: 40px; height: 40px; color: white; }
- 
-.bus-timer-display {
-    position: fixed; bottom: 130px; left: 50%; transform: translateX(-50%);
-    z-index: 5000; background: rgba(0,0,0,0.7); color: #ff9900;
-    padding: 5px 15px; border-radius: 10px; font-family: 'Courier New', monospace;
-    font-size: 1.5rem; font-weight: bold; border: 2px solid #555; display: none;
-}
-
-
         
         
     </style>
@@ -1459,14 +1437,14 @@
 </button>
 
         <!-- 雙層巴士下車按鈕 -->
-<!-- 雙層巴士下車鐘與計時器 -->
-<div id="bus-timer" class="bus-timer-display">02:30</div>
-<div id="btn-bus-bell" class="bus-stop-bell" onclick="handleBellClick()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+<button id="btn-getoff-bus" class="btn" style="display:none; position:fixed; bottom:40px; left:50%; transform:translateX(-50%); z-index:4000; background:rgba(204, 34, 34, 0.85); backdrop-filter:blur(5px); color:#fff; border: 2px solid #ff4444; box-shadow: 0 10px 25px rgba(204,34,34,0.3);" onclick="getOffBus()">
+    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" style="margin-right:8px;">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+        <polyline points="16 17 21 12 16 7"></polyline>
+        <line x1="21" y1="12" x2="9" y2="12"></line>
     </svg>
-</div>
+    按下落車鐘
+</button>
         
         <div class="room-header">
             <span class="user-info"><span id="user-name">載入中...</span></span>
@@ -1811,11 +1789,7 @@
 
 
 
-let busTimerInterval = null;
-let busTimeRemaining = 150; // 2分30秒 = 150秒
-let tunnelGrp = null;
-let isInsideTunnel = false;
-let busRideStartTime = 0;
+
         
 
         let allowedEmailsWhitelist = [];
@@ -5767,48 +5741,6 @@ interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitB
 
     
 }
-
-
-
-
-
-
-
-function createTunnel(direction) {
-    const grp = new THREE.Group();
-    const tunnelLen = 500;
-    const tunnelGeo = new THREE.BoxGeometry(45, 30, tunnelLen);
-    const tunnelMat = new THREE.MeshStandardMaterial({
-        color: 0x333333, roughness: 0.8, side: THREE.BackSide
-    });
-    const tunnelMesh = new THREE.Mesh(tunnelGeo, tunnelMat);
-    tunnelMesh.position.y = 10;
-    grp.add(tunnelMesh);
- 
-    // 隧道頂部橙色燈光
-    for(let z = -tunnelLen/2; z <= tunnelLen/2; z += 40) {
-        const lightBox = new THREE.Mesh(
-            new THREE.BoxGeometry(10, 0.5, 5),
-            new THREE.MeshBasicMaterial({ color: 0xffaa00 })
-        );
-        lightBox.position.set(0, 24.8, z);
-        grp.add(lightBox);
-        
-        const pLight = new THREE.PointLight(0xff6600, 1.5, 60);
-        pLight.position.set(0, 22, z);
-        grp.add(pLight);
-    }
-    grp.visible = false;
-    scene.add(grp);
-    return grp;
-}
-
-
-
-
-
-
-
         
       function buildPlantIn3D(type, growth, wilt) {
     if (plantGroup) { desk.remove(plantGroup); interactables = interactables.filter(i => !(i.userData && i.userData.type === 'plant')); }
@@ -6894,63 +6826,55 @@ const outsideWorldBox = new THREE.Box3(
  
 function animateRoom() {
     requestAnimationFrame(animateRoom);
+    // 1. 如果畫面被 UI 遮擋，或手機退到背景(縮小網頁)，直接罷工不計算，釋放 100% 效能！
     if (isRoomPaused() || !isAppActive) return;
- 
+    // 更新視錐體矩陣 (取得目前攝影機看得到的範圍)
     if (camera) {
         camera.updateMatrixWorld();
         cameraViewProjectionMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
         cameraFrustum.setFromProjectionMatrix(cameraViewProjectionMatrix);
     }
  
-    let isLookingOutside = isAtBalcony || isRidingBus || cameraFrustum.intersectsBox(outsideWorldBox);
+// 🔄 實時指南針 (支援原地轉身的鏡像反轉)
+    const knobDial = document.getElementById('knob-dial');
+    if (knobDial && camera && controls && !window.isKnobDragging) {
+        const dx = controls.target.x - camera.position.x;
+        const dz = controls.target.z - camera.position.z;
+        
+        // 根據目前的視角模式，翻轉 X 與 Z 軸方向
+        // 模式一(望窗)：正前方為 -Z。 模式二(望櫃)：正前方為 +Z，且左右相反
+        const refX = (window.knobMode === 2) ? -dx : dx;
+        const refZ = (window.knobMode === 2) ? dz : -dz; 
+        
+        const angleDeg = Math.atan2(refX, refZ) * (180 / Math.PI);
+        knobDial.style.transform = `rotate(${angleDeg}deg)`;
+    }
+       
+    if(controls) controls.update();
+    
+    // ==========================================
+    // ⚡ 效能優化區：精準判斷是否看到窗外
+    // ==========================================
  
+    // 只要視線掃到「窗外的虛擬區域」，或是玩家正站在露台上，就判定為正在看窗外
+    let isLookingOutside = isAtBalcony || cameraFrustum.intersectsBox(outsideWorldBox);
+ 
+    // 只有當視線掃到窗外時，才去計算耗費 CPU 的海浪、雲朵、車輛與摩天輪
     if (isLookingOutside) {
+      // ==========================================
+        // 1. 車輛邏輯 (配合無盡道路延伸)
+        // ==========================================
         let refX = (isRidingBus && activeBus) ? activeBus.position.x : 0;
-        let busDir = (isRidingBus && activeBus) ? (activeBus.userData.speed > 0 ? 1 : -1) : 0;
- 
-        // --- 1. 隧道與風景切換邏輯 ---
-        if (isRidingBus) {
-            let elapsed = (Date.now() - busRideStartTime) / 1000;
-            // 往摩天輪方向(dir > 0)且超過 30 秒
-            if (busDir > 0 && elapsed > 30) {
-                if (!isInsideTunnel) {
-                    isInsideTunnel = true;
-                    if (!tunnelGrp) tunnelGrp = createTunnel(1);
-                    tunnelGrp.visible = true;
-                    balconyOnlyGroup.children.forEach(c => { if(c.geometry && c.geometry.type === "ConeGeometry") c.visible = false; }); // 隱藏樹
-                }
-                tunnelGrp.position.x = refX; // 隧道跟著巴士跑，造成無限循環假象
-            } else {
-                if(isInsideTunnel) {
-                    isInsideTunnel = false;
-                    if(tunnelGrp) tunnelGrp.visible = false;
-                }
-            }
-        }
- 
-        // --- 2. 交通防撞系統與循環 ---
-        // 按照 X 軸排序車輛，檢測前後車距
-        const sortedCars = [...animScenery.cars].sort((a, b) => a.position.x - b.position.x);
         
         animScenery.cars.forEach(c => {
-            const dir = c.userData.speed > 0 ? 1 : -1;
-            let currentSpeed = Math.abs(c.userData.speed);
+            c.position.x += c.userData.speed;
             
-            // 尋找前車
-            let myIndex = sortedCars.indexOf(c);
-            let frontCar = (dir > 0) ? sortedCars[myIndex + 1] : sortedCars[myIndex - 1];
-            
-            if (frontCar) {
-                let dist = Math.abs(frontCar.position.x - c.position.x);
-                if (dist < 35) currentSpeed *= 0.5; // 太近減速
-                if (dist < 20) currentSpeed = 0;    // 極近停車
+            // 如果這台車不是玩家正在坐的巴士，則讓它圍繞在玩家附近循環
+            if (!isRidingBus || c !== activeBus) {
+                // 250 是極限濃霧區，車輛在濃霧中傳送，玩家肉眼絕對看不出破綻
+                if(c.position.x > refX + 250) c.position.x = refX - 250;
+                else if(c.position.x < refX - 250) c.position.x = refX + 250;
             }
- 
-            c.position.x += currentSpeed * dir;
- 
-            // 無限道路循環
-            if(c.position.x > refX + 800) c.position.x = refX - 800;
-            else if(c.position.x < refX - 800) c.position.x = refX + 800;
         });
  
         // 2. 🎡 摩天輪
@@ -6989,6 +6913,7 @@ function animateRoom() {
             });
         }
     }
+ 
     // ==========================================
     // 室內動畫 (永遠計算，因為就在身邊)
     // ==========================================
@@ -8896,101 +8821,78 @@ function checkAndShowWelcomeMemo(readingTasks, randomTasks, submittedReading, su
 
 
 
-        
-
-
-
 // 🚌 上下車邏輯與終極防轉向 BUG 修復
 function rideBus(busHitBox) {
     if (isRidingBus) return;
     isRidingBus = true;
     activeBus = busHitBox.userData.vehicleObj;
     const direction = busHitBox.userData.direction;
-    busRideStartTime = Date.now();
-    isInsideTunnel = false;
- 
+
     preRideCameraState.pos.copy(camera.position);
     preRideCameraState.target.copy(controls.target);
     preRideCameraState.fov = camera.fov;
- 
-    // 隱藏原本車身，掛載內飾
-    activeBus.children.forEach(child => { if (child.isMesh && child !== busHitBox) child.visible = false; });
+
+    // 鎖死控制器
+    if (!window.originalControlsUpdate) window.originalControlsUpdate = controls.update;
+    controls.update = function() {
+        if (isRidingBus) return;
+        window.originalControlsUpdate.call(controls);
+    };
+
+    activeBus.children.forEach(child => {
+        if (child.isMesh && child !== busHitBox) {
+            child.userData.wasVisible = child.visible;
+            child.visible = false;
+        }
+    });
+
     if (!busInteriorGrp) busInteriorGrp = createBusInterior();
     activeBus.add(busInteriorGrp);
-    busInteriorGrp.position.set(0, 4.2, direction > 0 ? 3.5 : -3.5);
+
+    const camZPos = direction > 0 ? 3.5 : -3.5;
+    busInteriorGrp.position.set(0, 4.2, camZPos);
     busInteriorGrp.rotation.set(0, direction > 0 ? Math.PI : 0, 0);
- 
+
     controls.enabled = false;
- 
-    // 啟動倒計時器
-    busTimeRemaining = 150;
-    document.getElementById('bus-timer').style.display = 'block';
-    document.getElementById('btn-bus-bell').style.display = 'flex';
-    updateBusTimerUI();
- 
-    busTimerInterval = setInterval(() => {
-        busTimeRemaining--;
-        updateBusTimerUI();
-        if (busTimeRemaining <= 0) {
-            clearInterval(busTimerInterval);
-            showToast("⚠️ 坐過站了！自動返回書房...");
-            getOffBus();
-        }
-    }, 1000);
- 
-    // 運鏡動畫
-    const targetWorldPos = new THREE.Vector3(0, 4.2, direction > 0 ? 3.5 : -3.5).applyMatrix4(activeBus.matrixWorld);
-    gsap.to(camera.position, { x: targetWorldPos.x, y: targetWorldPos.y, z: targetWorldPos.z, duration: 1.2 });
+    document.getElementById('btn-return-room').style.display = 'none';
+    if(document.getElementById('mobile-cam-knob')) document.getElementById('mobile-cam-knob').style.display = 'none';
+
+    const targetWorldPos = new THREE.Vector3(0, 4.2, camZPos).applyMatrix4(activeBus.matrixWorld);
+    gsap.to(camera.position, {
+        x: targetWorldPos.x, y: targetWorldPos.y, z: targetWorldPos.z,
+        duration: 1.2, ease: "power2.inOut"
+    });
+    
     gsap.to(camera, { fov: 75, duration: 1.2, onUpdate: () => camera.updateProjectionMatrix() });
- 
-    const lookPos = new THREE.Vector3(0, 4.2, direction > 0 ? 30 : -30).applyMatrix4(activeBus.matrixWorld);
+
+    const lookAheadWorldPos = new THREE.Vector3(0, 4.2, direction > 0 ? 30 : -30).applyMatrix4(activeBus.matrixWorld);
     gsap.to(controls.target, {
-        x: lookPos.x, y: lookPos.y, z: lookPos.z, duration: 1.2,
+        x: lookAheadWorldPos.x, y: lookAheadWorldPos.y, z: lookAheadWorldPos.z,
+        duration: 1.2, ease: "power2.inOut",
         onComplete: () => {
             busInteriorGrp.add(camera);
             camera.position.set(0, 0.4, 0);
             camera.rotation.set(0, 0, 0);
-            busBumpAnim = gsap.to(camera.position, { y: 0.408, duration: 0.6, yoyo: true, repeat: -1 });
+            
+            // 🚌 極度輕微的車體震動 (平穩路感)
+            busBumpAnim = gsap.to(camera.position, {
+                y: 0.408, // 只震動 0.008 單位
+                duration: 0.6, // 放慢震動頻率
+                yoyo: true, 
+                repeat: -1, 
+                ease: "sine.inOut"
+            });
+            
+            document.getElementById('btn-getoff-bus').style.display = 'flex';
+            showToast("🚌 歡迎搭乘九龍巴士，請緊握扶手。");
         }
     });
 }
 
-
-
-
-        function updateBusTimerUI() {
-    const mins = Math.floor(busTimeRemaining / 60);
-    const secs = busTimeRemaining % 60;
-    document.getElementById('bus-timer').innerText =
-        `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-}
- 
-function handleBellClick() {
-    // 判斷是否在 2:00 (30秒剩餘) 到 2:30 (0秒剩餘) 之間
-    // 150s 總長，120s~150s 經過 = 剩餘 30s 到 0s
-    if (busTimeRemaining <= 30 && busTimeRemaining > 0) {
-        clearInterval(busTimerInterval);
-        showToast("🔔 叮咚！準備下車...");
-        // 這裡以後可以加入跳轉商業街的邏輯
-        setTimeout(getOffBus, 1500);
-    } else {
-        showToast("⚠️ 還沒到站，請在最後 30 秒內按鐘。");
-    }
-}
-
-
-        
-        
 function getOffBus() {
     if (!isRidingBus) return;
     isRidingBus = false;
-    
-    // 清除計時器與 UI
-    if(busTimerInterval) clearInterval(busTimerInterval);
-    document.getElementById('bus-timer').style.display = 'none';
-    document.getElementById('btn-bus-bell').style.display = 'none';
-    if(tunnelGrp) tunnelGrp.visible = false;
-    isInsideTunnel = false;
+    document.getElementById('btn-getoff-bus').style.display = 'none';
 
     if (busBumpAnim) { busBumpAnim.kill(); busBumpAnim = null; }
 
