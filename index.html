@@ -1568,6 +1568,15 @@
     返回室內
 </button>
 
+
+        <!-- 離開商店街返回房間 -->
+<button id="btn-leave-street" class="btn" style="display:none; position:fixed; bottom:40px; left:50%; transform:translateX(-50%); z-index:4000; background:rgba(20, 18, 16, 0.85); backdrop-filter:blur(5px); color:#d4af37; border: 1px solid #d4af37; box-shadow: 0 10px 25px rgba(0,0,0,0.3);" onclick="leaveShoppingStreet()">
+    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" style="margin-right:8px;">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    搭車回家
+</button>
+
 <!-- 巴士倒數計時器 -->
         <div id="bus-timer-display">03:00</div>
         
@@ -2048,19 +2057,92 @@ function failBusJourney(msg) {
 }
 
 // 成功進入商店街邏輯
+// 成功進入商店街邏輯 (無縫切換場景)
 function enterShoppingStreet() {
     const bellBox = document.getElementById('bus-bell-box');
     if (bellBox) bellBox.style.display = 'none';
-    
     const timerDisp = document.getElementById('bus-timer-display');
     if (timerDisp) timerDisp.style.display = 'none';
     
-    // 這裡預留給你未來繪製商店街地圖用的 Hook
-    alert("🛍️ 成功抵達！未來這裡將切換至『商店街地圖』。\n(測試階段：點擊確定後先將您送回房間)");
+    // 黑屏轉場效果
+    const fadeOverlay = document.createElement('div');
+    fadeOverlay.style.cssText = "position:fixed; inset:0; background:#000; z-index:99999; opacity:0; pointer-events:none; transition: opacity 0.8s;";
+    document.body.appendChild(fadeOverlay);
     
-    getOffBus(); // 目前先送回房間以免卡死
+    // 執行轉場
+    setTimeout(() => { fadeOverlay.style.opacity = 1; }, 10);
+    
+    setTimeout(() => {
+        // 1. 隱藏房間所有物品以節省效能
+        roomVisibilityBackup = [];
+        scene.children.forEach(child => {
+            // 保留燈光、天空、海面與摩天輪
+            if (!child.isLight && child !== cloudGroup && child !== sceneryGroup) {
+                roomVisibilityBackup.push({ obj: child, visible: child.visible });
+                child.visible = false;
+            }
+        });
+
+        // 2. 建造並顯示商店街
+        if (!shoppingStreetGrp) {
+            buildShoppingStreet();
+        }
+        shoppingStreetGrp.visible = true;
+        isAtStreet = true;
+        
+        // 3. 將摩天輪移到商店街的盡頭作為地標背景
+        if (typeof ferrisWheelGrp !== 'undefined') {
+            ferrisWheelGrp.parent.position.set(2000 - 120, -5, 2000 - 80);
+        }
+
+        // 4. 設定攝影機位置 (站在馬路中央望向店舖)
+        camera.position.set(2000 - 15, 6, 2000);
+        controls.target.set(2000 + 25, 6, 2000); // 看向建築群
+        controls.update();
+        
+        // 顯示離開按鈕
+        document.getElementById('btn-leave-street').style.display = 'flex';
+        
+        // 移除黑屏
+        fadeOverlay.style.opacity = 0;
+        setTimeout(() => fadeOverlay.remove(), 800);
+        
+        showToast("🛍️ 抵達海濱商店街！點擊店舖看看吧。");
+    }, 850);
 }
 
+// 離開商店街，返回房間露台
+function leaveShoppingStreet() {
+    document.getElementById('btn-leave-street').style.display = 'none';
+    
+    const fadeOverlay = document.createElement('div');
+    fadeOverlay.style.cssText = "position:fixed; inset:0; background:#000; z-index:99999; opacity:0; pointer-events:none; transition: opacity 0.8s;";
+    document.body.appendChild(fadeOverlay);
+    
+    setTimeout(() => { fadeOverlay.style.opacity = 1; }, 10);
+    
+    setTimeout(() => {
+        // 1. 隱藏商店街
+        if (shoppingStreetGrp) shoppingStreetGrp.visible = false;
+        isAtStreet = false;
+        
+        // 2. 將摩天輪搬回原本海上的位置
+        if (typeof ferrisWheelGrp !== 'undefined') {
+            ferrisWheelGrp.parent.position.set(110, -5, -35);
+        }
+
+        // 3. 恢復房間可見度
+        roomVisibilityBackup.forEach(item => {
+            item.obj.visible = item.visible;
+        });
+        
+        // 4. 直接呼叫下車函數，會自動播放退回房間的動畫
+        getOffBus();
+        
+        fadeOverlay.style.opacity = 0;
+        setTimeout(() => fadeOverlay.remove(), 800);
+    }, 850);
+}
 // 開發者面板測試按鈕：強制立刻觸發成功狀態
 window.devSimulateShoppingStreet = function() {
     if (!isRidingBus) return alert("請先走到露台並點擊搭乘雙層巴士！");
@@ -9238,6 +9320,218 @@ function getOffBus() {
         }
     });
 }
+
+
+
+        // =====================================================================
+// 🏙️ 香港海濱商店街系統 (極限效能優化版)
+// =====================================================================
+let shoppingStreetGrp;
+let isAtStreet = false;
+let roomVisibilityBackup = [];
+
+// 🎨 零效能生成：香港經典「紙皮石」馬賽克外牆
+function createMosaicTileTexture(baseColor) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#cccccc'; // 水泥縫隙底色
+    ctx.fillRect(0, 0, 256, 256);
+    
+    const tileSize = 8;
+    const gap = 1;
+    for(let y=0; y<256; y+=tileSize) {
+        for(let x=0; x<256; x+=tileSize) {
+            // 產生同色系但深淺不一的磚塊
+            ctx.fillStyle = Math.random() > 0.8 ? '#ffffff' : baseColor;
+            ctx.globalAlpha = 0.7 + Math.random() * 0.3;
+            ctx.fillRect(x+gap, y+gap, tileSize-gap*2, tileSize-gap*2);
+        }
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+// 🎨 零效能生成：舊式金屬鐵閘 (Roller Shutter)
+function createRollerShutterTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0, '#555'); grad.addColorStop(0.5, '#999'); grad.addColorStop(1, '#444');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, 256, 256);
+    
+    // 鐵閘的橫向金屬波浪紋
+    for(let y=0; y<256; y+=16) {
+        ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, y, 256, 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(0, y+2, 256, 2);
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+// 🎨 零效能生成：香港霓虹燈招牌
+function createNeonSignTexture(text, bgColor, neonColor) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = bgColor; ctx.fillRect(0, 0, 256, 512);
+    
+    // 畫出招牌邊框
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 10; ctx.strokeRect(5, 5, 246, 502);
+    
+    // 霓虹發光字體
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = neonColor;
+    ctx.shadowBlur = 20;
+    ctx.font = 'bold 70px "Noto Serif TC", serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    
+    // 垂直排版文字
+    const chars = text.split('');
+    const startY = 512 / 2 - (chars.length * 80) / 2 + 40;
+    chars.forEach((c, i) => {
+        ctx.fillText(c, 128, startY + i * 80);
+        ctx.fillText(c, 128, startY + i * 80); // 畫兩次增強發光
+    });
+    
+    return new THREE.CanvasTexture(canvas);
+}
+
+// 🛠️ 建造整條商店街
+function buildShoppingStreet() {
+    shoppingStreetGrp = new THREE.Group();
+    // 將商店街放置在距離房間極遠的地方，避免穿幫
+    shoppingStreetGrp.position.set(2000, 0, 2000); 
+    scene.add(shoppingStreetGrp);
+
+    // --- 1. 街道地面與盲人磚 ---
+    const streetMat = new THREE.MeshStandardMaterial({map: createAsphaltTexture(), roughness: 0.9});
+    const street = new THREE.Mesh(new THREE.PlaneGeometry(100, 200), streetMat);
+    street.rotation.x = -Math.PI/2; street.receiveShadow = true;
+    shoppingStreetGrp.add(street);
+
+    // 黃色盲人磚 (Tactile Paving)
+    const tactileMat = new THREE.MeshStandardMaterial({color: 0xddaa00, roughness: 0.8});
+    const tactileLine = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 200), tactileMat);
+    tactileLine.position.set(15, 0.05, 0); tactileLine.receiveShadow = true;
+    shoppingStreetGrp.add(tactileLine);
+
+    // --- 2. 建築群總承載 ---
+    const buildingsGrp = new THREE.Group();
+    buildingsGrp.position.set(25, 0, -20); // 放在街道右側
+    shoppingStreetGrp.add(buildingsGrp);
+
+    // 共用玻璃材質
+    const shopGlassMat = new THREE.MeshStandardMaterial({ 
+        color: 0x112233, roughness: 0.1, metalness: 0.8, 
+        transparent: true, opacity: 0.6, envMap: createFakeGlassReflection(), envMapIntensity: 2.0
+    });
+
+    // 🏬 店舖 A：文苑文具 (復古風)
+    const statGrp = new THREE.Group();
+    statGrp.position.set(0, 0, 20);
+    
+    // 紙皮石外牆 (經典淺綠色)
+    const statWallMat = new THREE.MeshStandardMaterial({map: createMosaicTileTexture('#8fbc8f'), roughness: 0.8});
+    const statBuilding = new THREE.Mesh(new THREE.BoxGeometry(20, 25, 30), statWallMat);
+    statBuilding.position.set(10, 12.5, 0); statBuilding.castShadow = true; statBuilding.receiveShadow = true;
+    statGrp.add(statBuilding);
+
+    // 櫥窗與內部展示 (假深度)
+    const statWindow = new THREE.Mesh(new THREE.BoxGeometry(1, 10, 20), shopGlassMat);
+    statWindow.position.set(0, 5, 0); statGrp.add(statWindow);
+    const statInside = new THREE.Mesh(new THREE.BoxGeometry(2, 9, 18), new THREE.MeshStandardMaterial({color: 0x221100})); // 內部暗色
+    statInside.position.set(1.5, 5, 0); statGrp.add(statInside);
+
+    // 鐵閘 (半拉開)
+    const shutterMat = new THREE.MeshStandardMaterial({map: createRollerShutterTexture(), metalness: 0.6, roughness: 0.5});
+    const shutter = new THREE.Mesh(new THREE.BoxGeometry(1.2, 8, 22), shutterMat);
+    shutter.position.set(-0.2, 14, 0); statGrp.add(shutter);
+
+    // 霓虹招牌
+    const signA = new THREE.Mesh(new THREE.BoxGeometry(0.5, 16, 6), new THREE.MeshBasicMaterial({map: createNeonSignTexture('文苑文具', '#111', '#00ffcc')}));
+    signA.position.set(-3, 15, -12); signA.rotation.y = Math.PI/2;
+    statGrp.add(signA);
+
+    // 點擊互動框
+    const statHit = new THREE.Mesh(new THREE.BoxGeometry(5, 15, 25), new THREE.MeshBasicMaterial({visible:false}));
+    statHit.position.set(0, 7.5, 0); statHit.userData = {type: 'shop_stationery'};
+    statGrp.add(statHit); interactables.push(statHit);
+    
+    buildingsGrp.add(statGrp);
+
+    // 🏬 店舖 B：霓虹黑膠 (懷舊音樂)
+    const recGrp = new THREE.Group();
+    recGrp.position.set(0, 0, -15);
+    
+    // 深色水泥外牆
+    const recWallMat = new THREE.MeshStandardMaterial({color: 0x333333, roughness: 0.9});
+    const recBuilding = new THREE.Mesh(new THREE.BoxGeometry(20, 25, 30), recWallMat);
+    recBuilding.position.set(10, 12.5, 0); recBuilding.castShadow = true; recBuilding.receiveShadow = true;
+    recGrp.add(recBuilding);
+
+    // 寬闊的玻璃櫥窗
+    const recWindow = new THREE.Mesh(new THREE.BoxGeometry(1, 12, 24), shopGlassMat);
+    recWindow.position.set(0, 6, 0); recGrp.add(recWindow);
+
+    // 木門
+    const doorMat = new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.8});
+    const recDoor = new THREE.Mesh(new THREE.BoxGeometry(1.2, 10, 6), doorMat);
+    recDoor.position.set(0, 5, 8); recGrp.add(recDoor);
+
+    // 粉色霓虹招牌
+    const signB = new THREE.Mesh(new THREE.BoxGeometry(0.5, 12, 5), new THREE.MeshBasicMaterial({map: createNeonSignTexture('黑膠', '#111', '#ff00aa')}));
+    signB.position.set(-3, 14, 12); signB.rotation.y = Math.PI/2;
+    recGrp.add(signB);
+
+    // 點擊互動框
+    const recHit = new THREE.Mesh(new THREE.BoxGeometry(5, 15, 25), new THREE.MeshBasicMaterial({visible:false}));
+    recHit.position.set(0, 7.5, 0); recHit.userData = {type: 'shop_record'};
+    recGrp.add(recHit); interactables.push(recHit);
+
+    buildingsGrp.add(recGrp);
+
+    // --- 3. 街道香港特色細節 ---
+    
+    // 垃圾桶 (橙色)
+    const trashMat = new THREE.MeshStandardMaterial({color: 0xff6600, roughness: 0.6});
+    const trashBin = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.2, 4, 16), trashMat);
+    trashBin.position.set(10, 2, 40); trashBin.castShadow = true;
+    shoppingStreetGrp.add(trashBin);
+
+    // 小巴站牌
+    const poleMat = new THREE.MeshStandardMaterial({color: 0x555555, metalness: 0.8});
+    const signBoardMat = new THREE.MeshStandardMaterial({color: 0xccffcc}); // 淺綠色底
+    const minibusStop = new THREE.Group();
+    minibusStop.position.set(10, 0, -40);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 10), poleMat);
+    pole.position.y = 5; pole.castShadow = true; minibusStop.add(pole);
+    const mSign = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.5, 32), signBoardMat);
+    mSign.rotation.x = Math.PI/2; mSign.position.set(0, 9, 0); minibusStop.add(mSign);
+    shoppingStreetGrp.add(minibusStop);
+}
+
+// 處理商店點擊事件
+window.addEventListener('pointerup', (e) => {
+    if(!isAtStreet || isDragging) return;
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(interactables, true);
+    if(intersects.length > 0) {
+        let obj = intersects[0].object;
+        if(obj.userData.type === 'shop_stationery') {
+            showToast("✏️ 這是文苑文具行，老闆正在點貨。\n(未來將在此購買明信片與特殊信紙)");
+            gsap.to(camera.position, {x: 2000 + 15, y: 5, z: 2000 + 20, duration: 1.0, ease: "power2.out"});
+        } else if(obj.userData.type === 'shop_record') {
+            showToast("🎵 這是霓虹黑膠唱片店，傳來陣陣老歌。\n(未來將在此購買背景音樂與黑膠唱片)");
+            gsap.to(camera.position, {x: 2000 + 15, y: 5, z: 2000 - 15, duration: 1.0, ease: "power2.out"});
+        }
+    }
+});
         
         
     </script>
