@@ -8277,7 +8277,7 @@ function acceptBankruptcy() {
     });
 
     // --- 🏃‍♂️ 物理引擎更新迴圈與防撞邊界 ---
-  function walkUpdateLoop() {
+   function walkUpdateLoop() {
     requestAnimationFrame(walkUpdateLoop);
     
     if (controls && !isCamInitialized) {
@@ -8411,6 +8411,7 @@ function createStreetSign(name) {
 }
 
 
+
         // 🏠 生成店內簡易擺設 (解決空洞感)
 function createShopInterior(type) {
     const grp = new THREE.Group();
@@ -8429,10 +8430,6 @@ function createShopInterior(type) {
     return grp;
 }
 
-
-
-
-        
         
 // 新增或替換這個函數，專門用來渲染漂亮的索書卡
 function renderMyLogs() {
@@ -9765,46 +9762,7 @@ function createNeonSign(text, bgColor, neonColor, isVertical) {
     ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 1.0; ctx.filter = 'none'; drawText();
     return new THREE.CanvasTexture(canvas);
 }
-
 // 🛠️ 建造獨立的港式商店街場景
-function buildShoppingStreet() {
-    streetScene = new THREE.Scene();
-    
-    // 💡 基礎環境光
-    const streetAmbient = new THREE.AmbientLight(0xffffff, 0.4);
-    streetAmbient.name = 'streetAmbient';
-    streetScene.add(streetAmbient);
-
-    const streetDir = new THREE.DirectionalLight(0xffeedd, 1.0);
-    streetDir.name = 'streetDir';
-    streetDir.position.set(30, 80, 50);
-    streetDir.castShadow = true;
-    streetDir.shadow.camera.left = -80; streetDir.shadow.camera.right = 80;
-    streetDir.shadow.camera.top = 80; streetDir.shadow.camera.bottom = -80;
-    streetScene.add(streetDir);
-
-    // --- 1. 地面：紅色拼花磚與盲人磚 ---
-    const streetMat = new THREE.MeshStandardMaterial({map: createRedBrickPaving(), roughness: 1.0});
-    const street = new THREE.Mesh(new THREE.PlaneGeometry(150, 200), streetMat);
-    street.rotation.x = -Math.PI/2;
-    street.receiveShadow = true;
-    streetScene.add(street);
-
-    const tactileMat = new THREE.MeshStandardMaterial({color: 0xddaa00, roughness: 0.9});
-    const tactileLine = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 200), tactileMat);
-    tactileLine.position.set(10, 0.05, 0); tactileLine.receiveShadow = true;
-    streetScene.add(tactileLine);
-
-    // --- 2. 建築主體結構 ---
-    const buildingsGrp = new THREE.Group();
-    buildingsGrp.position.set(20, 0, 0); // 靠右側
-    streetScene.add(buildingsGrp);
-
-    const shopGlassMat = new THREE.MeshStandardMaterial({ color: 0x051015, roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.7, envMap: createFakeGlassReflection(), envMapIntensity: 3.0 });
-    const shutterMat = new THREE.MeshStandardMaterial({map: createRollerShutterTexture(), metalness: 0.6, roughness: 0.5});
-    const darkInteriorMat = new THREE.MeshStandardMaterial({color: 0x110a05});
-
-  // 🏢 修正冷氣機位置與窗戶玻璃質感
 // 🏙️ 完整的商店街組裝函數
 function buildShoppingStreet() {
     streetScene = new THREE.Scene();
