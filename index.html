@@ -9266,13 +9266,16 @@ function enterShoppingStreet() {
     setTimeout(() => { fadeOverlay.style.opacity = 1; }, 10);
     
     setTimeout(() => {
-        if (!streetScene) buildShoppingStreet();
+        // 🛡️ 安全判斷：如果場景還沒建立，就建立它
+        if (typeof streetScene === 'undefined' || !streetScene) {
+            buildShoppingStreet();
+        }
         
         isAtStreet = true;
-        syncStreetEnvironment(); // 同步當下日夜時間
+        if (typeof syncStreetEnvironment === 'function') syncStreetEnvironment(); // 同步當下日夜時間
         
         // 若想讓摩天輪出現在街景遠方，將它加入 streetScene
-        if (typeof ferrisWheelGrp !== 'undefined') {
+        if (typeof ferrisWheelGrp !== 'undefined' && streetScene) {
             streetScene.add(ferrisWheelGrp.parent);
             ferrisWheelGrp.parent.position.set(-60, 0, -80);
             ferrisWheelGrp.parent.rotation.y = Math.PI / 4;
@@ -9300,6 +9303,8 @@ function enterShoppingStreet() {
     }, 850);
 }
 
+
+        
 // 離開商店街，返回房間露台
 function leaveShoppingStreet() {
     document.getElementById('btn-leave-street').style.display = 'none';
@@ -9341,11 +9346,12 @@ window.devSimulateShoppingStreet = function() {
         
 
 
-        // =====================================================================
-// 🏙️ 香港海濱商店街系統 (極限效能優化版)
 // =====================================================================
-let shoppingStreetGrp;
+// 🏙️ 香港海濱商店街系統 (獨立場景版)
+// =====================================================================
+let streetScene = null;
 let isAtStreet = false;
+let roomVisibilityBackup = [];
 
 
 // 🎨 零效能生成：香港經典「紙皮石」馬賽克外牆
