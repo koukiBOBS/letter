@@ -8047,7 +8047,7 @@ function acceptBankruptcy() {
 
 
 
-// 👇 移動端實時視角旋鈕與攝影機控制 (完美軌跡、廣角與方向修復版) 👇
+// 👇 移動端與電腦版實時視角旋鈕/搖桿 (保留原有阻尼感、全平台、雙擊切換、防撞) 👇
 (function initCameraKnob() {
     const knob = document.getElementById('mobile-cam-knob');
     if(!knob) return;
@@ -8075,7 +8075,7 @@ function acceptBankruptcy() {
     let longPressTimer = null;
     let startX = 0, startY = 0;
     let isCamInitialized = false;
-    let isTouched = false; // 用來防止手機端觸發兩次點擊
+    let isTouched = false; 
 
     // --- 根據模式套用 UI 與相機限制 ---
     function applyModeState() {
@@ -8136,7 +8136,6 @@ function acceptBankruptcy() {
         window.walkKeys = { w: false, a: false, s: false, d: false };
     }
 
-    // --- 長按切換：望窗 vs 望書櫃 (僅在旋鈕模式生效) ---
     function toggleKnobMode() {
         if (window.isWalkMode) return; 
         window.knobMode = (window.knobMode === 1) ? 2 : 1;
@@ -8203,9 +8202,9 @@ function acceptBankruptcy() {
             if (dist > maxRadius) { dx = (dx / dist) * maxRadius; dy = (dy / dist) * maxRadius; }
             
             const knobCenter = document.querySelector('.knob-center');
+            // 💡 保留阻尼感：不移除 CSS transition，讓它自然平滑跟隨
             if (knobCenter) knobCenter.style.transform = `translate(${dx}px, ${dy}px) rotate(0deg)`;
 
-            // 🚀 加快行走與轉向速度，讓操作更敏捷
             window.walkVel = (dy / maxRadius) * 0.6; 
             window.turnVel = -(dx / maxRadius) * 0.045; 
         } else {
@@ -8219,7 +8218,7 @@ function acceptBankruptcy() {
 
     function handleDown(e) {
         if (e.type === 'touchstart') isTouched = true;
-        if (e.type === 'mousedown' && isTouched) return; // 防幽靈點擊
+        if (e.type === 'mousedown' && isTouched) return; 
 
         const now = Date.now();
         if (now - lastTapTime < 350) {
@@ -8234,11 +8233,8 @@ function acceptBankruptcy() {
         startX = e.touches ? e.touches[0].clientX : e.clientX; 
         startY = e.touches ? e.touches[0].clientY : e.clientY;
         
-        // ⚡ 移除遲滯感：按住搖桿瞬間移除 CSS 動畫延遲，讓按鈕完美跟隨游標
-        const knobCenter = document.querySelector('.knob-center');
-        if (window.isWalkMode && knobCenter) {
-            knobCenter.style.transition = 'none';
-        } else if (!window.isWalkMode) {
+        // 💡 恢復原狀：不再中斷 transition 動畫
+        if (!window.isWalkMode) {
             longPressTimer = setTimeout(toggleKnobMode, 400); 
         }
         
@@ -8252,13 +8248,9 @@ function acceptBankruptcy() {
         window.walkVel = 0; window.turnVel = 0;
         if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
         
-        // ⚡ 恢復彈性：放開搖桿時重新加上 CSS 動畫，讓按鈕優雅回彈
-        const knobCenter = document.querySelector('.knob-center');
-        if (knobCenter) {
-            knobCenter.style.transition = 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s ease';
-            if (window.isWalkMode) {
-                knobCenter.style.transform = `translate(0px, 0px) rotate(0deg)`;
-            }
+        if (window.isWalkMode) {
+            const knobCenter = document.querySelector('.knob-center');
+            if(knobCenter) knobCenter.style.transform = `translate(0px, 0px) rotate(0deg)`;
         }
     }
 
