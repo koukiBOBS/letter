@@ -9367,14 +9367,10 @@ function createMosaicTileTexture(baseColor) {
     const canvas = document.createElement('canvas');
     canvas.width = 256; canvas.height = 256;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#cccccc'; // 水泥縫隙底色
-    ctx.fillRect(0, 0, 256, 256);
-    
-    const tileSize = 8;
-    const gap = 1;
+    ctx.fillStyle = '#cccccc'; ctx.fillRect(0, 0, 256, 256);
+    const tileSize = 8; const gap = 1;
     for(let y=0; y<256; y+=tileSize) {
         for(let x=0; x<256; x+=tileSize) {
-            // 產生同色系但深淺不一的磚塊
             ctx.fillStyle = Math.random() > 0.8 ? '#ffffff' : baseColor;
             ctx.globalAlpha = 0.7 + Math.random() * 0.3;
             ctx.fillRect(x+gap, y+gap, tileSize-gap*2, tileSize-gap*2);
@@ -9385,7 +9381,57 @@ function createMosaicTileTexture(baseColor) {
     return tex;
 }
 
-// 🎨 零效能生成：舊式金屬鐵閘 (Roller Shutter)
+// 🎨 零效能生成：工業風清水模水泥 (唱片店用)
+function createConcreteTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#2c2c2c'; ctx.fillRect(0, 0, 512, 512);
+    // 粗糙雜訊
+    for(let i=0; i<20000; i++) {
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.08)';
+        ctx.fillRect(Math.random()*512, Math.random()*512, 2, 2);
+    }
+    // 水泥模板接縫
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    for(let y=0; y<512; y+=128) ctx.fillRect(0, y, 512, 2);
+    for(let x=0; x<512; x+=128) ctx.fillRect(x, 0, 2, 512);
+    // 模板圓孔
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    for(let y=64; y<512; y+=128) {
+        for(let x=64; x<512; x+=128) {
+            ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI*2); ctx.fill();
+        }
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+// 🎨 零效能生成：香港行人道地磚 (取代馬路)
+function createPavingTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#999999'; ctx.fillRect(0, 0, 256, 256);
+    const w = 32, h = 16, gap = 2;
+    for(let y=0; y<256; y+=h) {
+        let offset = (y/h % 2 === 0) ? 0 : w/2; // 交錯排列
+        for(let x=-w; x<256; x+=w) {
+            ctx.fillStyle = Math.random() > 0.5 ? '#b0aba5' : '#a39c95'; // 帶點暖灰的磚塊色
+            ctx.fillRect(x + offset + gap, y + gap, w - gap*2, h - gap*2);
+            // 增添表面顆粒感
+            ctx.fillStyle = 'rgba(0,0,0,0.05)';
+            ctx.fillRect(x + offset + gap + Math.random()*w/2, y + gap + Math.random()*h/2, 2, 2);
+        }
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(10, 15);
+    return tex;
+}
+
+// 🎨 零效能生成：舊式金屬鐵閘
 function createRollerShutterTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 256; canvas.height = 256;
@@ -9393,8 +9439,6 @@ function createRollerShutterTexture() {
     const grad = ctx.createLinearGradient(0, 0, 0, 256);
     grad.addColorStop(0, '#555'); grad.addColorStop(0.5, '#999'); grad.addColorStop(1, '#444');
     ctx.fillStyle = grad; ctx.fillRect(0, 0, 256, 256);
-    
-    // 鐵閘的橫向金屬波浪紋
     for(let y=0; y<256; y+=16) {
         ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, y, 256, 2);
         ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(0, y+2, 256, 2);
@@ -9404,205 +9448,236 @@ function createRollerShutterTexture() {
     return tex;
 }
 
-// 🎨 零效能生成：香港霓虹燈招牌
+// 🎨 零效能生成：香港霓虹燈招牌 (調整為橫向)
 function createNeonSignTexture(text, bgColor, neonColor) {
     const canvas = document.createElement('canvas');
-    canvas.width = 256; canvas.height = 512;
+    canvas.width = 512; canvas.height = 128;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = bgColor; ctx.fillRect(0, 0, 256, 512);
+    ctx.fillStyle = bgColor; ctx.fillRect(0, 0, 512, 128);
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 6; ctx.strokeRect(4, 4, 504, 120);
     
-    // 畫出招牌邊框
-    ctx.strokeStyle = '#222'; ctx.lineWidth = 10; ctx.strokeRect(5, 5, 246, 502);
-    
-    // 霓虹發光字體
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = neonColor;
-    ctx.shadowBlur = 20;
-    ctx.font = 'bold 70px "Noto Serif TC", serif';
+    ctx.shadowBlur = 15;
+    ctx.font = 'bold 60px "Noto Serif TC", serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     
-    // 垂直排版文字
-    const chars = text.split('');
-    const startY = 512 / 2 - (chars.length * 80) / 2 + 40;
-    chars.forEach((c, i) => {
-        ctx.fillText(c, 128, startY + i * 80);
-        ctx.fillText(c, 128, startY + i * 80); // 畫兩次增強發光
-    });
+    // 橫向排版並加強發光
+    ctx.fillText(text, 256, 64);
+    ctx.fillText(text, 256, 64);
     
     return new THREE.CanvasTexture(canvas);
 }
 
-// 🛠️ 建造完全獨立的商店街場景
+
+// 🛠️ 建造完全獨立的商店街場景 (極限豐富版)
 function buildShoppingStreet() {
     streetScene = new THREE.Scene();
     
-    // 💡 商店街專屬環境光與太陽光
-    const streetAmbient = new THREE.AmbientLight(0xffffff, 0.5);
+    // 💡 光源系統
+    const streetAmbient = new THREE.AmbientLight(0xffffff, 0.6);
     streetAmbient.name = 'streetAmbient';
     streetScene.add(streetAmbient);
 
     const streetDir = new THREE.DirectionalLight(0xffeedd, 1.0);
     streetDir.name = 'streetDir';
-    streetDir.position.set(50, 100, 50);
+    streetDir.position.set(30, 80, 50);
     streetDir.castShadow = true;
-    streetDir.shadow.camera.left = -100;
-    streetDir.shadow.camera.right = 100;
-    streetDir.shadow.camera.top = 100;
-    streetDir.shadow.camera.bottom = -100;
-    streetDir.shadow.camera.far = 300;
+    streetDir.shadow.camera.left = -60; streetDir.shadow.camera.right = 60;
+    streetDir.shadow.camera.top = 60; streetDir.shadow.camera.bottom = -60;
     streetScene.add(streetDir);
 
-    // --- 1. 街道地面與盲人磚 ---
-    // (注意：因為是獨立場景，座標可以安心從 0,0,0 開始，不需要推到 2000)
-    const streetMat = new THREE.MeshStandardMaterial({map: createAsphaltTexture(), roughness: 0.9});
+    // --- 1. 街道地面 (鋪磚行人路) ---
+    const streetMat = new THREE.MeshStandardMaterial({map: createPavingTexture(), roughness: 1.0});
     const street = new THREE.Mesh(new THREE.PlaneGeometry(150, 200), streetMat);
     street.rotation.x = -Math.PI/2;
     street.receiveShadow = true;
     streetScene.add(street);
 
-    const tactileMat = new THREE.MeshStandardMaterial({color: 0xddaa00, roughness: 0.8});
+    const tactileMat = new THREE.MeshStandardMaterial({color: 0xddaa00, roughness: 0.9});
     const tactileLine = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 200), tactileMat);
-    tactileLine.position.set(15, 0.05, 0);
+    tactileLine.position.set(10, 0.05, 0); // 盲人磚往店鋪靠一點
     tactileLine.receiveShadow = true;
     streetScene.add(tactileLine);
 
-    // --- 2. 建築群 ---
+    // --- 2. 建築與店舖 ---
     const buildingsGrp = new THREE.Group();
-    buildingsGrp.position.set(25, 0, -20);
+    buildingsGrp.position.set(15, 0, -10); // 整體店鋪位置
     streetScene.add(buildingsGrp);
 
     const shopGlassMat = new THREE.MeshStandardMaterial({ 
         color: 0x112233, roughness: 0.1, metalness: 0.8, 
-        transparent: true, opacity: 0.6, envMap: createFakeGlassReflection(), envMapIntensity: 2.0
+        transparent: true, opacity: 0.5, envMap: createFakeGlassReflection(), envMapIntensity: 2.0
     });
 
-    // 🏬 店舖 A：文苑文具
+    // 🏬 店舖 A：文苑文具 (復古風 + 巨型鉛筆標誌)
     const statGrp = new THREE.Group();
-    statGrp.position.set(0, 0, 20);
+    statGrp.position.set(0, 0, 15);
     
     const statWallMat = new THREE.MeshStandardMaterial({map: createMosaicTileTexture('#8fbc8f'), roughness: 0.8});
-    const statBuilding = new THREE.Mesh(new THREE.BoxGeometry(20, 25, 30), statWallMat);
-    statBuilding.position.set(10, 12.5, 0); 
-    statBuilding.castShadow = true;
-    statGrp.add(statBuilding);
+    const statBuilding = new THREE.Mesh(new THREE.BoxGeometry(15, 25, 20), statWallMat);
+    statBuilding.position.set(7.5, 12.5, 0); statBuilding.castShadow = true; statGrp.add(statBuilding);
 
-    const statWindow = new THREE.Mesh(new THREE.BoxGeometry(1, 10, 20), shopGlassMat);
+    // 櫥窗與門
+    const statWindow = new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 18), shopGlassMat);
     statWindow.position.set(0, 5, 0); statGrp.add(statWindow);
-    
-    // 店內光源 (打上標籤，方便日夜切換)
-    const statInside = new THREE.Mesh(new THREE.BoxGeometry(2, 9, 18), new THREE.MeshStandardMaterial({color: 0x221100})); 
-    statInside.position.set(1.5, 5, 0); 
-    statInside.userData = { isShopInside: true }; 
-    statGrp.add(statInside);
+    const statInside = new THREE.Mesh(new THREE.BoxGeometry(5, 9, 16), new THREE.MeshStandardMaterial({color: 0x332211})); 
+    statInside.position.set(3, 5, 0); statInside.userData = { isShopInside: true }; statGrp.add(statInside);
 
-    const shutterMat = new THREE.MeshStandardMaterial({map: createRollerShutterTexture(), metalness: 0.6, roughness: 0.5});
-    const shutter = new THREE.Mesh(new THREE.BoxGeometry(1.2, 8, 22), shutterMat);
-    shutter.position.set(-0.2, 14, 0); statGrp.add(shutter);
+    // ✏️ 視覺標誌：巨型 3D 鉛筆掛在牆上
+    const pencilGrp = new THREE.Group();
+    const pBody = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 6, 6), new THREE.MeshStandardMaterial({color: 0xffcc00}));
+    const pWood = new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.5, 6), new THREE.MeshStandardMaterial({color: 0xdeb887}));
+    pWood.position.y = -3.75;
+    const pLead = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 6), new THREE.MeshStandardMaterial({color: 0x333333}));
+    pLead.position.y = -4.25;
+    pencilGrp.add(pBody, pWood, pLead);
+    pencilGrp.position.set(-0.5, 12, -7); 
+    pencilGrp.rotation.set(0, 0, 0.4); // 傾斜掛在牆上
+    statGrp.add(pencilGrp);
 
-    // 霓虹招牌
+    // 櫥窗內的堆疊書本/筆記本
+    for(let i=0; i<8; i++) {
+        const book = new THREE.Mesh(new THREE.BoxGeometry(2, 0.5, 1.5), new THREE.MeshStandardMaterial({color: Math.random()*0xffffff}));
+        book.position.set(1.5, 1 + i*0.5, Math.random()*4 - 2);
+        book.rotation.y = (Math.random()-0.5)*0.5;
+        statGrp.add(book);
+    }
+
+    // 橫向正對著鏡頭的霓虹招牌
     const signTexA = createNeonSignTexture('文苑文具', '#111', '#00ffcc');
-    const signA = new THREE.Mesh(new THREE.BoxGeometry(0.5, 16, 6), new THREE.MeshStandardMaterial({map: signTexA, emissiveMap: signTexA}));
-    signA.position.set(-3, 15, -12); signA.rotation.y = Math.PI/2;
-    signA.userData = { isNeon: true }; // 打上標籤
+    const signA = new THREE.Mesh(new THREE.BoxGeometry(0.5, 3, 12), new THREE.MeshStandardMaterial({map: signTexA, emissiveMap: signTexA}));
+    signA.position.set(-0.5, 18, 0); // 貼在正門上方
+    signA.userData = { isNeon: true }; 
     statGrp.add(signA);
 
-    const statHit = new THREE.Mesh(new THREE.BoxGeometry(5, 15, 25), new THREE.MeshBasicMaterial({visible:false}));
+    const statHit = new THREE.Mesh(new THREE.BoxGeometry(5, 15, 20), new THREE.MeshBasicMaterial({visible:false}));
     statHit.position.set(0, 7.5, 0); statHit.userData = {type: 'shop_stationery'};
-    statGrp.add(statHit); 
+    statGrp.add(statHit); buildingsGrp.add(statGrp);
 
-    buildingsGrp.add(statGrp);
 
-    // 🏬 店舖 B：霓虹黑膠
+    // 🏬 店舖 B：霓虹黑膠 (清水模工業風 + 巨型唱片)
     const recGrp = new THREE.Group();
     recGrp.position.set(0, 0, -15);
     
-    const recWallMat = new THREE.MeshStandardMaterial({color: 0x333333, roughness: 0.9});
-    const recBuilding = new THREE.Mesh(new THREE.BoxGeometry(20, 25, 30), recWallMat);
-    recBuilding.position.set(10, 12.5, 0);
-    recBuilding.castShadow = true;
-    recGrp.add(recBuilding);
+    const recWallMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 0.9});
+    const recBuilding = new THREE.Mesh(new THREE.BoxGeometry(15, 25, 20), recWallMat);
+    recBuilding.position.set(7.5, 12.5, 0); recBuilding.castShadow = true; recGrp.add(recBuilding);
 
-    const recWindow = new THREE.Mesh(new THREE.BoxGeometry(1, 12, 24), shopGlassMat);
+    const recWindow = new THREE.Mesh(new THREE.BoxGeometry(0.5, 12, 18), shopGlassMat);
     recWindow.position.set(0, 6, 0); recGrp.add(recWindow);
 
-    const recInside = new THREE.Mesh(new THREE.BoxGeometry(2, 11, 22), new THREE.MeshStandardMaterial({color: 0x221100})); 
-    recInside.position.set(1.5, 6, 0); 
-    recInside.userData = { isShopInside: true };
-    recGrp.add(recInside);
+    const recInside = new THREE.Mesh(new THREE.BoxGeometry(5, 11, 16), new THREE.MeshStandardMaterial({color: 0x110022})); 
+    recInside.position.set(3, 6, 0); recInside.userData = { isShopInside: true }; recGrp.add(recInside);
 
-    const doorMat = new THREE.MeshStandardMaterial({color: 0x3e2723, roughness: 0.8});
-    const recDoor = new THREE.Mesh(new THREE.BoxGeometry(1.2, 10, 6), doorMat);
-    recDoor.position.set(0, 5, 8); recGrp.add(recDoor);
+    // 🎵 視覺標誌：巨型 3D 黑膠唱片
+    const vinylGrp = new THREE.Group();
+    const vDisc = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.5, 0.2, 32), new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.3}));
+    vDisc.rotation.z = Math.PI/2;
+    const vLabel = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.25, 32), new THREE.MeshStandardMaterial({color: 0xff0055}));
+    vLabel.rotation.z = Math.PI/2;
+    vinylGrp.add(vDisc, vLabel);
+    vinylGrp.position.set(-0.5, 12, 6);
+    recGrp.add(vinylGrp);
 
-    const signTexB = createNeonSignTexture('黑膠', '#111', '#ff00aa');
-    const signB = new THREE.Mesh(new THREE.BoxGeometry(0.5, 12, 5), new THREE.MeshStandardMaterial({map: signTexB, emissiveMap: signTexB}));
-    signB.position.set(-3, 14, 12); signB.rotation.y = Math.PI/2;
+    // 櫥窗內的黑膠專輯 (正方形盒)
+    for(let i=0; i<5; i++) {
+        const album = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2, 2), new THREE.MeshStandardMaterial({color: Math.random()*0xffffff}));
+        album.position.set(1.5, 2, i*3 - 6);
+        album.rotation.y = Math.PI/4; // 稍微側向展示
+        recGrp.add(album);
+    }
+
+    const signTexB = createNeonSignTexture('霓虹黑膠', '#111', '#ff00aa');
+    const signB = new THREE.Mesh(new THREE.BoxGeometry(0.5, 3, 12), new THREE.MeshStandardMaterial({map: signTexB, emissiveMap: signTexB}));
+    signB.position.set(-0.5, 18, 0);
     signB.userData = { isNeon: true };
     recGrp.add(signB);
 
-    const recHit = new THREE.Mesh(new THREE.BoxGeometry(5, 15, 25), new THREE.MeshBasicMaterial({visible:false}));
+    const recHit = new THREE.Mesh(new THREE.BoxGeometry(5, 15, 20), new THREE.MeshBasicMaterial({visible:false}));
     recHit.position.set(0, 7.5, 0); recHit.userData = {type: 'shop_record'};
-    recGrp.add(recHit);
+    recGrp.add(recHit); buildingsGrp.add(recGrp);
 
-    buildingsGrp.add(recGrp);
 
-    // 垃圾桶與站牌
-    const trashMat = new THREE.MeshStandardMaterial({color: 0xff6600, roughness: 0.6});
-    const trashBin = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.2, 4, 16), trashMat);
-    trashBin.position.set(10, 2, 40);
-    trashBin.castShadow = true;
-    streetScene.add(trashBin);
+    // --- 3. 街道細節 (街燈、郵筒、消防栓) ---
+    
+    // 💡 經典街燈 (晚上會亮)
+    const lampMat = new THREE.MeshStandardMaterial({color: 0x444444, metalness: 0.8});
+    for(let z of [-25, 25]) {
+        const lampGrp = new THREE.Group();
+        lampGrp.position.set(8, 0, z);
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 20), lampMat);
+        pole.position.y = 10; pole.castShadow = true; lampGrp.add(pole);
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 5), lampMat);
+        arm.position.set(-2, 19, 0); arm.rotation.z = Math.PI/3; lampGrp.add(arm);
+        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.6), new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0xffeedd, emissiveIntensity: 0}));
+        bulb.position.set(-4, 18, 0); bulb.userData = { isStreetLight: true }; lampGrp.add(bulb);
+        streetScene.add(lampGrp);
+    }
 
-    const poleMat = new THREE.MeshStandardMaterial({color: 0x555555, metalness: 0.8});
-    const signBoardMat = new THREE.MeshStandardMaterial({color: 0xccffcc}); 
-    const minibusStop = new THREE.Group();
-    minibusStop.position.set(10, 0, -40);
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 10), poleMat);
-    pole.position.y = 5; pole.castShadow = true; minibusStop.add(pole);
-    const mSign = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.5, 32), signBoardMat);
-    mSign.rotation.x = Math.PI/2; mSign.position.set(0, 9, 0); mSign.castShadow = true; minibusStop.add(mSign);
-    streetScene.add(minibusStop);
+    // 📮 綠色郵筒
+    const postGrp = new THREE.Group();
+    postGrp.position.set(8, 0, -5);
+    const pBox = new THREE.Mesh(new THREE.BoxGeometry(2.5, 4, 2.5), new THREE.MeshStandardMaterial({color: 0x008844, roughness: 0.6}));
+    pBox.position.y = 2; pBox.castShadow = true; postGrp.add(pBox);
+    const pHood = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.25, 2.5, 16), new THREE.MeshStandardMaterial({color: 0x008844}));
+    pHood.rotation.x = Math.PI/2; pHood.position.y = 4; postGrp.add(pHood);
+    streetScene.add(postGrp);
+
+    // 🧯 紅色消防栓
+    const hydrant = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 2.5), new THREE.MeshStandardMaterial({color: 0xdd2222, roughness: 0.5}));
+    hydrant.position.set(8, 1.25, 10); hydrant.castShadow = true;
+    streetScene.add(hydrant);
+
+    // 鐵柱 (阻擋車輛的欄杆柱)
+    for(let z = -40; z <= 40; z+=10) {
+        if(Math.abs(z) < 10) continue; // 留出口
+        const bollard = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 2.5), lampMat);
+        bollard.position.set(4, 1.25, z); bollard.castShadow = true;
+        streetScene.add(bollard);
+    }
 }
 
-// 🌆 同步商店街的時間與光影
-// 🌆 同步商店街的時間與光影
+// 🌆 同步商店街的時間與光影 (包含街燈控制)
 function syncStreetEnvironment() {
-    // 🛡️ 加入 typeof 安全檢測，防止初始載入時找不到變數
     if (typeof streetScene === 'undefined' || !streetScene || !currentEnvParams) return;
     
     const p = currentEnvParams;
-
-    // 設定獨立的霧氣與天空
     streetScene.background = createSkyTexture(p.skyTop, p.skyBot);
-    streetScene.fog = new THREE.FogExp2(p.fog, 0.012); // 濃度比海景高一點，製造都市空氣感
+    streetScene.fog = new THREE.FogExp2(p.fog, 0.018); // 霧氣稍微加重，掩飾邊界
 
-    // 設定光源
     const ambient = streetScene.getObjectByName('streetAmbient');
     if (ambient) {
-        ambient.color.setHex(p.phaseStr === 'night' ? 0x555577 : 0xffffff);
-        ambient.intensity = p.phaseStr === 'night' ? 0.2 : (p.phaseStr === 'noon' ? 0.7 : 0.5);
+        ambient.color.setHex(p.phaseStr === 'night' ? 0x444466 : 0xffffff);
+        ambient.intensity = p.phaseStr === 'night' ? 0.3 : (p.phaseStr === 'noon' ? 0.8 : 0.6);
     }
     const dirLight = streetScene.getObjectByName('streetDir');
     if (dirLight) {
         dirLight.color.setHex(p.dir);
-        dirLight.intensity = (p.phaseStr === 'night') ? 0.1 : p.int;
+        dirLight.intensity = (p.phaseStr === 'night') ? 0.05 : p.int;
     }
 
-    // 控制霓虹燈與店舖內透光
     const isNightOrDusk = (p.phaseStr === 'night' || p.phaseStr === 'dusk');
     streetScene.traverse(child => {
         if (child.material) {
             if (child.userData.isNeon) {
-                child.material.emissiveIntensity = isNightOrDusk ? 1.5 : 0.1;
+                child.material.emissiveIntensity = isNightOrDusk ? 1.8 : 0.1;
                 child.material.emissive.setHex(0xffffff);
             }
             if (child.userData.isShopInside) {
                 child.material.emissive.setHex(isNightOrDusk ? 0xffddaa : 0x000000);
                 child.material.emissiveIntensity = isNightOrDusk ? 0.8 : 0.0;
             }
+            if (child.userData.isStreetLight) {
+                // 晚上開啟街燈發光
+                child.material.emissiveIntensity = isNightOrDusk ? 2.0 : 0.0;
+            }
         }
     });
 }
+
+
+        
 // 處理商店點擊事件 (基於獨立場景)
 window.addEventListener('pointerup', (e) => {
     if(!isAtStreet || isDragging || !streetScene) return;
