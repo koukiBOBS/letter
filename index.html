@@ -1279,7 +1279,25 @@
 }
 .btn-memo-close:hover { background: rgba(139, 115, 85, 0.05); border-color: #8b7355; }
 
-        
+
+
+
+        /* 經典巴士落車鐘 */
+#btn-getoff-bus {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: #cc2222; border: 5px solid #333;
+    box-shadow: 0 0 20px rgba(204,34,34,0.6), inset 0 0 15px rgba(0,0,0,0.5);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; z-index: 5000; transition: 0.3s;
+}
+#btn-getoff-bus:active { transform: translateX(-50%) scale(0.9); background: #991111; }
+#btn-getoff-bus svg { color: white; width: 35px; height: 35px; }
+#bus-timer {
+    position: absolute; top: -45px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.7); color: #ffcc00; padding: 4px 12px;
+    border-radius: 5px; font-family: 'Inter', sans-serif; font-weight: bold; font-size: 1.2rem;
+    border: 1px solid #ffcc00; white-space: nowrap;
+}
         
     </style>
 </head>
@@ -1437,13 +1455,12 @@
 </button>
 
         <!-- 雙層巴士下車按鈕 -->
-<button id="btn-getoff-bus" class="btn" style="display:none; position:fixed; bottom:40px; left:50%; transform:translateX(-50%); z-index:4000; background:rgba(204, 34, 34, 0.85); backdrop-filter:blur(5px); color:#fff; border: 2px solid #ff4444; box-shadow: 0 10px 25px rgba(204,34,34,0.3);" onclick="getOffBus()">
-    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" style="margin-right:8px;">
-        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-        <polyline points="16 17 21 12 16 7"></polyline>
-        <line x1="21" y1="12" x2="9" y2="12"></line>
+<button id="btn-getoff-bus" onclick="handleBusBellClick()">
+    <div id="bus-timer">00:00</div>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
     </svg>
-    按下落車鐘
 </button>
         
         <div class="room-header">
@@ -3415,6 +3432,9 @@ let activeBus = null;
 let busInteriorGrp = null; 
 let preRideCameraState = { pos: new THREE.Vector3(), target: new THREE.Vector3(), fov: 50 };
 let busBumpAnim = null;
+        let busRideTime = 0;
+let busTimerInterval = null;
+let tunnelGrp = null; // 隧道群組
 
 // 🎨 零效能生成：防滑膠粒地板紋理
 function createBusFloorTexture() {
@@ -3505,6 +3525,8 @@ function createLEDSign() {
     for(let i=0; i<128; i+=4) ctx.fillRect(0, i, 512, 1);
     return new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas) });
 }
+
+
 
 // 🛠️ 打造高質感、無死角的「上層車廂」
 function createBusInterior() {
@@ -3609,6 +3631,35 @@ function createBusInterior() {
 
     return grp;
 }
+
+
+
+
+
+function createTunnel() {
+    const group = new THREE.Group();
+    const tubeGeo = new THREE.CylinderGeometry(25, 25, 500, 32, 1, true);
+    const tubeMat = new THREE.MeshStandardMaterial({
+        color: 0x333333, side: THREE.BackSide, roughness: 0.8
+    });
+    const tube = new THREE.Mesh(tubeGeo, tubeMat);
+    tube.rotation.z = Math.PI / 2;
+    group.add(tube);
+ 
+    // 隧道燈
+    for(let i = -250; i < 250; i += 50) {
+        const light = new THREE.Mesh(new THREE.PlaneGeometry(10, 2), new THREE.MeshBasicMaterial({color: 0xffcc00}));
+        light.position.set(i, 20, 0);
+        light.rotation.x = Math.PI / 2;
+        group.add(light);
+    }
+    group.visible = false;
+    scene.add(group);
+    return group;
+}
+
+
+        
 
 let leftCurtainGrp, rightCurtainGrp; 
 let curtainRatio = 1.0;
@@ -8827,109 +8878,90 @@ function rideBus(busHitBox) {
     isRidingBus = true;
     activeBus = busHitBox.userData.vehicleObj;
     const direction = busHitBox.userData.direction;
-
+ 
     preRideCameraState.pos.copy(camera.position);
     preRideCameraState.target.copy(controls.target);
     preRideCameraState.fov = camera.fov;
-
-    // 鎖死控制器
-    if (!window.originalControlsUpdate) window.originalControlsUpdate = controls.update;
-    controls.update = function() {
-        if (isRidingBus) return;
-        window.originalControlsUpdate.call(controls);
-    };
-
+ 
     activeBus.children.forEach(child => {
-        if (child.isMesh && child !== busHitBox) {
-            child.userData.wasVisible = child.visible;
-            child.visible = false;
-        }
+        if (child.isMesh && child !== busHitBox) child.visible = false;
     });
-
+ 
     if (!busInteriorGrp) busInteriorGrp = createBusInterior();
+    if (!tunnelGrp) tunnelGrp = createTunnel();
     activeBus.add(busInteriorGrp);
-
+ 
     const camZPos = direction > 0 ? 3.5 : -3.5;
     busInteriorGrp.position.set(0, 4.2, camZPos);
     busInteriorGrp.rotation.set(0, direction > 0 ? Math.PI : 0, 0);
-
+ 
     controls.enabled = false;
-    document.getElementById('btn-return-room').style.display = 'none';
-    if(document.getElementById('mobile-cam-knob')) document.getElementById('mobile-cam-knob').style.display = 'none';
-
-    const targetWorldPos = new THREE.Vector3(0, 4.2, camZPos).applyMatrix4(activeBus.matrixWorld);
-    gsap.to(camera.position, {
-        x: targetWorldPos.x, y: targetWorldPos.y, z: targetWorldPos.z,
-        duration: 1.2, ease: "power2.inOut"
-    });
     
-    gsap.to(camera, { fov: 75, duration: 1.2, onUpdate: () => camera.updateProjectionMatrix() });
-
-    const lookAheadWorldPos = new THREE.Vector3(0, 4.2, direction > 0 ? 30 : -30).applyMatrix4(activeBus.matrixWorld);
-    gsap.to(controls.target, {
-        x: lookAheadWorldPos.x, y: lookAheadWorldPos.y, z: lookAheadWorldPos.z,
+    // 鎖定鏡頭動畫
+    gsap.to(camera.position, {
+        x: activeBus.position.x, y: 19.2, z: activeBus.position.z + (direction > 0 ? -camZPos : camZPos),
         duration: 1.2, ease: "power2.inOut",
         onComplete: () => {
             busInteriorGrp.add(camera);
             camera.position.set(0, 0.4, 0);
             camera.rotation.set(0, 0, 0);
             
-            // 🚌 極度輕微的車體震動 (平穩路感)
-            busBumpAnim = gsap.to(camera.position, {
-                y: 0.408, // 只震動 0.008 單位
-                duration: 0.6, // 放慢震動頻率
-                yoyo: true, 
-                repeat: -1, 
-                ease: "sine.inOut"
-            });
+            // 啟動 2 分 30 秒倒計時 (150秒)
+            busRideTime = 0;
+            const timerDisplay = document.getElementById('bus-timer');
+            const bellBtn = document.getElementById('btn-getoff-bus');
+            bellBtn.style.display = 'flex';
             
-            document.getElementById('btn-getoff-bus').style.display = 'flex';
-            showToast("🚌 歡迎搭乘九龍巴士，請緊握扶手。");
+            busTimerInterval = setInterval(() => {
+                busRideTime++;
+                let mins = Math.floor(busRideTime / 60);
+                let secs = busRideTime % 60;
+                timerDisplay.innerText = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+                
+                // 超過 2:30 (150秒) 自動坐過站折返
+                if (busRideTime >= 150) {
+                    showToast("⚠️ 坐過站了！巴士正在返回...");
+                    getOffBus();
+                }
+            }, 1000);
+            
+            showToast("🚌 旅程開始，大約兩分鐘後抵達目的地。");
         }
     });
 }
-
+ 
+function handleBusBellClick() {
+    if (busRideTime >= 120 && busRideTime <= 150) {
+        showToast("🔔 叮咚！準備落車...");
+        // 暫時先返回房間，未來可在此切換至商業街場景
+        getOffBus();
+    } else if (busRideTime < 120) {
+        showToast("⏳ 還沒到站呢，請耐心等候。");
+    }
+}
+ 
 function getOffBus() {
     if (!isRidingBus) return;
     isRidingBus = false;
+    clearInterval(busTimerInterval);
     document.getElementById('btn-getoff-bus').style.display = 'none';
-
-    if (busBumpAnim) { busBumpAnim.kill(); busBumpAnim = null; }
-
+    if (tunnelGrp) tunnelGrp.visible = false;
+ 
     const worldPos = new THREE.Vector3();
     camera.getWorldPosition(worldPos);
     scene.add(camera);
     camera.position.copy(worldPos);
-
+ 
     if (activeBus) {
-        activeBus.children.forEach(child => {
-            if (child.isMesh && child.userData.wasVisible !== undefined) {
-                child.visible = child.userData.wasVisible;
-            }
-        });
+        activeBus.children.forEach(child => { if (child.isMesh) child.visible = true; });
         if (busInteriorGrp) activeBus.remove(busInteriorGrp);
     }
     activeBus = null;
-
-    gsap.to(camera.position, {
-        x: preRideCameraState.pos.x, y: preRideCameraState.pos.y, z: preRideCameraState.pos.z,
-        duration: 1.2, ease: "power2.inOut"
-    });
-    gsap.to(camera, { fov: preRideCameraState.fov, duration: 1.2, onUpdate: () => camera.updateProjectionMatrix() });
-    
-    if (window.originalControlsUpdate) controls.update = window.originalControlsUpdate;
-    
-    gsap.to(controls.target, {
-        x: preRideCameraState.target.x, y: preRideCameraState.target.y, z: preRideCameraState.target.z,
-        duration: 1.2, ease: "power2.inOut",
+ 
+    gsap.to(camera.position, { x: preRideCameraState.pos.x, y: preRideCameraState.pos.y, z: preRideCameraState.pos.z, duration: 1.2 });
+    gsap.to(controls.target, { x: preRideCameraState.target.x, y: preRideCameraState.target.y, z: preRideCameraState.target.z, duration: 1.2,
         onUpdate: () => controls.update(),
-        onComplete: () => {
-            controls.enabled = true;
-            document.getElementById('btn-return-room').style.display = 'flex';
-            if(window.innerWidth <= 900 && document.getElementById('mobile-cam-knob')) {
-                document.getElementById('mobile-cam-knob').style.display = 'flex';
-            }
-        }
+        onComplete: () => { controls.enabled = true; }
     });
 }
         
