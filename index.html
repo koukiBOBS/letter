@@ -3506,6 +3506,38 @@ function createLEDSign() {
     return new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas) });
 }
 
+
+function createTunnel(direction) {
+    const grp = new THREE.Group();
+    const tunnelLen = 500;
+    const tunnelGeo = new THREE.BoxGeometry(45, 30, tunnelLen);
+    const tunnelMat = new THREE.MeshStandardMaterial({
+        color: 0x333333, roughness: 0.8, side: THREE.BackSide
+    });
+    const tunnelMesh = new THREE.Mesh(tunnelGeo, tunnelMat);
+    tunnelMesh.position.y = 10;
+    grp.add(tunnelMesh);
+ 
+    // 隧道頂部橙色燈光
+    for(let z = -tunnelLen/2; z <= tunnelLen/2; z += 40) {
+        const lightBox = new THREE.Mesh(
+            new THREE.BoxGeometry(10, 0.5, 5),
+            new THREE.MeshBasicMaterial({ color: 0xffaa00 })
+        );
+        lightBox.position.set(0, 24.8, z);
+        grp.add(lightBox);
+        
+        const pLight = new THREE.PointLight(0xff6600, 1.5, 60);
+        pLight.position.set(0, 22, z);
+        grp.add(pLight);
+    }
+    grp.visible = false;
+    scene.add(grp);
+    return grp;
+}
+
+
+        
 // 🛠️ 打造高質感、無死角的「上層車廂」
 function createBusInterior() {
     const grp = new THREE.Group();
