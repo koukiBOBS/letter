@@ -509,20 +509,23 @@
             renderTasksList();
         }
 
-       function renderTasksList() {
-            const cid = document.getElementById('task-class-select').value; const grid = document.getElementById('tasks-grid');
-            if(!cid || !dbClasses[cid]) return;
+    function renderTasksList() {
+        const cid = document.getElementById('task-class-select').value; const grid = document.getElementById('tasks-grid');
+        if(!cid || !dbClasses[cid]) return;
+        
+        const arrayName = currentAssignType === 'reading' ? 'tasks' : 'randomTasks';
+        // 🛡️ 使用防呆函數取得陣列
+        const tasks = getArrayFromFirebase(dbClasses[cid][arrayName]);
+        grid.innerHTML = '';
+        if(tasks.length === 0) return grid.innerHTML = '<p style="color: var(--text-muted); grid-column: 1/-1;">此班級尚未派發此類任務。</p>';
+        
+        tasks.forEach((d, i) => {
+            // 💡 根據任務類型，在介面上明確標示日期的意義
+            const dateLabel = currentAssignType === 'reading' ? `${d} (開放日)` : `${d} (截止日)`;
             
-            const arrayName = currentAssignType === 'reading' ? 'tasks' : 'randomTasks';
-            // 🛡️ 使用防呆函數取得陣列
-            const tasks = getArrayFromFirebase(dbClasses[cid][arrayName]);
-            grid.innerHTML = '';
-            if(tasks.length === 0) return grid.innerHTML = '<p style="color: var(--text-muted); grid-column: 1/-1;">此班級尚未派發此類任務。</p>';
-            
-            tasks.forEach((d, i) => {
-                grid.innerHTML += `<div class="task-card" style="text-align:left;"><div class="task-index">${currentAssignType==='reading'?'📖 閱讀':'📸 隨機'} 第 ${i + 1} 回</div><div class="task-date">${d}</div><button class="btn btn-danger" style="position:absolute; top:15px; right:15px; padding: 6px 12px; font-size:0.85rem;" onclick="deleteTask('${cid}', ${i}, '${arrayName}')">刪除</button></div>`;
-            });
-        }
+            grid.innerHTML += `<div class="task-card" style="text-align:left;"><div class="task-index">${currentAssignType==='reading'?'📖 閱讀':'📸 隨機'} 第 ${i + 1} 回</div><div class="task-date" style="font-size: 1.1rem;">${dateLabel}</div><button class="btn btn-danger" style="position:absolute; top:15px; right:15px; padding: 6px 12px; font-size:0.85rem;" onclick="deleteTask('${cid}', ${i}, '${arrayName}')">刪除</button></div>`;
+        });
+    }
 
         function assignPeriodicTasks() {
             const cid = document.getElementById('task-class-select').value; const start = document.getElementById('periodic-start').value; const end = document.getElementById('periodic-end').value; const interval = parseInt(document.getElementById('periodic-interval').value);
@@ -611,104 +614,239 @@
             return randomArray.find(l => l.senderUid === uid && l.taskDate === dateStr);
         }
 
-     function renderRecords() {
-            const cid = document.getElementById('record-class-select').value;
-            const container = document.getElementById('records-accordion-container');
-            container.innerHTML = '';
-            if(!cid || !dbClasses[cid]) return;
+    function renderRecords() {
+        const cid = document.getElementById('record-class-select').value;
+        const container = document.getElementById('records-accordion-container');
+        container.innerHTML = '';
+        if(!cid || !dbClasses[cid]) return;
  
-            const recType = getRecordType();
-            const studentsInClass = Object.keys(dbUsers).filter(uid => (dbUsers[uid].classId || 'default') === cid);
-            
-            // 自由撰寫邏輯
-            if (recType === 'free') {
-                document.getElementById('tab-task').style.display = 'none';
-                if (currentRecordTab === 'task') {
-                    currentRecordTab = 'student';
-                    document.getElementById('tab-student').className = 'tab-btn active';
-                }
- 
-                studentsInClass.forEach(uid => {
-                    const u = dbUsers[uid];
-                    let freeLetters = Object.values(dbLetters)
-                        .filter(l => l.senderUid === uid && l.taskIndex === 'free')
-                        .sort((a, b) => b.timestamp - a.timestamp);
- 
-                    let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('stu-${uid}')"><div class="list-title">🧑‍🎓 ${escapeHtml(u.name)} <span class="list-subtitle">${escapeHtml(u.email)}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看紀錄 (${freeLetters.length}) ▾</span></div><div class="list-body" id="acc-body-stu-${uid}"><div class="grid-container">`;
-                    
-                    if (freeLetters.length === 0) {
-                        html += `<p style="color:var(--text-muted); grid-column:1/-1;">此學生尚未提交任何自由撰寫的心得。</p>`;
-                    } else {
-                        freeLetters.forEach(letter => {
-                            const submitDate = new Date(letter.timestamp).toLocaleDateString();
-                            let shortTitle = letter.bookTitle.length > 10 ? letter.bookTitle.substring(0, 10) + '...' : letter.bookTitle;
-                            html += `
-                                <div class="task-card">
-                                    <div style="font-size:1.05rem; font-weight:600; margin-bottom:10px;">《${escapeHtml(shortTitle)}》</div>
-                                    <span class="status-badge s-free">✨ 自由分享</span>
-                                    <div style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">寄出日期: ${submitDate}</div>
-                                    <button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem;" onclick="openReadingModal('${letter.id}')">批閱信件</button>
-                                </div>
-                            `;
-                        });
-                    }
-                    html += `</div></div></div>`;
-                    container.innerHTML += html;
-                });
-                
-                if(studentsInClass.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級目前沒有學生。</p>`;
-                return;
+        const recType = getRecordType();
+        const studentsInClass = Object.keys(dbUsers).filter(uid => (dbUsers[uid].classId || 'default') === cid);
+        
+        // 自由撰寫邏輯
+        if (recType === 'free') {
+            document.getElementById('tab-task').style.display = 'none';
+            if (currentRecordTab === 'task') {
+                currentRecordTab = 'student';
+                document.getElementById('tab-student').className = 'tab-btn active';
             }
  
-            document.getElementById('tab-task').style.display = 'inline-block';
-            const arrayName = recType === 'reading' ? 'tasks' : 'randomTasks';
-            
-            // 🛡️ 使用防呆函數取得陣列
-            const tasks = getArrayFromFirebase(dbClasses[cid][arrayName]);
-            const dataArray = recType === 'reading' ? Object.values(dbLetters) : Object.values(dbRandomSubs);
+            studentsInClass.forEach(uid => {
+                const u = dbUsers[uid];
+                let freeLetters = Object.values(dbLetters)
+                    .filter(l => l.senderUid === uid && l.taskIndex === 'free')
+                    .sort((a, b) => b.timestamp - a.timestamp);
  
-            if (currentRecordTab === 'student') {
-                studentsInClass.forEach(uid => {
-                    const u = dbUsers[uid];
-                    let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('stu-${uid}')"><div class="list-title">🧑‍🎓 ${escapeHtml(u.name)} <span class="list-subtitle">${escapeHtml(u.email)}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看任務 ▾</span></div><div class="list-body" id="acc-body-stu-${uid}"><div class="grid-container">`;
-                    tasks.forEach((dateStr, idx) => {
-                        const record = recType === 'reading' ? findLetterSafe(uid, dateStr, idx, dataArray) : findRandomSafe(uid, dateStr, dataArray);
-                        html += buildGridCard(`第 ${idx+1} 回`, dateStr, record, recType);
-                    });
-                    if(tasks.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級尚未派發任務。</p>`;
-                    html += `</div></div></div>`; container.innerHTML += html;
-                });
-                if(studentsInClass.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級目前沒有學生。</p>`;
-            } else {
-                tasks.forEach((dateStr, idx) => {
-                    let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('task-${idx}')"><div class="list-title">${recType==='reading'?'📋':'📸'} 第 ${idx + 1} 回 <span class="list-subtitle">期限: ${dateStr}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看學生 ▾</span></div><div class="list-body" id="acc-body-task-${idx}"><div class="grid-container">`;
-                    studentsInClass.forEach(uid => {
-                        const u = dbUsers[uid];
-                        const record = recType === 'reading' ? findLetterSafe(uid, dateStr, idx, dataArray) : findRandomSafe(uid, dateStr, dataArray);
-                        html += buildGridCard(escapeHtml(u.name), dateStr, record, recType);
-                    });
-                    if(studentsInClass.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級目前沒有學生。</p>`;
-                    html += `</div></div></div>`; container.innerHTML += html;
-                });
-                if(tasks.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級尚未派發任務。</p>`;
-            }
-        }
-
-        function buildGridCard(title, deadlineStr, record, recType) {
-            let statusClass = "s-miss"; let statusText = "未交"; let btnHtml = '';
-            if(record) {
-                const submitTime = new Date(record.timestamp); const deadline = new Date(deadlineStr);
-                if(submitTime.setHours(0,0,0,0) <= deadline.setHours(0,0,0,0)) { statusClass = "s-ok"; statusText = "準時"; } 
-                else { statusClass = "s-late"; statusText = "遲交"; }
+                let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('stu-${uid}')"><div class="list-title">🧑‍🎓 ${escapeHtml(u.name)} <span class="list-subtitle">${escapeHtml(u.email)}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看紀錄 (${freeLetters.length}) ▾</span></div><div class="list-body" id="acc-body-stu-${uid}"><div class="grid-container">`;
                 
-                if (recType === 'reading') {
-                    btnHtml = `<button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem;" onclick="openReadingModal('${record.id}')">批閱信件</button>`;
+                if (freeLetters.length === 0) {
+                    html += `<p style="color:var(--text-muted); grid-column:1/-1;">此學生尚未提交任何自由撰寫的心得。</p>`;
                 } else {
-                    btnHtml = `<button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem; border-color:#8b7355; color:#8b7355;" onclick="openRandomModal('${record.id}')">檢視相片</button>`;
+                    freeLetters.forEach(letter => {
+                        const submitDate = new Date(letter.timestamp).toLocaleDateString();
+                        let shortTitle = letter.bookTitle.length > 10 ? letter.bookTitle.substring(0, 10) + '...' : letter.bookTitle;
+                        html += `
+                            <div class="task-card">
+                                <div style="font-size:1.05rem; font-weight:600; margin-bottom:10px;">《${escapeHtml(shortTitle)}》</div>
+                                <span class="status-badge s-free">✨ 自由分享</span>
+                                <div style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">寄出日期: ${submitDate}</div>
+                                <button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem;" onclick="openReadingModal('${letter.id}')">批閱信件</button>
+                            </div>
+                        `;
+                    });
                 }
-            }
-            return `<div class="task-card"><div style="font-size:1.05rem; font-weight:600; margin-bottom:10px;">${title}</div><span class="status-badge ${statusClass}">${statusText}</span><div style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">期限: ${deadlineStr}</div>${btnHtml}</div>`;
+                html += `</div></div></div>`;
+                container.innerHTML += html;
+            });
+            
+            if(studentsInClass.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級目前沒有學生。</p>`;
+            return;
         }
+ 
+        document.getElementById('tab-task').style.display = 'inline-block';
+        const arrayName = recType === 'reading' ? 'tasks' : 'randomTasks';
+        
+        // 🛡️ 使用防呆函數取得陣列
+        const tasks = getArrayFromFirebase(dbClasses[cid][arrayName]);
+        const dataArray = recType === 'reading' ? Object.values(dbLetters) : Object.values(dbRandomSubs);
+ 
+        if (currentRecordTab === 'student') {
+            studentsInClass.forEach(uid => {
+                const u = dbUsers[uid];
+                let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('stu-${uid}')"><div class="list-title">🧑‍🎓 ${escapeHtml(u.name)} <span class="list-subtitle">${escapeHtml(u.email)}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看任務 ▾</span></div><div class="list-body" id="acc-body-stu-${uid}"><div class="grid-container">`;
+                tasks.forEach((dateStr, idx) => {
+                    const record = recType === 'reading' ? findLetterSafe(uid, dateStr, idx, dataArray) : findRandomSafe(uid, dateStr, dataArray);
+                    html += buildGridCard(`第 ${idx+1} 回`, dateStr, record, recType);
+                });
+                if(tasks.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級尚未派發任務。</p>`;
+                html += `</div></div></div>`; container.innerHTML += html;
+            });
+            if(studentsInClass.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級目前沒有學生。</p>`;
+        } else {
+            tasks.forEach((dateStr, idx) => {
+                // 💡 計算標題 Header 上要顯示的正確截止日
+                let actualDeadlineDate = new Date(dateStr);
+                if (recType === 'reading') actualDeadlineDate.setDate(actualDeadlineDate.getDate() + 2);
+                const displayDeadline = `${actualDeadlineDate.getFullYear()}-${String(actualDeadlineDate.getMonth() + 1).padStart(2, '0')}-${String(actualDeadlineDate.getDate()).padStart(2, '0')}`;
+ 
+                let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('task-${idx}')"><div class="list-title">${recType==='reading'?'📋':'📸'} 第 ${idx + 1} 回 <span class="list-subtitle">期限: ${displayDeadline}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看學生 ▾</span></div><div class="list-body" id="acc-body-task-${idx}"><div class="grid-container">`;
+                studentsInClass.forEach(uid => {
+                    const u = dbUsers[uid];
+                    const record = recType === 'reading' ? findLetterSafe(uid, dateStr, idx, dataArray) : findRandomSafe(uid, dateStr, dataArray);
+                    html += buildGridCard(escapeHtml(u.name), dateStr, record, recType);
+                });
+                if(studentsInClass.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級目前沒有學生。</p>`;
+                html += `</div></div></div>`; container.innerHTML += html;
+            });
+            if(tasks.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級尚未派發任務。</p>`;
+        }
+    }
+
+      function renderTasksList() {
+        const cid = document.getElementById('task-class-select').value; const grid = document.getElementById('tasks-grid');
+        if(!cid || !dbClasses[cid]) return;
+        
+        const arrayName = currentAssignType === 'reading' ? 'tasks' : 'randomTasks';
+        // 🛡️ 使用防呆函數取得陣列
+        const tasks = getArrayFromFirebase(dbClasses[cid][arrayName]);
+        grid.innerHTML = '';
+        if(tasks.length === 0) return grid.innerHTML = '<p style="color: var(--text-muted); grid-column: 1/-1;">此班級尚未派發此類任務。</p>';
+        
+        tasks.forEach((d, i) => {
+            // 💡 根據任務類型，在介面上明確標示日期的意義
+            const dateLabel = currentAssignType === 'reading' ? `${d} (開放日)` : `${d} (截止日)`;
+            
+            grid.innerHTML += `<div class="task-card" style="text-align:left;"><div class="task-index">${currentAssignType==='reading'?'📖 閱讀':'📸 隨機'} 第 ${i + 1} 回</div><div class="task-date" style="font-size: 1.1rem;">${dateLabel}</div><button class="btn btn-danger" style="position:absolute; top:15px; right:15px; padding: 6px 12px; font-size:0.85rem;" onclick="deleteTask('${cid}', ${i}, '${arrayName}')">刪除</button></div>`;
+        });
+    }
+ 
+    function renderRecords() {
+        const cid = document.getElementById('record-class-select').value;
+        const container = document.getElementById('records-accordion-container');
+        container.innerHTML = '';
+        if(!cid || !dbClasses[cid]) return;
+ 
+        const recType = getRecordType();
+        const studentsInClass = Object.keys(dbUsers).filter(uid => (dbUsers[uid].classId || 'default') === cid);
+        
+        // 自由撰寫邏輯
+        if (recType === 'free') {
+            document.getElementById('tab-task').style.display = 'none';
+            if (currentRecordTab === 'task') {
+                currentRecordTab = 'student';
+                document.getElementById('tab-student').className = 'tab-btn active';
+            }
+ 
+            studentsInClass.forEach(uid => {
+                const u = dbUsers[uid];
+                let freeLetters = Object.values(dbLetters)
+                    .filter(l => l.senderUid === uid && l.taskIndex === 'free')
+                    .sort((a, b) => b.timestamp - a.timestamp);
+ 
+                let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('stu-${uid}')"><div class="list-title">🧑‍🎓 ${escapeHtml(u.name)} <span class="list-subtitle">${escapeHtml(u.email)}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看紀錄 (${freeLetters.length}) ▾</span></div><div class="list-body" id="acc-body-stu-${uid}"><div class="grid-container">`;
+                
+                if (freeLetters.length === 0) {
+                    html += `<p style="color:var(--text-muted); grid-column:1/-1;">此學生尚未提交任何自由撰寫的心得。</p>`;
+                } else {
+                    freeLetters.forEach(letter => {
+                        const submitDate = new Date(letter.timestamp).toLocaleDateString();
+                        let shortTitle = letter.bookTitle.length > 10 ? letter.bookTitle.substring(0, 10) + '...' : letter.bookTitle;
+                        html += `
+                            <div class="task-card">
+                                <div style="font-size:1.05rem; font-weight:600; margin-bottom:10px;">《${escapeHtml(shortTitle)}》</div>
+                                <span class="status-badge s-free">✨ 自由分享</span>
+                                <div style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">寄出日期: ${submitDate}</div>
+                                <button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem;" onclick="openReadingModal('${letter.id}')">批閱信件</button>
+                            </div>
+                        `;
+                    });
+                }
+                html += `</div></div></div>`;
+                container.innerHTML += html;
+            });
+            
+            if(studentsInClass.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級目前沒有學生。</p>`;
+            return;
+        }
+ 
+        document.getElementById('tab-task').style.display = 'inline-block';
+        const arrayName = recType === 'reading' ? 'tasks' : 'randomTasks';
+        
+        // 🛡️ 使用防呆函數取得陣列
+        const tasks = getArrayFromFirebase(dbClasses[cid][arrayName]);
+        const dataArray = recType === 'reading' ? Object.values(dbLetters) : Object.values(dbRandomSubs);
+ 
+        if (currentRecordTab === 'student') {
+            studentsInClass.forEach(uid => {
+                const u = dbUsers[uid];
+                let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('stu-${uid}')"><div class="list-title">🧑‍🎓 ${escapeHtml(u.name)} <span class="list-subtitle">${escapeHtml(u.email)}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看任務 ▾</span></div><div class="list-body" id="acc-body-stu-${uid}"><div class="grid-container">`;
+                tasks.forEach((dateStr, idx) => {
+                    const record = recType === 'reading' ? findLetterSafe(uid, dateStr, idx, dataArray) : findRandomSafe(uid, dateStr, dataArray);
+                    html += buildGridCard(`第 ${idx+1} 回`, dateStr, record, recType);
+                });
+                if(tasks.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級尚未派發任務。</p>`;
+                html += `</div></div></div>`; container.innerHTML += html;
+            });
+            if(studentsInClass.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級目前沒有學生。</p>`;
+        } else {
+            tasks.forEach((dateStr, idx) => {
+                // 💡 計算標題 Header 上要顯示的正確截止日
+                let actualDeadlineDate = new Date(dateStr);
+                if (recType === 'reading') actualDeadlineDate.setDate(actualDeadlineDate.getDate() + 2);
+                const displayDeadline = `${actualDeadlineDate.getFullYear()}-${String(actualDeadlineDate.getMonth() + 1).padStart(2, '0')}-${String(actualDeadlineDate.getDate()).padStart(2, '0')}`;
+ 
+                let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('task-${idx}')"><div class="list-title">${recType==='reading'?'📋':'📸'} 第 ${idx + 1} 回 <span class="list-subtitle">期限: ${displayDeadline}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看學生 ▾</span></div><div class="list-body" id="acc-body-task-${idx}"><div class="grid-container">`;
+                studentsInClass.forEach(uid => {
+                    const u = dbUsers[uid];
+                    const record = recType === 'reading' ? findLetterSafe(uid, dateStr, idx, dataArray) : findRandomSafe(uid, dateStr, dataArray);
+                    html += buildGridCard(escapeHtml(u.name), dateStr, record, recType);
+                });
+                if(studentsInClass.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級目前沒有學生。</p>`;
+                html += `</div></div></div>`; container.innerHTML += html;
+            });
+            if(tasks.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級尚未派發任務。</p>`;
+        }
+    }
+ 
+    function buildGridCard(title, dateStr, record, recType) {
+        let statusClass = "s-miss"; let statusText = "未交"; let btnHtml = '';
+        
+        // 💡 1. 根據任務類型，分流計算真正的「截止日期」
+        let actualDeadlineDate = new Date(dateStr);
+        if (recType === 'reading') {
+            // 閱讀任務：資料庫存的是「開放日」，期限為開放日 + 2天
+            actualDeadlineDate.setDate(actualDeadlineDate.getDate() + 2); 
+        }
+        // 探索任務：資料庫存的就是「截止日」，直接使用不做加減
+        
+        // 格式化顯示用字串
+        const displayDeadline = `${actualDeadlineDate.getFullYear()}-${String(actualDeadlineDate.getMonth() + 1).padStart(2, '0')}-${String(actualDeadlineDate.getDate()).padStart(2, '0')}`;
+ 
+        if(record) {
+            // 💡 2. 統一清除時分秒，進行「日期」等級的比對
+            const submitTime = new Date(record.timestamp);
+            submitTime.setHours(0,0,0,0);
+            
+            const deadlineTime = new Date(actualDeadlineDate);
+            deadlineTime.setHours(0,0,0,0);
+ 
+            // 小於等於截止日期都算準時
+            if(submitTime <= deadlineTime) { 
+                statusClass = "s-ok"; statusText = "準時"; 
+            } else { 
+                statusClass = "s-late"; statusText = "遲交"; 
+            }
+            
+            if (recType === 'reading') {
+                btnHtml = `<button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem;" onclick="openReadingModal('${record.id}')">批閱信件</button>`;
+            } else {
+                btnHtml = `<button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem; border-color:#8b7355; color:#8b7355;" onclick="openRandomModal('${record.id}')">檢視相片</button>`;
+            }
+        }
+        
+        return `<div class="task-card"><div style="font-size:1.05rem; font-weight:600; margin-bottom:10px;">${title}</div><span class="status-badge ${statusClass}">${statusText}</span><div style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">期限: ${displayDeadline}</div>${btnHtml}</div>`;
+    }
+ 
 
           // ==========================================
         // 閱讀器 Modals (微調：顯示已註銷帳號)
