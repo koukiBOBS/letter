@@ -8048,19 +8048,21 @@ function acceptBankruptcy() {
 
 
 // 👇 移動端與電腦版實時視角旋鈕/搖桿 (保留原有阻尼感、全平台、雙擊切換、防撞) 👇
-// 👇 移動端與電腦版實時視角旋鈕/搖桿 (替換原函數段落) 👇
 (function initCameraKnob() {
     const knob = document.getElementById('mobile-cam-knob');
     if(!knob) return;
 
+    // 💻 強制在所有設備 (包含電腦版) 顯示按鈕
     knob.style.display = 'flex';
     
+    // 如果有開發測試面板，把它往左擠避免重疊
     const devPanel = document.getElementById('dev-panel-wrapper');
     if (devPanel) devPanel.style.right = '100px';
 
     window.isKnobDragging = false;
     window.knobMode = 1; 
     
+    // 💡 讀取用家上次的模式，預設為 'walk' (行走模式)
     const savedMode = localStorage.getItem('preferredCamMode');
     window.isWalkMode = (savedMode !== 'look'); 
     
@@ -8075,6 +8077,7 @@ function acceptBankruptcy() {
     let isCamInitialized = false;
     let isTouched = false; 
 
+    // --- 根據模式套用 UI 與相機限制 ---
     function applyModeState() {
         const knobCenter = document.querySelector('.knob-center');
         const indicator = document.querySelector('.knob-indicator');
@@ -8084,12 +8087,19 @@ function acceptBankruptcy() {
             controls.enabled = false;
             controls.minAzimuthAngle = -Infinity;
             controls.maxAzimuthAngle = Infinity;
-            controls.minPolarAngle = 0;
-            controls.maxPolarAngle = Math.PI;
+            controls.minPolarAngle = Math.PI / 2;
+            controls.maxPolarAngle = Math.PI / 2;
             
             knobCenter.style.background = '#6b8e73'; 
             knobCenter.style.transform = `translate(0px, 0px) rotate(0deg)`;
             indicator.style.background = '#fff';
+            
+            camera.position.y = 16;
+            let dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+            dir.y = 0; dir.normalize();
+            controls.target.copy(camera.position).add(dir.multiplyScalar(20));
+            controls.update();
         } else {
             controls.minPolarAngle = 1.15;
             controls.maxPolarAngle = Math.PI / 2 - 0.05;
@@ -8113,11 +8123,14 @@ function acceptBankruptcy() {
         }
     }
 
+    // --- 雙擊切換：行走模式與原本視角模式 ---
     function toggleWalkMode() {
         window.isWalkMode = !window.isWalkMode;
         localStorage.setItem('preferredCamMode', window.isWalkMode ? 'walk' : 'look');
+        
         showToast(window.isWalkMode ? "🚶‍♂️ 進入行走模式：拖曳搖桿移動，雙擊切換回旋鈕" : "👀 進入旋鈕模式：拖曳按鈕轉向，雙擊切換回行走");
         applyModeState();
+        
         window.walkVel = 0; window.turnVel = 0;
         window.isKnobDragging = false;
         window.walkKeys = { w: false, a: false, s: false, d: false };
@@ -8167,10 +8180,9 @@ function acceptBankruptcy() {
         }
     }
 
+    // --- 拖曳事件處理 ---
     function handleKnobMove(e) {
-        // 👇 修訂一：如果在商店街，則永遠不屏蔽搖桿操作
-        if(!window.isKnobDragging || (typeof isAtBalcony !== 'undefined' && isAtBalcony && !(typeof isAtStreet !== 'undefined' && isAtStreet))) return;
-        
+        if(!window.isKnobDragging || (typeof isAtBalcony !== 'undefined' && isAtBalcony)) return;
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
 
@@ -8190,6 +8202,7 @@ function acceptBankruptcy() {
             if (dist > maxRadius) { dx = (dx / dist) * maxRadius; dy = (dy / dist) * maxRadius; }
             
             const knobCenter = document.querySelector('.knob-center');
+            // 💡 保留阻尼感：不移除 CSS transition，讓它自然平滑跟隨
             if (knobCenter) knobCenter.style.transform = `translate(${dx}px, ${dy}px) rotate(0deg)`;
 
             window.walkVel = (dy / maxRadius) * 0.6; 
@@ -8220,6 +8233,7 @@ function acceptBankruptcy() {
         startX = e.touches ? e.touches[0].clientX : e.clientX; 
         startY = e.touches ? e.touches[0].clientY : e.clientY;
         
+        // 💡 恢復原狀：不再中斷 transition 動畫
         if (!window.isWalkMode) {
             longPressTimer = setTimeout(toggleKnobMode, 400); 
         }
@@ -8242,13 +8256,16 @@ function acceptBankruptcy() {
 
     knob.addEventListener('mousedown', handleDown);
     knob.addEventListener('touchstart', handleDown, {passive: false});
+
     window.addEventListener('mousemove', handleKnobMove);
     window.addEventListener('touchmove', (e) => { 
         if(window.isKnobDragging) { e.preventDefault(); handleKnobMove(e); }
     }, {passive: false});
+
     window.addEventListener('mouseup', handleUp);
     window.addEventListener('touchend', handleUp);
 
+    // --- ⌨️ 電腦端 WASD 鍵盤支援 ---
     window.addEventListener('keydown', (e) => {
         if (!window.isWalkMode) return;
         const key = e.key.toLowerCase();
@@ -8259,6 +8276,7 @@ function acceptBankruptcy() {
         if (window.walkKeys.hasOwnProperty(key)) window.walkKeys[key] = false;
     });
 
+    // --- 🏃‍♂️ 物理引擎更新迴圈與防撞邊界 ---
     function walkUpdateLoop() {
         requestAnimationFrame(walkUpdateLoop);
         
@@ -8267,10 +8285,7 @@ function acceptBankruptcy() {
             isCamInitialized = true;
         }
 
-        let checkBalcony = (typeof isAtBalcony !== 'undefined' && isAtBalcony);
-        let checkStreet = (typeof isAtStreet !== 'undefined' && isAtStreet);
-        // 如果不在商店街，且身在露台邊緣，則依然禁止行走防止掉落
-        if (!window.isWalkMode || isRoomPaused() || (checkBalcony && !checkStreet)) return;
+        if (!window.isWalkMode || isRoomPaused() || (typeof isAtBalcony !== 'undefined' && isAtBalcony)) return;
 
         let currentWalk = window.walkVel;
         let currentTurn = window.turnVel;
@@ -8291,53 +8306,45 @@ function acceptBankruptcy() {
             let nextX = camera.position.x + dir.x * -currentWalk;
             let nextZ = camera.position.z + dir.z * -currentWalk;
 
-            if (checkStreet) {
-                // 👇 修訂一：商店街安全防撞邊界設定 (允許深入店鋪內部，但不穿過背牆)
-                nextX = Math.max(-15, Math.min(26, nextX)); 
-                nextZ = Math.max(-80, Math.min(80, nextZ)); 
-                
-                camera.position.x = nextX;
-                camera.position.z = nextZ;
-                camera.position.y = 6; 
-                controls.target.copy(camera.position).add(dir.multiplyScalar(20));
-            } else {
-                // 🏠 原有房間的實體防撞邏輯
-                const playerRadius = 4.0;
-                function pushOutRect(cx, cz, rx, rz, rw, rd) {
-                    let hw = rw / 2 + playerRadius;
-                    let hd = rd / 2 + playerRadius;
-                    if (cx > rx - hw && cx < rx + hw && cz > rz - hd && cz < rz + hd) {
-                        let dL = cx - (rx - hw); let dR = (rx + hw) - cx;
-                        let dT = cz - (rz - hd); let dB = (rz + hd) - cz;
-                        let min = Math.min(dL, dR, dT, dB);
-                        if (min === dL) return {x: rx - hw, z: cz};
-                        if (min === dR) return {x: rx + hw, z: cz};
-                        if (min === dT) return {x: cx, z: rz - hd};
-                        return {x: cx, z: rz + hd};
-                    }
-                    return {x: cx, z: cz};
+            // 💡 實體防撞演算法 (AABB Collision)
+            const playerRadius = 4.0;
+            function pushOutRect(cx, cz, rx, rz, rw, rd) {
+                let hw = rw / 2 + playerRadius;
+                let hd = rd / 2 + playerRadius;
+                if (cx > rx - hw && cx < rx + hw && cz > rz - hd && cz < rz + hd) {
+                    let dL = cx - (rx - hw); let dR = (rx + hw) - cx;
+                    let dT = cz - (rz - hd); let dB = (rz + hd) - cz;
+                    let min = Math.min(dL, dR, dT, dB);
+                    if (min === dL) return {x: rx - hw, z: cz};
+                    if (min === dR) return {x: rx + hw, z: cz};
+                    if (min === dT) return {x: cx, z: rz - hd};
+                    return {x: cx, z: rz + hd};
                 }
-
-                let p = pushOutRect(nextX, nextZ, 0, 0, 32, 16);
-                nextX = p.x; nextZ = p.z;
-                p = pushOutRect(nextX, nextZ, 0, 59, 80, 10);
-                nextX = p.x; nextZ = p.z;
-                p = pushOutRect(nextX, nextZ, 58, 22, 8, 18);
-                nextX = p.x; nextZ = p.z;
-
-                nextX = Math.max(-50, Math.min(50, nextX));
-                nextZ = Math.max(-10, Math.min(50, nextZ));
-
-                camera.position.x = nextX;
-                camera.position.z = nextZ;
-                camera.position.y = 16; 
-                controls.target.copy(camera.position).add(dir.multiplyScalar(20));
+                return {x: cx, z: cz};
             }
+
+            // 書桌碰撞區
+            let p = pushOutRect(nextX, nextZ, 0, 0, 32, 16);
+            nextX = p.x; nextZ = p.z;
+            // 書櫃碰撞區 (後牆)
+            p = pushOutRect(nextX, nextZ, 0, 59, 80, 10);
+            nextX = p.x; nextZ = p.z;
+            // 鋼琴碰撞區 (右牆)
+            p = pushOutRect(nextX, nextZ, 58, 22, 8, 18);
+            nextX = p.x; nextZ = p.z;
+
+            // 房間絕對極限邊界
+            nextX = Math.max(-50, Math.min(50, nextX));
+            nextZ = Math.max(-10, Math.min(50, nextZ));
+
+            camera.position.x = nextX;
+            camera.position.z = nextZ;
+            camera.position.y = 16; 
+            controls.target.copy(camera.position).add(dir.multiplyScalar(20));
         }
     }
     walkUpdateLoop(); 
 })();
-
 
         
 // 新增或替換這個函數，專門用來渲染漂亮的索書卡
@@ -9675,10 +9682,10 @@ function createNeonSign(text, bgColor, neonColor, isVertical) {
 }
 
 // 🛠️ 建造獨立的港式商店街場景
-// 替換原有的 buildShoppingStreet 函數
 function buildShoppingStreet() {
     streetScene = new THREE.Scene();
     
+    // 💡 基礎環境光
     const streetAmbient = new THREE.AmbientLight(0xffffff, 0.4);
     streetAmbient.name = 'streetAmbient';
     streetScene.add(streetAmbient);
@@ -9691,6 +9698,7 @@ function buildShoppingStreet() {
     streetDir.shadow.camera.top = 80; streetDir.shadow.camera.bottom = -80;
     streetScene.add(streetDir);
 
+    // --- 1. 地面：紅色拼花磚與盲人磚 ---
     const streetMat = new THREE.MeshStandardMaterial({map: createRedBrickPaving(), roughness: 1.0});
     const street = new THREE.Mesh(new THREE.PlaneGeometry(150, 200), streetMat);
     street.rotation.x = -Math.PI/2;
@@ -9702,20 +9710,15 @@ function buildShoppingStreet() {
     tactileLine.position.set(10, 0.05, 0); tactileLine.receiveShadow = true;
     streetScene.add(tactileLine);
 
+    // --- 2. 建築主體結構 ---
     const buildingsGrp = new THREE.Group();
-    buildingsGrp.position.set(20, 0, 0); 
+    buildingsGrp.position.set(20, 0, 0); // 靠右側
     streetScene.add(buildingsGrp);
 
-    // 👇 修訂六：提升玻璃質感 (高透射+反射倒影)
-    const shopGlassMat = new THREE.MeshStandardMaterial({ 
-        color: 0xcceeff, roughness: 0.05, metalness: 1.0, 
-        transparent: true, opacity: 0.35, 
-        envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null, 
-        envMapIntensity: 2.5, side: THREE.DoubleSide 
-    });
+    const shopGlassMat = new THREE.MeshStandardMaterial({ color: 0x051015, roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.7, envMap: createFakeGlassReflection(), envMapIntensity: 3.0 });
     const shutterMat = new THREE.MeshStandardMaterial({map: createRollerShutterTexture(), metalness: 0.6, roughness: 0.5});
+    const darkInteriorMat = new THREE.MeshStandardMaterial({color: 0x110a05});
 
-    // 內部建築與窗戶生成邏輯
     function createTangLauUpperFloors(x, z, width, baseColor) {
         const floorGrp = new THREE.Group();
         const wallMat = new THREE.MeshStandardMaterial({map: createMosaicTileTexture(baseColor), roughness: 0.9});
@@ -9732,40 +9735,29 @@ function buildShoppingStreet() {
                 }
                 if (Math.random() > 0.4) { 
                     const ac = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 2), new THREE.MeshStandardMaterial({color:0xdddddd}));
-                    // 👇 修訂五：冷氣機精準貼齊窗戶下緣 (fy - 2.5)
-                    ac.position.set(x - width/2 - 0.5, fy - 2.5, fz + 1.2); ac.castShadow = true; floorGrp.add(ac);
+                    ac.position.set(x - width/2 - 0.5, fy-2, fz+2); ac.castShadow = true; floorGrp.add(ac);
                     const acVent = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1), new THREE.MeshBasicMaterial({color:0x111}));
-                    acVent.position.set(x - width/2 - 1.26, fy - 2.5, fz + 1.2); acVent.rotation.y = -Math.PI/2; floorGrp.add(acVent);
+                    acVent.position.set(x - width/2 - 1.26, fy-2, fz+2); acVent.rotation.y = -Math.PI/2; floorGrp.add(acVent);
                 }
             }
         }
         return floorGrp;
     }
 
-    // 🏬 店舖 A：文苑文具 
+    // 🏬 店舖 A：文苑文具
     const statGrp = new THREE.Group();
     statGrp.position.set(0, 0, 15);
     statGrp.add(createTangLauUpperFloors(7.5, 0, 15, '#8fbc8f'));
     
-    // 👇 修訂四：移除封死外牆，改為U型內牆，展示店鋪內部
-    const statWallM = new THREE.MeshStandardMaterial({map: createMosaicTileTexture('#8fbc8f')});
-    const swBack = new THREE.Mesh(new THREE.BoxGeometry(1, 15, 20), statWallM); swBack.position.set(14.5, 7.5, 0); statGrp.add(swBack);
-    const swL = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 1), statWallM); swL.position.set(7.5, 7.5, 9.5); statGrp.add(swL);
-    const swR = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 1), statWallM); swR.position.set(7.5, 7.5, -9.5); statGrp.add(swR);
+    const statWall = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 20), new THREE.MeshStandardMaterial({map: createMosaicTileTexture('#8fbc8f')}));
+    statWall.position.set(7.5, 7.5, 0); statGrp.add(statWall);
+    const statWindow = new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 18), shopGlassMat);
+    statWindow.position.set(0, 5, 0); statGrp.add(statWindow);
+    const statInside = new THREE.Mesh(new THREE.BoxGeometry(5, 9, 16), darkInteriorMat); 
+    statInside.position.set(3, 5, 0); statInside.userData = { isShopInside: true }; statGrp.add(statInside);
     
-    // 內部陳列櫃
-    const shelfM = new THREE.MeshStandardMaterial({color: 0x8b7355});
-    for(let i=0; i<3; i++) {
-        const sh = new THREE.Mesh(new THREE.BoxGeometry(2, 8, 14), shelfM);
-        sh.position.set(12, 4, 0); statGrp.add(sh);
-    }
-    
-    const statInside = new THREE.Mesh(new THREE.BoxGeometry(12, 14, 18), new THREE.MeshBasicMaterial({color: 0xffffff, visible: false})); 
-    statInside.position.set(7, 7, 0); statInside.userData = { isShopInside: true }; statGrp.add(statInside);
-    
-    // 鐵閘捲起，大門敞開
-    const shutterA = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 20), shutterMat);
-    shutterA.rotation.x = Math.PI/2; shutterA.position.set(0, 14, 0); statGrp.add(shutterA);
+    const shutterA = new THREE.Mesh(new THREE.BoxGeometry(1.2, 5, 20), shutterMat);
+    shutterA.position.set(0, 12.5, 0); statGrp.add(shutterA);
 
     const awningA = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 20), new THREE.MeshStandardMaterial({map: createAwningTexture('#e8c35d'), roughness: 0.9}));
     awningA.position.set(-2, 10, 0); awningA.rotation.z = -0.3; awningA.castShadow = true; statGrp.add(awningA);
@@ -9774,31 +9766,24 @@ function buildShoppingStreet() {
     const signA = new THREE.Mesh(new THREE.BoxGeometry(0.5, 3.5, 8), new THREE.MeshStandardMaterial({map: texA, emissiveMap: texA}));
     signA.position.set(-0.5, 13, 0); signA.userData = { isNeon: true }; statGrp.add(signA);
 
-    const statHit = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 20), new THREE.MeshBasicMaterial({visible:false}));
-    statHit.position.set(3, 5, 0); statHit.userData = {type: 'shop_stationery'};
+    const statHit = new THREE.Mesh(new THREE.BoxGeometry(5, 10, 20), new THREE.MeshBasicMaterial({visible:false}));
+    statHit.position.set(0, 5, 0); statHit.userData = {type: 'shop_stationery'};
     statGrp.add(statHit); buildingsGrp.add(statGrp);
 
-    // 🏬 店舖 B：霓虹黑膠 
+    // 🏬 店舖 B：霓虹黑膠
     const recGrp = new THREE.Group();
     recGrp.position.set(0, 0, -10);
     recGrp.add(createTangLauUpperFloors(7.5, 0, 15, '#c28585')); 
 
-    const recWallM = new THREE.MeshStandardMaterial({map: createConcreteTexture()});
-    const rwBack = new THREE.Mesh(new THREE.BoxGeometry(1, 15, 20), recWallM); rwBack.position.set(14.5, 7.5, 0); recGrp.add(rwBack);
-    const rwL = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 1), recWallM); rwL.position.set(7.5, 7.5, 9.5); recGrp.add(rwL);
-    const rwR = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 1), recWallM); rwR.position.set(7.5, 7.5, -9.5); recGrp.add(rwR);
+    const recWall = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 20), new THREE.MeshStandardMaterial({map: createConcreteTexture()}));
+    recWall.position.set(7.5, 7.5, 0); recGrp.add(recWall);
+    const recWindow = new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 18), shopGlassMat);
+    recWindow.position.set(0, 5, 0); recGrp.add(recWindow);
+    const recInside = new THREE.Mesh(new THREE.BoxGeometry(5, 9, 16), darkInteriorMat); 
+    recInside.position.set(3, 5, 0); recInside.userData = { isShopInside: true }; recGrp.add(recInside);
 
-    // 內部陳列
-    for(let i=0; i<2; i++) {
-        const sh = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 10), new THREE.MeshStandardMaterial({color: 0x333333}));
-        sh.position.set(8 + i*4, 2, 0); recGrp.add(sh);
-    }
-
-    const recInside = new THREE.Mesh(new THREE.BoxGeometry(12, 14, 18), new THREE.MeshBasicMaterial({color: 0xffffff, visible: false})); 
-    recInside.position.set(7, 7, 0); recInside.userData = { isShopInside: true }; recGrp.add(recInside);
-
-    const shutterB = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 20), shutterMat);
-    shutterB.rotation.x = Math.PI/2; shutterB.position.set(0, 14, 0); recGrp.add(shutterB);
+    const shutterB = new THREE.Mesh(new THREE.BoxGeometry(1.2, 5, 20), shutterMat);
+    shutterB.position.set(0, 12.5, 0); recGrp.add(shutterB);
 
     const awningB = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 20), new THREE.MeshStandardMaterial({map: createAwningTexture('#4a789c'), roughness: 0.9}));
     awningB.position.set(-2.5, 9.5, 0); awningB.rotation.z = -0.25; awningB.castShadow = true; recGrp.add(awningB);
@@ -9807,8 +9792,8 @@ function buildShoppingStreet() {
     const signB = new THREE.Mesh(new THREE.BoxGeometry(6, 18, 0.5), new THREE.MeshStandardMaterial({map: texB, emissiveMap: texB}));
     signB.position.set(-5, 20, -10); signB.rotation.y = -Math.PI/6; signB.userData = { isNeon: true }; recGrp.add(signB);
 
-    const recHit = new THREE.Mesh(new THREE.BoxGeometry(10, 10, 20), new THREE.MeshBasicMaterial({visible:false}));
-    recHit.position.set(3, 5, 0); recHit.userData = {type: 'shop_record'};
+    const recHit = new THREE.Mesh(new THREE.BoxGeometry(5, 10, 20), new THREE.MeshBasicMaterial({visible:false}));
+    recHit.position.set(0, 5, 0); recHit.userData = {type: 'shop_record'};
     recGrp.add(recHit); buildingsGrp.add(recGrp);
 
     // --- 3. 街道佈景 ---
@@ -9821,58 +9806,16 @@ function buildShoppingStreet() {
     stallRoof.position.set(-1, 6.5, 0); stallRoof.rotation.x = -Math.PI/2; stallRoof.rotation.y = -0.2; stallRoof.castShadow = true; stallGrp.add(stallRoof);
     streetScene.add(stallGrp);
 
-    // 👇 修訂二：香港郵政綠色郵筒 (加入圓頂、投信口與標誌面)
-    const pBoxGrp = new THREE.Group();
-    pBoxGrp.position.set(5, 0, -20);
-    const pMat = new THREE.MeshStandardMaterial({color: 0x005533, roughness: 0.5, metalness: 0.1});
-    const pBase = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.2, 16), new THREE.MeshStandardMaterial({color: 0x222222}));
-    pBase.position.y = 0.1; pBoxGrp.add(pBase);
-    const pBody = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.5, 1.8), pMat);
-    pBody.position.y = 1.85; pBody.castShadow = true; pBoxGrp.add(pBody);
-    const pTop = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 2.2, 16), pMat);
-    pTop.rotation.z = Math.PI/2; pTop.position.y = 3.6; pTop.castShadow = true; pBoxGrp.add(pTop);
-    const pSlot = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.15, 1.9), new THREE.MeshBasicMaterial({color: 0x000000}));
-    pSlot.position.set(-0.4, 2.8, 0); pBoxGrp.add(pSlot); 
-    const pLogo = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), new THREE.MeshStandardMaterial({color: 0xffffff}));
-    pLogo.position.set(-1.11, 2.0, 0); pLogo.rotation.y = -Math.PI/2; pBoxGrp.add(pLogo); 
-    streetScene.add(pBoxGrp);
+    const pBox = new THREE.Mesh(new THREE.BoxGeometry(2.5, 4, 2.5), new THREE.MeshStandardMaterial({color: 0x008844, roughness: 0.6}));
+    pBox.position.set(5, 2, -20); pBox.castShadow = true; streetScene.add(pBox);
+    const pHood = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.25, 2.5, 16), new THREE.MeshStandardMaterial({color: 0x008844}));
+    pHood.rotation.x = Math.PI/2; pHood.position.set(5, 4, -20); streetScene.add(pHood);
 
-    // 👇 修訂二：精緻版消防龍頭 (加入立體金屬細節與側邊出水口)
-    const hydrantGrp = new THREE.Group();
-    hydrantGrp.position.set(6, 0, 25);
-    const hMat = new THREE.MeshStandardMaterial({color: 0xcc1111, roughness: 0.4, metalness: 0.3});
-    const hBase = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.3, 16), hMat);
-    hBase.position.y = 0.15; hydrantGrp.add(hBase);
-    const hBody = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 2.0, 16), hMat);
-    hBody.position.y = 1.3; hBody.castShadow = true; hydrantGrp.add(hBody);
-    const hTop = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), hMat);
-    hTop.position.y = 2.3; hTop.castShadow = true; hydrantGrp.add(hTop);
-    const hNozzleL = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.2, 16), hMat);
-    hNozzleL.rotation.z = Math.PI/2; hNozzleL.position.set(-0.4, 1.5, 0); hydrantGrp.add(hNozzleL);
-    const hNozzleR = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.2, 16), hMat);
-    hNozzleR.rotation.z = Math.PI/2; hNozzleR.position.set(0.4, 1.5, 0); hydrantGrp.add(hNozzleR);
-    streetScene.add(hydrantGrp);
+    const hydrant = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 2.5), new THREE.MeshStandardMaterial({color: 0xdd2222, roughness: 0.5}));
+    hydrant.position.set(6, 1.25, 25); hydrant.castShadow = true;
+    streetScene.add(hydrant);
 
-    // 👇 修訂三：加入經典的香港 T型街道名牌
-    const signGrp = new THREE.Group();
-    signGrp.position.set(4, 0, 10);
-    const poleMat = new THREE.MeshStandardMaterial({color: 0x4a4a4a, metalness: 0.85, roughness: 0.3}); 
-    const sPole = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 8, 16), poleMat);
-    sPole.position.y = 4; sPole.castShadow = true; signGrp.add(sPole);
-    
-    const sCanvas = document.createElement('canvas');
-    sCanvas.width = 256; sCanvas.height = 64; const sCtx = sCanvas.getContext('2d');
-    sCtx.fillStyle = '#ffffff'; sCtx.fillRect(0,0,256,64);
-    sCtx.strokeStyle = '#000000'; sCtx.lineWidth = 4; sCtx.strokeRect(2,2,252,60);
-    sCtx.fillStyle = '#000000'; sCtx.font = 'bold 36px "Kaiti TC", "BiauKai", "Noto Serif TC", serif';
-    sCtx.textAlign = 'center'; sCtx.textBaseline = 'middle';
-    sCtx.fillText('海濱道', 128, 32);
-    const sTex = new THREE.CanvasTexture(sCanvas);
-    const sBoard = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.5, 5), new THREE.MeshStandardMaterial({map: sTex}));
-    sBoard.position.set(0, 7.5, 0); sBoard.castShadow = true; signGrp.add(sBoard);
-    streetScene.add(signGrp);
-
-    // 👇 修訂八：街燈金屬材質
+    const poleMat = new THREE.MeshStandardMaterial({color: 0x333333, metalness: 0.6});
     const lampCasingMat = new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8});
     for (let z of [30, -5, -45]) {
         const lampGrp = new THREE.Group();
