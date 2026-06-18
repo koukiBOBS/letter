@@ -2889,7 +2889,7 @@ function renderTasks() {
                 randMap[s.taskDate] = s;
             });
 
-         if (randomTasks.length === 0) {
+       if (randomTasks.length === 0) {
                 randGrid.innerHTML = '<div class="empty-state"><p>目前尚未設定探索任務。</p></div>';
             } else {
                 randomTasks.forEach((dateStr, i) => {
@@ -2910,23 +2910,24 @@ function renderTasks() {
                     
                     let dateHtml = '';
                     if (done) {
-                        dateHtml = `<span class="task-date" style="color:#6b8e73; font-weight:bold; font-size:1.05rem; letter-spacing:1px; margin-top:12px; display:block;">✓ 任務已達成</span>`;
+                        dateHtml = `<span class="task-date" style="color:#6b8e73; font-weight:bold; font-size:1.05rem; letter-spacing:1px; margin-top:15px; display:block;">✓ 任務已達成</span>`;
                     } else {
-                        // 👇 這裡完全套用與閱讀任務相同的橙色（逾期則為紅色）標籤樣式
                         let endColor = isLate ? '#ef4444' : '#d98a6c'; 
                         let endBg = isLate ? 'rgba(239,68,68,0.1)' : 'rgba(217,138,108,0.12)';
-                        let endIcon = isLate ? '<span style="font-size:0.8rem; margin-left:4px;">⚠️已逾期</span>' : '';
+                        // 移除圖案，逾期時只加上簡單的文字
+                        let endText = isLate ? ' 逾期' : ''; 
                         
+                        // 加入 white-space: nowrap 強制不准換行
                         dateHtml = `
-                            <div style="display:flex; align-items:center; justify-content:center; width:100%; margin-top:18px; font-family:var(--font-sans); font-size:0.95rem; font-weight:600;">
-                                <span style="color:var(--text-muted); margin-right:8px;">截止於</span>
-                                <span style="color:${endColor}; background:${endBg}; padding:3px 10px; border-radius:6px; letter-spacing:1px;">
-                                    ${formatShortDate(deadlineStr)}${endIcon}
+                            <div style="margin-top:15px; display:flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap;">
+                                <span style="color:var(--text-muted); font-size:0.9rem; font-weight:500;">截止於</span>
+                                <span style="color:${endColor}; background:${endBg}; padding:4px 10px; border-radius:6px; font-family:var(--font-sans); font-size:0.95rem; font-weight:600; letter-spacing:0.5px; display:inline-block;">
+                                    ${formatShortDate(deadlineStr)}${endText}
                                 </span>
                             </div>
                         `;
                         if (drawnTasksData[dateStr]) { 
-                            dateHtml += `<div style="margin-top:12px; font-size:0.75rem; color:#8b7355; font-weight:600; letter-spacing:1px; background:#fdfaf6; padding:2px 8px; border-radius:10px; display:inline-block;">已抽籤，待繳交</div>`; 
+                            dateHtml += `<div style="margin-top:10px; font-size:0.75rem; color:#8b7355; font-weight:600; letter-spacing:1px; background:#fdfaf6; padding:4px 10px; border-radius:10px; display:inline-block;">已抽籤，待繳交</div>`; 
                         }
                     }
 
@@ -2940,6 +2941,7 @@ function renderTasks() {
                 });
             }
 
+            
             // 📝 最後，呼叫渲染日曆函數
             renderCalendar();
 
