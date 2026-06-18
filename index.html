@@ -6317,8 +6317,8 @@ const intersects = getValidIntersects();
         const type = obj.userData.type;
 
 if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella', 'piano', 'bench'].includes(type)) {
-    let targetObj = obj;
-    if(['plant', 'trash', 'chair', 'cat', 'rack', 'umbrella', 'piano', 'bench'].includes(type)) {
+            let targetObj = obj;
+            if(['plant', 'trash', 'chair', 'cat', 'rack', 'umbrella', 'piano', 'bench'].includes(type)) {
                 targetObj = obj.parent; 
             }
 
@@ -6329,12 +6329,26 @@ if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella
                 controls.enabled = false;
                 document.body.style.cursor = 'grabbing';
 
-                if (type === 'cat') {
-                    setCatState('dragged');
+                // 記錄物件原本的 Y 軸高度 (若尚未記錄)
+                if(dragTarget.userData.originalY === undefined) {
+                    dragTarget.userData.originalY = dragTarget.position.y;
                 }
 
-  if(dragTarget.userData.originalY === undefined) {
-                    dragTarget.userData.originalY = dragTarget.position.y;
+                if (type === 'cat') {
+                    // 貓咪有專屬的被抓起動畫 (身體拉長、四肢下垂)
+                    setCatState('dragged');
+                } else {
+                    // ✨ 新增：其他桌面與地板物品被拿起來的視覺回饋 (抬高 + 稍微放大)
+                    gsap.to(dragTarget.position, {
+                        y: dragTarget.userData.originalY + 1.5, // 往上懸空 1.5 單位
+                        duration: 0.2,
+                        ease: "power2.out"
+                    });
+                    gsap.to(dragTarget.scale, {
+                        x: 1.05, y: 1.05, z: 1.05, // 稍微放大產生拿近的錯覺
+                        duration: 0.2,
+                        ease: "power2.out"
+                    });
                 }
       
                 let plane = (['log', 'tasks', 'water', 'plant'].includes(type)) ? deskPlane : floorPlane;
@@ -6344,7 +6358,8 @@ if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella
                     dragOffset.copy(intersectPoint).sub(dragTarget.position);
                 }
             }, 300);
-        } 
+        }
+
         else if (type === 'curtain') {
             dragTimer = setTimeout(() => {
                 isDragging = true;
@@ -6805,22 +6820,19 @@ if (type === 'painting' || type === 'bookcase') {
             }
         
 
-     let snapTargetX = droppedObj.position.x;
+  let snapTargetX = droppedObj.position.x;
         let snapTargetZ = droppedObj.position.z;
 
         // 🧲 磁吸效應：如果拖曳的是琴椅，靠近鋼琴時自動吸附到演奏位
         if (type === 'bench' && typeof pianoGrp !== 'undefined' && pianoGrp.visible) {
-            // 用三角函數動態算出鋼琴的正前方演奏位置 (距離 4.5)
             let idealX = pianoGrp.position.x + Math.sin(pianoGrp.rotation.y) * 4.5;
             let idealZ = pianoGrp.position.z + Math.cos(pianoGrp.rotation.y) * 4.5;
-            
             let dx = droppedObj.position.x - idealX;
             let dz = droppedObj.position.z - idealZ;
             
-            if (Math.hypot(dx, dz) < 8) { // 靠近範圍內啟動吸附
+            if (Math.hypot(dx, dz) < 8) { 
                 snapTargetX = idealX;
                 snapTargetZ = idealZ;
-                // 強制轉向與鋼琴一致
                 gsap.to(droppedObj.rotation, {y: pianoGrp.rotation.y, duration: 0.3});
             }
         } 
@@ -6828,20 +6840,25 @@ if (type === 'painting' || type === 'bookcase') {
         else if (type === 'piano' && typeof benchGrp !== 'undefined' && benchGrp.visible) {
             let idealX = droppedObj.position.x + Math.sin(droppedObj.rotation.y) * 4.5;
             let idealZ = droppedObj.position.z + Math.cos(droppedObj.rotation.y) * 4.5;
-            
             let dx = benchGrp.position.x - idealX;
             let dz = benchGrp.position.z - idealZ;
             
             if (Math.hypot(dx, dz) < 8) {
-                gsap.to(benchGrp.position, {
-                    x: idealX,
-                    z: idealZ,
-                    duration: 0.3
-                });
-                gsap.to(benchGrp.rotation, {y: droppedObj.rotation.y, duration: 0.3});
+                gsap.to(benchGrp.position, { x: idealX, z: idealZ, duration: 0.3 });
+                gsap.to(benchGrp.rotation, { y: droppedObj.rotation.y, duration: 0.3 });
             }
         }
 
+        // ✨ 新增：讓物品恢復原本的 1:1 比例 (只有貓咪不影響，因為貓咪有 updateCat 處理)
+        if (type !== 'cat') {
+            gsap.to(dragTarget.scale, { 
+                x: 1, y: 1, z: 1, 
+                duration: 0.3, 
+                ease: "bounce.out" 
+            });
+        }
+
+        // 執行落下與彈跳動畫，並將 Y 軸帶回原本的高度
         gsap.to(dragTarget.position, { 
             x: snapTargetX,
             z: snapTargetZ,
@@ -6856,11 +6873,12 @@ if (type === 'painting' || type === 'bookcase') {
                 }
             }
         });
+
         isDragging = false;
         dragTarget = null;
         controls.enabled = true; 
         document.body.style.cursor = 'default';
-        return; 
+        return;
     }
 
    if(Math.abs(e.clientX - pointerDownPos.x) > 10 || Math.abs(e.clientY - pointerDownPos.y) > 10) return;
