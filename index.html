@@ -9520,7 +9520,7 @@ function getOffBus() {
 
 
         // 成功進入商店街邏輯
-// 成功進入商店街邏輯 (乾淨切換場景)
+// 成功進入商店街邏輯 (修復相機鎖死黑畫面問題)
 function enterShoppingStreet() {
     const bellBox = document.getElementById('bus-bell-box');
     if (bellBox) bellBox.style.display = 'none';
@@ -9534,15 +9534,23 @@ function enterShoppingStreet() {
     setTimeout(() => { fadeOverlay.style.opacity = 1; }, 10);
     
     setTimeout(() => {
+        // 🛑 【關鍵修復 1】：立刻殺死巴士的顛簸動畫，防止它與第一人稱相機打架！
+        if (typeof busBumpAnim !== 'undefined' && busBumpAnim) {
+            busBumpAnim.kill();
+            busBumpAnim = null;
+        }
+ 
+        // 🛑 【關鍵修復 2】：解除巴士對攝影機的綁定與鎖死
         isRidingBus = false;
         if (window.originalControlsUpdate) {
             controls.update = window.originalControlsUpdate;
         }
-        scene.add(camera);
         
+        // 將攝影機加入到「街道場景」，而不是房間場景
         if (typeof streetScene === 'undefined' || !streetScene) {
             buildShoppingStreet();
         }
+        streetScene.add(camera);
         
         isAtStreet = true;
         if (typeof syncStreetEnvironment === 'function') syncStreetEnvironment();
@@ -9555,21 +9563,24 @@ function enterShoppingStreet() {
         }
  
         // 🌟 第一人稱沉浸式視角設定
+        controls.enabled = true; // 確保控制器被喚醒
         controls.minAzimuthAngle = -Infinity;
         controls.maxAzimuthAngle = Infinity;
         controls.minPolarAngle = Math.PI / 3;
         controls.maxPolarAngle = Math.PI / 1.5;
-        controls.enablePan = false; // 禁用雙指平移，防止視角錯亂
+        controls.enablePan = false;
  
         // 💡 將相機與目標點的距離鎖死在 0.1
         controls.minDistance = 0.1;
         controls.maxDistance = 0.1;
  
-        // 🛑 初始化人物站立位置與視線目標 (兩者距離 0.1)
+        // 🛑 【關鍵修復 3】：將相機與目標點的 Y 軸設為完全一致 (6)，避免微小差距造成 NaN 崩潰
         camera.position.set(-15, 6, 0);
         controls.target.set(-14.9, 6, 0);
+        camera.lookAt(-14.9, 6, 0); // 強制對齊方向
         controls.update();
  
+        // 重新顯示搖桿
         const knob = document.getElementById('mobile-cam-knob');
         if (knob) knob.style.display = 'flex';
         
@@ -9578,18 +9589,17 @@ function enterShoppingStreet() {
         fadeOverlay.style.opacity = 0;
         setTimeout(() => fadeOverlay.remove(), 800);
         
-        showToast("🛍️ 抵達商店街！左手搖桿移動，右手滑動螢幕轉頭。");
+        showToast("🛍️ 抵達商店街！左手搖桿橫移前進，右手滑動螢幕轉頭。");
     }, 850);
 }
 
 // 離開商店街，返回房間露台
 function leaveShoppingStreet() {
     document.getElementById('btn-leave-street').style.display = 'none';
-
-       // 👇 新增這兩行：準備搭車回房間時，先把搖桿藏起來
+ 
+    // 準備搭車回房間時，先把搖桿藏起來
     const knob = document.getElementById('mobile-cam-knob');
     if (knob) knob.style.display = 'none';
-    
     
     const fadeOverlay = document.createElement('div');
     fadeOverlay.style.cssText = "position:fixed; inset:0; background:#000; z-index:99999; opacity:0; pointer-events:none; transition: opacity 0.8s;";
@@ -9608,16 +9618,22 @@ function leaveShoppingStreet() {
             ferrisWheelGrp.parent.updateMatrix();
             ferrisWheelGrp.parent.matrixAutoUpdate = false;
         }
-
-        // 🛑 【關鍵修復 3】：暫時恢復乘車狀態，讓 getOffBus 能順利執行卸載巴士的邏輯
-        isRidingBus = true; 
+ 
+        // 🛑 【關鍵修復 4】：搭車回房間前，必須解開第一人稱的 0.1 距離鎖定，否則露台視角會壞掉
+        controls.minDistance = 0.1;
+        controls.maxDistance = 100;
+        controls.minAzimuthAngle = -Math.PI / 2.5;
+        controls.maxAzimuthAngle = Math.PI / 2.5;
+        controls.minPolarAngle = 0.05;           
+        controls.maxPolarAngle = Math.PI / 2;
+ 
+        isRidingBus = true;
         getOffBus(); // 觸發下車邏輯，鏡頭自動回到房間
         
         fadeOverlay.style.opacity = 0;
         setTimeout(() => fadeOverlay.remove(), 800);
     }, 850);
 }
-
         
 // 開發者面板測試按鈕：強制立刻觸發成功狀態
 window.devSimulateShoppingStreet = function() {
