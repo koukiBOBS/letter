@@ -9700,6 +9700,38 @@ function createNeonSign(text, bgColor, neonColor, isVertical) {
     return new THREE.CanvasTexture(canvas);
 }
 
+
+
+// 8. 新增：香港經典路牌紋理 (白底黑框黑字)
+function createStreetSignTexture(text) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    
+    // 白底
+    ctx.fillStyle = '#f0f0f0'; ctx.fillRect(0, 0, 512, 128);
+    // 黑框
+    ctx.strokeStyle = '#111111'; ctx.lineWidth = 8; ctx.strokeRect(4, 4, 504, 120);
+    // 文字
+    ctx.fillStyle = '#111111';
+    ctx.font = 'bold 50px "Noto Sans TC", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, 256, 64);
+    
+    // 增加一點歲月污漬
+    for(let i=0; i<1000; i++) {
+        ctx.fillStyle = 'rgba(0,0,0,0.05)';
+        ctx.fillRect(Math.random()*512, Math.random()*128, 3, 3);
+    }
+    
+    return new THREE.CanvasTexture(canvas);
+}
+
+
+
+        
+        
+
 // 🛠️ 建造獨立的港式商店街場景
 function buildShoppingStreet() {
     streetScene = new THREE.Scene();
