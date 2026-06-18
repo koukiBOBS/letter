@@ -1810,9 +1810,9 @@ function renderCalendar() {
 
         
 function renderTasks() {
-    const rGrid = document.getElementById('task-grid'); 
+    const rGrid = document.getElementById('task-grid');
     const randGrid = document.getElementById('random-task-grid');
-    if(!rGrid || !randGrid) return; 
+    if(!rGrid || !randGrid) return;
     rGrid.innerHTML = ''; randGrid.innerHTML = '';
     
     if (!currentUser) return; // 確保有登入才執行
@@ -1821,8 +1821,16 @@ function renderTasks() {
     // 取得該班級的任務設定
     db.ref(`classes/${classId}`).once('value').then(classSnap => {
         const classData = classSnap.val() || {};
-      let readingTasks = classData.tasks || [];
-        let randomTasks = classData.randomTasks || [];
+        
+        // 👇 修正重點：加入陣列防呆處理，避免 Firebase 將不連續陣列轉為物件導致迴圈崩潰
+        function getArraySafe(data) {
+            if (!data) return [];
+            if (Array.isArray(data)) return data.filter(x => x !== null && x !== undefined);
+            return Object.values(data).filter(x => x !== null && x !== undefined);
+        }
+        
+        let readingTasks = getArraySafe(classData.tasks);
+        let randomTasks = getArraySafe(classData.randomTasks);
         
         // 👇 注入開發面板產生的本地模擬任務（這只存在於老師當前的瀏覽器中，不會影響學生）
         if (window.mockReadingTasks) readingTasks = readingTasks.concat(window.mockReadingTasks);
