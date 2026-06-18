@@ -9883,7 +9883,7 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     return floorGrp;
 }
 
-// 💡 新增：明亮的室內牆面，讓透視感與展示效果更強
+// 💡 新增：室內牆面材質 (使用全新名稱避免衝突)
     const brightShopMat = new THREE.MeshStandardMaterial({color: 0xfffae6, side: THREE.BackSide, roughness: 0.8});
     const darkShopMat = new THREE.MeshStandardMaterial({color: 0x4a2525, side: THREE.BackSide, roughness: 0.9});
  
@@ -9892,7 +9892,7 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     statGrp.position.set(0, 0, 15);
     statGrp.add(createTangLauUpperFloors(7.5, 0, 20, '#8fbc8f'));
     
-    // 👇 重新建構一樓外牆：改用左、右、上三塊積木拼接，徹底留出中間的空洞給玻璃門窗
+    // 重新建構一樓外牆：改用左、右、上三塊積木拼接，留出中間的空洞給玻璃門窗
     const statTileMat = new THREE.MeshStandardMaterial({map: createMosaicTileTexture('#8fbc8f')});
     const statWallL = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 2), statTileMat);
     statWallL.position.set(7.5, 7.5, 9); statGrp.add(statWallL); // 左柱
@@ -9901,13 +9901,13 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     const statWallTop = new THREE.Mesh(new THREE.BoxGeometry(15, 5, 16), statTileMat);
     statWallTop.position.set(7.5, 12.5, 0); statGrp.add(statWallTop); // 頂樑
     
-    // 👇 內部空間：使用 BackSide 材質的空心盒子
-    const statInside = new THREE.Mesh(new THREE.BoxGeometry(14.8, 14.8, 15.8), brightInteriorMat);
+    // 內部空間：使用 brightShopMat
+    const statInside = new THREE.Mesh(new THREE.BoxGeometry(14.8, 14.8, 15.8), brightShopMat);
     statInside.position.set(7.5, 7.5, 0);
     statInside.userData = { isShopInside: true };
     statGrp.add(statInside);
  
-    // 👇 櫥窗與開門：不遮擋內部
+    // 櫥窗與開門：不遮擋內部
     const statWindow = new THREE.Mesh(new THREE.BoxGeometry(0.2, 10, 10), shopGlassMat);
     statWindow.position.set(0, 5, -3); // 右半部固定玻璃
     statGrp.add(statWindow);
@@ -9916,7 +9916,7 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     statDoor.rotation.y = -Math.PI / 3;
     statGrp.add(statDoor);
     
-    // 👇 內部陳設：文具店明亮內裝與立體商品展示
+    // 內部陳設：文具店明亮內裝與立體商品展示
     const statProps = new THREE.Group();
     // 巨大的鉛筆模型作櫥窗展示
     const giantPencil = new THREE.Group();
@@ -9979,10 +9979,11 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     const recWallTop = new THREE.Mesh(new THREE.BoxGeometry(15, 5, 16), recTileMat);
     recWallTop.position.set(7.5, 12.5, 0); recGrp.add(recWallTop);
     
-   const recInside = new THREE.Mesh(new THREE.BoxGeometry(14.8, 14.8, 15.8), darkShopMat);
+    // 內部空間：使用 darkShopMat
+    const recInside = new THREE.Mesh(new THREE.BoxGeometry(14.8, 14.8, 15.8), darkShopMat);
     recInside.position.set(7.5, 7.5, 0); recInside.userData = { isShopInside: true }; recGrp.add(recInside);
     
-    // 👇 櫥窗與開門
+    // 櫥窗與開門
     const recWindow = new THREE.Mesh(new THREE.BoxGeometry(0.2, 10, 10), shopGlassMat);
     recWindow.position.set(0, 5, 3); // 左半部固定玻璃
     recGrp.add(recWindow);
@@ -9991,7 +9992,7 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     recDoor.rotation.y = Math.PI / 3;
     recGrp.add(recDoor);
     
-    // 👇 內部陳設：黑膠店暗紅色復古風與唱機展示
+    // 內部陳設：黑膠店暗紅色復古風與唱機展示
     const recProps = new THREE.Group();
     // 牆上巨大的黑膠唱片裝飾
     for(let i=-1; i<=1; i+=2) {
