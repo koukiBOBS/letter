@@ -2703,10 +2703,22 @@ function renderTasks() {
     const classId = currentUser.classId || 'default';
     
     // 取得該班級的任務設定
-    db.ref(`classes/${classId}`).once('value').then(classSnap => {
-        const classData = classSnap.val() || {};
-      let readingTasks = classData.tasks || [];
-        let randomTasks = classData.randomTasks || [];
+  // 取得該班級的任務設定
+            db.ref(`classes/${classId}`).once('value').then(classSnap => {
+                const classData = classSnap.val() || {};
+                
+                // 🛡️ 防呆機制：確保 Firebase 傳回來的是乾淨的陣列，防止被轉成 Object 導致畫面空白崩潰
+                const getSafeArray = (data) => {
+                    if (!data) return [];
+                    if (Array.isArray(data)) return data.filter(x => x !== null && x !== undefined);
+                    return Object.values(data).filter(x => x !== null && x !== undefined);
+                };
+                
+                let readingTasks = getSafeArray(classData.tasks);
+                let randomTasks = getSafeArray(classData.randomTasks);
+                
+                // 👇 注入開發面板產生的本地模擬任務（這只存在於老師當前的瀏覽器中，不會影響學生）
+ 
         
         // 👇 注入開發面板產生的本地模擬任務（這只存在於老師當前的瀏覽器中，不會影響學生）
         if (window.mockReadingTasks) readingTasks = readingTasks.concat(window.mockReadingTasks);
