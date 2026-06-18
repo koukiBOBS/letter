@@ -9770,30 +9770,53 @@ function buildShoppingStreet() {
     const shutterMat = new THREE.MeshStandardMaterial({map: createRollerShutterTexture(), metalness: 0.6, roughness: 0.5});
     const darkInteriorMat = new THREE.MeshStandardMaterial({color: 0x110a05});
 
-    function createTangLauUpperFloors(x, z, width, baseColor) {
-        const floorGrp = new THREE.Group();
-        const wallMat = new THREE.MeshStandardMaterial({map: createMosaicTileTexture(baseColor), roughness: 0.9});
-        const building = new THREE.Mesh(new THREE.BoxGeometry(width, 60, 25), wallMat);
-        building.position.set(x, 45, z); building.castShadow = true; building.receiveShadow = true; floorGrp.add(building);
-
-        for(let fy=20; fy<=65; fy+=10) {
-            for(let fz=z-8; fz<=z+8; fz+=6) {
-                if (Math.random() > 0.2) { 
-                    const win = new THREE.Mesh(new THREE.PlaneGeometry(4, 5), shopGlassMat);
-                    win.position.set(x - width/2 - 0.1, fy, fz); win.rotation.y = -Math.PI/2;
-                    win.userData = { isWindow: true }; 
-                    floorGrp.add(win);
-                }
-                if (Math.random() > 0.4) { 
-                    const ac = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 2), new THREE.MeshStandardMaterial({color:0xdddddd}));
-                    ac.position.set(x - width/2 - 0.5, fy-2, fz+2); ac.castShadow = true; floorGrp.add(ac);
-                    const acVent = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1), new THREE.MeshBasicMaterial({color:0x111}));
-                    acVent.position.set(x - width/2 - 1.26, fy-2, fz+2); acVent.rotation.y = -Math.PI/2; floorGrp.add(acVent);
-                }
+    // 優化：高質感玻璃與正確的冷氣機定位
+function createTangLauUpperFloors(x, z, width, baseColor) {
+    const floorGrp = new THREE.Group();
+    const wallMat = new THREE.MeshStandardMaterial({map: createMosaicTileTexture(baseColor), roughness: 0.9});
+    
+    // 使用與扭蛋機相同級別的高質感反光玻璃 (但加上雙面渲染與較低透明度防穿模)
+    const upperGlassMat = new THREE.MeshStandardMaterial({
+        color: 0x0a1a2a, roughness: 0.05, metalness: 0.9,
+        transparent: true, opacity: 0.6,
+        envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
+        envMapIntensity: 2.5, side: THREE.DoubleSide
+    });
+ 
+    const building = new THREE.Mesh(new THREE.BoxGeometry(width, 60, 25), wallMat);
+    building.position.set(x, 45, z);
+    building.castShadow = true; building.receiveShadow = true;
+    floorGrp.add(building);
+ 
+    for(let fy=20; fy<=65; fy+=10) {
+        for(let fz=z-8; fz<=z+8; fz+=6) {
+            // 窗戶
+            if (Math.random() > 0.2) {
+                const win = new THREE.Mesh(new THREE.PlaneGeometry(4, 5), upperGlassMat);
+                // 微調 Z 軸防閃爍，貼緊牆面
+                win.position.set(x - width/2 - 0.05, fy, fz);
+                win.rotation.y = -Math.PI/2;
+                win.userData = { isWindow: true };
+                floorGrp.add(win);
+            }
+            // 冷氣機 (修正：移至窗戶正下方，緊貼牆面)
+            if (Math.random() > 0.4) {
+                const ac = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 2.2), new THREE.MeshStandardMaterial({color:0xd0d0d0, roughness:0.8}));
+                // 緊貼牆身 (x - width/2)，高度在窗戶下緣 (fy - 3)
+                ac.position.set(x - width/2 + 0.3, fy - 3.2, fz);
+                ac.castShadow = true;
+                floorGrp.add(ac);
+                
+                // 黑色出風口
+                const acVent = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), new THREE.MeshBasicMaterial({color:0x111}));
+                acVent.position.set(x - width/2 - 0.46, fy - 3.2, fz);
+                acVent.rotation.y = -Math.PI/2;
+                floorGrp.add(acVent);
             }
         }
-        return floorGrp;
     }
+    return floorGrp;
+}
 
     // 🏬 店舖 A：文苑文具
     const statGrp = new THREE.Group();
