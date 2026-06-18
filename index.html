@@ -9703,27 +9703,28 @@ function createNeonSign(text, bgColor, neonColor, isVertical) {
 
 
 // 8. 新增：香港經典路牌紋理 (白底黑框黑字)
-function createStreetSignTexture(text) {
+function createStreetSignTexture(zhText, enText) {
     const canvas = document.createElement('canvas');
     canvas.width = 512; canvas.height = 128;
     const ctx = canvas.getContext('2d');
     
-    // 白底
     ctx.fillStyle = '#f0f0f0'; ctx.fillRect(0, 0, 512, 128);
-    // 黑框
     ctx.strokeStyle = '#111111'; ctx.lineWidth = 8; ctx.strokeRect(4, 4, 504, 120);
-    // 文字
-    ctx.fillStyle = '#111111';
-    ctx.font = 'bold 50px "Noto Sans TC", sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(text, 256, 64);
     
-    // 增加一點歲月污漬
-    for(let i=0; i<1000; i++) {
+    ctx.fillStyle = '#111111';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    
+    // 中文縮小並上移
+    ctx.font = 'bold 38px "Noto Sans TC", sans-serif';
+    ctx.fillText(zhText, 256, 50);
+    // 英文縮小並下移
+    ctx.font = 'bold 26px sans-serif';
+    ctx.fillText(enText, 256, 95);
+    
+    for(let i=0; i<800; i++) {
         ctx.fillStyle = 'rgba(0,0,0,0.05)';
         ctx.fillRect(Math.random()*512, Math.random()*128, 3, 3);
     }
-    
     return new THREE.CanvasTexture(canvas);
 }
 
@@ -9731,48 +9732,46 @@ function createStreetSignTexture(text) {
 
 
 // 🎨 零效能生成：香港經典「押」字當舖招牌 (蝠鼠吊金錢輪廓)
+// 🎨 零效能生成：香港經典「押」字當舖招牌 (縮小筆觸適應小尺寸)
 function createPawnSignTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 256; canvas.height = 384;
     const ctx = canvas.getContext('2d');
     
-    // 鐵皮底色與歲月雜訊
     ctx.fillStyle = '#111111'; ctx.fillRect(0, 0, 256, 384);
-    for(let i=0; i<1500; i++) {
+    for(let i=0; i<1000; i++) {
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillRect(Math.random()*256, Math.random()*384, 2, 2);
     }
  
-    // 經典綠色霓虹燈外框
-    ctx.strokeStyle = '#00ff44'; ctx.lineWidth = 10;
-    ctx.beginPath(); ctx.arc(128, 80, 50, 0, Math.PI*2); ctx.stroke(); // 上方金錢
-    ctx.strokeRect(30, 140, 196, 220); // 下方招牌
-    ctx.strokeRect(108, 60, 40, 40);   // 金錢內孔
+    ctx.strokeStyle = '#00ff44'; ctx.lineWidth = 8;
+    ctx.beginPath(); ctx.arc(128, 80, 45, 0, Math.PI*2); ctx.stroke();
+    ctx.strokeRect(40, 140, 176, 210);
+    ctx.strokeRect(108, 60, 40, 40);   
  
-    // 紅色「押」字
     ctx.fillStyle = '#ff2222';
-    ctx.font = 'bold 150px "Kaiti TC", "KaiTi", "BiauKai", serif';
+    ctx.font = 'bold 120px "Kaiti TC", "KaiTi", "BiauKai", serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('押', 128, 260);
+    ctx.fillText('押', 128, 255);
  
     return new THREE.CanvasTexture(canvas);
 }
  
-// 🎨 零效能生成：紅頂小巴 / 巴士站牌
-function createMinibusStopTexture() {
+// 🎨 零效能生成：巴士站牌 (已改為巴士站)
+function createBusStopTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 256; canvas.height = 256;
     const ctx = canvas.getContext('2d');
     
-    ctx.fillStyle = '#e8e8e8'; ctx.fillRect(0, 0, 256, 256); // 白底
-    ctx.fillStyle = '#cc2222'; ctx.beginPath(); ctx.arc(128, 128, 110, 0, Math.PI*2); ctx.fill(); // 紅圈
+    ctx.fillStyle = '#e8e8e8'; ctx.fillRect(0, 0, 256, 256);
+    ctx.fillStyle = '#cc2222'; ctx.beginPath(); ctx.arc(128, 128, 110, 0, Math.PI*2); ctx.fill();
     
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 45px "Noto Sans TC", sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('小巴站', 128, 100);
-    ctx.font = 'bold 28px sans-serif';
-    ctx.fillText('MINIBUS', 128, 155);
+    ctx.font = 'bold 45px "Noto Sans TC", sans-serif';
+    ctx.fillText('巴士站', 128, 105);
+    ctx.font = 'bold 30px sans-serif';
+    ctx.fillText('BUS', 128, 160);
  
     return new THREE.CanvasTexture(canvas);
 }
@@ -10016,12 +10015,17 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         bulb.add(pointLight);
 
 // 🚦 掛上香港經典白底黑框路牌 (只掛在第一和第二枝街燈)
+     // 🚦 掛上香港經典白底黑框路牌 (縮小尺寸作點綴)
         if (z === 30 || z === -5) {
-            const signText = z === 30 ? '海濱道 Promenade Rd.' : '梳士巴利道 Salisbury Rd.';
-            const streetSignTex = createStreetSignTexture(signText);
+            const zhText = z === 30 ? '海濱道' : '梳士巴利道';
+            const enText = z === 30 ? 'Promenade Rd.' : 'Salisbury Rd.';
+            const streetSignTex = createStreetSignTexture(zhText, enText);
             const streetSignMat = new THREE.MeshStandardMaterial({map: streetSignTex, roughness: 0.6});
-            const streetSign = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 5), streetSignMat);
-            streetSign.position.set(-0.8, 7, 0); // 掛在燈柱側邊，高度約為路人抬頭可見處
+            
+            // 將體積與寬度按比例縮小
+            const streetSign = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.8, 3.2), streetSignMat);
+            // 移至較高處，不遮擋玩家平視商店的視野
+            streetSign.position.set(-0.5, 8.5, 0);
             lampGrp.add(streetSign);
         }
 
@@ -10031,35 +10035,38 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
 
 
 // ==========================================
-    // 🇭🇰 增添香港街道經典標誌 (低多邊形，無效能負擔)
+    // 🇭🇰 增添香港街道經典標誌 (作為邊角與遠景點綴)
     // ==========================================
  
-    // 🏮 1. 建立香港經典當舖招牌 (蝠鼠吊金錢)
+    // 🏮 1. 香港經典當舖招牌 (縮小 50%，移至遠處建築邊緣)
     const pawnTex = createPawnSignTexture();
     const pawnMat = new THREE.MeshStandardMaterial({
         map: pawnTex, emissiveMap: pawnTex, emissive: 0xffffff, emissiveIntensity: 0
     });
-    const pawnSign = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 0.4), pawnMat);
-    pawnSign.position.set(3, 20, 5); // 懸掛在唐樓外牆，向馬路伸出
-    pawnSign.userData = { isNeon: true }; // 綁定霓虹燈屬性，晚上會自動發光！
+    // 縮小體積
+    const pawnSign = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 0.2), pawnMat);
+    // 移至較遠的大廈 Z=-25，高度提高，避免干擾主要視線
+    pawnSign.position.set(3, 22, -25);
+    pawnSign.userData = { isNeon: true };
     buildingsGrp.add(pawnSign);
  
-    // 🚏 2. 建立小巴站牌 (放在霓虹黑膠店前方的馬路邊)
-    const minibusStopTex = createMinibusStopTexture();
-    const minibusStopMat = new THREE.MeshStandardMaterial({map: minibusStopTex, roughness: 0.8});
+    // 🚏 2. 巴士站牌 (縮小，移至遠處馬路邊緣)
+    const busStopTex = createBusStopTexture();
+    const busStopMat = new THREE.MeshStandardMaterial({map: busStopTex, roughness: 0.8});
     const stopPoleMat = new THREE.MeshStandardMaterial({color: 0x555555, metalness: 0.8});
  
     const stopGrp = new THREE.Group();
-    stopGrp.position.set(7, 0, -10);
+    // 遠離商店，移至馬路的邊緣
+    stopGrp.position.set(11, 0, 25);
     
-    const stopPole = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 8, 16), stopPoleMat);
-    stopPole.position.y = 4; stopPole.castShadow = true;
+    const stopPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 7, 16), stopPoleMat);
+    stopPole.position.y = 3.5; stopPole.castShadow = true;
     stopGrp.add(stopPole);
     
-    const stopSign = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.1, 32), minibusStopMat);
-    stopSign.rotation.x = Math.PI / 2;
-    stopSign.rotation.y = -Math.PI / 2; // 面向馬路來車方向
-    stopSign.position.set(0, 7.5, 0);
+    // 將圓柱體作正確旋轉，避免文字上下倒轉 (Z 轉 -90 度可面向正路，X 轉 180 度防止顛倒)
+    const stopSign = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.1, 32), busStopMat);
+    stopSign.rotation.set(Math.PI, 0, -Math.PI / 2);
+    stopSign.position.set(0, 6.5, 0);
     stopGrp.add(stopSign);
     
     streetScene.add(stopGrp);
