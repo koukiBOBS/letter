@@ -4162,43 +4162,38 @@ function restoreObjectPositions() {
 // 🎨 零效能生成：實體玻璃反光與微塵貼圖
 function createGlassSurfaceTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 512; canvas.height = 512;
+    canvas.width = 256; canvas.height = 256; // 縮小尺寸即可，省記憶體
     const ctx = canvas.getContext('2d');
     
-    // 基礎微弱藍綠色 (帶一點點厚玻璃的實體感)
-    ctx.fillStyle = 'rgba(170, 230, 255, 0.12)';
-    ctx.fillRect(0, 0, 512, 512);
+    // 清爽的底色，帶有極輕微的頂部到底部漸層 (模擬天空與地面反射)
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 256);
+    bgGrad.addColorStop(0, 'rgba(180, 215, 240, 0.4)');
+    bgGrad.addColorStop(1, 'rgba(100, 140, 160, 0.6)');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 256, 256);
     
-    // 畫出標誌性的對角線高光 (斜切玻璃反光)
+    // 乾淨俐落的斜向反光 (日系動畫/Low-poly 常見的玻璃表現手法)
     ctx.save();
     ctx.rotate(-Math.PI / 4);
-    
-    // 大片漸層主高光
-    const grad = ctx.createLinearGradient(-200, 300, -200, 360);
-    grad.addColorStop(0, 'rgba(255, 255, 255, 0.0)');
-    grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.45)');
-    grad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(-300, 300, 1200, 60);
-    
-    // 邊緣銳利的副高光
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
-    ctx.fillRect(-300, 380, 1200, 8);
-    ctx.fillRect(-300, 400, 1200, 20);
+    const shineGrad = ctx.createLinearGradient(0, 0, 0, 400);
+    shineGrad.addColorStop(0, 'rgba(255, 255, 255, 0.0)');
+    shineGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.5)'); // 柔和不刺眼的高光
+    shineGrad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+    ctx.fillStyle = shineGrad;
+    ctx.fillRect(-200, 100, 600, 40);
+    ctx.fillRect(-200, 150, 600, 10);
     ctx.restore();
     
-    // 加上一點點微小的反光雜訊 (模擬玻璃表面的微塵與刮痕，大幅增加真實感)
-    for(let i=0; i<4000; i++) {
-        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)';
-        ctx.fillRect(Math.random()*512, Math.random()*512, 1.5, 1.5);
-    }
+    // 加上極淡的內陰影，增加玻璃鑲嵌在窗框裡的立體感
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(2, 2, 252, 252);
     
     const tex = new THREE.CanvasTexture(canvas);
-    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(1.5, 1.5); // 讓斜線可以根據窗戶比例縮放
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
     return tex;
 }
-
 
 
         
@@ -9918,7 +9913,18 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
             floorGrp.add(winBacking);
  
             // 窗戶 (移除了隨機出現的判斷，確保每格都有窗戶整齊排列)
-            const win = new THREE.Mesh(new THREE.PlaneGeometry(4, 5), upperGlassMat);
+ // 窗戶：為每塊玻璃建立獨立的幾何體，並偏移 UV 座標
+            const winGeo = new THREE.PlaneGeometry(4, 5);
+            
+            // 💡 魔法在這裡：隨機偏移這塊玻璃的貼圖座標，讓高光位置每塊都不同！
+            const uvs = winGeo.attributes.uv;
+            const randomOffsetX = Math.random();
+            const randomOffsetY = Math.random();
+            for (let i = 0; i < uvs.count; i++) {
+                uvs.setXY(i, uvs.getX(i) + randomOffsetX, uvs.getY(i) + randomOffsetY);
+            }
+            
+            const win = new THREE.Mesh(winGeo, upperGlassMat);
             // 微調 Z 軸防閃爍，貼緊牆面
             win.position.set(x - width/2 - 0.05, fy, fz);
             win.rotation.y = -Math.PI/2;
