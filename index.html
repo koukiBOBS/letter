@@ -9580,28 +9580,22 @@ let isAtStreet = false;
 let roomVisibilityBackup = [];
 
 // 1. 舊式唐樓「紙皮石」馬賽克外牆 (加入光影倒角與歲月水痕)
+// 🌆 1.1 舊式唐樓「紙皮石」外牆
 function createMosaicTileTexture(baseColor) {
     const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#9c9c9c'; ctx.fillRect(0, 0, 512, 512); 
+    ctx.fillStyle = '#9c9c9c'; ctx.fillRect(0, 0, 512, 512);
     const tileSize = 16; const gap = 2;
     for(let y=0; y<512; y+=tileSize) {
         for(let x=0; x<512; x+=tileSize) {
-            if(Math.random() > 0.95) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x, y, tileSize, tileSize); continue; }
             ctx.fillStyle = Math.random() > 0.85 ? '#f0f0f0' : baseColor;
             ctx.globalAlpha = 0.85 + Math.random() * 0.15;
             ctx.fillRect(x+gap, y+gap, tileSize-gap*2, tileSize-gap*2);
-            ctx.globalAlpha = 1.0; ctx.fillStyle = 'rgba(255,255,255,0.4)'; 
-            ctx.fillRect(x+gap, y+gap, tileSize-gap*2, 1); ctx.fillRect(x+gap, y+gap, 1, tileSize-gap*2);
-            ctx.fillStyle = 'rgba(0,0,0,0.3)'; 
-            ctx.fillRect(x+gap, y+tileSize-gap-1, tileSize-gap*2, 1); ctx.fillRect(x+tileSize-gap-1, y+gap, 1, tileSize-gap*2);
         }
-    }
-    for(let i=0; i<40; i++) {
-        const grad = ctx.createLinearGradient(0, 0, 0, 512); grad.addColorStop(0, `rgba(0,0,0,${Math.random()*0.4})`); grad.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = grad; ctx.fillRect(Math.random()*512, 0, Math.random()*8+2, 512 * (0.3 + Math.random()*0.7));
     }
     const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
 }
+
+        
 
 // 2. 工業風清水模 / 舊牆面 
 function createConcreteTexture() {
@@ -9671,100 +9665,73 @@ function createCorrugatedMetalTexture(colorHex) {
 }
 
 // 7. 香港霓虹燈招牌
-// 修訂霓虹燈生成：加入書法字體支援
+// 🖋️ 1.2 書法感霓虹燈招牌 (修正字體與光效)
 function createNeonSign(text, bgColor, neonColor, isVertical) {
     const canvas = document.createElement('canvas');
     canvas.width = isVertical ? 256 : 512;
     canvas.height = isVertical ? 1024 : 256;
     const ctx = canvas.getContext('2d');
-    
     ctx.fillStyle = bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // 設定書法感字體 (優先嘗試系統自帶的楷書)
-    const fontStr = `bold ${isVertical ? '130px' : '110px'} "Kaiti", "STKaiti", "Noto Serif TC", serif`;
-    ctx.font = fontStr; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     
-    function drawText() {
+    // 優先使用繁體書法感字體
+    ctx.font = `bold ${isVertical ? '140px' : '110px'} "Kaiti", "STKaiti", "Noto Serif TC", serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    
+    function drawText(offset = 0) {
         if (isVertical) {
             const chars = text.split(''); const startY = (canvas.height - chars.length * 135) / 2 + 65;
-            chars.forEach((c, i) => { ctx.fillText(c, canvas.width/2, startY + i * 135); });
-        } else { ctx.fillText(text, canvas.width/2, canvas.height/2); }
+            chars.forEach((c, i) => { ctx.fillText(c, canvas.width/2 + offset, startY + i * 135 + offset); });
+        } else { ctx.fillText(text, canvas.width/2 + offset, canvas.height/2 + offset); }
     }
-    // 霓虹暈染效果
-    ctx.shadowColor = neonColor; ctx.shadowBlur = 20;
-    ctx.fillStyle = neonColor; ctx.globalAlpha = 0.5; drawText();
-    ctx.shadowBlur = 5; ctx.globalAlpha = 1.0; ctx.fillStyle = '#ffffff'; drawText();
-    
+ 
+    ctx.shadowColor = neonColor; ctx.shadowBlur = 25;
+    ctx.fillStyle = neonColor; ctx.globalAlpha = 0.6; drawText();
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1.0; ctx.fillStyle = '#ffffff'; drawText();
     return new THREE.CanvasTexture(canvas);
 }
 
 
         // 製作簡易店鋪內部裝飾（節省效能：使用帶紋理的平面）
+// 📦 1.3 店鋪內飾平面 (極省效能的擬真店鋪感)
 function createShopInterior(type) {
     const interior = new THREE.Group();
-    const backWall = new THREE.Mesh(new THREE.PlaneGeometry(16, 9), new THREE.MeshStandardMaterial({color: 0x222222}));
-    backWall.position.z = -3; interior.add(backWall);
-    
-    // 繪製貨架平面（模擬深度感）
+    const bgMat = new THREE.MeshStandardMaterial({color: type === 'stationery' ? '#3d4a3d' : '#2a1a1a'});
+    const backWall = new THREE.Mesh(new THREE.PlaneGeometry(16, 10), bgMat);
+    backWall.position.z = -4; interior.add(backWall);
+ 
     const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256; const ctx = canvas.getContext('2d');
-    ctx.fillStyle = type === 'stationery' ? '#4a5d4a' : '#332222'; ctx.fillRect(0,0,256,256);
-    ctx.strokeStyle = '#666'; ctx.lineWidth = 2;
-    for(let y=40; y<256; y+=60) ctx.strokeRect(10, y, 236, 5); // 畫貨架線
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 4;
+    for(let y=20; y<256; y+=50) { ctx.beginPath(); ctx.moveTo(10, y); ctx.lineTo(246, y); ctx.stroke(); }
     
-    const shelves = new THREE.Mesh(new THREE.PlaneGeometry(16, 9), new THREE.MeshStandardMaterial({map: new THREE.CanvasTexture(canvas), transparent: true}));
-    shelves.position.z = -2.9; interior.add(shelves);
+    const shelves = new THREE.Mesh(new THREE.PlaneGeometry(16, 10), new THREE.MeshStandardMaterial({map: new THREE.CanvasTexture(canvas), transparent: true, opacity: 0.5}));
+    shelves.position.z = -3.9; interior.add(shelves);
     return interior;
 }
-
-
-
-// 1. 香港經典生鐵郵筒 (圓柱體 + 投信口蓋 + 皇室徽號剪影紋理)
+ 
+// 📮 1.4 細緻版香港郵筒
 function createDetailedHKPostbox() {
     const group = new THREE.Group();
-    const ironMat = new THREE.MeshStandardMaterial({color: 0x008844, roughness: 0.4, metalness: 0.3}); // 郵政綠
-    
-    // 主柱體
+    const ironMat = new THREE.MeshStandardMaterial({color: 0x008844, roughness: 0.4, metalness: 0.4});
     const body = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 4, 24), ironMat);
-    body.position.y = 2; body.castShadow = true; group.add(body);
-    
-    // 頂部圓蓋
+    body.position.y = 2; group.add(body);
     const top = new THREE.Mesh(new THREE.SphereGeometry(1.25, 24, 12, 0, Math.PI*2, 0, Math.PI/2), ironMat);
     top.position.y = 4; group.add(top);
-    
-    // 投信口結構
-    const slotBase = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.6, 0.4), ironMat);
-    slotBase.position.set(0, 3.2, 1.1); group.add(slotBase);
-    
-    const slotHole = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.1, 0.1), new THREE.MeshBasicMaterial({color: 0x000000}));
-    slotHole.position.set(0, 3.2, 1.3); group.add(slotHole);
-    
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.4, 0.3), new THREE.MeshBasicMaterial({color: 0x000000}));
+    slot.position.set(0, 3.2, 1.1); group.add(slot);
     return group;
 }
-
-
-        // 2. 香港紅龍消防栓 (鵝蛋形主體 + 三個出水口螺栓)
+ 
+// 🚒 1.5 細緻版消防栓
 function createDetailedHKHydrant() {
     const group = new THREE.Group();
-    const redMat = new THREE.MeshStandardMaterial({color: 0xdd2222, roughness: 0.3, metalness: 0.4});
-    
-    // 頸部
+    const redMat = new THREE.MeshStandardMaterial({color: 0xdd2222, roughness: 0.3, metalness: 0.5});
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 1.2), redMat);
     base.position.y = 0.6; group.add(base);
-    
-    // 頭部
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), redMat);
     head.position.y = 1.8; head.scale.y = 1.2; group.add(head);
-    
-    // 三個出水口 (螺栓細節)
     const boltGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.4, 8);
     const pos = [[0, 1.8, 0.7], [0.6, 1.8, -0.4], [-0.6, 1.8, -0.4]];
-    pos.forEach((p, i) => {
-        const bolt = new THREE.Mesh(boltGeo, redMat);
-        bolt.position.set(p[0], p[1], p[2]);
-        bolt.rotation.x = Math.PI/2;
-        if(i>0) bolt.rotation.z = (i===1 ? -1 : 1) * Math.PI/3;
-        group.add(bolt);
-    });
-    
+    pos.forEach(p => { const b = new THREE.Mesh(boltGeo, redMat); b.position.set(...p); b.rotation.x = Math.PI/2; group.add(b); });
     return group;
 }
 
@@ -9788,56 +9755,93 @@ function createDetailedHKHydrant() {
 }
 
 
+        // 🪟 1.6 唐樓上層 (解決 AC 位置與玻璃質感問題)
+function createTangLauUpperFloors(x, z, width, baseColor) {
+    const floorGrp = new THREE.Group();
+    const wallMat = new THREE.MeshStandardMaterial({map: createMosaicTileTexture(baseColor), roughness: 0.9});
+    const building = new THREE.Mesh(new THREE.BoxGeometry(width, 60, 25), wallMat);
+    building.position.set(x, 45, z); building.castShadow = true; building.receiveShadow = true; floorGrp.add(building);
+ 
+    // 高反射玻璃材質 (參考室內設計)
+    const windowGlassMat = new THREE.MeshStandardMaterial({
+        color: 0xebf8ff, metalness: 0.9, roughness: 0.05,
+        transparent: true, opacity: 0.5,
+        envMap: createFakeGlassReflection(), envMapIntensity: 1.5
+    });
+ 
+    for(let fy=20; fy<=65; fy+=12) {
+        for(let fz=z-8; fz<=z+8; fz+=6) {
+            // 窗戶
+            const win = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 5), windowGlassMat);
+            win.position.set(x - width/2 - 0.1, fy, fz); win.rotation.y = -Math.PI/2;
+            win.userData = { isWindow: true }; floorGrp.add(win);
+            
+            // 窗框
+            const frame = new THREE.Mesh(new THREE.BoxGeometry(0.1, 5.2, 3.7), new THREE.MeshStandardMaterial({color:0xcccccc}));
+            frame.position.set(x - width/2 - 0.05, fy, fz); floorGrp.add(frame);
+ 
+            // 冷氣機 (精準放置在窗戶正下方)
+            if (Math.random() > 0.4) {
+                const ac = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.3, 2.4), new THREE.MeshStandardMaterial({color:0xf0f0f0, metalness:0.3}));
+                ac.position.set(x - width/2 - 1.0, fy - 2.5, fz); ac.castShadow = true; floorGrp.add(ac);
+                const vent = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1), new THREE.MeshBasicMaterial({color:0x333}));
+                vent.position.set(x - width/2 - 1.91, fy - 2.5, fz); vent.rotation.y = -Math.PI/2; floorGrp.add(vent);
+            }
+        }
+    }
+    return floorGrp;
+}
+
+
         
 
 // 🛠️ 建造獨立的港式商店街場景
 function buildShoppingStreet() {
     streetScene = new THREE.Scene();
-    const p = currentEnvParams;
+    const p = currentEnvParams || {skyTop: 0x40a0d0, skyBot: 0xbae0ff, fog: 0xbae0ff};
     streetScene.background = createSkyTexture(p.skyTop, p.skyBot);
     streetScene.fog = new THREE.FogExp2(p.fog, 0.012);
  
-    // 光源
+    // 💡 街道燈光
     const streetAmbient = new THREE.AmbientLight(0xffffff, 0.5); streetScene.add(streetAmbient);
     const streetDir = new THREE.DirectionalLight(0xffeedd, 1.0); streetDir.position.set(30, 80, 50); streetDir.castShadow = true; streetScene.add(streetDir);
  
-    // 地面
-    const street = new THREE.Mesh(new THREE.PlaneGeometry(100, 300), new THREE.MeshStandardMaterial({map: createRedBrickPaving()}));
+    // 🧱 地面：紅地磚
+    const street = new THREE.Mesh(new THREE.PlaneGeometry(120, 300), new THREE.MeshStandardMaterial({map: createRedBrickPaving()}));
     street.rotation.x = -Math.PI/2; street.receiveShadow = true; streetScene.add(street);
  
-    // 建築與店鋪
-    const shopGlassMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1.0, roughness: 0.05, transparent: true, opacity: 0.3, envMap: createFakeGlassReflection() });
-    
-    // 🏬 文苑文具
-    const s1 = new THREE.Group(); s1.position.set(20, 0, 30);
-    s1.add(createTangLauUpperFloors(0, 0, 15, '#8fbc8f'));
-    s1.add(createShopInterior('stationery'));
-    const glassDoor1 = new THREE.Mesh(new THREE.PlaneGeometry(12, 9), shopGlassMat); glassDoor1.position.set(-7.6, 4.5, 0); glassDoor1.rotation.y = -Math.PI/2; s1.add(glassDoor1);
-    const sign1 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4, 10), new THREE.MeshStandardMaterial({map: createNeonSign('文苑文具', '#111', '#00ffcc', false), emissive: 0x00ffcc, emissiveIntensity: 0.5}));
-    sign1.position.set(-8, 12, 0); s1.add(sign1);
-    streetScene.add(s1);
+    // 🏬 店鋪與大門玻璃
+    const doorGlassMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1.0, roughness: 0.02, transparent: true, opacity: 0.3, envMap: createFakeGlassReflection(), envMapIntensity: 2.0 });
  
-    // 🏬 霓虹黑膠
-    const s2 = new THREE.Group(); s2.position.set(20, 0, -10);
-    s2.add(createTangLauUpperFloors(0, 0, 15, '#c28585'));
-    s2.add(createShopInterior('record'));
-    const glassDoor2 = new THREE.Mesh(new THREE.PlaneGeometry(12, 9), shopGlassMat); glassDoor2.position.set(-7.6, 4.5, 0); glassDoor2.rotation.y = -Math.PI/2; s2.add(glassDoor2);
-    const sign2 = new THREE.Mesh(new THREE.BoxGeometry(6, 18, 0.5), new THREE.MeshStandardMaterial({map: createNeonSign('黑膠唱片', '#111', '#ff00aa', true), emissive: 0xff00aa, emissiveIntensity: 0.5}));
-    sign2.position.set(-10, 20, 0); sign2.rotation.y = -Math.PI/6; s2.add(sign2);
-    streetScene.add(s2);
+    // 1. 文苑文具
+    const shop1 = new THREE.Group(); shop1.position.set(20, 0, 40);
+    shop1.add(createTangLauUpperFloors(0, 0, 16, '#8fbc8f'));
+    shop1.add(createShopInterior('stationery'));
+    const door1 = new THREE.Mesh(new THREE.PlaneGeometry(14, 10), doorGlassMat); door1.position.set(-8.1, 5, 0); door1.rotation.y = -Math.PI/2; shop1.add(door1);
+    const sign1 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4.5, 10), new THREE.MeshStandardMaterial({map: createNeonSign('文苑文具', '#111', '#00ffcc', false), emissive: 0x00ffcc, emissiveIntensity: 0.4}));
+    sign1.position.set(-8.5, 13, 0); shop1.add(sign1);
+    streetScene.add(shop1);
  
-    // 街道裝飾物
-    streetScene.add(createHKStreetSign('彌敦道'));
-    const pb = createDetailedHKPostbox(); pb.position.set(-5, 0, 10); streetScene.add(pb);
-    const hyd = createDetailedHKHydrant(); hyd.position.set(-5, 0, -15); streetScene.add(hyd);
+    // 2. 霓虹黑膠
+    const shop2 = new THREE.Group(); shop2.position.set(20, 0, -10);
+    shop2.add(createTangLauUpperFloors(0, 0, 16, '#c28585'));
+    shop2.add(createShopInterior('record'));
+    const door2 = new THREE.Mesh(new THREE.PlaneGeometry(14, 10), doorGlassMat); door2.position.set(-8.1, 5, 0); door2.rotation.y = -Math.PI/2; shop2.add(door2);
+    const sign2 = new THREE.Mesh(new THREE.BoxGeometry(6, 18, 0.5), new THREE.MeshStandardMaterial({map: createNeonSign('黑膠唱片', '#111', '#ff00aa', true), emissive: 0xff00aa, emissiveIntensity: 0.4}));
+    sign2.position.set(-11, 20, 5); sign2.rotation.y = -Math.PI/6; shop2.add(sign2);
+    streetScene.add(shop2);
  
-    // 路燈 (金屬質感優化)
-    const poleMat = new THREE.MeshStandardMaterial({color: 0x888888, metalness: 0.9, roughness: 0.1});
-    [50, 0, -50].forEach(z => {
-        const lamp = new THREE.Group(); lamp.position.set(-10, 0, z);
-        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 20), poleMat); p.position.y=10; lamp.add(p);
-        const head = new THREE.Mesh(new THREE.BoxGeometry(2, 0.5, 1), poleMat); head.position.set(1, 20, 0); lamp.add(head);
-        const bulb = new THREE.PointLight(0xffddaa, 1, 30); bulb.position.set(1.5, 19.5, 0); lamp.add(bulb);
+    // 🚦 街道裝飾
+    const pb = createDetailedHKPostbox(); pb.position.set(-5, 0, 15); streetScene.add(pb);
+    const hyd = createDetailedHKHydrant(); hyd.position.set(-5, 0, -20); streetScene.add(hyd);
+ 
+    // 💡 路燈 (修正金屬質感)
+    const poleMat = new THREE.MeshStandardMaterial({color: 0x777777, metalness: 0.9, roughness: 0.1});
+    [65, 10, -45].forEach(z => {
+        const lamp = new THREE.Group(); lamp.position.set(-12, 0, z);
+        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 22), poleMat); p.position.y=11; lamp.add(p);
+        const head = new THREE.Mesh(new THREE.BoxGeometry(3, 0.6, 1.2), poleMat); head.position.set(1.5, 22, 0); lamp.add(head);
+        const bulb = new THREE.PointLight(0xffeebb, 0, 40); bulb.position.set(2.5, 21, 0); bulb.name = 'realLight'; lamp.add(bulb);
         streetScene.add(lamp);
     });
 }
