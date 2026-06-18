@@ -9954,7 +9954,7 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     });
  
     const frameMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.6, roughness: 0.4 });
-    const darkInteriorMat = new THREE.MeshBasicMaterial({color: 0x1a1a1a});
+   const darkInteriorMat = new THREE.MeshStandardMaterial({color: 0x1a1a1a, roughness: 0.9});
  
     const winWidth = 4;
     const winHeight = 5;
@@ -10434,8 +10434,10 @@ function syncStreetEnvironment() {
     const isNightOrDusk = (p.phaseStr === 'night' || p.phaseStr === 'dusk');
     
     // 遍歷商店街所有材質，開關燈效
+  // 遍歷商店街所有材質，開關燈效
     streetScene.traverse(child => {
-        if (child.material) {
+        // 🛡️ 關鍵修復：加入安全檢查，確保材質具有 emissive (發光) 屬性才執行
+        if (child.material && child.material.emissive) {
             // 霓虹燈招牌
             if (child.userData.isNeon) {
                 child.material.emissiveIntensity = isNightOrDusk ? 2.5 : 0.0;
