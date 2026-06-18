@@ -9879,61 +9879,52 @@ const shopGlassMat = new THREE.MeshStandardMaterial({
     const darkInteriorMat = new THREE.MeshStandardMaterial({color: 0x110a05});
 
     // 優化：高質感玻璃與正確的冷氣機定位
+// 優化：高質感純淨玻璃與正確的冷氣機定位
 function createTangLauUpperFloors(x, z, width, baseColor) {
     const floorGrp = new THREE.Group();
     const wallMat = new THREE.MeshStandardMaterial({map: createMosaicTileTexture(baseColor), roughness: 0.9});
     
-    // 使用與扭蛋機相同級別的高質感反光玻璃 (但加上雙面渲染與較低透明度防穿模)
-// 🌟 二樓窗戶：套用相同的玻璃紋理，但顏色稍微偏暗，營造高樓距離感
-// 🌟 二樓窗戶：改為極淺藍色，並將渲染改為單面，防交叉干擾
+    // 🌟 1. 改用與店面完全相同邏輯的「純材質玻璃」
+    // 移除 map 貼圖，純靠金屬度(metalness)與環境倒影(envMap)撐起玻璃質感
     const upperGlassMat = new THREE.MeshStandardMaterial({
-        color: 0xe6f5ff,       // 換成很淺很淺的淺藍色
-        map: createGlassSurfaceTexture(),
-        roughness: 0.1,
-        metalness: 0.8,
+        color: 0xddeeff,       // 淺淺的冰藍色
+        roughness: 0.05,       // 極度平滑
+        metalness: 0.9,        // 強烈反光
         transparent: true,
-        opacity: 0.85,         // 提高不透明度，讓淺藍色更扎實，不會被背景吃掉
+        opacity: 0.75,         // 稍微提高不透明度，讓窗戶顏色穩固一致
         envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
-        envMapIntensity: 2.0,
-        side: THREE.FrontSide  // 💡 改為單面渲染，節省效能且絕對不會有背面透視的交叉紋
+        envMapIntensity: 3.0,
+        side: THREE.FrontSide  // 單面渲染，效能更好且絕無交叉干擾
     });
     const building = new THREE.Mesh(new THREE.BoxGeometry(width, 60, 25), wallMat);
     building.position.set(x, 45, z);
     building.castShadow = true; building.receiveShadow = true;
     floorGrp.add(building);
+    // 🌟 2. 將幾何體與底板材質提出迴圈外共用，大幅節省手機記憶體與運算效能！
+    const winGeo = new THREE.PlaneGeometry(4, 5);
+    const backingMat = new THREE.MeshBasicMaterial({color: 0x334455}); // 統一的深灰藍色室內底板
     for(let fy=20; fy<=65; fy+=10) {
         for(let fz=z-8; fz<=z+8.1; fz+=8) {
             
-            // 👇 修正：將玻璃後方的擋板從「純黑色」改為「淺藍灰色」
-            // 這樣透明玻璃透過去看就不會變灰黑，而是漂亮的淺藍室內感！
-            const winBacking = new THREE.Mesh(new THREE.PlaneGeometry(4, 5), new THREE.MeshBasicMaterial({color: 0x6699bb}));
+            // 統一深色的不透光內室
+            const winBacking = new THREE.Mesh(winGeo, backingMat);
             winBacking.position.set(x - width/2 - 0.03, fy, fz);
             winBacking.rotation.y = -Math.PI/2;
             floorGrp.add(winBacking);
-            // 窗戶：為每塊玻璃建立獨立的幾何體，並偏移 UV 座標 (保留剛才的優化)
-            const winGeo = new THREE.PlaneGeometry(4, 5);
-            const uvs = winGeo.attributes.uv;
-            const randomOffsetX = Math.random();
-            const randomOffsetY = Math.random();
-            for (let i = 0; i < uvs.count; i++) {
-                uvs.setXY(i, uvs.getX(i) + randomOffsetX, uvs.getY(i) + randomOffsetY);
-            }
-            
+            // 🌟 3. 乾淨統一的窗戶 (移除之前導致十字紋的 UV 偏移)
             const win = new THREE.Mesh(winGeo, upperGlassMat);
             win.position.set(x - width/2 - 0.05, fy, fz);
             win.rotation.y = -Math.PI/2;
-            win.userData = { isWindow: true };
+            win.userData = { isWindow: true }; // 保留發光標記
             floorGrp.add(win);
             
-            // 冷氣機 (冷氣機依然保持隨機出現以增加錯落的生活感，但不影響窗口排版)
+            // 冷氣機 (保持原樣)
             if (Math.random() > 0.4) {
                 const ac = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 2.2), new THREE.MeshStandardMaterial({color:0xd0d0d0, roughness:0.8}));
-                // 緊貼牆身 (x - width/2)，高度在窗戶下緣 (fy - 3)
                 ac.position.set(x - width/2 + 0.3, fy - 3.2, fz);
                 ac.castShadow = true;
                 floorGrp.add(ac);
                 
-                // 黑色出風口
                 const acVent = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), new THREE.MeshBasicMaterial({color:0x111}));
                 acVent.position.set(x - width/2 - 0.46, fy - 3.2, fz);
                 acVent.rotation.y = -Math.PI/2;
