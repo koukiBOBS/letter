@@ -8129,14 +8129,14 @@ function acceptBankruptcy() {
         const indicator = document.querySelector('.knob-indicator');
         if(!knobCenter || !indicator || !controls) return;
 
-        if (window.isWalkMode) {
+       if (window.isWalkMode) {
             controls.enabled = false;
             controls.minAzimuthAngle = -Infinity;
             controls.maxAzimuthAngle = Infinity;
             controls.minPolarAngle = Math.PI / 2;
             controls.maxPolarAngle = Math.PI / 2;
             
-            knobCenter.style.background = '#6b8e73'; 
+            knobCenter.style.background = '#6b8e73';
             knobCenter.style.transform = `translate(0px, 0px) rotate(0deg)`;
             indicator.style.background = '#fff';
             
@@ -8145,7 +8145,12 @@ function acceptBankruptcy() {
             let dir = new THREE.Vector3();
             camera.getWorldDirection(dir);
             dir.y = 0; dir.normalize();
-            controls.target.copy(camera.position).add(dir.multiplyScalar(20));
+            
+            // 💡 關鍵修改：如果是商店街，距離設為 0.1，並且重新開啟控制器(允許滑動螢幕轉頭)
+            let targetDist = (typeof isAtStreet !== 'undefined' && isAtStreet) ? 0.1 : 20;
+            controls.target.copy(camera.position).add(dir.multiplyScalar(targetDist));
+            if (typeof isAtStreet !== 'undefined' && isAtStreet) controls.enabled = true;
+            
             controls.update();
         } else {
             controls.enabled = true;
@@ -8351,16 +8356,17 @@ function acceptBankruptcy() {
             let nextX = camera.position.x + dir.x * -currentWalk;
             let nextZ = camera.position.z + dir.z * -currentWalk;
 
-            if (typeof isAtStreet !== 'undefined' && isAtStreet) {
+         if (typeof isAtStreet !== 'undefined' && isAtStreet) {
                 // 🏙️ 商店街專屬防撞邊界
-                // 右側是建築物(大約 x=10 邊緣)，左側是海邊馬路(大約 x=-50)
                 nextX = Math.max(-50, Math.min(10, nextX));
                 nextZ = Math.max(-95, Math.min(95, nextZ));
-
+ 
                 camera.position.x = nextX;
                 camera.position.z = nextZ;
                 camera.position.y = 6; // 走在街道上的人類視角高度
-                controls.target.copy(camera.position).add(dir.multiplyScalar(20));
+                
+                // 💡 關鍵修改：跟隨第一人稱設定，將前推距離從 20 改為 0.1
+                controls.target.copy(camera.position).add(dir.multiplyScalar(0.1));
             } else {
                 // 🏠 原本房間的防撞邊界
                 const playerRadius = 4.0;
@@ -9549,17 +9555,20 @@ function enterShoppingStreet() {
         }
 
         // 重新開放視角限制
+       // 重新開放視角限制，改為【第一人稱沉浸式】視角！
         controls.minAzimuthAngle = -Infinity;
         controls.maxAzimuthAngle = Infinity;
-        controls.minPolarAngle = 0.0;
-        controls.maxPolarAngle = Math.PI / 2;
-        controls.minDistance = 5;
-        controls.maxDistance = 100;
-
-        // 🛑 【關鍵修復 2】：將相機精準定位在獨立場景的馬路上
+        controls.minPolarAngle = Math.PI / 3; // 限制抬頭低頭，避免穿幫
+        controls.maxPolarAngle = Math.PI / 1.5;
+        
+        // 💡 關鍵魔法：將攝影機與目標點的距離鎖死在 0.1，強制變成第一人稱轉頭！
+        controls.minDistance = 0.1;
+        controls.maxDistance = 0.1;
+ 
+        // 🛑 將相機精準定位在獨立場景的馬路上，目標點設在正前方 0.1 處
         camera.position.set(-15, 6, 0);
-        controls.target.set(25, 6, 0); 
-        controls.update(); // 現在 update() 已經解鎖，會正確生效！
+        controls.target.set(-14.9, 6, 0);
+        controls.update();
 
          // 👇 新增這兩行：抵達商店街後，重新把搖桿顯示出來！
         const knob = document.getElementById('mobile-cam-knob');
@@ -10355,6 +10364,7 @@ function syncStreetEnvironment() {
 
         
 // 處理商店點擊事件 (基於獨立場景)
+// 處理商店點擊事件 (基於獨立場景)
 window.addEventListener('pointerup', (e) => {
     if(!isAtStreet || isDragging || !streetScene) return;
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -10365,12 +10375,23 @@ window.addEventListener('pointerup', (e) => {
     const intersects = raycaster.intersectObjects(streetScene.children, true);
     if(intersects.length > 0) {
         let obj = intersects[0].object;
+        
+        // 💡 新增一個輔助動畫函數，同時移動相機與目標點，保持 0.1 的相對距離
+        const moveStreetCam = (tx, ty, tz, lookDirX, lookDirZ) => {
+            let dir = new THREE.Vector3(lookDirX - tx, 0, lookDirZ - tz).normalize();
+            let newTarget = new THREE.Vector3(tx, ty, tz).add(dir.multiplyScalar(0.1));
+            gsap.to(camera.position, {x: tx, y: ty, z: tz, duration: 1.0, ease: "power2.out"});
+            gsap.to(controls.target, {x: newTarget.x, y: newTarget.y, z: newTarget.z, duration: 1.0, ease: "power2.out", onUpdate: () => controls.update()});
+        };
+ 
         if(obj.userData.type === 'shop_stationery') {
             showToast("✏️ 這是文苑文具行，老闆正在點貨。\n(未來將在此購買明信片與特殊信紙)");
-            gsap.to(camera.position, {x: 15, y: 5, z: 20, duration: 1.0, ease: "power2.out"});
+            // 走向文具店，並看向內部 (看向 x:10, z:20 的方向)
+            moveStreetCam(15, 5, 20, 10, 20);
         } else if(obj.userData.type === 'shop_record') {
             showToast("🎵 這是霓虹黑膠唱片店，傳來陣陣老歌。\n(未來將在此購買背景音樂與黑膠唱片)");
-            gsap.to(camera.position, {x: 15, y: 5, z: -15, duration: 1.0, ease: "power2.out"});
+            // 走向唱片店，並看向內部 (看向 x:10, z:-15 的方向)
+            moveStreetCam(15, 5, -15, 10, -15);
         }
     }
 });
