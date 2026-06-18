@@ -4158,6 +4158,51 @@ function restoreObjectPositions() {
 
 
 
+
+// 🎨 零效能生成：實體玻璃反光與微塵貼圖
+function createGlassSurfaceTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    
+    // 基礎微弱藍綠色 (帶一點點厚玻璃的實體感)
+    ctx.fillStyle = 'rgba(170, 230, 255, 0.12)';
+    ctx.fillRect(0, 0, 512, 512);
+    
+    // 畫出標誌性的對角線高光 (斜切玻璃反光)
+    ctx.save();
+    ctx.rotate(-Math.PI / 4);
+    
+    // 大片漸層主高光
+    const grad = ctx.createLinearGradient(-200, 300, -200, 360);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 0.0)');
+    grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.45)');
+    grad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(-300, 300, 1200, 60);
+    
+    // 邊緣銳利的副高光
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.fillRect(-300, 380, 1200, 8);
+    ctx.fillRect(-300, 400, 1200, 20);
+    ctx.restore();
+    
+    // 加上一點點微小的反光雜訊 (模擬玻璃表面的微塵與刮痕，大幅增加真實感)
+    for(let i=0; i<4000; i++) {
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)';
+        ctx.fillRect(Math.random()*512, Math.random()*512, 1.5, 1.5);
+    }
+    
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(1.5, 1.5); // 讓斜線可以根據窗戶比例縮放
+    return tex;
+}
+
+
+
+        
+
 // ✨ 生成假玻璃反光貼圖 (零效能負擔，模擬窗戶與燈光倒影)
 function createFakeGlassReflection() {
     const canvas = document.createElement('canvas');
@@ -9824,7 +9869,17 @@ function buildShoppingStreet() {
     buildingsGrp.position.set(20, 0, 0); // 靠右側
     streetScene.add(buildingsGrp);
 
-    const shopGlassMat = new THREE.MeshStandardMaterial({ color: 0x051015, roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.7, envMap: createFakeGlassReflection(), envMapIntensity: 3.0 });
+   const shopGlassMat = new THREE.MeshStandardMaterial({
+        color: 0x99ddff,
+        map: createGlassSurfaceTexture(), // 疊加斜紋高光與微塵貼圖
+        roughness: 0.0,                   // 絕對平滑，產生銳利反射
+        metalness: 0.85,                  // 強烈金屬感以倒影環境
+        transparent: true,
+        opacity: 0.55,                    // 稍降透明度，讓內部展示品依然可見，但玻璃反光更明顯
+        envMap: createFakeGlassReflection(),
+        envMapIntensity: 4.0,             // 增強虛擬倒影
+        side: THREE.DoubleSide
+    });
     const shutterMat = new THREE.MeshStandardMaterial({map: createRollerShutterTexture(), metalness: 0.6, roughness: 0.5});
     const darkInteriorMat = new THREE.MeshStandardMaterial({color: 0x110a05});
 
@@ -9834,11 +9889,17 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     const wallMat = new THREE.MeshStandardMaterial({map: createMosaicTileTexture(baseColor), roughness: 0.9});
     
     // 使用與扭蛋機相同級別的高質感反光玻璃 (但加上雙面渲染與較低透明度防穿模)
+// 🌟 二樓窗戶：套用相同的玻璃紋理，但顏色稍微偏暗，營造高樓距離感
     const upperGlassMat = new THREE.MeshStandardMaterial({
-        color: 0x0a1a2a, roughness: 0.05, metalness: 0.9,
-        transparent: true, opacity: 0.6,
+        color: 0x55aadd,
+        map: createGlassSurfaceTexture(),
+        roughness: 0.0,
+        metalness: 0.9,
+        transparent: true,
+        opacity: 0.65,
         envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
-        envMapIntensity: 2.5, side: THREE.DoubleSide
+        envMapIntensity: 3.5,
+        side: THREE.DoubleSide
     });
  
     const building = new THREE.Mesh(new THREE.BoxGeometry(width, 60, 25), wallMat);
