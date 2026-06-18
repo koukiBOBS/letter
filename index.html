@@ -9703,7 +9703,6 @@ function createNeonSign(text, bgColor, neonColor, isVertical) {
 
 
 // 8. 新增：香港經典路牌紋理 (白底黑框黑字)
-// 8. 新增：香港經典路牌紋理 (白底黑框黑字)
 function createStreetSignTexture(zhText, enText) {
     const canvas = document.createElement('canvas');
     canvas.width = 512; canvas.height = 128;
@@ -9715,12 +9714,12 @@ function createStreetSignTexture(zhText, enText) {
     ctx.fillStyle = '#111111';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     
-    // 放大中文並微調位置
-    ctx.font = 'bold 55px "Noto Sans TC", sans-serif';
-    ctx.fillText(zhText, 256, 48);
-    // 放大英文並微調位置
-    ctx.font = 'bold 36px sans-serif';
-    ctx.fillText(enText, 256, 96);
+    // 中文縮小並上移
+    ctx.font = 'bold 38px "Noto Sans TC", sans-serif';
+    ctx.fillText(zhText, 256, 50);
+    // 英文縮小並下移
+    ctx.font = 'bold 26px sans-serif';
+    ctx.fillText(enText, 256, 95);
     
     for(let i=0; i<800; i++) {
         ctx.fillStyle = 'rgba(0,0,0,0.05)';
@@ -9921,59 +9920,71 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     recHit.position.set(0, 5, 0); recHit.userData = {type: 'shop_record'};
     recGrp.add(recHit); buildingsGrp.add(recGrp);
 
- // --- 3. 街道佈景 (作為前景點綴，全部移向兩側邊緣，把中央視野讓給商店) ---
+    // --- 3. 街道佈景 ---
     const stallGrp = new THREE.Group();
-    stallGrp.position.set(5, 0, -50); // 往左側邊緣推開
+    stallGrp.position.set(5, 0, -35);
     const stallMat = new THREE.MeshStandardMaterial({map: createCorrugatedMetalTexture('#1c5c36'), roughness: 0.8});
     const stallBody = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 10), stallMat);
     stallBody.position.y = 3; stallBody.castShadow = true; stallGrp.add(stallBody);
     const stallRoof = new THREE.Mesh(new THREE.PlaneGeometry(8, 12), stallMat);
     stallRoof.position.set(-1, 6.5, 0); stallRoof.rotation.x = -Math.PI/2; stallRoof.rotation.y = -0.2; stallRoof.castShadow = true; stallGrp.add(stallRoof);
     streetScene.add(stallGrp);
- 
-    // ==========================================
-    // 📮 港式綠色郵筒
+
+   // ==========================================
+    // 📮 港式綠色郵筒 (極限效能細節版)
     // ==========================================
     const postboxGrp = new THREE.Group();
-    postboxGrp.position.set(5, 0, 35); // 往右側邊緣推開
+    postboxGrp.position.set(5, 0, -20);
     streetScene.add(postboxGrp);
     
+    // 共用材質，降低 Draw Call
     const pbMat = new THREE.MeshStandardMaterial({color: 0x006633, roughness: 0.6, metalness: 0.1});
     const pbDarkMat = new THREE.MeshBasicMaterial({color: 0x111111});
     
+    // 1. 主體與加厚底座
     const pbBody = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.8, 2.2), pbMat);
     pbBody.position.y = 2.1; pbBody.castShadow = true; postboxGrp.add(pbBody);
     const pbBase = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.2, 2.4), pbMat);
     pbBase.position.y = 0.1; pbBase.castShadow = true; postboxGrp.add(pbBase);
     
+    // 2. 圓頂 (將 segment 降至 12 確保順暢)
     const pbHood = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 2.2, 12), pbMat);
     pbHood.rotation.x = Math.PI/2; pbHood.position.y = 4.0; pbHood.castShadow = true; postboxGrp.add(pbHood);
     
+    // 3. 投信口 (防雨簷 + 黑色入口)
     const pbSlotHood = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 0.4), pbMat);
     pbSlotHood.position.set(0, 3.5, 1.2); postboxGrp.add(pbSlotHood);
     const pbSlot = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.2), pbDarkMat);
-    pbSlot.position.set(0, 3.3, 1.11); postboxGrp.add(pbSlot);
+    pbSlot.position.set(0, 3.3, 1.11); postboxGrp.add(pbSlot); // 使用 Plane 節省面數
     
+    // 4. 收信時間表白牌
     const pbTimePlate = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.0), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.9}));
     pbTimePlate.position.set(0, 2.2, 1.11); postboxGrp.add(pbTimePlate);
+ 
+ 
     // ==========================================
-    // 🧯 港式紅色消防栓
+    // 🧯 港式紅色消防栓 (極限效能細節版)
     // ==========================================
     const hydrantGrp = new THREE.Group();
-    hydrantGrp.position.set(6, 0, -28); // 往左側邊緣推開
+    hydrantGrp.position.set(6, 0, 25);
     streetScene.add(hydrantGrp);
-    const hyMat = new THREE.MeshStandardMaterial({color: 0xcc2222, roughness: 0.4, metalness: 0.3});
-    const hySilver = new THREE.MeshStandardMaterial({color: 0xaaaaaa, roughness: 0.5, metalness: 0.8});
+ 
+    const hyMat = new THREE.MeshStandardMaterial({color: 0xcc2222, roughness: 0.4, metalness: 0.3}); // 紅色金屬
+    const hySilver = new THREE.MeshStandardMaterial({color: 0xaaaaaa, roughness: 0.5, metalness: 0.8}); // 銀色接頭
+ 
+    // 1. 帶錐度的柱身與底座 (降低 segment 數)
     const hyBody = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 2.2, 12), hyMat);
     hyBody.position.y = 1.1; hyBody.castShadow = true; hydrantGrp.add(hyBody);
     const hyBase = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.3, 12), hyMat);
     hyBase.position.y = 0.15; hyBase.castShadow = true; hydrantGrp.add(hyBase);
     
+    // 2. 頂部圓頭與頂端操作用六角螺帽
     const hyTop = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 12, 0, Math.PI*2, 0, Math.PI/2), hyMat);
     hyTop.position.y = 2.2; hydrantGrp.add(hyTop);
-    const hyNut = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.2, 6), hySilver);
+    const hyNut = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.2, 6), hySilver); // 六角形
     hyNut.position.y = 2.75; hydrantGrp.add(hyNut);
     
+    // 3. 左右兩側的出水口與金屬保護蓋
     const hyOutL = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.6, 12), hyMat);
     hyOutL.rotation.z = Math.PI/2; hyOutL.position.set(-0.6, 1.4, 0); hydrantGrp.add(hyOutL);
     const hyCapL = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.1, 12), hySilver);
@@ -9983,15 +9994,10 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     hyOutR.rotation.z = Math.PI/2; hyOutR.position.set(0.6, 1.4, 0); hydrantGrp.add(hyOutR);
     const hyCapR = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.1, 12), hySilver);
     hyCapR.rotation.z = Math.PI/2; hyCapR.position.set(0.95, 1.4, 0); hydrantGrp.add(hyCapR);
- 
-    // ==========================================
-    // 💡 街燈與路牌 (移除阻擋正中央的街燈)
-    // ==========================================
+
     const poleMat = new THREE.MeshStandardMaterial({color: 0x333333, metalness: 0.6});
     const lampCasingMat = new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8});
-    
-    // 將街燈位置改到左右兩側的最邊緣 (45 與 -35)
-    for (let z of [45, -35]) {
+    for (let z of [30, -5, -45]) {
         const lampGrp = new THREE.Group();
         lampGrp.position.set(4, 0, z);
         const base = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 2, 16), poleMat);
@@ -10007,46 +10013,59 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         const pointLight = new THREE.PointLight(0xffddaa, 0, 40);
         pointLight.position.set(-5, 21, 0); pointLight.castShadow = true; pointLight.shadow.bias = -0.002; pointLight.name = 'realLight';
         bulb.add(pointLight);
- 
-        // 🚦 掛上路牌並把尺寸放大
-        const zhText = z === 45 ? '海濱道' : '梳士巴利道';
-        const enText = z === 45 ? 'Promenade Rd.' : 'Salisbury Rd.';
-        const streetSignTex = createStreetSignTexture(zhText, enText);
-        const streetSignMat = new THREE.MeshStandardMaterial({map: streetSignTex, roughness: 0.6});
+
+// 🚦 掛上香港經典白底黑框路牌 (只掛在第一和第二枝街燈)
+     // 🚦 掛上香港經典白底黑框路牌 (縮小尺寸作點綴)
+        if (z === 30 || z === -5) {
+            const zhText = z === 30 ? '海濱道' : '梳士巴利道';
+            const enText = z === 30 ? 'Promenade Rd.' : 'Salisbury Rd.';
+            const streetSignTex = createStreetSignTexture(zhText, enText);
+            const streetSignMat = new THREE.MeshStandardMaterial({map: streetSignTex, roughness: 0.6});
+            
+            // 將體積與寬度按比例縮小
+            const streetSign = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.8, 3.2), streetSignMat);
+            // 移至較高處，不遮擋玩家平視商店的視野
+            streetSign.position.set(-0.5, 8.5, 0);
+            lampGrp.add(streetSign);
+        }
+
         
-        // 尺寸等比例放大 (原本 0.05, 0.8, 3.2 提升至 0.05, 1.2, 4.8)
-        const streetSign = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.2, 4.8), streetSignMat);
-        streetSign.position.set(-0.5, 9.0, 0); // 稍微提高一點
-        lampGrp.add(streetSign);
- 
         streetScene.add(lampGrp);
-    }
+
+
+
+// ==========================================
+    // 🇭🇰 增添香港街道經典標誌 (作為邊角與遠景點綴)
+    // ==========================================
  
-    // ==========================================
-    // 🇭🇰 增添香港街道經典標誌 (邊角點綴)
-    // ==========================================
+    // 🏮 1. 香港經典當舖招牌 (縮小 50%，移至遠處建築邊緣)
     const pawnTex = createPawnSignTexture();
     const pawnMat = new THREE.MeshStandardMaterial({
         map: pawnTex, emissiveMap: pawnTex, emissive: 0xffffff, emissiveIntensity: 0
     });
+    // 縮小體積
     const pawnSign = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 0.2), pawnMat);
+    // 移至較遠的大廈 Z=-25，高度提高，避免干擾主要視線
     pawnSign.position.set(3, 22, -25);
     pawnSign.userData = { isNeon: true };
     buildingsGrp.add(pawnSign);
-    // 🚏 巴士站牌 (移至最邊緣)
+ 
+    // 🚏 2. 巴士站牌 (縮小，移至遠處馬路邊緣)
     const busStopTex = createBusStopTexture();
     const busStopMat = new THREE.MeshStandardMaterial({map: busStopTex, roughness: 0.8});
     const stopPoleMat = new THREE.MeshStandardMaterial({color: 0x555555, metalness: 0.8});
+ 
     const stopGrp = new THREE.Group();
-    stopGrp.position.set(11, 0, 52); // 遠離商店
+    // 遠離商店，移至馬路的邊緣
+    stopGrp.position.set(11, 0, 25);
     
     const stopPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 7, 16), stopPoleMat);
     stopPole.position.y = 3.5; stopPole.castShadow = true;
     stopGrp.add(stopPole);
     
-    // 【關鍵修復】：移除 X 軸的 Math.PI，解決文字上下顛倒的問題！
+    // 將圓柱體作正確旋轉，避免文字上下倒轉 (Z 轉 -90 度可面向正路，X 轉 180 度防止顛倒)
     const stopSign = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.1, 32), busStopMat);
-    stopSign.rotation.set(0, 0, -Math.PI / 2);
+    stopSign.rotation.set(Math.PI, 0, -Math.PI / 2);
     stopSign.position.set(0, 6.5, 0);
     stopGrp.add(stopSign);
     
@@ -10061,7 +10080,7 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
 
 
     
-
+}
 // =====================================================================
 // 🌆 同步商店街的時間與光影 (包含街燈與招牌發光)
 // =====================================================================
