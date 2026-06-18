@@ -297,6 +297,11 @@
     </div>
 
     <script>
+
+
+
+
+        
         const ALLOWED_EMAILS = ["kenchan20151@gmail.com"];
         const firebaseConfig = { apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms", authDomain: "letter-a74d1.firebaseapp.com", databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com", projectId: "letter-a74d1" };
         firebase.initializeApp(firebaseConfig); const auth = firebase.auth(); const db = firebase.database();
@@ -321,6 +326,18 @@
         function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
         function signOut() { auth.signOut().then(() => window.location.reload()); }
 
+
+// ==========================================
+        // 資料處理輔助函數 (解決 Firebase 陣列轉換為物件的防呆機制)
+        // ==========================================
+        function getArrayFromFirebase(data) {
+            if (!data) return [];
+            if (Array.isArray(data)) return data.filter(x => x !== null && x !== undefined);
+            return Object.values(data).filter(x => x !== null && x !== undefined);
+        }
+
+
+        
         function initDataListeners() {
             db.ref('classes').on('value', snap => {
                 dbClasses = snap.val() || {}; ensureDefaultClass(); updateClassSelects();
@@ -492,16 +509,18 @@
             renderTasksList();
         }
 
-        function renderTasksList() {
+       function renderTasksList() {
             const cid = document.getElementById('task-class-select').value; const grid = document.getElementById('tasks-grid');
-            if(!cid || !dbClasses[cid]) return; 
+            if(!cid || !dbClasses[cid]) return;
             
             const arrayName = currentAssignType === 'reading' ? 'tasks' : 'randomTasks';
-            const tasks = dbClasses[cid][arrayName] || []; grid.innerHTML = '';
+            // 🛡️ 使用防呆函數取得陣列
+            const tasks = getArrayFromFirebase(dbClasses[cid][arrayName]);
+            grid.innerHTML = '';
             if(tasks.length === 0) return grid.innerHTML = '<p style="color: var(--text-muted); grid-column: 1/-1;">此班級尚未派發此類任務。</p>';
             
-            tasks.forEach((d, i) => { 
-                grid.innerHTML += `<div class="task-card" style="text-align:left;"><div class="task-index">${currentAssignType==='reading'?'📖 閱讀':'📸 隨機'} 第 ${i + 1} 回</div><div class="task-date">${d}</div><button class="btn btn-danger" style="position:absolute; top:15px; right:15px; padding: 6px 12px; font-size:0.85rem;" onclick="deleteTask('${cid}', ${i}, '${arrayName}')">刪除</button></div>`; 
+            tasks.forEach((d, i) => {
+                grid.innerHTML += `<div class="task-card" style="text-align:left;"><div class="task-index">${currentAssignType==='reading'?'📖 閱讀':'📸 隨機'} 第 ${i + 1} 回</div><div class="task-date">${d}</div><button class="btn btn-danger" style="position:absolute; top:15px; right:15px; padding: 6px 12px; font-size:0.85rem;" onclick="deleteTask('${cid}', ${i}, '${arrayName}')">刪除</button></div>`;
             });
         }
 
@@ -510,7 +529,9 @@
             if(!cid || !start || !end || !interval) return alert("請填寫完整參數。");
             let sDate = new Date(start); const eDate = new Date(end); let newDates = [];
             while(sDate <= eDate) { newDates.push(sDate.toISOString().split('T')[0]); sDate.setDate(sDate.getDate() + interval); }
-            let exist = dbClasses[cid].tasks || [];
+            
+            // 🛡️ 使用防呆函數取得陣列
+            let exist = getArrayFromFirebase(dbClasses[cid].tasks);
             if (exist.length > 0) {
                 const eFirst = new Date(exist[0]), eLast = new Date(exist[exist.length - 1]), nFirst = new Date(newDates[0]), nLast = new Date(newDates[newDates.length - 1]);
                 if ((nFirst <= eLast && nFirst >= eFirst) || (nLast <= eLast && nLast >= eFirst) || (nFirst <= eFirst && nLast >= eLast)) return alert("衝突錯誤：您選擇的區間與該班級現有的任務區間重疊！");
@@ -518,25 +539,33 @@
             db.ref(`classes/${cid}/tasks`).set([...new Set([...exist, ...newDates])].sort()).then(() => { alert("批次派發成功！"); document.getElementById('periodic-start').value = ''; document.getElementById('periodic-end').value = ''; document.getElementById('periodic-interval').value = ''; });
         }
 
-        function assignSingleTask(type) {
-            const cid = document.getElementById('task-class-select').value; 
+          function assignSingleTask(type) {
+            const cid = document.getElementById('task-class-select').value;
             const inputId = type === 'reading' ? 'single-date' : 'single-random-date';
             const dateStr = document.getElementById(inputId).value;
             const arrayName = type === 'reading' ? 'tasks' : 'randomTasks';
-
-            if(!cid || !dateStr) return alert("請選擇日期"); 
-            let exist = dbClasses[cid][arrayName] || [];
-            if(exist.includes(dateStr)) return alert("該日期已經有任務了！"); 
-            exist.push(dateStr); exist.sort();
+ 
+            if(!cid || !dateStr) return alert("請選擇日期");
+            
+            // 🛡️ 使用防呆函數取得陣列
+            let exist = getArrayFromFirebase(dbClasses[cid][arrayName]);
+            if(exist.includes(dateStr)) return alert("該日期已經有任務了！");
+            exist.push(dateStr); exist.sort(); // 現在絕對不會再報錯了
             
             db.ref(`classes/${cid}/${arrayName}`).set(exist).then(() => { alert("加派單次任務成功！"); document.getElementById(inputId).value = ''; });
         }
 
-        function deleteTask(cid, index, arrayName) { 
-            if(!confirm(`確定要刪除第 ${index+1} 回任務嗎？\n⚠️ 此操作將清除該班級針對此任務已繳交的所有紀錄。`)) return; 
-            const targetDate = dbClasses[cid][arrayName][index];
-            let updates = {}; 
-            let tasks = dbClasses[cid][arrayName] || []; tasks.splice(index, 1); updates[`classes/${cid}/${arrayName}`] = tasks;
+       function deleteTask(cid, index, arrayName) {
+            if(!confirm(`確定要刪除第 ${index+1} 回任務嗎？\n⚠️ 此操作將清除該班級針對此任務已繳交的所有紀錄。`)) return;
+            
+            // 🛡️ 使用防呆函數取得陣列
+            let tasks = getArrayFromFirebase(dbClasses[cid][arrayName]);
+            const targetDate = tasks[index];
+            
+            let updates = {};
+            tasks.splice(index, 1);
+            updates[`classes/${cid}/${arrayName}`] = tasks;
+ 
             if (arrayName === 'tasks') {
                 Object.values(dbLetters).forEach(l => {
                     const studentClass = dbUsers[l.senderUid] ? (dbUsers[l.senderUid].classId || 'default') : 'default';
@@ -582,12 +611,12 @@
             return randomArray.find(l => l.senderUid === uid && l.taskDate === dateStr);
         }
 
-        function renderRecords() {
+     function renderRecords() {
             const cid = document.getElementById('record-class-select').value;
             const container = document.getElementById('records-accordion-container');
             container.innerHTML = '';
             if(!cid || !dbClasses[cid]) return;
-
+ 
             const recType = getRecordType();
             const studentsInClass = Object.keys(dbUsers).filter(uid => (dbUsers[uid].classId || 'default') === cid);
             
@@ -598,13 +627,13 @@
                     currentRecordTab = 'student';
                     document.getElementById('tab-student').className = 'tab-btn active';
                 }
-
+ 
                 studentsInClass.forEach(uid => {
                     const u = dbUsers[uid];
                     let freeLetters = Object.values(dbLetters)
                         .filter(l => l.senderUid === uid && l.taskIndex === 'free')
                         .sort((a, b) => b.timestamp - a.timestamp);
-
+ 
                     let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('stu-${uid}')"><div class="list-title">🧑‍🎓 ${escapeHtml(u.name)} <span class="list-subtitle">${escapeHtml(u.email)}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看紀錄 (${freeLetters.length}) ▾</span></div><div class="list-body" id="acc-body-stu-${uid}"><div class="grid-container">`;
                     
                     if (freeLetters.length === 0) {
@@ -623,19 +652,21 @@
                             `;
                         });
                     }
-                    html += `</div></div></div>`; 
+                    html += `</div></div></div>`;
                     container.innerHTML += html;
                 });
                 
                 if(studentsInClass.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級目前沒有學生。</p>`;
                 return;
             }
-
+ 
             document.getElementById('tab-task').style.display = 'inline-block';
             const arrayName = recType === 'reading' ? 'tasks' : 'randomTasks';
-            const tasks = dbClasses[cid][arrayName] || [];
+            
+            // 🛡️ 使用防呆函數取得陣列
+            const tasks = getArrayFromFirebase(dbClasses[cid][arrayName]);
             const dataArray = recType === 'reading' ? Object.values(dbLetters) : Object.values(dbRandomSubs);
-
+ 
             if (currentRecordTab === 'student') {
                 studentsInClass.forEach(uid => {
                     const u = dbUsers[uid];
