@@ -8096,21 +8096,19 @@ function acceptBankruptcy() {
 
 
 // 👇 移動端與電腦版實時視角旋鈕/搖桿 (保留原有阻尼感、全平台、雙擊切換、防撞) 👇
+// 👇 移動端與電腦版實時視角旋鈕/搖桿 (支援商店街漫步版) 👇
 (function initCameraKnob() {
     const knob = document.getElementById('mobile-cam-knob');
     if(!knob) return;
 
-    // 💻 強制在所有設備 (包含電腦版) 顯示按鈕
     knob.style.display = 'flex';
     
-    // 如果有開發測試面板，把它往左擠避免重疊
     const devPanel = document.getElementById('dev-panel-wrapper');
     if (devPanel) devPanel.style.right = '100px';
 
     window.isKnobDragging = false;
     window.knobMode = 1; 
     
-    // 💡 讀取用家上次的模式，預設為 'walk' (行走模式)
     const savedMode = localStorage.getItem('preferredCamMode');
     window.isWalkMode = (savedMode !== 'look'); 
     
@@ -8125,7 +8123,7 @@ function acceptBankruptcy() {
     let isCamInitialized = false;
     let isTouched = false; 
 
-    // --- 根據模式套用 UI 與相機限制 ---
+    // --- 根據場景與模式套用 UI 與相機限制 ---
     function applyModeState() {
         const knobCenter = document.querySelector('.knob-center');
         const indicator = document.querySelector('.knob-indicator');
@@ -8142,56 +8140,66 @@ function acceptBankruptcy() {
             knobCenter.style.transform = `translate(0px, 0px) rotate(0deg)`;
             indicator.style.background = '#fff';
             
-            camera.position.y = 16;
+            // 判斷高度：商店街高度為 6，房間高度為 16
+            camera.position.y = (typeof isAtStreet !== 'undefined' && isAtStreet) ? 6 : 16;
             let dir = new THREE.Vector3();
             camera.getWorldDirection(dir);
             dir.y = 0; dir.normalize();
             controls.target.copy(camera.position).add(dir.multiplyScalar(20));
             controls.update();
         } else {
-            controls.minPolarAngle = 1.15;
-            controls.maxPolarAngle = Math.PI / 2 - 0.05;
-            
-            if (window.knobMode === 1) {
-                controls.minAzimuthAngle = -Math.PI / 2;
-                controls.maxAzimuthAngle = Math.PI / 2;
-                knobCenter.style.background = '#fff';
-            } else {
-                controls.minAzimuthAngle = Math.PI / 2;
-                controls.maxAzimuthAngle = Math.PI * 1.5;
-                knobCenter.style.background = '#e6d7c0';
-            }
-            
+            controls.enabled = true;
             knobCenter.style.transform = `translate(0px, 0px)`;
             indicator.style.background = 'var(--color-replies)';
-            controls.enabled = true;
-            
-            currentSnappedAngle = null;
-            applyKnobAngle(0, true);
+
+            if (typeof isAtStreet !== 'undefined' && isAtStreet) {
+                // 🏙️ 商店街的自由視角 (完全無限制)
+                controls.minAzimuthAngle = -Infinity;
+                controls.maxAzimuthAngle = Infinity;
+                controls.minPolarAngle = 0.0;
+                controls.maxPolarAngle = Math.PI / 2;
+                knobCenter.style.background = '#fff';
+                currentSnappedAngle = null; 
+            } else {
+                // 🏠 房間的限制視角
+                controls.minPolarAngle = 1.15;
+                controls.maxPolarAngle = Math.PI / 2 - 0.05;
+                
+                if (window.knobMode === 1) {
+                    controls.minAzimuthAngle = -Math.PI / 2;
+                    controls.maxAzimuthAngle = Math.PI / 2;
+                    knobCenter.style.background = '#fff';
+                } else {
+                    controls.minAzimuthAngle = Math.PI / 2;
+                    controls.maxAzimuthAngle = Math.PI * 1.5;
+                    knobCenter.style.background = '#e6d7c0';
+                }
+                currentSnappedAngle = null;
+                applyKnobAngle(0, true);
+            }
         }
     }
 
-    // --- 雙擊切換：行走模式與原本視角模式 ---
     function toggleWalkMode() {
         window.isWalkMode = !window.isWalkMode;
         localStorage.setItem('preferredCamMode', window.isWalkMode ? 'walk' : 'look');
-        
         showToast(window.isWalkMode ? "🚶‍♂️ 進入行走模式：拖曳搖桿移動，雙擊切換回旋鈕" : "👀 進入旋鈕模式：拖曳按鈕轉向，雙擊切換回行走");
         applyModeState();
-        
         window.walkVel = 0; window.turnVel = 0;
         window.isKnobDragging = false;
         window.walkKeys = { w: false, a: false, s: false, d: false };
     }
 
     function toggleKnobMode() {
-        if (window.isWalkMode) return; 
+        // 商店街不需要 180 度翻轉功能
+        if (window.isWalkMode || (typeof isAtStreet !== 'undefined' && isAtStreet)) return; 
         window.knobMode = (window.knobMode === 1) ? 2 : 1;
         applyModeState();
         showToast(window.knobMode === 1 ? "👀 視角：望向窗外" : "👀 視角：望向書櫃");
     }
 
     function applyKnobAngle(snappedDeg, forceWide = false) {
+        if (typeof isAtStreet !== 'undefined' && isAtStreet) return; // 商店街不需要磁吸視角
         if (currentSnappedAngle === snappedDeg && !forceWide) return;
         currentSnappedAngle = snappedDeg;
 
@@ -8228,9 +8236,10 @@ function acceptBankruptcy() {
         }
     }
 
-    // --- 拖曳事件處理 ---
     function handleKnobMove(e) {
-        if(!window.isKnobDragging || (typeof isAtBalcony !== 'undefined' && isAtBalcony)) return;
+        // 修改這裡：如果人在商店街，允許使用搖桿！
+        if(!window.isKnobDragging || (typeof isAtBalcony !== 'undefined' && isAtBalcony && !(typeof isAtStreet !== 'undefined' && isAtStreet))) return;
+        
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
 
@@ -8248,11 +8257,8 @@ function acceptBankruptcy() {
             const maxRadius = rect.width / 2;
             const dist = Math.hypot(dx, dy);
             if (dist > maxRadius) { dx = (dx / dist) * maxRadius; dy = (dy / dist) * maxRadius; }
-            
             const knobCenter = document.querySelector('.knob-center');
-            // 💡 保留阻尼感：不移除 CSS transition，讓它自然平滑跟隨
             if (knobCenter) knobCenter.style.transform = `translate(${dx}px, ${dy}px) rotate(0deg)`;
-
             window.walkVel = (dy / maxRadius) * 0.6; 
             window.turnVel = -(dx / maxRadius) * 0.045; 
         } else {
@@ -8276,26 +8282,18 @@ function acceptBankruptcy() {
             return;
         }
         lastTapTime = now;
-
         window.isKnobDragging = true; 
         startX = e.touches ? e.touches[0].clientX : e.clientX; 
         startY = e.touches ? e.touches[0].clientY : e.clientY;
-        
-        // 💡 恢復原狀：不再中斷 transition 動畫
-        if (!window.isWalkMode) {
-            longPressTimer = setTimeout(toggleKnobMode, 400); 
-        }
-        
+        if (!window.isWalkMode) longPressTimer = setTimeout(toggleKnobMode, 400); 
         handleKnobMove(e); 
     }
 
     function handleUp(e) {
         if (e.type === 'mouseup' && isTouched) { isTouched = false; return; }
-        
         window.isKnobDragging = false; 
         window.walkVel = 0; window.turnVel = 0;
         if(longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
-        
         if (window.isWalkMode) {
             const knobCenter = document.querySelector('.knob-center');
             if(knobCenter) knobCenter.style.transform = `translate(0px, 0px) rotate(0deg)`;
@@ -8304,16 +8302,13 @@ function acceptBankruptcy() {
 
     knob.addEventListener('mousedown', handleDown);
     knob.addEventListener('touchstart', handleDown, {passive: false});
-
     window.addEventListener('mousemove', handleKnobMove);
     window.addEventListener('touchmove', (e) => { 
         if(window.isKnobDragging) { e.preventDefault(); handleKnobMove(e); }
     }, {passive: false});
-
     window.addEventListener('mouseup', handleUp);
     window.addEventListener('touchend', handleUp);
 
-    // --- ⌨️ 電腦端 WASD 鍵盤支援 ---
     window.addEventListener('keydown', (e) => {
         if (!window.isWalkMode) return;
         const key = e.key.toLowerCase();
@@ -8324,7 +8319,7 @@ function acceptBankruptcy() {
         if (window.walkKeys.hasOwnProperty(key)) window.walkKeys[key] = false;
     });
 
-    // --- 🏃‍♂️ 物理引擎更新迴圈與防撞邊界 ---
+    // --- 🏃‍♂️ 物理引擎更新迴圈與雙場景防撞邊界 ---
     function walkUpdateLoop() {
         requestAnimationFrame(walkUpdateLoop);
         
@@ -8333,7 +8328,9 @@ function acceptBankruptcy() {
             isCamInitialized = true;
         }
 
-        if (!window.isWalkMode || isRoomPaused() || (typeof isAtBalcony !== 'undefined' && isAtBalcony)) return;
+        // 判斷是否可以移動
+        if (!window.isWalkMode || isRoomPaused() || (typeof isRidingBus !== 'undefined' && isRidingBus)) return;
+        if (typeof isAtBalcony !== 'undefined' && isAtBalcony && !(typeof isAtStreet !== 'undefined' && isAtStreet)) return;
 
         let currentWalk = window.walkVel;
         let currentTurn = window.turnVel;
@@ -8354,46 +8351,53 @@ function acceptBankruptcy() {
             let nextX = camera.position.x + dir.x * -currentWalk;
             let nextZ = camera.position.z + dir.z * -currentWalk;
 
-            // 💡 實體防撞演算法 (AABB Collision)
-            const playerRadius = 4.0;
-            function pushOutRect(cx, cz, rx, rz, rw, rd) {
-                let hw = rw / 2 + playerRadius;
-                let hd = rd / 2 + playerRadius;
-                if (cx > rx - hw && cx < rx + hw && cz > rz - hd && cz < rz + hd) {
-                    let dL = cx - (rx - hw); let dR = (rx + hw) - cx;
-                    let dT = cz - (rz - hd); let dB = (rz + hd) - cz;
-                    let min = Math.min(dL, dR, dT, dB);
-                    if (min === dL) return {x: rx - hw, z: cz};
-                    if (min === dR) return {x: rx + hw, z: cz};
-                    if (min === dT) return {x: cx, z: rz - hd};
-                    return {x: cx, z: rz + hd};
+            if (typeof isAtStreet !== 'undefined' && isAtStreet) {
+                // 🏙️ 商店街專屬防撞邊界
+                // 右側是建築物(大約 x=10 邊緣)，左側是海邊馬路(大約 x=-50)
+                nextX = Math.max(-50, Math.min(10, nextX));
+                nextZ = Math.max(-95, Math.min(95, nextZ));
+
+                camera.position.x = nextX;
+                camera.position.z = nextZ;
+                camera.position.y = 6; // 走在街道上的人類視角高度
+                controls.target.copy(camera.position).add(dir.multiplyScalar(20));
+            } else {
+                // 🏠 原本房間的防撞邊界
+                const playerRadius = 4.0;
+                function pushOutRect(cx, cz, rx, rz, rw, rd) {
+                    let hw = rw / 2 + playerRadius;
+                    let hd = rd / 2 + playerRadius;
+                    if (cx > rx - hw && cx < rx + hw && cz > rz - hd && cz < rz + hd) {
+                        let dL = cx - (rx - hw); let dR = (rx + hw) - cx;
+                        let dT = cz - (rz - hd); let dB = (rz + hd) - cz;
+                        let min = Math.min(dL, dR, dT, dB);
+                        if (min === dL) return {x: rx - hw, z: cz};
+                        if (min === dR) return {x: rx + hw, z: cz};
+                        if (min === dT) return {x: cx, z: rz - hd};
+                        return {x: cx, z: rz + hd};
+                    }
+                    return {x: cx, z: cz};
                 }
-                return {x: cx, z: cz};
+
+                let p = pushOutRect(nextX, nextZ, 0, 0, 32, 16);
+                nextX = p.x; nextZ = p.z;
+                p = pushOutRect(nextX, nextZ, 0, 59, 80, 10);
+                nextX = p.x; nextZ = p.z;
+                p = pushOutRect(nextX, nextZ, 58, 22, 8, 18);
+                nextX = p.x; nextZ = p.z;
+
+                nextX = Math.max(-50, Math.min(50, nextX));
+                nextZ = Math.max(-10, Math.min(50, nextZ));
+
+                camera.position.x = nextX;
+                camera.position.z = nextZ;
+                camera.position.y = 16; 
+                controls.target.copy(camera.position).add(dir.multiplyScalar(20));
             }
-
-            // 書桌碰撞區
-            let p = pushOutRect(nextX, nextZ, 0, 0, 32, 16);
-            nextX = p.x; nextZ = p.z;
-            // 書櫃碰撞區 (後牆)
-            p = pushOutRect(nextX, nextZ, 0, 59, 80, 10);
-            nextX = p.x; nextZ = p.z;
-            // 鋼琴碰撞區 (右牆)
-            p = pushOutRect(nextX, nextZ, 58, 22, 8, 18);
-            nextX = p.x; nextZ = p.z;
-
-            // 房間絕對極限邊界
-            nextX = Math.max(-50, Math.min(50, nextX));
-            nextZ = Math.max(-10, Math.min(50, nextZ));
-
-            camera.position.x = nextX;
-            camera.position.z = nextZ;
-            camera.position.y = 16; 
-            controls.target.copy(camera.position).add(dir.multiplyScalar(20));
         }
     }
     walkUpdateLoop(); 
 })();
-
         
 // 新增或替換這個函數，專門用來渲染漂亮的索書卡
 function renderMyLogs() {
@@ -9556,6 +9560,10 @@ function enterShoppingStreet() {
         camera.position.set(-15, 6, 0);
         controls.target.set(25, 6, 0); 
         controls.update(); // 現在 update() 已經解鎖，會正確生效！
+
+         // 👇 新增這兩行：抵達商店街後，重新把搖桿顯示出來！
+        const knob = document.getElementById('mobile-cam-knob');
+        if (knob) knob.style.display = 'flex';
         
         document.getElementById('btn-leave-street').style.display = 'flex';
         
@@ -9569,6 +9577,11 @@ function enterShoppingStreet() {
 // 離開商店街，返回房間露台
 function leaveShoppingStreet() {
     document.getElementById('btn-leave-street').style.display = 'none';
+
+       // 👇 新增這兩行：準備搭車回房間時，先把搖桿藏起來
+    const knob = document.getElementById('mobile-cam-knob');
+    if (knob) knob.style.display = 'none';
+    
     
     const fadeOverlay = document.createElement('div');
     fadeOverlay.style.cssText = "position:fixed; inset:0; background:#000; z-index:99999; opacity:0; pointer-events:none; transition: opacity 0.8s;";
