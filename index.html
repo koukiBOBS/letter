@@ -6229,9 +6229,11 @@ function getValidIntersects() {
 
         
 function onPointerDown(e) {
-    // 👇 新增這行：如果點擊的不是 3D 畫布 (例如點到按鈕或視窗)，直接忽略！
     if (e.target.tagName !== 'CANVAS') return;
     if(document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
+    // 👇 新增這行：如果在商店街，就直接中斷，不處理房間的點擊拖曳
+    if (typeof isAtStreet !== 'undefined' && isAtStreet) return;
+    
     pointerDownPos.x = e.clientX; pointerDownPos.y = e.clientY;
 
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -6324,6 +6326,9 @@ if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella
 
 function onPointerMove(e) {
     if(document.querySelector('.room-modal[style*="flex"]')) return;
+    // 👇 新增這行：如果在商店街，就中斷房間的滑鼠懸停判定
+    if (typeof isAtStreet !== 'undefined' && isAtStreet) return;
+    
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
 
@@ -6790,6 +6795,9 @@ if (type === 'painting' || type === 'bookcase') {
 
     if(Math.abs(e.clientX - pointerDownPos.x) > 10 || Math.abs(e.clientY - pointerDownPos.y) > 10) return;
     if(document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
+    
+    // 👇 新增這行：如果在商店街，立刻中斷，不再進行房間物品的射線檢測！
+    if (typeof isAtStreet !== 'undefined' && isAtStreet) return;
     
     mouse.x = (e.clientX/window.innerWidth)*2-1; mouse.y = -(e.clientY/window.innerHeight)*2+1;
     raycaster.setFromCamera(mouse, camera);
