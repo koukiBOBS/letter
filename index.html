@@ -8047,9 +8047,7 @@ function acceptBankruptcy() {
 
 
 
-// ==========================================
-// 替代：移動端與電腦版實時視角旋鈕/搖桿 (支援商店街行走)
-// ==========================================
+// 👇 移動端與電腦版實時視角旋鈕/搖桿 (保留原有阻尼感、全平台、雙擊切換、防撞) 👇
 (function initCameraKnob() {
     const knob = document.getElementById('mobile-cam-knob');
     if(!knob) return;
@@ -8096,9 +8094,7 @@ function acceptBankruptcy() {
             knobCenter.style.transform = `translate(0px, 0px) rotate(0deg)`;
             indicator.style.background = '#fff';
             
-            // 如果在商店街，相機高度為 6；房間內高度為 16
-            const camHeight = (typeof isAtStreet !== 'undefined' && isAtStreet) ? 6 : 16;
-            camera.position.y = camHeight;
+            camera.position.y = 16;
             let dir = new THREE.Vector3();
             camera.getWorldDirection(dir);
             dir.y = 0; dir.normalize();
@@ -8126,18 +8122,9 @@ function acceptBankruptcy() {
             applyKnobAngle(0, true);
         }
     }
-    
-    // 暴露此函數供進入商店街時強制調用
-    window.applyCamModeState = applyModeState;
 
     // --- 雙擊切換：行走模式與原本視角模式 ---
     function toggleWalkMode() {
-        // 👇 商店街只能用行走模式，防範切換回固定視角
-        if (typeof isAtStreet !== 'undefined' && isAtStreet) {
-            showToast("🛍️ 在商店街中請使用搖桿自由行走。");
-            return;
-        }
-        
         window.isWalkMode = !window.isWalkMode;
         localStorage.setItem('preferredCamMode', window.isWalkMode ? 'walk' : 'look');
         
@@ -8195,11 +8182,7 @@ function acceptBankruptcy() {
 
     // --- 拖曳事件處理 ---
     function handleKnobMove(e) {
-        // 增加判斷，如果人在露台但「不在商店街」，則阻止移動；但若在商店街則允許
-        const atStreet = (typeof isAtStreet !== 'undefined' && isAtStreet);
-        const atBalcony = (typeof isAtBalcony !== 'undefined' && isAtBalcony);
-        if(!window.isKnobDragging || (atBalcony && !atStreet)) return;
-        
+        if(!window.isKnobDragging || (typeof isAtBalcony !== 'undefined' && isAtBalcony)) return;
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
 
@@ -8302,10 +8285,7 @@ function acceptBankruptcy() {
             isCamInitialized = true;
         }
 
-        // 👇 判斷條件：行走模式、未被 UI 遮擋，且在露台時若非商店街則不能移動
-        const atStreet = (typeof isAtStreet !== 'undefined' && isAtStreet);
-        const atBalcony = (typeof isAtBalcony !== 'undefined' && isAtBalcony);
-        if (!window.isWalkMode || isRoomPaused() || (atBalcony && !atStreet)) return;
+        if (!window.isWalkMode || isRoomPaused() || (typeof isAtBalcony !== 'undefined' && isAtBalcony)) return;
 
         let currentWalk = window.walkVel;
         let currentTurn = window.turnVel;
@@ -8326,52 +8306,41 @@ function acceptBankruptcy() {
             let nextX = camera.position.x + dir.x * -currentWalk;
             let nextZ = camera.position.z + dir.z * -currentWalk;
 
-            if (atStreet) {
-                // 🛍️ 商店街邊界防撞 (允許範圍 X: -145~145, Z: -14~20)
-                nextX = Math.max(-145, Math.min(145, nextX));
-                nextZ = Math.max(-14, Math.min(20, nextZ));
-
-                camera.position.x = nextX;
-                camera.position.z = nextZ;
-                camera.position.y = 6; 
-                controls.target.copy(camera.position).add(dir.multiplyScalar(20));
-            } else {
-                // 🏠 房間內防撞邏輯
-                const playerRadius = 4.0;
-                function pushOutRect(cx, cz, rx, rz, rw, rd) {
-                    let hw = rw / 2 + playerRadius;
-                    let hd = rd / 2 + playerRadius;
-                    if (cx > rx - hw && cx < rx + hw && cz > rz - hd && cz < rz + hd) {
-                        let dL = cx - (rx - hw); let dR = (rx + hw) - cx;
-                        let dT = cz - (rz - hd); let dB = (rz + hd) - cz;
-                        let min = Math.min(dL, dR, dT, dB);
-                        if (min === dL) return {x: rx - hw, z: cz};
-                        if (min === dR) return {x: rx + hw, z: cz};
-                        if (min === dT) return {x: cx, z: rz - hd};
-                        return {x: cx, z: rz + hd};
-                    }
-                    return {x: cx, z: cz};
+            // 💡 實體防撞演算法 (AABB Collision)
+            const playerRadius = 4.0;
+            function pushOutRect(cx, cz, rx, rz, rw, rd) {
+                let hw = rw / 2 + playerRadius;
+                let hd = rd / 2 + playerRadius;
+                if (cx > rx - hw && cx < rx + hw && cz > rz - hd && cz < rz + hd) {
+                    let dL = cx - (rx - hw); let dR = (rx + hw) - cx;
+                    let dT = cz - (rz - hd); let dB = (rz + hd) - cz;
+                    let min = Math.min(dL, dR, dT, dB);
+                    if (min === dL) return {x: rx - hw, z: cz};
+                    if (min === dR) return {x: rx + hw, z: cz};
+                    if (min === dT) return {x: cx, z: rz - hd};
+                    return {x: cx, z: rz + hd};
                 }
-
-                // 書桌碰撞區
-                let p = pushOutRect(nextX, nextZ, 0, 0, 32, 16);
-                nextX = p.x; nextZ = p.z;
-                // 書櫃碰撞區 (後牆)
-                p = pushOutRect(nextX, nextZ, 0, 59, 80, 10);
-                nextX = p.x; nextZ = p.z;
-                // 鋼琴碰撞區 (右牆)
-                p = pushOutRect(nextX, nextZ, 58, 22, 8, 18);
-                nextX = p.x; nextZ = p.z;
-
-                // 房間絕對極限邊界
-                nextX = Math.max(-50, Math.min(50, nextX));
-                nextZ = Math.max(-10, Math.min(50, nextZ));
-
-                camera.position.x = nextX;
-                camera.position.z = nextZ;
-                camera.position.y = 16; 
-                controls.target.copy(camera.position).add(dir.multiplyScalar(20));
+                return {x: cx, z: cz};
             }
+
+            // 書桌碰撞區
+            let p = pushOutRect(nextX, nextZ, 0, 0, 32, 16);
+            nextX = p.x; nextZ = p.z;
+            // 書櫃碰撞區 (後牆)
+            p = pushOutRect(nextX, nextZ, 0, 59, 80, 10);
+            nextX = p.x; nextZ = p.z;
+            // 鋼琴碰撞區 (右牆)
+            p = pushOutRect(nextX, nextZ, 58, 22, 8, 18);
+            nextX = p.x; nextZ = p.z;
+
+            // 房間絕對極限邊界
+            nextX = Math.max(-50, Math.min(50, nextX));
+            nextZ = Math.max(-10, Math.min(50, nextZ));
+
+            camera.position.x = nextX;
+            camera.position.z = nextZ;
+            camera.position.y = 16; 
+            controls.target.copy(camera.position).add(dir.multiplyScalar(20));
         }
     }
     walkUpdateLoop(); 
@@ -9490,6 +9459,7 @@ function getOffBus() {
 
         // 成功進入商店街邏輯
 // 成功進入商店街邏輯 (乾淨切換場景)
+// 成功進入商店街邏輯 (修復相機鎖死黑畫面問題)
 function enterShoppingStreet() {
     const bellBox = document.getElementById('bus-bell-box');
     if (bellBox) bellBox.style.display = 'none';
@@ -9525,7 +9495,7 @@ function enterShoppingStreet() {
             ferrisWheelGrp.parent.rotation.y = Math.PI / 4;
             ferrisWheelGrp.parent.matrixAutoUpdate = true;
         }
- 
+
         // 重新開放視角限制
         controls.minAzimuthAngle = -Infinity;
         controls.maxAzimuthAngle = Infinity;
@@ -9533,26 +9503,18 @@ function enterShoppingStreet() {
         controls.maxPolarAngle = Math.PI / 2;
         controls.minDistance = 5;
         controls.maxDistance = 100;
- 
-        // 🛑 【關鍵修復 2】：將相機精準定位在獨立場景的馬路上，並看向遠方
+
+        // 🛑 【關鍵修復 2】：將相機精準定位在獨立場景的馬路上
         camera.position.set(-15, 6, 0);
-        controls.target.set(25, 6, 0);
+        controls.target.set(25, 6, 0); 
         controls.update(); // 現在 update() 已經解鎖，會正確生效！
         
         document.getElementById('btn-leave-street').style.display = 'flex';
         
-        // 👇 新增：在商店街強制顯示搖桿，並進入行走模式
-        const knob = document.getElementById('mobile-cam-knob');
-        if (knob) knob.style.display = 'flex';
-        window.isWalkMode = true;
-        if (typeof window.applyCamModeState === 'function') {
-            window.applyCamModeState(); // 觸發相機參數與搖桿 UI 的更新
-        }
-        
         fadeOverlay.style.opacity = 0;
         setTimeout(() => fadeOverlay.remove(), 800);
         
-        showToast("🛍️ 抵達海濱商店街！推動左下角搖桿即可自由探索。");
+        showToast("🛍️ 抵達海濱商店街！試著點擊霓虹招牌與店面吧。");
     }, 850);
 }
 
