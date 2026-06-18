@@ -9252,29 +9252,40 @@ window.closeWelcomeMemo = function() {
 
 // 檢查並顯示登入備忘錄
 function checkAndShowWelcomeMemo(readingTasks, randomTasks, submittedReading, submittedRandom) {
-    if (typeof isDevUser === 'function' && isDevUser(currentUser.email)) return; // 老師略過
+    if (typeof isDevUser === 'function' && isDevUser(currentUser.email)) return; 
 
     let pendingTasks = [];
-    const now = Date.now();
+    const todayReset = new Date().setHours(0,0,0,0);
 
-    // 輔助函數：將任務資料整理進陣列
-    function processTasks(taskArray, submittedArray, typeName) {
+    function processTasks(taskArray, submittedArray, typeName, isReading) {
         taskArray.forEach(dateStr => {
             if (!submittedArray.includes(dateStr)) {
-                // 截止日為開放日 + 2天
-                const deadlineTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
-                const isOverdue = now > deadlineTime;
+                let deadline = new Date(dateStr);
+                
+                // 閱讀任務需 +2 天；探索任務維持原日期
+                if (isReading) deadline.setDate(deadline.getDate() + 2);
+                
+                let dlTime = deadline.setHours(0,0,0,0);
+                let openTime = new Date(deadline);
+                
+                if (!isReading) openTime.setDate(openTime.getDate() - 2); // 探索任務的開放日倒推2天
+                else openTime = new Date(dateStr).setHours(0,0,0,0);
+                
+                // 尚未開放的任務不顯示在備忘錄
+                if (todayReset < openTime) return;
+
+                const isOverdue = todayReset > dlTime;
                 pendingTasks.push({
                     type: typeName,
-                    deadlineTime: deadlineTime,
+                    deadlineTime: dlTime,
                     isOverdue: isOverdue
                 });
             }
         });
     }
 
-    processTasks(readingTasks, submittedReading, '閱讀任務');
-    processTasks(randomTasks, submittedRandom, '探索任務');
+    processTasks(readingTasks, submittedReading, '閱讀任務', true);
+    processTasks(randomTasks, submittedRandom, '探索任務', false);
 
     if (pendingTasks.length === 0) return; // 全部交齊，不顯示
 
@@ -9321,11 +9332,10 @@ function checkAndShowWelcomeMemo(readingTasks, randomTasks, submittedReading, su
         `;
     }
 
-    // 寫入並顯示動畫
     document.getElementById('welcome-memo-list').innerHTML = listHtml;
     const overlay = document.getElementById('welcome-memo-overlay');
     overlay.style.display = 'flex';
-    gsap.to(overlay, {opacity: 1, duration: 0.4, delay: 1.0}); // 稍微延遲，等房間載入好再彈出
+    gsap.to(overlay, {opacity: 1, duration: 0.4, delay: 1.0});
     gsap.fromTo("#welcome-memo-card", {y: 30, opacity: 0}, {y: 0, opacity: 1, duration: 0.6, ease: "power3.out", delay: 1.0});
 }
 
