@@ -2748,23 +2748,28 @@ function renderTasks() {
             };
 
             // 修改：加入 deadlineStr 參數，讓印章精準蓋在截止日那格
-            function addCalTask(releaseDateStr, deadlineStr, type, doneRecord) {
+           function addCalTask(releaseDateStr, deadlineStr, type, doneRecord) {
                 if (!calendarTasksData[deadlineStr]) calendarTasksData[deadlineStr] = [];
                 let status = 'pending';
                 
-                // 判斷逾期依然使用開放日 + 2天
-                const limitTime = new Date(releaseDateStr).setHours(0,0,0,0) + (86400000 * 2);
+                let limitTime;
+                if (type === 'reading') {
+                    // 閱讀任務：開放日的午夜起算 + 2天 (即隔天 23:59:59)
+                    limitTime = new Date(releaseDateStr).setHours(0,0,0,0) + (86400000 * 2) - 1;
+                } else {
+                    // 探索任務：截止日的 23:59:59
+                    limitTime = new Date(deadlineStr).setHours(23, 59, 59, 999);
+                }
 
                 if (doneRecord) {
                     const submitTime = new Date(doneRecord.timestamp).getTime();
                     status = (submitTime <= limitTime) ? 'ontime' : 'late';
                 } else {
-                    status = (Date.now() >= limitTime) ? 'overdue' : 'pending';
+                    status = (Date.now() > limitTime) ? 'overdue' : 'pending';
                 }
                 
                 calendarTasksData[deadlineStr].push({ type, status });
             }
-
             // ==========================================
             // 📖 1. 渲染閱讀任務
             // ==========================================
@@ -2884,47 +2889,37 @@ function renderTasks() {
                 randMap[s.taskDate] = s;
             });
 
-            if (randomTasks.length === 0) {
+           if (randomTasks.length === 0) {
                 randGrid.innerHTML = '<div class="empty-state"><p>目前尚未設定探索任務。</p></div>';
             } else {
                 randomTasks.forEach((dateStr, i) => {
                     const done = submittedRandomDates.includes(dateStr);
                     
-                    let dDate = new Date(new Date(dateStr).getTime() + 86400000);
-                    let deadlineStr = `${dDate.getFullYear()}-${String(dDate.getMonth()+1).padStart(2,'0')}-${String(dDate.getDate()).padStart(2,'0')}`;
-                    
-                    const limitTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
-                    const isLate = !done && Date.now() >= limitTime;
+                    // 探索任務的 dateStr 就是截止日
+                    let deadlineStr = dateStr;
+                    // 截止時間為當天的 23:59:59
+                    const limitTime = new Date(dateStr).setHours(23, 59, 59, 999);
+                    const isLate = !done && Date.now() > limitTime;
                     
                     const randRecord = randMap[dateStr];
+                    // 傳入 dateStr 作為日曆標記
                     addCalTask(dateStr, deadlineStr, 'random', randRecord);
                     if (!done) { hasPendingTasks = true; }
 
                     const el = document.createElement('div'); 
                     el.className = `task-card ${done ? 'completed' : ''}`;
                     
-                    // --- 雙色時間軸 UI 設計 ---
-                    let startColor = '#548ca8'; 
-                    let endColor = isLate ? '#ef4444' : '#d98a6c'; 
-                    let lineStyle = `background: linear-gradient(to right, ${startColor}, ${endColor});`;
-                    let endIcon = isLate ? '<span style="font-size:0.8rem; margin-left:4px;">⚠️</span>' : '';
-
                     let dateHtml = '';
                     if (done) {
                         dateHtml = `<span class="task-date" style="color:#6b8e73; font-weight:bold; font-size:1.05rem; letter-spacing:1px; margin-top:12px; display:block;">✓ 任務已達成</span>`;
                     } else {
-                        const endBg = isLate ? 'rgba(239,68,68,0.1)' : 'rgba(217,138,108,0.12)';
+                        // 依照要求，這裡只顯示純粹的截止日期，不顯示進度條
+                        const textColor = isLate ? '#ef4444' : '#d98a6c';
+                        const endIcon = isLate ? '<span style="font-size:0.8rem; margin-left:4px;">⚠️已逾期</span>' : '';
+                        
                         dateHtml = `
-                            <div style="display:flex; align-items:center; justify-content:center; width:100%; margin-top:18px; font-family:var(--font-sans); font-size:0.9rem; font-weight:600;">
-                                <span style="color:${startColor}; background:rgba(84,140,168,0.12); padding:3px 8px; border-radius:6px;">${formatShortDate(dateStr)}</span>
-                                
-                                <div style="flex-grow:1; display:flex; align-items:center; margin:0 6px;">
-                                    <div style="width:5px; height:5px; border-radius:50%; background:${startColor};"></div>
-                                    <div style="flex-grow:1; height:2px; ${lineStyle}"></div>
-                                    <div style="width:5px; height:5px; border-radius:50%; background:${endColor};"></div>
-                                </div>
-                                
-                                <span style="color:${endColor}; background:${endBg}; padding:3px 8px; border-radius:6px;">${formatShortDate(deadlineStr)}${endIcon}</span>
+                            <div style="margin-top:18px; font-family:var(--font-sans); font-size:1.05rem; font-weight:600; color:${textColor};">
+                                截止日期：${formatShortDate(deadlineStr)} ${endIcon}
                             </div>
                         `;
                         if (drawnTasksData[dateStr]) { 
@@ -8004,10 +7999,12 @@ function checkAndTriggerBankruptcy(readingTasks, randomTasks, submittedReading, 
     }
 
     // 檢查探索任務
+    // 檢查探索任務 (截止後逾期滿 4 天)
     if (!isBankrupt) {
         for (let dateStr of randomTasks) {
             if (!submittedRandom.includes(dateStr)) {
-                let limitTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
+                // 探索任務使用截止日當天 23:59:59 計算
+                let limitTime = new Date(dateStr).setHours(23, 59, 59, 999);
                 if (now - limitTime >= 86400000 * 4) { isBankrupt = true; break; }
             }
         }
@@ -9258,11 +9255,19 @@ function checkAndShowWelcomeMemo(readingTasks, randomTasks, submittedReading, su
     const now = Date.now();
 
     // 輔助函數：將任務資料整理進陣列
+  // 輔助函數：將任務資料整理進陣列
     function processTasks(taskArray, submittedArray, typeName) {
         taskArray.forEach(dateStr => {
             if (!submittedArray.includes(dateStr)) {
-                // 截止日為開放日 + 2天
-                const deadlineTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
+                let deadlineTime;
+                if (typeName === '閱讀任務') {
+                    // 閱讀任務：開放日 + 2天
+                    deadlineTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2) - 1;
+                } else {
+                    // 探索任務：截止日的 23:59:59
+                    deadlineTime = new Date(dateStr).setHours(23, 59, 59, 999);
+                }
+                
                 const isOverdue = now > deadlineTime;
                 pendingTasks.push({
                     type: typeName,
