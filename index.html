@@ -2442,7 +2442,9 @@ function initApp() {
     hideAuthOverlay();
 
 
-    db.ref('settings/taskConfig').on('value', snap => { config = snap.val(); renderTasks(); }); 
+db.ref(`classes/${currentUser.classId || 'default'}`).on('value', snap => {
+    renderTasks();
+});
     setupNotifications(); 
     loadMailbox(); 
     loadUserPlant(); 
