@@ -8049,17 +8049,19 @@ function acceptBankruptcy() {
 
 // 👇 移動端與電腦版實時視角旋鈕/搖桿 (保留原有阻尼感、全平台、雙擊切換、防撞) 👇
 // 👇 完全替換原有的 (function initCameraKnob() { ... })();
+// 👇 完全替換原有的 (function initCameraKnob() { ... })();
 (function initCameraKnob() {
     const knob = document.getElementById('mobile-cam-knob');
     if(!knob) return;
 
-    // 電腦版預設給 CSS 控制隱藏，手機版才會 flex，但在商店街會由 JS 強制打開
+    // 如果有開發測試面板，把它往左擠避免重疊
     const devPanel = document.getElementById('dev-panel-wrapper');
     if (devPanel) devPanel.style.right = '100px';
 
     window.isKnobDragging = false;
     window.knobMode = 1; 
     
+    // 💡 讀取用家上次的模式
     const savedMode = localStorage.getItem('preferredCamMode');
     window.isWalkMode = (savedMode !== 'look'); 
     
@@ -8077,6 +8079,7 @@ function acceptBankruptcy() {
     // 暴露給外部呼叫以強制更新 UI
     window.updateKnobModeUI = applyModeState;
 
+    // --- 根據模式套用 UI 與相機限制 ---
     function applyModeState() {
         const knobCenter = document.querySelector('.knob-center');
         const indicator = document.querySelector('.knob-indicator');
@@ -8123,6 +8126,7 @@ function acceptBankruptcy() {
         }
     }
 
+    // --- 雙擊切換：行走模式與原本視角模式 ---
     function toggleWalkMode() {
         // 🌟 在商店街強制綁死行走模式，禁止切換回看風景模式
         if (typeof isAtStreet !== 'undefined' && isAtStreet) return;
@@ -8184,11 +8188,12 @@ function acceptBankruptcy() {
         }
     }
 
+    // --- 拖曳事件處理 ---
     function handleKnobMove(e) {
         // 🌟 判斷：人在露台且「不是在商店街」才限制拖曳
         const atBalconyButNotStreet = (typeof isAtBalcony !== 'undefined' && isAtBalcony) && !(typeof isAtStreet !== 'undefined' && isAtStreet);
         if(!window.isKnobDragging || atBalconyButNotStreet) return;
-
+        
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
 
@@ -8208,6 +8213,7 @@ function acceptBankruptcy() {
             if (dist > maxRadius) { dx = (dx / dist) * maxRadius; dy = (dy / dist) * maxRadius; }
             
             const knobCenter = document.querySelector('.knob-center');
+            // 💡 保留阻尼感：不移除 CSS transition，讓它自然平滑跟隨
             if (knobCenter) knobCenter.style.transform = `translate(${dx}px, ${dy}px) rotate(0deg)`;
 
             // 🌟 商店街因為場地比較大，稍微加快一點走路與轉向速度
@@ -8271,6 +8277,7 @@ function acceptBankruptcy() {
     window.addEventListener('mouseup', handleUp);
     window.addEventListener('touchend', handleUp);
 
+    // --- ⌨️ 電腦端 WASD 鍵盤支援 ---
     window.addEventListener('keydown', (e) => {
         if (!window.isWalkMode) return;
         const key = e.key.toLowerCase();
@@ -8323,6 +8330,9 @@ function acceptBankruptcy() {
                 camera.position.z = nextZ;
                 camera.position.y = 6; 
                 controls.target.copy(camera.position).add(dir.multiplyScalar(20));
+                
+                // 🛑 終極防鎖死保護：強制讓鏡頭與 controls 嚴格看齊
+                camera.lookAt(controls.target);
 
             } else {
                 // 🏠 原有房間的防撞設定
@@ -8356,12 +8366,14 @@ function acceptBankruptcy() {
                 camera.position.z = nextZ;
                 camera.position.y = 16; 
                 controls.target.copy(camera.position).add(dir.multiplyScalar(20));
+                
+                // 🛑 終極防鎖死保護：強制讓鏡頭與 controls 嚴格看齊
+                camera.lookAt(controls.target);
             }
         }
     }
     walkUpdateLoop(); 
 })();
-
         
 // 新增或替換這個函數，專門用來渲染漂亮的索書卡
 function renderMyLogs() {
