@@ -9646,28 +9646,50 @@ let isAtStreet = false;
 let roomVisibilityBackup = [];
 
 // 1. 舊式唐樓「紙皮石」馬賽克外牆 (加入光影倒角與歲月水痕)
-function createMosaicTileTexture(baseColor) {
-    const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#9c9c9c'; ctx.fillRect(0, 0, 512, 512); 
-    const tileSize = 16; const gap = 2;
-    for(let y=0; y<512; y+=tileSize) {
-        for(let x=0; x<512; x+=tileSize) {
-            if(Math.random() > 0.95) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x, y, tileSize, tileSize); continue; }
-            ctx.fillStyle = Math.random() > 0.85 ? '#f0f0f0' : baseColor;
-            ctx.globalAlpha = 0.85 + Math.random() * 0.15;
-            ctx.fillRect(x+gap, y+gap, tileSize-gap*2, tileSize-gap*2);
-            ctx.globalAlpha = 1.0; ctx.fillStyle = 'rgba(255,255,255,0.4)'; 
-            ctx.fillRect(x+gap, y+gap, tileSize-gap*2, 1); ctx.fillRect(x+gap, y+gap, 1, tileSize-gap*2);
-            ctx.fillStyle = 'rgba(0,0,0,0.3)'; 
-            ctx.fillRect(x+gap, y+tileSize-gap-1, tileSize-gap*2, 1); ctx.fillRect(x+tileSize-gap-1, y+gap, 1, tileSize-gap*2);
-        }
-    }
+// 1. 寫實風香港大廈外牆 (帶有微小顆粒與歲月水痕，取代原本的馬賽克磚)
+function createAgedPlasterTexture(baseColor) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    
+    // 塗上底色
+    ctx.fillStyle = baseColor;
+    ctx.fillRect(0, 0, 512, 512);
+ 
+    // 加入大面積的輕微不均勻色塊 (模擬牆面風化)
     for(let i=0; i<40; i++) {
-        const grad = ctx.createLinearGradient(0, 0, 0, 512); grad.addColorStop(0, `rgba(0,0,0,${Math.random()*0.4})`); grad.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = grad; ctx.fillRect(Math.random()*512, 0, Math.random()*8+2, 512 * (0.3 + Math.random()*0.7));
+        ctx.beginPath();
+        ctx.arc(Math.random()*512, Math.random()*512, 30 + Math.random()*80, 0, Math.PI*2);
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)';
+        ctx.fill();
     }
-    const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
+ 
+    // 加入密集的微小顆粒 (模擬石屎/水泥質感)
+    for(let i=0; i<50000; i++) {
+        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)';
+        ctx.fillRect(Math.random()*512, Math.random()*512, 2, 2);
+    }
+ 
+    // 加入由上而下的垂直水痕與污漬 (香港舊樓的靈魂)
+    for(let i=0; i<80; i++) {
+        const streakWidth = 2 + Math.random()*15;
+        const streakHeight = 512 * (0.3 + Math.random()*0.7);
+        const xPos = Math.random()*512;
+        
+        const grad = ctx.createLinearGradient(0, 0, 0, streakHeight);
+        grad.addColorStop(0, `rgba(0,0,0,${0.05 + Math.random()*0.15})`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        
+        ctx.fillStyle = grad;
+        ctx.fillRect(xPos, 0, streakWidth, streakHeight);
+    }
+ 
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    return tex;
 }
+
+        
 
 // 2. 工業風清水模 / 舊牆面 
 function createConcreteTexture() {
@@ -9910,60 +9932,141 @@ const shopGlassMat = new THREE.MeshStandardMaterial({
 
     // 優化：高質感玻璃與正確的冷氣機定位
 // 優化：高質感純淨玻璃與正確的冷氣機定位
+// 優化：絕不閃爍的立體窗戶，包含窗框、高質感玻璃、隨機窗簾與生活細節
 function createTangLauUpperFloors(x, z, width, baseColor) {
     const floorGrp = new THREE.Group();
-    const wallMat = new THREE.MeshStandardMaterial({map: createMosaicTileTexture(baseColor), roughness: 0.9});
+    // 使用全新的歲月外牆紋理
+    const wallMat = new THREE.MeshStandardMaterial({map: createAgedPlasterTexture(baseColor), roughness: 0.95});
     
-    // 🌟 1. 改用與店面完全相同邏輯的「純材質玻璃」
-    // 移除 map 貼圖，純靠金屬度(metalness)與環境倒影(envMap)撐起玻璃質感
-    const upperGlassMat = new THREE.MeshStandardMaterial({
-        color: 0xddeeff,       // 淺淺的冰藍色
-        roughness: 0.05,       // 極度平滑
-        metalness: 0.9,        // 強烈反光
-        transparent: true,
-        opacity: 0.75,         // 稍微提高不透明度，讓窗戶顏色穩固一致
-        envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
-        envMapIntensity: 3.0,
-        side: THREE.FrontSide  // 單面渲染，效能更好且絕無交叉干擾
-    });
+    // 1. 建築主體
     const building = new THREE.Mesh(new THREE.BoxGeometry(width, 60, 25), wallMat);
     building.position.set(x, 45, z);
     building.castShadow = true; building.receiveShadow = true;
     floorGrp.add(building);
-    // 🌟 2. 將幾何體與底板材質提出迴圈外共用，大幅節省手機記憶體與運算效能！
-    const winGeo = new THREE.PlaneGeometry(4, 5);
-    const backingMat = new THREE.MeshBasicMaterial({color: 0x334455}); // 統一的深灰藍色室內底板
+ 
+    // 🌟 高質感反光玻璃材質
+    const upperGlassMat = new THREE.MeshStandardMaterial({
+        color: 0xcceeff,       
+        roughness: 0.05,       
+        metalness: 0.9,        
+        transparent: true,
+        opacity: 0.45,         
+        envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
+        envMapIntensity: 3.0,
+        side: THREE.FrontSide  
+    });
+ 
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.6, roughness: 0.4 });
+    const darkInteriorMat = new THREE.MeshBasicMaterial({color: 0x1a1a1a});
+ 
+    const winWidth = 4;
+    const winHeight = 5;
+    const wallX = x - width/2; // 左側牆面基準 X 座標
+ 
     for(let fy=20; fy<=65; fy+=10) {
         for(let fz=z-8; fz<=z+8.1; fz+=8) {
             
-            // 統一深色的不透光內室
-            const winBacking = new THREE.Mesh(winGeo, backingMat);
-            winBacking.position.set(x - width/2 - 0.03, fy, fz);
-            winBacking.rotation.y = -Math.PI/2;
-            floorGrp.add(winBacking);
-            // 🌟 3. 乾淨統一的窗戶 (移除之前導致十字紋的 UV 偏移)
-            const win = new THREE.Mesh(winGeo, upperGlassMat);
-            win.position.set(x - width/2 - 0.05, fy, fz);
-            win.rotation.y = -Math.PI/2;
-            win.userData = { isWindow: true }; // 保留發光標記
-            floorGrp.add(win);
-            
-            // 冷氣機 (保持原樣)
-            if (Math.random() > 0.4) {
-                const ac = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 2.2), new THREE.MeshStandardMaterial({color:0xd0d0d0, roughness:0.8}));
-                ac.position.set(x - width/2 + 0.3, fy - 3.2, fz);
-                ac.castShadow = true;
-                floorGrp.add(ac);
+            // --- 建立每戶獨立的微型群組 ---
+            const winGrp = new THREE.Group();
+            winGrp.position.set(wallX, fy, fz);
+            winGrp.rotation.y = -Math.PI/2;
+            floorGrp.add(winGrp);
+ 
+            // 💡 【魔法防閃爍機制】：將內部黑洞、衣服、玻璃、窗框，依序往外推一點點 (Z軸)
+ 
+            // 1. 內部深淵 (假深度)，推出牆面 0.02 避免與牆壁打架
+            const backing = new THREE.Mesh(new THREE.PlaneGeometry(winWidth, winHeight), darkInteriorMat);
+            backing.position.z = 0.02;
+            winGrp.add(backing);
+ 
+            // 2. 豐富的內部細節：隨機窗簾
+            if (Math.random() > 0.2) {
+                const curtainColors = [0xeeeeee, 0xffddaa, 0xadd8e6, 0xffb6c1, 0x90ee90];
+                const cColor = curtainColors[Math.floor(Math.random() * curtainColors.length)];
+                const cMat = new THREE.MeshStandardMaterial({color: cColor, roughness: 0.9});
                 
-                const acVent = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), new THREE.MeshBasicMaterial({color:0x111}));
-                acVent.position.set(x - width/2 - 0.46, fy - 3.2, fz);
-                acVent.rotation.y = -Math.PI/2;
-                floorGrp.add(acVent);
+                const style = Math.random();
+                if (style > 0.6) {
+                    // 單邊拉上窗簾
+                    const cW = winWidth * (0.3 + Math.random()*0.4);
+                    const curtain = new THREE.Mesh(new THREE.PlaneGeometry(cW, winHeight), cMat);
+                    curtain.position.set(-winWidth/2 + cW/2, 0, 0.04);
+                    winGrp.add(curtain);
+                } else if (style > 0.3) {
+                    // 雙邊半開窗簾
+                    const cW = winWidth * 0.25;
+                    const cL = new THREE.Mesh(new THREE.PlaneGeometry(cW, winHeight), cMat);
+                    cL.position.set(-winWidth/2 + cW/2, 0, 0.04);
+                    const cR = new THREE.Mesh(new THREE.PlaneGeometry(cW, winHeight), cMat);
+                    cR.position.set(winWidth/2 - cW/2, 0, 0.04);
+                    winGrp.add(cL, cR);
+                } else {
+                    // 全關窗簾
+                    const curtain = new THREE.Mesh(new THREE.PlaneGeometry(winWidth, winHeight), cMat);
+                    curtain.position.set(0, 0, 0.04);
+                    winGrp.add(curtain);
+                    backing.userData.isWindow = false;
+                    curtain.userData.isWindow = true; // 晚上讓窗簾透光
+                }
+            } else {
+                backing.userData.isWindow = true; // 沒窗簾，讓內部透光
+            }
+ 
+            // 3. 晾衣服細節 (掛在窗戶與玻璃之間)
+            if (Math.random() > 0.7) {
+                const clothColors = [0xff4444, 0x4444ff, 0xffffff, 0xffff44];
+                const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.2), new THREE.MeshBasicMaterial({color: clothColors[Math.floor(Math.random()*4)]}));
+                cloth.position.set((Math.random()-0.5)*2, 0.5, 0.06);
+                winGrp.add(cloth);
+            }
+ 
+            // 4. 實體高質感玻璃 (推出 0.1)
+            const glass = new THREE.Mesh(new THREE.PlaneGeometry(winWidth, winHeight), upperGlassMat);
+            glass.position.z = 0.1;
+            winGrp.add(glass);
+ 
+            // 5. 立體金屬窗框 (推至最外層 0.12)
+            const fThick = 0.2;  // 框的厚度
+            const fDepth = 0.15; // 框的深度
+            const fZ = 0.12;     
+ 
+            const fTop = new THREE.Mesh(new THREE.BoxGeometry(winWidth + fThick*2, fThick, fDepth), frameMat);
+            fTop.position.set(0, winHeight/2 + fThick/2, fZ);
+            const fBot = new THREE.Mesh(new THREE.BoxGeometry(winWidth + fThick*2, fThick, fDepth), frameMat);
+            fBot.position.set(0, -winHeight/2 - fThick/2, fZ);
+            const fLeft = new THREE.Mesh(new THREE.BoxGeometry(fThick, winHeight, fDepth), frameMat);
+            fLeft.position.set(-winWidth/2 - fThick/2, 0, fZ);
+            const fRight = new THREE.Mesh(new THREE.BoxGeometry(fThick, winHeight, fDepth), frameMat);
+            fRight.position.set(winWidth/2 + fThick/2, 0, fZ);
+            
+            // 窗戶中間的十字分隔鋁框
+            const fMidV = new THREE.Mesh(new THREE.BoxGeometry(fThick*0.8, winHeight, fDepth*0.6), frameMat);
+            fMidV.position.set(0, 0, fZ - 0.02);
+            const fMidH = new THREE.Mesh(new THREE.BoxGeometry(winWidth, fThick*0.8, fDepth*0.6), frameMat);
+            fMidH.position.set(0, 0.5, fZ - 0.02);
+ 
+            winGrp.add(fTop, fBot, fLeft, fRight, fMidV, fMidH);
+ 
+            // 6. 冷氣機 (自然地隨機掛在窗台左右外側)
+            if (Math.random() > 0.5) {
+                const acGrp = new THREE.Group();
+                acGrp.position.set((Math.random() > 0.5 ? 1 : -1), -1.8, 0.6);
+                winGrp.add(acGrp);
+ 
+                const acBody = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, 1.8), new THREE.MeshStandardMaterial({color:0xdddddd, roughness:0.8}));
+                acBody.castShadow = true;
+                acGrp.add(acBody);
+ 
+                const acVent = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), new THREE.MeshBasicMaterial({color:0x222}));
+                acVent.position.set(0, 0, 0.91);
+                acGrp.add(acVent);
             }
         }
     }
     return floorGrp;
 }
+
+    
 
 // 💡 新增：室內牆面材質 (使用全新名稱避免衝突)
     const brightShopMat = new THREE.MeshStandardMaterial({color: 0xfffae6, side: THREE.BackSide, roughness: 0.8});
@@ -9975,7 +10078,7 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     statGrp.add(createTangLauUpperFloors(7.5, 0, 20, '#8fbc8f'));
     
     // 重新建構一樓外牆：改用左、右、上三塊積木拼接，留出中間的空洞給玻璃門窗
-    const statTileMat = new THREE.MeshStandardMaterial({map: createMosaicTileTexture('#8fbc8f')});
+const statTileMat = new THREE.MeshStandardMaterial({map: createAgedPlasterTexture('#8fbc8f')});
     const statWallL = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 2), statTileMat);
     statWallL.position.set(7.5, 7.5, 9); statGrp.add(statWallL); // 左柱
     const statWallR = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 2), statTileMat);
