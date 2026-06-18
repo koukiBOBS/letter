@@ -9838,18 +9838,25 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     building.castShadow = true; building.receiveShadow = true;
     floorGrp.add(building);
  
-    for(let fy=20; fy<=65; fy+=10) {
-        for(let fz=z-8; fz<=z+8; fz+=6) {
-            // 窗戶
-            if (Math.random() > 0.2) {
-                const win = new THREE.Mesh(new THREE.PlaneGeometry(4, 5), upperGlassMat);
-                // 微調 Z 軸防閃爍，貼緊牆面
-                win.position.set(x - width/2 - 0.05, fy, fz);
-                win.rotation.y = -Math.PI/2;
-                win.userData = { isWindow: true };
-                floorGrp.add(win);
-            }
-            // 冷氣機 (修正：移至窗戶正下方，緊貼牆面)
+   for(let fy=20; fy<=65; fy+=10) {
+        // 👇 修正：將 fz+=6 改為 fz+=8，確保一層樓剛好整齊排列 3 個窗口 (-8, 0, 8)
+        for(let fz=z-8; fz<=z+8.1; fz+=8) {
+            
+            // 👇 修正：在玻璃後方加上一片黑色的「不透光內室」，徹底擋住後方的磚牆紋理
+            const winBacking = new THREE.Mesh(new THREE.PlaneGeometry(4, 5), new THREE.MeshBasicMaterial({color: 0x050505}));
+            winBacking.position.set(x - width/2 - 0.03, fy, fz);
+            winBacking.rotation.y = -Math.PI/2;
+            floorGrp.add(winBacking);
+ 
+            // 窗戶 (移除了隨機出現的判斷，確保每格都有窗戶整齊排列)
+            const win = new THREE.Mesh(new THREE.PlaneGeometry(4, 5), upperGlassMat);
+            // 微調 Z 軸防閃爍，貼緊牆面
+            win.position.set(x - width/2 - 0.05, fy, fz);
+            win.rotation.y = -Math.PI/2;
+            win.userData = { isWindow: true };
+            floorGrp.add(win);
+            
+            // 冷氣機 (冷氣機依然保持隨機出現以增加錯落的生活感，但不影響窗口排版)
             if (Math.random() > 0.4) {
                 const ac = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 2.2), new THREE.MeshStandardMaterial({color:0xd0d0d0, roughness:0.8}));
                 // 緊貼牆身 (x - width/2)，高度在窗戶下緣 (fy - 3)
@@ -10016,16 +10023,16 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
 
 // 🚦 掛上香港經典白底黑框路牌 (只掛在第一和第二枝街燈)
      // 🚦 掛上香港經典白底黑框路牌 (縮小尺寸作點綴)
-        if (z === 30 || z === -5) {
+       if (z === 30 || z === -5) {
             const zhText = z === 30 ? '海濱道' : '梳士巴利道';
             const enText = z === 30 ? 'Promenade Rd.' : 'Salisbury Rd.';
             const streetSignTex = createStreetSignTexture(zhText, enText);
             const streetSignMat = new THREE.MeshStandardMaterial({map: streetSignTex, roughness: 0.6});
             
-            // 將體積與寬度按比例縮小
-            const streetSign = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.8, 3.2), streetSignMat);
-            // 移至較高處，不遮擋玩家平視商店的視野
-            streetSign.position.set(-0.5, 8.5, 0);
+            // 👇 修正：將體積放大將近兩倍 (原本高度0.8/長度3.2 -> 改為高度1.5/長度6.0)
+            const streetSign = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.5, 6.0), streetSignMat);
+            // 移至較高處，稍微往路面方向推出一點
+            streetSign.position.set(-1.0, 8.5, 0);
             lampGrp.add(streetSign);
         }
 
@@ -10051,10 +10058,10 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     buildingsGrp.add(pawnSign);
  
     // 🚏 2. 巴士站牌 (縮小，移至遠處馬路邊緣)
+   // 🚏 2. 巴士站牌 (縮小，移至遠處馬路邊緣)
     const busStopTex = createBusStopTexture();
     const busStopMat = new THREE.MeshStandardMaterial({map: busStopTex, roughness: 0.8});
     const stopPoleMat = new THREE.MeshStandardMaterial({color: 0x555555, metalness: 0.8});
- 
     const stopGrp = new THREE.Group();
     // 遠離商店，移至馬路的邊緣
     stopGrp.position.set(11, 0, 25);
@@ -10063,9 +10070,9 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     stopPole.position.y = 3.5; stopPole.castShadow = true;
     stopGrp.add(stopPole);
     
-    // 將圓柱體作正確旋轉，避免文字上下倒轉 (Z 轉 -90 度可面向正路，X 轉 180 度防止顛倒)
+    // 👇 修正：移除 X 軸的 Math.PI，改為單純依靠 Z 軸旋轉，確保字體不會上下倒轉
     const stopSign = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.1, 32), busStopMat);
-    stopSign.rotation.set(Math.PI, 0, -Math.PI / 2);
+    stopSign.rotation.set(0, 0, Math.PI / 2);
     stopSign.position.set(0, 6.5, 0);
     stopGrp.add(stopSign);
     
