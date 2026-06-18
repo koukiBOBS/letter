@@ -9729,6 +9729,57 @@ function createStreetSignTexture(text) {
 
 
 
+
+// 🎨 零效能生成：香港經典「押」字當舖招牌 (蝠鼠吊金錢輪廓)
+function createPawnSignTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 384;
+    const ctx = canvas.getContext('2d');
+    
+    // 鐵皮底色與歲月雜訊
+    ctx.fillStyle = '#111111'; ctx.fillRect(0, 0, 256, 384);
+    for(let i=0; i<1500; i++) {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(Math.random()*256, Math.random()*384, 2, 2);
+    }
+ 
+    // 經典綠色霓虹燈外框
+    ctx.strokeStyle = '#00ff44'; ctx.lineWidth = 10;
+    ctx.beginPath(); ctx.arc(128, 80, 50, 0, Math.PI*2); ctx.stroke(); // 上方金錢
+    ctx.strokeRect(30, 140, 196, 220); // 下方招牌
+    ctx.strokeRect(108, 60, 40, 40);   // 金錢內孔
+ 
+    // 紅色「押」字
+    ctx.fillStyle = '#ff2222';
+    ctx.font = 'bold 150px "Kaiti TC", "KaiTi", "BiauKai", serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('押', 128, 260);
+ 
+    return new THREE.CanvasTexture(canvas);
+}
+ 
+// 🎨 零效能生成：紅頂小巴 / 巴士站牌
+function createMinibusStopTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    
+    ctx.fillStyle = '#e8e8e8'; ctx.fillRect(0, 0, 256, 256); // 白底
+    ctx.fillStyle = '#cc2222'; ctx.beginPath(); ctx.arc(128, 128, 110, 0, Math.PI*2); ctx.fill(); // 紅圈
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 45px "Noto Sans TC", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('小巴站', 128, 100);
+    ctx.font = 'bold 28px sans-serif';
+    ctx.fillText('MINIBUS', 128, 155);
+ 
+    return new THREE.CanvasTexture(canvas);
+}
+
+        
+
+
         
         
 
@@ -9963,8 +10014,65 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         const pointLight = new THREE.PointLight(0xffddaa, 0, 40);
         pointLight.position.set(-5, 21, 0); pointLight.castShadow = true; pointLight.shadow.bias = -0.002; pointLight.name = 'realLight';
         bulb.add(pointLight);
+
+// 🚦 掛上香港經典白底黑框路牌 (只掛在第一和第二枝街燈)
+        if (z === 30 || z === -5) {
+            const signText = z === 30 ? '海濱道 Promenade Rd.' : '梳士巴利道 Salisbury Rd.';
+            const streetSignTex = createStreetSignTexture(signText);
+            const streetSignMat = new THREE.MeshStandardMaterial({map: streetSignTex, roughness: 0.6});
+            const streetSign = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 5), streetSignMat);
+            streetSign.position.set(-0.8, 7, 0); // 掛在燈柱側邊，高度約為路人抬頭可見處
+            lampGrp.add(streetSign);
+        }
+
+        
         streetScene.add(lampGrp);
+
+
+
+// ==========================================
+    // 🇭🇰 增添香港街道經典標誌 (低多邊形，無效能負擔)
+    // ==========================================
+ 
+    // 🏮 1. 建立香港經典當舖招牌 (蝠鼠吊金錢)
+    const pawnTex = createPawnSignTexture();
+    const pawnMat = new THREE.MeshStandardMaterial({
+        map: pawnTex, emissiveMap: pawnTex, emissive: 0xffffff, emissiveIntensity: 0
+    });
+    const pawnSign = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 0.4), pawnMat);
+    pawnSign.position.set(3, 20, 5); // 懸掛在唐樓外牆，向馬路伸出
+    pawnSign.userData = { isNeon: true }; // 綁定霓虹燈屬性，晚上會自動發光！
+    buildingsGrp.add(pawnSign);
+ 
+    // 🚏 2. 建立小巴站牌 (放在霓虹黑膠店前方的馬路邊)
+    const minibusStopTex = createMinibusStopTexture();
+    const minibusStopMat = new THREE.MeshStandardMaterial({map: minibusStopTex, roughness: 0.8});
+    const stopPoleMat = new THREE.MeshStandardMaterial({color: 0x555555, metalness: 0.8});
+ 
+    const stopGrp = new THREE.Group();
+    stopGrp.position.set(7, 0, -10);
+    
+    const stopPole = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 8, 16), stopPoleMat);
+    stopPole.position.y = 4; stopPole.castShadow = true;
+    stopGrp.add(stopPole);
+    
+    const stopSign = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.1, 32), minibusStopMat);
+    stopSign.rotation.x = Math.PI / 2;
+    stopSign.rotation.y = -Math.PI / 2; // 面向馬路來車方向
+    stopSign.position.set(0, 7.5, 0);
+    stopGrp.add(stopSign);
+    
+    streetScene.add(stopGrp);
+
+        
     }
+
+
+
+
+
+
+    
 }
 // =====================================================================
 // 🌆 同步商店街的時間與光影 (包含街燈與招牌發光)
