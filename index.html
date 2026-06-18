@@ -9880,14 +9880,70 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     stallRoof.position.set(-1, 6.5, 0); stallRoof.rotation.x = -Math.PI/2; stallRoof.rotation.y = -0.2; stallRoof.castShadow = true; stallGrp.add(stallRoof);
     streetScene.add(stallGrp);
 
-    const pBox = new THREE.Mesh(new THREE.BoxGeometry(2.5, 4, 2.5), new THREE.MeshStandardMaterial({color: 0x008844, roughness: 0.6}));
-    pBox.position.set(5, 2, -20); pBox.castShadow = true; streetScene.add(pBox);
-    const pHood = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.25, 2.5, 16), new THREE.MeshStandardMaterial({color: 0x008844}));
-    pHood.rotation.x = Math.PI/2; pHood.position.set(5, 4, -20); streetScene.add(pHood);
-
-    const hydrant = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 2.5), new THREE.MeshStandardMaterial({color: 0xdd2222, roughness: 0.5}));
-    hydrant.position.set(6, 1.25, 25); hydrant.castShadow = true;
-    streetScene.add(hydrant);
+   // ==========================================
+    // 📮 港式綠色郵筒 (極限效能細節版)
+    // ==========================================
+    const postboxGrp = new THREE.Group();
+    postboxGrp.position.set(5, 0, -20);
+    streetScene.add(postboxGrp);
+    
+    // 共用材質，降低 Draw Call
+    const pbMat = new THREE.MeshStandardMaterial({color: 0x006633, roughness: 0.6, metalness: 0.1});
+    const pbDarkMat = new THREE.MeshBasicMaterial({color: 0x111111});
+    
+    // 1. 主體與加厚底座
+    const pbBody = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.8, 2.2), pbMat);
+    pbBody.position.y = 2.1; pbBody.castShadow = true; postboxGrp.add(pbBody);
+    const pbBase = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.2, 2.4), pbMat);
+    pbBase.position.y = 0.1; pbBase.castShadow = true; postboxGrp.add(pbBase);
+    
+    // 2. 圓頂 (將 segment 降至 12 確保順暢)
+    const pbHood = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 2.2, 12), pbMat);
+    pbHood.rotation.x = Math.PI/2; pbHood.position.y = 4.0; pbHood.castShadow = true; postboxGrp.add(pbHood);
+    
+    // 3. 投信口 (防雨簷 + 黑色入口)
+    const pbSlotHood = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 0.4), pbMat);
+    pbSlotHood.position.set(0, 3.5, 1.2); postboxGrp.add(pbSlotHood);
+    const pbSlot = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.2), pbDarkMat);
+    pbSlot.position.set(0, 3.3, 1.11); postboxGrp.add(pbSlot); // 使用 Plane 節省面數
+    
+    // 4. 收信時間表白牌
+    const pbTimePlate = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.0), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.9}));
+    pbTimePlate.position.set(0, 2.2, 1.11); postboxGrp.add(pbTimePlate);
+ 
+ 
+    // ==========================================
+    // 🧯 港式紅色消防栓 (極限效能細節版)
+    // ==========================================
+    const hydrantGrp = new THREE.Group();
+    hydrantGrp.position.set(6, 0, 25);
+    streetScene.add(hydrantGrp);
+ 
+    const hyMat = new THREE.MeshStandardMaterial({color: 0xcc2222, roughness: 0.4, metalness: 0.3}); // 紅色金屬
+    const hySilver = new THREE.MeshStandardMaterial({color: 0xaaaaaa, roughness: 0.5, metalness: 0.8}); // 銀色接頭
+ 
+    // 1. 帶錐度的柱身與底座 (降低 segment 數)
+    const hyBody = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 2.2, 12), hyMat);
+    hyBody.position.y = 1.1; hyBody.castShadow = true; hydrantGrp.add(hyBody);
+    const hyBase = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.3, 12), hyMat);
+    hyBase.position.y = 0.15; hyBase.castShadow = true; hydrantGrp.add(hyBase);
+    
+    // 2. 頂部圓頭與頂端操作用六角螺帽
+    const hyTop = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 12, 0, Math.PI*2, 0, Math.PI/2), hyMat);
+    hyTop.position.y = 2.2; hydrantGrp.add(hyTop);
+    const hyNut = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.2, 6), hySilver); // 六角形
+    hyNut.position.y = 2.75; hydrantGrp.add(hyNut);
+    
+    // 3. 左右兩側的出水口與金屬保護蓋
+    const hyOutL = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.6, 12), hyMat);
+    hyOutL.rotation.z = Math.PI/2; hyOutL.position.set(-0.6, 1.4, 0); hydrantGrp.add(hyOutL);
+    const hyCapL = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.1, 12), hySilver);
+    hyCapL.rotation.z = Math.PI/2; hyCapL.position.set(-0.95, 1.4, 0); hydrantGrp.add(hyCapL);
+    
+    const hyOutR = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.6, 12), hyMat);
+    hyOutR.rotation.z = Math.PI/2; hyOutR.position.set(0.6, 1.4, 0); hydrantGrp.add(hyOutR);
+    const hyCapR = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.1, 12), hySilver);
+    hyCapR.rotation.z = Math.PI/2; hyCapR.position.set(0.95, 1.4, 0); hydrantGrp.add(hyCapR);
 
     const poleMat = new THREE.MeshStandardMaterial({color: 0x333333, metalness: 0.6});
     const lampCasingMat = new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8});
