@@ -96,7 +96,8 @@
         .s-free { background: #e0f2fe; color: #0284c7; }
 
         /* --- Reading Modals --- */
-        .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px);}
+        #auth-screen { background: var(--bg); backdrop-filter: none; }
         #modal-reader, #modal-random-reader { position: fixed; inset: 0; background: rgba(20, 18, 16, 0.88); z-index: 5000; display: none; justify-content: center; overflow-y: auto; padding: 40px 20px; backdrop-filter: blur(8px); }
         .modal-close-btn { position: fixed; top: 20px; right: 30px; background: transparent; border: none; font-size: 2.5rem; color: #e6dfd1; cursor: pointer; z-index: 5100; transition: 0.3s; }
         .modal-close-btn:hover { transform: scale(1.1); color: #fff; }
@@ -171,7 +172,7 @@
             <div class="panel">
                 <div class="panel-title">學生名單與分班</div>
                 <table class="data-table" id="students-table">
-                    <thead><tr><th>學生姓名</th><th>Email</th><th>目前班級</th><th>操作</th></tr></thead>
+                    <thead><tr><th>學生姓名</th><th>Email</th><th>目前班級</th><th style="width: 80px;">積分</th><th>操作</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -263,26 +264,56 @@
             <div class="page-header"><h1 class="page-title">系統設定</h1></div>
             
             <div class="panel">
-                <div class="panel-title">🔑 學生前端特許名單 (Whitelist)</div>
+                <div class="panel-title">🔑 前端特許名單管理 (Whitelist)</div>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
-                    預設只有老師或包含特定關鍵字的信箱可進入前端 3D 房間。<br>
-                    若有特殊訪客或無效電郵需要放行，請在此加入。
+                    預設只有包含 `@ccckyc.edu.hk` 的信箱可進入前端房間。<br>
+                    若有特殊訪客需要放行，請在此加入，並可設定其身份與鍵盤權限。
                 </p>
                 <div class="form-row" style="align-items: flex-end;">
                     <div class="form-group">
+                        <label>Email 帳號</label>
                         <input type="email" id="new-special-email" placeholder="輸入要放行的 Email (例如: guest@gmail.com)">
+                    </div>
+                    <div class="form-group" style="min-width: 120px;">
+                        <label>身份</label>
+                        <select id="new-special-role">
+                            <option value="student">學生</option>
+                            <option value="teacher">老師</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="min-width: 120px; align-items: center; justify-content: center;">
+                        <label style="display:flex; align-items:center; gap:8px; cursor: pointer; font-size: 0.95rem; font-weight: bold;">
+                            <input type="checkbox" id="new-special-cantype" style="width:18px; height:18px;">
+                            允許鍵盤打字
+                        </label>
                     </div>
                     <button class="btn" onclick="addSpecialUser()">放行此帳號</button>
                 </div>
 
                 <table class="data-table" id="special-users-table" style="margin-top: 20px;">
-                    <thead><tr><th>已放行的 Email 帳號</th><th style="width: 100px;">操作</th></tr></thead>
+                    <thead><tr><th>已放行的 Email 帳號</th><th>身份</th><th>鍵盤打字</th><th style="width: 100px;">操作</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
         </section>
 
     </main>
+
+    <!-- 道具管理 Modal -->
+    <div id="modal-inventory" class="overlay" style="display:none; z-index: 6000;">
+        <div class="panel" style="width: 90%; max-width: 600px; max-height: 80vh; display: flex; flex-direction: column;">
+            <div class="panel-title" style="margin-bottom: 10px;">
+                <span>道具與權限管理 <span id="inventory-user-name" style="font-size:0.9rem; color:var(--text-muted); margin-left:10px;"></span></span>
+                <button class="btn btn-outline" style="padding:4px 10px;" onclick="closeInventoryModal()">×</button>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">勾選代表該學生擁有此道具或權限，儲存後即時生效。</p>
+            <div id="inventory-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; overflow-y: auto; padding-right: 10px;"></div>
+            <div style="margin-top: 20px; text-align: right; border-top: 1px solid var(--border); padding-top: 20px;">
+                <button class="btn btn-outline" style="margin-right: 10px;" onclick="closeInventoryModal()">取消</button>
+                <button class="btn" onclick="saveInventory()">儲存變更</button>
+            </div>
+        </div>
+    </div>
 
     <!-- 信件閱讀器 Modal -->
     <div id="modal-reader">
@@ -297,11 +328,6 @@
     </div>
 
     <script>
-
-
-
-
-        
         const ALLOWED_EMAILS = ["kenchan20151@gmail.com"];
         const firebaseConfig = { apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms", authDomain: "letter-a74d1.firebaseapp.com", databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com", projectId: "letter-a74d1" };
         firebase.initializeApp(firebaseConfig); const auth = firebase.auth(); const db = firebase.database();
@@ -311,6 +337,74 @@
 
         let currentRecordTab = 'student';
         let currentAssignType = 'reading';
+        let currentEditUid = null;
+
+        // --- 道具字典與語錄資料庫 (同步自前端) ---
+        const ITEM_REGISTRY = {
+            'bookcase_1': '左側書櫃', 'bookcase_2': '中央書櫃', 'bookcase_3': '右側書櫃',
+            'trash': '質感金屬垃圾筒', 'carpet': '幾何編織地氈', 'umbrella': '直立傘筒與傘',
+            'rack': '原木掛衣架', 'clock': '極簡掛鐘', 'chair': '復古書桌椅',
+            'cat': '橘白小貓', 'painting_1': '攝影作品一', 'painting_2': '攝影作品二',
+            'painting_3': '攝影作品三', 'painting_4': '攝影作品四', 'radio': '復古收音機',
+            'piano_model': '直立式鋼琴', 'piano_bench': '鋼琴椅', 'curtain': '雙層遮光窗簾',
+            'piano_use': '🎵 學習鋼琴權限', 'door_use': '🚪 露台通行權限'
+        };
+
+        const QUOTES_DB = [
+            ['龍應台', '目送', '我慢慢地、慢慢地了解到，所謂父女母子一場，只不過意味著，你和他的緣分就是今生今世不斷地在目送他的背影漸行漸遠。'],
+            ['三毛', '撒哈拉的故事', '每想你一次，天上飄落一粒沙，從此形成了撒哈拉。'],
+            ['張愛玲', '半生緣', '我們回不去了。'],
+            ['余光中', '聽聽那冷雨', '雨氣空濛而迷幻，細細嗅嗅，清清爽爽新新，有一點點薄荷的香味。'],
+            ['白先勇', '台北人', '那是個溫暖的秋夜，風裡帶著些桂花的香氣。'],
+            ['席慕蓉', '無怨的青春', '青春是一本太倉促的書，我們含著淚，一讀再讀。'],
+            ['簡媜', '水問', '像每一滴酒回不到最初的葡萄，我回不到年少。'],
+            ['林清玄', '人生最美是清歡', '每一朵花都是安靜地來到這個世界，又安靜地離開。'],
+            ['蔣勳', '孤獨六講', '孤獨是生命圓滿的開始，沒有與自己獨處的經驗，不會懂得和別人相處。'],
+            ['楊絳', '我們仨', '世間好物不堅牢，彩雲易散琉璃脆。'],
+            ['史鐵生', '我與地壇', '命運中有一種錯誤是只能犯一次的，並沒有改正的機會。'],
+            ['木心', '從前慢', '從前車馬很慢，書信很遠，一生只夠愛一個人。'],
+            ['汪曾祺', '人間草木', '一定要愛著點什麼，恰似草木對光陰的鍾情。'],
+            ['沈從文', '邊城', '我行過許多地方的橋，看過許多次數的雲，喝過許多種類的酒，卻只愛過一個正當最好年齡的人。'],
+            ['張小嫻', '麵包樹上的女人', '愛情使人忘記時間，時間也使人忘記愛情。'],
+            ['余秋雨', '文化苦旅', '沒有悲劇就沒有悲壯，沒有悲壯就沒有崇高。'],
+            ['林徽因', '你是人間四月天', '你是一樹一樹的花開，是燕在樑間呢喃，你是愛，是暖，是希望，你是人間的四月天！'],
+            ['梁實秋', '雅舍小品', '人類最高理想應該是暗暗的建築起自己心靈的茅宇。'],
+            ['季羨林', '心安即是歸處', '縱有千哀萬痛，也抵不過一個心安。'],
+            ['遲子建', '額爾古納河右岸', '沒有路的時候，我們會迷路；路多的時候，我們也會迷路，因為我們不知道該到哪裡去。'],
+            ['王小波', '黃金時代', '那一天我二十一歲，在我一生的黃金時代，我有好多奢望。'],
+            ['顧城', '顧城詩集', '黑夜給了我黑色的眼睛，我卻用它尋找光明。'],
+            ['海子', '一代人', '面朝大海，春暖花開。'],
+            ['北島', '路歌', '卑鄙是卑鄙者的通行證，高尚是高尚者的墓誌銘。'],
+            ['舒婷', '致橡樹', '我如果愛你，絕不像攀援的凌霄花，借你的高枝炫耀自己。'],
+            ['林語堂', '秋天的況味', '秋天的黃昏，一人獨坐，有一種說不出的況味。'],
+            ['林覺民', '夜意', '夜深人靜，正是靈魂醒來的時候。'],
+            ['陳忠實', '白鹿原', '讀書就是為了讓自己活得更明白。'],
+            ['莫言', '豐乳肥臀', '生命就是一次無盡的流浪。'],
+            ['賈平凹', '廢都', '人活著，總得有個盼頭。'],
+            ['余華', '活著', '人是為了活著本身而活著的，而不是為了活著之外的任何事物所活著。'],
+            ['蘇童', '平凡的世界', '生活總是充滿了未知與奇蹟。'],
+            ['王安憶', '妻妾成群', '女人總是渴望被理解。'],
+            ['鐵凝', '玫瑰門', '愛情是一扇神秘的門。'],
+            ['張抗抗', '隱形伴侶', '我們都有一個隱形的伴侶，那就是孤獨。'],
+            ['王朔', '動物凶猛', '我們都是被生活馴化的動物。'],
+            ['阿來', '塵埃落定', '一切終將塵埃落定。'],
+            ['麥家', '塵埃落定', '歷史是不能假設的。'],
+            ['劉震雲', '白鹿原', '人的一生，總有幾個關鍵的時刻。'],
+            ['嚴歌苓', '大浴女', '女人的內心世界是一片廣闊的海洋。'],
+            ['畢飛宇', '推拿', '生活就是一場修行。'],
+            ['李洱', '花腔', '聲音是心靈的折射。'],
+            ['格非', '江南三部曲', '江南的水，總有說不完的故事。'],
+            ['韓少功', '馬橋詞典', '詞彙是我們認識世界的鑰匙。'],
+            ['馬原', '虛構', '有時候，虛構比真實更動人。'],
+            ['孫甘露', '呼吸', '每一次呼吸，都是生命的證明。'],
+            ['張煒', '九月寓言', '九月的天空，總是特別高遠。'],
+            ['殘雪', '山上的小屋', '山上的小屋，藏著我的童年。'],
+            ['王蒙', '活動變人形', '生活就像一場永不落幕的戲劇。'],
+            ['劉恆', '青春萬歲', '青春是不朽的。']
+        ];
+        window.LIT_QUOTES = {};
+        QUOTES_DB.forEach((q, index) => { LIT_QUOTES[`quote_capsule_${index}`] = { author: q[0], book: q[1], text: q[2] }; });
+
 
         function ensureDefaultClass() { if (!dbClasses['default']) db.ref('classes/default').set({ name: "預設班", tasks: [], randomTasks: [] }); }
 
@@ -326,8 +420,7 @@
         function signIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
         function signOut() { auth.signOut().then(() => window.location.reload()); }
 
-
-// ==========================================
+        // ==========================================
         // 資料處理輔助函數 (解決 Firebase 陣列轉換為物件的防呆機制)
         // ==========================================
         function getArrayFromFirebase(data) {
@@ -336,23 +429,24 @@
             return Object.values(data).filter(x => x !== null && x !== undefined);
         }
 
-
-        
+        // ==========================================
+        // 初始化監聽器 (優化 Firebase 讀取量)
+        // ==========================================
         function initDataListeners() {
             db.ref('classes').on('value', snap => {
                 dbClasses = snap.val() || {}; ensureDefaultClass(); updateClassSelects();
                 if(document.getElementById('page-classes').classList.contains('active')) renderStudentsTable();
                 if(document.getElementById('page-tasks').classList.contains('active')) renderTasksList();
-                if(document.getElementById('page-records').classList.contains('active')) renderRecords();
             });
-            db.ref('users').on('value', snap => { dbUsers = snap.val() || {}; if(document.getElementById('page-classes').classList.contains('active')) renderStudentsTable(); if(document.getElementById('page-records').classList.contains('active')) renderRecords(); });
-            db.ref('letters').on('value', snap => { dbLetters = snap.val() || {}; if(document.getElementById('page-records').classList.contains('active') && ['reading', 'free'].includes(getRecordType())) renderRecords(); });
-            db.ref('random_task_submissions').on('value', snap => { dbRandomSubs = snap.val() || {}; if(document.getElementById('page-records').classList.contains('active') && getRecordType()==='random') renderRecords(); });
-            
+            db.ref('users').on('value', snap => { 
+                dbUsers = snap.val() || {}; 
+                if(document.getElementById('page-classes').classList.contains('active')) renderStudentsTable(); 
+            });
             db.ref('special_users').on('value', snap => {
                 dbSpecialUsers = snap.val() || {};
                 if(document.getElementById('page-settings').classList.contains('active')) renderSpecialUsers();
             });
+            // ⚠️ 移除了 letters 與 random_task_submissions 的全域 .on 監聽，改由 renderRecords 觸發單次讀取
         }
 
         function switchPage(pageId) {
@@ -361,21 +455,32 @@
             
             if(pageId === 'page-classes') renderStudentsTable();
             if(pageId === 'page-tasks') renderTasksList();
-            if(pageId === 'page-records') renderRecords();
+            if(pageId === 'page-records') renderRecords(); // 進入時觸發讀取
             if(pageId === 'page-settings') renderSpecialUsers();
         }
 
         // ==========================================
-        // 系統設定 - 特許名單管理
+        // 系統設定 - 特許名單管理 (升級版)
         // ==========================================
         function addSpecialUser() {
             const emailInput = document.getElementById('new-special-email');
+            const roleSelect = document.getElementById('new-special-role');
+            const canTypeCheck = document.getElementById('new-special-cantype');
+            
             const email = emailInput.value.trim().toLowerCase();
             if (!email) return alert("請輸入 Email");
+            
             const safeKey = email.replace(/\./g, ',');
-            db.ref(`special_users/${safeKey}`).set(true).then(() => {
+            const data = {
+                role: roleSelect.value,
+                canType: canTypeCheck.checked
+            };
+
+            db.ref(`special_users/${safeKey}`).set(data).then(() => {
                 emailInput.value = '';
-                alert("已成功放行該帳號！");
+                roleSelect.value = 'student';
+                canTypeCheck.checked = false;
+                alert("已成功更新並放行該帳號！");
             }).catch(e => alert("新增失敗：" + e.message));
         }
 
@@ -390,30 +495,43 @@
             tbody.innerHTML = '';
             const keys = Object.keys(dbSpecialUsers);
             if (keys.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="2" style="color: var(--text-muted); text-align: center;">目前沒有特許名單。</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" style="color: var(--text-muted); text-align: center;">目前沒有特許名單。</td></tr>';
                 return;
             }
             keys.forEach(safeKey => {
-                if (dbSpecialUsers[safeKey] === true) {
-                    const originalEmail = safeKey.replace(/,/g, '.');
-                    tbody.innerHTML += `
-                        <tr>
-                            <td style="font-weight: 500;">${escapeHtml(originalEmail)}</td>
-                            <td><button class="btn btn-danger" style="padding: 6px 12px; font-size:0.85rem;" onclick="removeSpecialUser('${safeKey}', '${originalEmail}')">移除</button></td>
-                        </tr>
-                    `;
+                let data = dbSpecialUsers[safeKey];
+                let role = 'student';
+                let canType = false;
+                
+                // 相容舊版直接存 true 的格式
+                if (typeof data === 'object') {
+                    role = data.role || 'student';
+                    canType = data.canType || false;
+                } else if (data === true) {
+                    role = 'student';
+                    canType = false;
                 }
+
+                const originalEmail = safeKey.replace(/,/g, '.');
+                let roleText = role === 'teacher' ? '<span style="color:var(--primary);font-weight:bold;">老師</span>' : '學生';
+                let typeText = canType ? '<span style="color:var(--green);font-weight:bold;">✅ 允許</span>' : '<span style="color:var(--text-muted);">❌ 限制</span>';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="font-weight: 500;">${escapeHtml(originalEmail)}</td>
+                        <td>${roleText}</td>
+                        <td>${typeText}</td>
+                        <td><button class="btn btn-danger" style="padding: 6px 12px; font-size:0.85rem;" onclick="removeSpecialUser('${safeKey}', '${originalEmail}')">移除</button></td>
+                    </tr>
+                `;
             });
         }
 
         // ==========================================
-        // 註銷帳號功能
-        // ==========================================
-       // ==========================================
-        // 註銷帳號功能 (安全優化版：不影響其他學生)
+        // 註銷帳號功能 (安全優化版)
         // ==========================================
         function deleteUserAccount(uid, userName) {
-            const confirmMsg = `⚠️ 嚴重警告！\n您即將註銷學生「${userName}」的帳號。\n\n此操作將會：\n1. 徹底刪除該學生的所有個人資料、積分與道具。\n2. 清空該學生的私人視角信箱與個人相片。\n\n【保留機制】：\n為了不影響其他已配對的學生，該學生寄出或收到的「常規信件內容」將會被保留在對方的信箱中，但署名會自動變為「已註銷的筆友」。\n\n您確定要繼續嗎？`;
+            const confirmMsg = `⚠️ 嚴重警告！\n您即將註銷學生「${userName}」的帳號。\n\n此操作將會：\n1. 徹底刪除該學生的所有個人資料、積分與道具。\n2. 清空該學生的私人視角信箱與個人相片。\n\n【保留機制】：\n為了不影響其他已配對的學生，該學生寄出或收到的「常規信件內容」將會被保留在對方的信箱中，但署名會自動變為「已註銷的帳號」。\n\n您確定要繼續嗎？`;
 
             if (!confirm(confirmMsg)) return;
 
@@ -424,44 +542,43 @@
             }
 
             let updates = {};
-
-            // 1. 刪除使用者主資料與他的私人信箱視角
             updates[`users/${uid}`] = null;
             updates[`user_threads/${uid}`] = null;
 
-            // 2. 刪除他個人繳交的隨機任務紀錄
-            Object.values(dbRandomSubs).forEach(sub => {
-                if (sub.senderUid === uid) {
+            // 註銷時同步刪除輕量級的 user_meta 檔案
+            updates[`user_meta/${uid}`] = null;
+
+            // 利用索引精準找出該學生的任務與信件
+            Promise.all([
+                db.ref('random_task_submissions').orderByChild('senderUid').equalTo(uid).once('value'),
+                db.ref('letters').orderByChild('senderUid').equalTo(uid).once('value')
+            ]).then(([rSnap, lSnap]) => {
+                let rSubs = rSnap.val() || {};
+                Object.values(rSubs).forEach(sub => {
                     updates[`random_task_submissions/${sub.id}`] = null;
-                }
-            });
-
-            // 3. 處理常規信件 (重點：不影響他人)
-            Object.values(dbLetters).forEach(letter => {
-                // 如果這封信是他寫的，且「還沒有配對給任何人 (還在池子裡)」
-                // 那就直接銷毀，以免日後配給無辜的學生
-                if (letter.senderUid === uid && (!letter.recipientUid || letter.recipientUid === "")) {
-                    const lid = letter.id;
-                    updates[`letters/${lid}`] = null;
-                    updates[`conversations/${lid}`] = null;
-                    updates[`unassigned_letters/${lid}`] = null;
-                    updates[`unassigned_random_letters/${lid}`] = null;
-                }
-                // 注意：如果 letter 已經有 recipientUid，我們就不刪除！
-                // 這樣對方學生的信箱依然會保留這封信與對話紀錄。
-            });
-
-            // 執行批量刪除
-            db.ref().update(updates).then(() => {
+                });
+                
+                let lts = lSnap.val() || {};
+                Object.values(lts).forEach(letter => {
+                    if (!letter.recipientUid || letter.recipientUid === "") {
+                        const lid = letter.id;
+                        updates[`letters/${lid}`] = null;
+                        updates[`conversations/${lid}`] = null;
+                        updates[`unassigned_letters/${lid}`] = null;
+                        updates[`unassigned_random_letters/${lid}`] = null;
+                    }
+                });
+                
+                return db.ref().update(updates);
+            }).then(() => {
                 alert(`學生「${userName}」的帳號已成功註銷！`);
-                // 畫面會因 Listener 自動更新
             }).catch(err => {
                 alert("註銷失敗：" + err.message);
             });
         }
 
         // ==========================================
-        // 班級與任務邏輯
+        // 班級與學生列表邏輯
         // ==========================================
         function createClass() {
             const name = document.getElementById('new-class-name').value.trim(); if(!name) return alert("請輸入班級名稱");
@@ -476,7 +593,6 @@
             if(cTask && dbClasses[cTask]) ts.value = cTask; if(cRec && dbClasses[cRec]) rs.value = cRec;
         }
 
-        // 渲染學生名單 (加入了註銷按鈕)
         function renderStudentsTable() {
             const tbody = document.querySelector('#students-table tbody'); tbody.innerHTML = '';
             let ops = ''; for(let cid in dbClasses) ops += `<option value="${cid}">${escapeHtml(dbClasses[cid].name)}</option>`;
@@ -486,19 +602,76 @@
                     <tr>
                         <td style="font-weight: 500;">${escapeHtml(u.name)}</td>
                         <td style="color: var(--text-muted);">${escapeHtml(u.email)}</td>
-                        <td>${dbClasses[cId] ? escapeHtml(dbClasses[cId].name) : '未知'}</td>
-                        <td style="display: flex; gap: 10px; align-items: center;">
-                            <select onchange="changeStudentClass('${uid}', this.value)" style="padding: 6px; font-size: 0.9rem;">
+                        <td>
+                            <select onchange="changeStudentClass('${uid}', this.value)" style="padding: 6px; font-size: 0.9rem; width:100%;">
                                 ${ops.replace(`value="${cId}"`, `value="${cId}" selected`)}
                             </select>
+                        </td>
+                        <td style="color: var(--yellow); font-weight:600;">
+                            ${u.points || 0}
+                        </td>
+                        <td style="display: flex; gap: 8px; align-items: center;">
+                            <button class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;" onclick="openInventoryModal('${uid}')">道具</button>
                             <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="deleteUserAccount('${uid}', '${escapeHtml(u.name)}')">註銷</button>
                         </td>
                     </tr>
                 `;
             }
         }
-        function changeStudentClass(uid, newCid) { db.ref(`users/${uid}/classId`).set(newCid).then(() => alert("已更新學生班級")); }
+        function changeStudentClass(uid, newCid) { 
+            let updates = {};
+            updates[`users/${uid}/classId`] = newCid;
+            updates[`user_meta/${uid}/classId`] = newCid; // 同步更新輕量級配對檔案
+            db.ref().update(updates).then(() => alert("已更新學生班級")); 
+        }
 
+        // ==========================================
+        // 道具管理系統
+        // ==========================================
+        function openInventoryModal(uid) {
+            currentEditUid = uid;
+            const u = dbUsers[uid];
+            if(!u) return;
+            document.getElementById('inventory-user-name').innerText = `(${escapeHtml(u.name)})`;
+            
+            const inv = u.inventory || {};
+            const grid = document.getElementById('inventory-grid');
+            grid.innerHTML = '';
+            
+            Object.keys(ITEM_REGISTRY).forEach(itemId => {
+                const itemName = ITEM_REGISTRY[itemId];
+                const isChecked = !!inv[itemId];
+                grid.innerHTML += `
+                    <label style="display:flex; align-items:center; gap:8px; padding:10px; border:1px solid var(--border); border-radius:8px; cursor:pointer; background:${isChecked?'#f8fafc':'#fff'};">
+                        <input type="checkbox" class="inventory-checkbox" data-id="${itemId}" ${isChecked ? 'checked' : ''} style="width:16px; height:16px;">
+                        <span style="color:var(--text-main); font-weight:500;">${itemName}</span>
+                    </label>
+                `;
+            });
+            document.getElementById('modal-inventory').style.display = 'flex';
+        }
+
+        function closeInventoryModal() {
+            document.getElementById('modal-inventory').style.display = 'none';
+            currentEditUid = null;
+        }
+
+        function saveInventory() {
+            if(!currentEditUid) return;
+            const checkboxes = document.querySelectorAll('.inventory-checkbox');
+            let newInv = {};
+            checkboxes.forEach(cb => {
+                if(cb.checked) newInv[cb.getAttribute('data-id')] = true;
+            });
+            db.ref(`users/${currentEditUid}/inventory`).set(newInv).then(() => {
+                alert("道具與權限已更新！");
+                closeInventoryModal();
+            });
+        }
+
+        // ==========================================
+        // 任務派發邏輯
+        // ==========================================
         function switchAssignTab(type) {
             currentAssignType = type;
             document.getElementById('assign-tab-reading').className = type === 'reading' ? 'tab-btn active' : 'tab-btn';
@@ -509,23 +682,20 @@
             renderTasksList();
         }
 
-    function renderTasksList() {
-        const cid = document.getElementById('task-class-select').value; const grid = document.getElementById('tasks-grid');
-        if(!cid || !dbClasses[cid]) return;
-        
-        const arrayName = currentAssignType === 'reading' ? 'tasks' : 'randomTasks';
-        // 🛡️ 使用防呆函數取得陣列
-        const tasks = getArrayFromFirebase(dbClasses[cid][arrayName]);
-        grid.innerHTML = '';
-        if(tasks.length === 0) return grid.innerHTML = '<p style="color: var(--text-muted); grid-column: 1/-1;">此班級尚未派發此類任務。</p>';
-        
-        tasks.forEach((d, i) => {
-            // 💡 根據任務類型，在介面上明確標示日期的意義
-            const dateLabel = currentAssignType === 'reading' ? `${d} (開放日)` : `${d} (截止日)`;
+        function renderTasksList() {
+            const cid = document.getElementById('task-class-select').value; const grid = document.getElementById('tasks-grid');
+            if(!cid || !dbClasses[cid]) return;
             
-            grid.innerHTML += `<div class="task-card" style="text-align:left;"><div class="task-index">${currentAssignType==='reading'?'📖 閱讀':'📸 隨機'} 第 ${i + 1} 回</div><div class="task-date" style="font-size: 1.1rem;">${dateLabel}</div><button class="btn btn-danger" style="position:absolute; top:15px; right:15px; padding: 6px 12px; font-size:0.85rem;" onclick="deleteTask('${cid}', ${i}, '${arrayName}')">刪除</button></div>`;
-        });
-    }
+            const arrayName = currentAssignType === 'reading' ? 'tasks' : 'randomTasks';
+            const tasks = getArrayFromFirebase(dbClasses[cid][arrayName]);
+            grid.innerHTML = '';
+            if(tasks.length === 0) return grid.innerHTML = '<p style="color: var(--text-muted); grid-column: 1/-1;">此班級尚未派發此類任務。</p>';
+            
+            tasks.forEach((d, i) => {
+                const dateLabel = currentAssignType === 'reading' ? `${d} (開放日)` : `${d} (截止日)`;
+                grid.innerHTML += `<div class="task-card" style="text-align:left;"><div class="task-index">${currentAssignType==='reading'?'📖 閱讀':'📸 隨機'} 第 ${i + 1} 回</div><div class="task-date" style="font-size: 1.1rem;">${dateLabel}</div><button class="btn btn-danger" style="position:absolute; top:15px; right:15px; padding: 6px 12px; font-size:0.85rem;" onclick="deleteTask('${cid}', ${i}, '${arrayName}')">刪除</button></div>`;
+            });
+        }
 
         function assignPeriodicTasks() {
             const cid = document.getElementById('task-class-select').value; const start = document.getElementById('periodic-start').value; const end = document.getElementById('periodic-end').value; const interval = parseInt(document.getElementById('periodic-interval').value);
@@ -533,7 +703,6 @@
             let sDate = new Date(start); const eDate = new Date(end); let newDates = [];
             while(sDate <= eDate) { newDates.push(sDate.toISOString().split('T')[0]); sDate.setDate(sDate.getDate() + interval); }
             
-            // 🛡️ 使用防呆函數取得陣列
             let exist = getArrayFromFirebase(dbClasses[cid].tasks);
             if (exist.length > 0) {
                 const eFirst = new Date(exist[0]), eLast = new Date(exist[exist.length - 1]), nFirst = new Date(newDates[0]), nLast = new Date(newDates[newDates.length - 1]);
@@ -542,26 +711,23 @@
             db.ref(`classes/${cid}/tasks`).set([...new Set([...exist, ...newDates])].sort()).then(() => { alert("批次派發成功！"); document.getElementById('periodic-start').value = ''; document.getElementById('periodic-end').value = ''; document.getElementById('periodic-interval').value = ''; });
         }
 
-          function assignSingleTask(type) {
+        function assignSingleTask(type) {
             const cid = document.getElementById('task-class-select').value;
             const inputId = type === 'reading' ? 'single-date' : 'single-random-date';
             const dateStr = document.getElementById(inputId).value;
             const arrayName = type === 'reading' ? 'tasks' : 'randomTasks';
  
             if(!cid || !dateStr) return alert("請選擇日期");
-            
-            // 🛡️ 使用防呆函數取得陣列
             let exist = getArrayFromFirebase(dbClasses[cid][arrayName]);
             if(exist.includes(dateStr)) return alert("該日期已經有任務了！");
-            exist.push(dateStr); exist.sort(); // 現在絕對不會再報錯了
+            exist.push(dateStr); exist.sort(); 
             
             db.ref(`classes/${cid}/${arrayName}`).set(exist).then(() => { alert("加派單次任務成功！"); document.getElementById(inputId).value = ''; });
         }
 
-       function deleteTask(cid, index, arrayName) {
+        async function deleteTask(cid, index, arrayName) {
             if(!confirm(`確定要刪除第 ${index+1} 回任務嗎？\n⚠️ 此操作將清除該班級針對此任務已繳交的所有紀錄。`)) return;
             
-            // 🛡️ 使用防呆函數取得陣列
             let tasks = getArrayFromFirebase(dbClasses[cid][arrayName]);
             const targetDate = tasks[index];
             
@@ -569,21 +735,45 @@
             tasks.splice(index, 1);
             updates[`classes/${cid}/${arrayName}`] = tasks;
  
-            if (arrayName === 'tasks') {
-                Object.values(dbLetters).forEach(l => {
-                    const studentClass = dbUsers[l.senderUid] ? (dbUsers[l.senderUid].classId || 'default') : 'default';
-                    if (studentClass === cid && l.taskDate === targetDate) {
-                        const lid = l.id; updates[`letters/${lid}`] = null; updates[`conversations/${lid}`] = null; updates[`unassigned_letters/${lid}`] = null; updates[`user_threads/${l.senderUid}/${lid}`] = null; if (l.recipientUid) updates[`user_threads/${l.recipientUid}/${lid}`] = null;
-                    }
-                });
-            } else if (arrayName === 'randomTasks') {
-                Object.values(dbRandomSubs).forEach(sub => { if (sub.classId === cid && sub.taskDate === targetDate) updates[`random_task_submissions/${sub.id}`] = null; });
-                Object.keys(dbUsers).forEach(uid => { if ((dbUsers[uid].classId || 'default') === cid) updates[`users/${uid}/drawn_tasks/${targetDate}`] = null; });
+            try {
+                if (arrayName === 'tasks') {
+                    const studentsInClass = Object.keys(dbUsers).filter(uid => (dbUsers[uid].classId || 'default') === cid);
+                    const promises = studentsInClass.map(uid => db.ref('letters').orderByChild('senderUid').equalTo(uid).once('value'));
+                    const snaps = await Promise.all(promises);
+                    snaps.forEach(snap => {
+                        const lts = snap.val() || {};
+                        Object.values(lts).forEach(l => {
+                            if (l.taskDate === targetDate) {
+                                const lid = l.id; 
+                                updates[`letters/${lid}`] = null; 
+                                updates[`conversations/${lid}`] = null; 
+                                updates[`unassigned_letters/${lid}`] = null; 
+                                updates[`user_threads/${l.senderUid}/${lid}`] = null; 
+                                if (l.recipientUid) updates[`user_threads/${l.recipientUid}/${lid}`] = null;
+                            }
+                        });
+                    });
+                } else if (arrayName === 'randomTasks') {
+                    const rSnap = await db.ref('random_task_submissions').orderByChild('classId').equalTo(cid).once('value');
+                    const rSubs = rSnap.val() || {};
+                    Object.values(rSubs).forEach(sub => { 
+                        if (sub.taskDate === targetDate) updates[`random_task_submissions/${sub.id}`] = null; 
+                    });
+                    Object.keys(dbUsers).forEach(uid => { 
+                        if ((dbUsers[uid].classId || 'default') === cid) updates[`users/${uid}/drawn_tasks/${targetDate}`] = null; 
+                    });
+                }
+                await db.ref().update(updates);
+                alert("任務及其所有關聯資料已徹底刪除！");
+                renderTasksList();
+            } catch (error) {
+                alert("刪除時發生錯誤：" + error.message);
             }
-            db.ref().update(updates).then(() => alert("任務及其所有關聯資料已徹底刪除！"));
         }
 
-        /* --- 作業批閱 --- */
+        // ==========================================
+        // 作業批閱邏輯 (精準讀取量優化版)
+        // ==========================================
         function switchRecordTab(tab) {
             currentRecordTab = tab;
             document.getElementById('tab-student').className = tab === 'student' ? 'tab-btn active' : 'tab-btn';
@@ -614,242 +804,147 @@
             return randomArray.find(l => l.senderUid === uid && l.taskDate === dateStr);
         }
 
-    function renderRecords() {
-        const cid = document.getElementById('record-class-select').value;
-        const container = document.getElementById('records-accordion-container');
-        container.innerHTML = '';
-        if(!cid || !dbClasses[cid]) return;
- 
-        const recType = getRecordType();
-        const studentsInClass = Object.keys(dbUsers).filter(uid => (dbUsers[uid].classId || 'default') === cid);
-        
-        // 自由撰寫邏輯
-        if (recType === 'free') {
-            document.getElementById('tab-task').style.display = 'none';
-            if (currentRecordTab === 'task') {
-                currentRecordTab = 'student';
-                document.getElementById('tab-student').className = 'tab-btn active';
-            }
- 
-            studentsInClass.forEach(uid => {
-                const u = dbUsers[uid];
-                let freeLetters = Object.values(dbLetters)
-                    .filter(l => l.senderUid === uid && l.taskIndex === 'free')
-                    .sort((a, b) => b.timestamp - a.timestamp);
- 
-                let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('stu-${uid}')"><div class="list-title">🧑‍🎓 ${escapeHtml(u.name)} <span class="list-subtitle">${escapeHtml(u.email)}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看紀錄 (${freeLetters.length}) ▾</span></div><div class="list-body" id="acc-body-stu-${uid}"><div class="grid-container">`;
-                
-                if (freeLetters.length === 0) {
-                    html += `<p style="color:var(--text-muted); grid-column:1/-1;">此學生尚未提交任何自由撰寫的心得。</p>`;
-                } else {
-                    freeLetters.forEach(letter => {
-                        const submitDate = new Date(letter.timestamp).toLocaleDateString();
-                        let shortTitle = letter.bookTitle.length > 10 ? letter.bookTitle.substring(0, 10) + '...' : letter.bookTitle;
-                        html += `
-                            <div class="task-card">
-                                <div style="font-size:1.05rem; font-weight:600; margin-bottom:10px;">《${escapeHtml(shortTitle)}》</div>
-                                <span class="status-badge s-free">✨ 自由分享</span>
-                                <div style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">寄出日期: ${submitDate}</div>
-                                <button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem;" onclick="openReadingModal('${letter.id}')">批閱信件</button>
-                            </div>
-                        `;
-                    });
-                }
-                html += `</div></div></div>`;
-                container.innerHTML += html;
-            });
+        // 🌟 異步獲取資料並渲染，保護 Firebase 免費額度
+        async function renderRecords() {
+            const cid = document.getElementById('record-class-select').value;
+            const container = document.getElementById('records-accordion-container');
+            if(!cid || !dbClasses[cid]) { container.innerHTML=''; return; }
+     
+            const recType = getRecordType();
             
-            if(studentsInClass.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級目前沒有學生。</p>`;
-            return;
-        }
- 
-        document.getElementById('tab-task').style.display = 'inline-block';
-        const arrayName = recType === 'reading' ? 'tasks' : 'randomTasks';
-        
-        // 🛡️ 使用防呆函數取得陣列
-        const tasks = getArrayFromFirebase(dbClasses[cid][arrayName]);
-        const dataArray = recType === 'reading' ? Object.values(dbLetters) : Object.values(dbRandomSubs);
- 
-        if (currentRecordTab === 'student') {
-            studentsInClass.forEach(uid => {
-                const u = dbUsers[uid];
-                let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('stu-${uid}')"><div class="list-title">🧑‍🎓 ${escapeHtml(u.name)} <span class="list-subtitle">${escapeHtml(u.email)}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看任務 ▾</span></div><div class="list-body" id="acc-body-stu-${uid}"><div class="grid-container">`;
-                tasks.forEach((dateStr, idx) => {
-                    const record = recType === 'reading' ? findLetterSafe(uid, dateStr, idx, dataArray) : findRandomSafe(uid, dateStr, dataArray);
-                    html += buildGridCard(`第 ${idx+1} 回`, dateStr, record, recType);
-                });
-                if(tasks.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級尚未派發任務。</p>`;
-                html += `</div></div></div>`; container.innerHTML += html;
-            });
-            if(studentsInClass.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級目前沒有學生。</p>`;
-        } else {
-            tasks.forEach((dateStr, idx) => {
-                // 💡 計算標題 Header 上要顯示的正確截止日
-                let actualDeadlineDate = new Date(dateStr);
-                if (recType === 'reading') actualDeadlineDate.setDate(actualDeadlineDate.getDate() + 2);
-                const displayDeadline = `${actualDeadlineDate.getFullYear()}-${String(actualDeadlineDate.getMonth() + 1).padStart(2, '0')}-${String(actualDeadlineDate.getDate()).padStart(2, '0')}`;
- 
-                let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('task-${idx}')"><div class="list-title">${recType==='reading'?'📋':'📸'} 第 ${idx + 1} 回 <span class="list-subtitle">期限: ${displayDeadline}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看學生 ▾</span></div><div class="list-body" id="acc-body-task-${idx}"><div class="grid-container">`;
-                studentsInClass.forEach(uid => {
-                    const u = dbUsers[uid];
-                    const record = recType === 'reading' ? findLetterSafe(uid, dateStr, idx, dataArray) : findRandomSafe(uid, dateStr, dataArray);
-                    html += buildGridCard(escapeHtml(u.name), dateStr, record, recType);
-                });
-                if(studentsInClass.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級目前沒有學生。</p>`;
-                html += `</div></div></div>`; container.innerHTML += html;
-            });
-            if(tasks.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級尚未派發任務。</p>`;
-        }
-    }
+            // 顯示讀取中動畫
+            container.innerHTML = '<div style="padding: 40px; text-align:center; color: var(--text-muted); font-size:1.1rem;">資料讀取中，請稍候...</div>';
 
-      function renderTasksList() {
-        const cid = document.getElementById('task-class-select').value; const grid = document.getElementById('tasks-grid');
-        if(!cid || !dbClasses[cid]) return;
-        
-        const arrayName = currentAssignType === 'reading' ? 'tasks' : 'randomTasks';
-        // 🛡️ 使用防呆函數取得陣列
-        const tasks = getArrayFromFirebase(dbClasses[cid][arrayName]);
-        grid.innerHTML = '';
-        if(tasks.length === 0) return grid.innerHTML = '<p style="color: var(--text-muted); grid-column: 1/-1;">此班級尚未派發此類任務。</p>';
-        
-        tasks.forEach((d, i) => {
-            // 💡 根據任務類型，在介面上明確標示日期的意義
-            const dateLabel = currentAssignType === 'reading' ? `${d} (開放日)` : `${d} (截止日)`;
-            
-            grid.innerHTML += `<div class="task-card" style="text-align:left;"><div class="task-index">${currentAssignType==='reading'?'📖 閱讀':'📸 隨機'} 第 ${i + 1} 回</div><div class="task-date" style="font-size: 1.1rem;">${dateLabel}</div><button class="btn btn-danger" style="position:absolute; top:15px; right:15px; padding: 6px 12px; font-size:0.85rem;" onclick="deleteTask('${cid}', ${i}, '${arrayName}')">刪除</button></div>`;
-        });
-    }
- 
-    function renderRecords() {
-        const cid = document.getElementById('record-class-select').value;
-        const container = document.getElementById('records-accordion-container');
-        container.innerHTML = '';
-        if(!cid || !dbClasses[cid]) return;
- 
-        const recType = getRecordType();
-        const studentsInClass = Object.keys(dbUsers).filter(uid => (dbUsers[uid].classId || 'default') === cid);
-        
-        // 自由撰寫邏輯
-        if (recType === 'free') {
-            document.getElementById('tab-task').style.display = 'none';
-            if (currentRecordTab === 'task') {
-                currentRecordTab = 'student';
-                document.getElementById('tab-student').className = 'tab-btn active';
-            }
- 
-            studentsInClass.forEach(uid => {
-                const u = dbUsers[uid];
-                let freeLetters = Object.values(dbLetters)
-                    .filter(l => l.senderUid === uid && l.taskIndex === 'free')
-                    .sort((a, b) => b.timestamp - a.timestamp);
- 
-                let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('stu-${uid}')"><div class="list-title">🧑‍🎓 ${escapeHtml(u.name)} <span class="list-subtitle">${escapeHtml(u.email)}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看紀錄 (${freeLetters.length}) ▾</span></div><div class="list-body" id="acc-body-stu-${uid}"><div class="grid-container">`;
+            try {
+                const studentsInClass = Object.keys(dbUsers).filter(uid => (dbUsers[uid].classId || 'default') === cid);
                 
-                if (freeLetters.length === 0) {
-                    html += `<p style="color:var(--text-muted); grid-column:1/-1;">此學生尚未提交任何自由撰寫的心得。</p>`;
-                } else {
-                    freeLetters.forEach(letter => {
-                        const submitDate = new Date(letter.timestamp).toLocaleDateString();
-                        let shortTitle = letter.bookTitle.length > 10 ? letter.bookTitle.substring(0, 10) + '...' : letter.bookTitle;
-                        html += `
-                            <div class="task-card">
-                                <div style="font-size:1.05rem; font-weight:600; margin-bottom:10px;">《${escapeHtml(shortTitle)}》</div>
-                                <span class="status-badge s-free">✨ 自由分享</span>
-                                <div style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">寄出日期: ${submitDate}</div>
-                                <button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem;" onclick="openReadingModal('${letter.id}')">批閱信件</button>
-                            </div>
-                        `;
+                // 單次精準獲取資料，不進行持久背景監聽全庫
+                if (recType === 'reading' || recType === 'free') {
+                    dbLetters = {};
+                    // 利用索引只抓取該班學生的信件
+                    const promises = studentsInClass.map(uid => db.ref('letters').orderByChild('senderUid').equalTo(uid).once('value'));
+                    const snaps = await Promise.all(promises);
+                    snaps.forEach(snap => {
+                        const data = snap.val();
+                        if (data) Object.assign(dbLetters, data);
                     });
+                } else if (recType === 'random') {
+                    // 利用索引只抓取該班級的探索任務
+                    const rSnap = await db.ref('random_task_submissions').orderByChild('classId').equalTo(cid).once('value');
+                    dbRandomSubs = rSnap.val() || {};
                 }
-                html += `</div></div></div>`;
-                container.innerHTML += html;
-            });
-            
-            if(studentsInClass.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級目前沒有學生。</p>`;
-            return;
-        }
- 
-        document.getElementById('tab-task').style.display = 'inline-block';
-        const arrayName = recType === 'reading' ? 'tasks' : 'randomTasks';
-        
-        // 🛡️ 使用防呆函數取得陣列
-        const tasks = getArrayFromFirebase(dbClasses[cid][arrayName]);
-        const dataArray = recType === 'reading' ? Object.values(dbLetters) : Object.values(dbRandomSubs);
- 
-        if (currentRecordTab === 'student') {
-            studentsInClass.forEach(uid => {
-                const u = dbUsers[uid];
-                let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('stu-${uid}')"><div class="list-title">🧑‍🎓 ${escapeHtml(u.name)} <span class="list-subtitle">${escapeHtml(u.email)}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看任務 ▾</span></div><div class="list-body" id="acc-body-stu-${uid}"><div class="grid-container">`;
-                tasks.forEach((dateStr, idx) => {
-                    const record = recType === 'reading' ? findLetterSafe(uid, dateStr, idx, dataArray) : findRandomSafe(uid, dateStr, dataArray);
-                    html += buildGridCard(`第 ${idx+1} 回`, dateStr, record, recType);
-                });
-                if(tasks.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級尚未派發任務。</p>`;
-                html += `</div></div></div>`; container.innerHTML += html;
-            });
-            if(studentsInClass.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級目前沒有學生。</p>`;
-        } else {
-            tasks.forEach((dateStr, idx) => {
-                // 💡 計算標題 Header 上要顯示的正確截止日
-                let actualDeadlineDate = new Date(dateStr);
-                if (recType === 'reading') actualDeadlineDate.setDate(actualDeadlineDate.getDate() + 2);
-                const displayDeadline = `${actualDeadlineDate.getFullYear()}-${String(actualDeadlineDate.getMonth() + 1).padStart(2, '0')}-${String(actualDeadlineDate.getDate()).padStart(2, '0')}`;
- 
-                let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('task-${idx}')"><div class="list-title">${recType==='reading'?'📋':'📸'} 第 ${idx + 1} 回 <span class="list-subtitle">期限: ${displayDeadline}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看學生 ▾</span></div><div class="list-body" id="acc-body-task-${idx}"><div class="grid-container">`;
-                studentsInClass.forEach(uid => {
-                    const u = dbUsers[uid];
-                    const record = recType === 'reading' ? findLetterSafe(uid, dateStr, idx, dataArray) : findRandomSafe(uid, dateStr, dataArray);
-                    html += buildGridCard(escapeHtml(u.name), dateStr, record, recType);
-                });
-                if(studentsInClass.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級目前沒有學生。</p>`;
-                html += `</div></div></div>`; container.innerHTML += html;
-            });
-            if(tasks.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級尚未派發任務。</p>`;
-        }
-    }
- 
-    function buildGridCard(title, dateStr, record, recType) {
-        let statusClass = "s-miss"; let statusText = "未交"; let btnHtml = '';
-        
-        // 💡 1. 根據任務類型，分流計算真正的「截止日期」
-        let actualDeadlineDate = new Date(dateStr);
-        if (recType === 'reading') {
-            // 閱讀任務：資料庫存的是「開放日」，期限為開放日 + 2天
-            actualDeadlineDate.setDate(actualDeadlineDate.getDate() + 2); 
-        }
-        // 探索任務：資料庫存的就是「截止日」，直接使用不做加減
-        
-        // 格式化顯示用字串
-        const displayDeadline = `${actualDeadlineDate.getFullYear()}-${String(actualDeadlineDate.getMonth() + 1).padStart(2, '0')}-${String(actualDeadlineDate.getDate()).padStart(2, '0')}`;
- 
-        if(record) {
-            // 💡 2. 統一清除時分秒，進行「日期」等級的比對
-            const submitTime = new Date(record.timestamp);
-            submitTime.setHours(0,0,0,0);
-            
-            const deadlineTime = new Date(actualDeadlineDate);
-            deadlineTime.setHours(0,0,0,0);
- 
-            // 小於等於截止日期都算準時
-            if(submitTime <= deadlineTime) { 
-                statusClass = "s-ok"; statusText = "準時"; 
-            } else { 
-                statusClass = "s-late"; statusText = "遲交"; 
+
+                container.innerHTML = '';
+                
+                // 自由撰寫邏輯
+                if (recType === 'free') {
+                    document.getElementById('tab-task').style.display = 'none';
+                    if (currentRecordTab === 'task') {
+                        currentRecordTab = 'student';
+                        document.getElementById('tab-student').className = 'tab-btn active';
+                    }
+         
+                    studentsInClass.forEach(uid => {
+                        const u = dbUsers[uid];
+                        let freeLetters = Object.values(dbLetters)
+                            .filter(l => l.senderUid === uid && l.taskIndex === 'free')
+                            .sort((a, b) => b.timestamp - a.timestamp);
+         
+                        let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('stu-${uid}')"><div class="list-title">🧑‍🎓 ${escapeHtml(u.name)} <span class="list-subtitle">${escapeHtml(u.email)}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看紀錄 (${freeLetters.length}) ▾</span></div><div class="list-body" id="acc-body-stu-${uid}"><div class="grid-container">`;
+                        
+                        if (freeLetters.length === 0) {
+                            html += `<p style="color:var(--text-muted); grid-column:1/-1;">此學生尚未提交任何自由撰寫的心得。</p>`;
+                        } else {
+                            freeLetters.forEach(letter => {
+                                const submitDate = new Date(letter.timestamp).toLocaleDateString();
+                                let shortTitle = letter.bookTitle.length > 10 ? letter.bookTitle.substring(0, 10) + '...' : letter.bookTitle;
+                                html += `
+                                    <div class="task-card">
+                                        <div style="font-size:1.05rem; font-weight:600; margin-bottom:10px;">《${escapeHtml(shortTitle)}》</div>
+                                        <span class="status-badge s-free">✨ 自由分享</span>
+                                        <div style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">寄出日期: ${submitDate}</div>
+                                        <button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem;" onclick="openReadingModal('${letter.id}')">批閱信件</button>
+                                    </div>
+                                `;
+                            });
+                        }
+                        html += `</div></div></div>`;
+                        container.innerHTML += html;
+                    });
+                    
+                    if(studentsInClass.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級目前沒有學生。</p>`;
+                    return;
+                }
+         
+                document.getElementById('tab-task').style.display = 'inline-block';
+                const arrayName = recType === 'reading' ? 'tasks' : 'randomTasks';
+                const tasks = getArrayFromFirebase(dbClasses[cid][arrayName]);
+                const dataArray = recType === 'reading' ? Object.values(dbLetters) : Object.values(dbRandomSubs);
+         
+                if (currentRecordTab === 'student') {
+                    studentsInClass.forEach(uid => {
+                        const u = dbUsers[uid];
+                        let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('stu-${uid}')"><div class="list-title">🧑‍🎓 ${escapeHtml(u.name)} <span class="list-subtitle">${escapeHtml(u.email)}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看任務 ▾</span></div><div class="list-body" id="acc-body-stu-${uid}"><div class="grid-container">`;
+                        tasks.forEach((dateStr, idx) => {
+                            const record = recType === 'reading' ? findLetterSafe(uid, dateStr, idx, dataArray) : findRandomSafe(uid, dateStr, dataArray);
+                            html += buildGridCard(`第 ${idx+1} 回`, dateStr, record, recType);
+                        });
+                        if(tasks.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級尚未派發任務。</p>`;
+                        html += `</div></div></div>`; container.innerHTML += html;
+                    });
+                    if(studentsInClass.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級目前沒有學生。</p>`;
+                } else {
+                    tasks.forEach((dateStr, idx) => {
+                        let actualDeadlineDate = new Date(dateStr);
+                        if (recType === 'reading') actualDeadlineDate.setDate(actualDeadlineDate.getDate() + 2);
+                        const displayDeadline = `${actualDeadlineDate.getFullYear()}-${String(actualDeadlineDate.getMonth() + 1).padStart(2, '0')}-${String(actualDeadlineDate.getDate()).padStart(2, '0')}`;
+         
+                        let html = `<div class="list-item"><div class="list-header" onclick="toggleAccordion('task-${idx}')"><div class="list-title">${recType==='reading'?'📋':'📸'} 第 ${idx + 1} 回 <span class="list-subtitle">期限: ${displayDeadline}</span></div><span style="font-size:0.8rem; color:var(--text-muted);">展開查看學生 ▾</span></div><div class="list-body" id="acc-body-task-${idx}"><div class="grid-container">`;
+                        studentsInClass.forEach(uid => {
+                            const u = dbUsers[uid];
+                            const record = recType === 'reading' ? findLetterSafe(uid, dateStr, idx, dataArray) : findRandomSafe(uid, dateStr, dataArray);
+                            html += buildGridCard(escapeHtml(u.name), dateStr, record, recType);
+                        });
+                        if(studentsInClass.length === 0) html += `<p style="color:var(--text-muted); grid-column:1/-1;">此班級目前沒有學生。</p>`;
+                        html += `</div></div></div>`; container.innerHTML += html;
+                    });
+                    if(tasks.length === 0) container.innerHTML = `<p style="color:var(--text-muted);">此班級尚未派發任務。</p>`;
+                }
+            } catch(e) {
+                container.innerHTML = `<p style="color:var(--red);">資料讀取失敗，請重新整理頁面。(${e.message})</p>`;
             }
+        }
+
+        function buildGridCard(title, dateStr, record, recType) {
+            let statusClass = "s-miss"; let statusText = "未交"; let btnHtml = '';
             
+            let actualDeadlineDate = new Date(dateStr);
             if (recType === 'reading') {
-                btnHtml = `<button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem;" onclick="openReadingModal('${record.id}')">批閱信件</button>`;
-            } else {
-                btnHtml = `<button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem; border-color:#8b7355; color:#8b7355;" onclick="openRandomModal('${record.id}')">檢視相片</button>`;
+                actualDeadlineDate.setDate(actualDeadlineDate.getDate() + 2); 
             }
+            
+            const displayDeadline = `${actualDeadlineDate.getFullYear()}-${String(actualDeadlineDate.getMonth() + 1).padStart(2, '0')}-${String(actualDeadlineDate.getDate()).padStart(2, '0')}`;
+     
+            if(record) {
+                const submitTime = new Date(record.timestamp);
+                submitTime.setHours(0,0,0,0);
+                const deadlineTime = new Date(actualDeadlineDate);
+                deadlineTime.setHours(0,0,0,0);
+     
+                if(submitTime <= deadlineTime) { statusClass = "s-ok"; statusText = "準時"; } 
+                else { statusClass = "s-late"; statusText = "遲交"; }
+                
+                if (recType === 'reading') {
+                    btnHtml = `<button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem;" onclick="openReadingModal('${record.id}')">批閱信件</button>`;
+                } else {
+                    btnHtml = `<button class="btn btn-outline" style="width:100%; padding: 8px; margin-top:15px; font-size:0.9rem; border-color:#8b7355; color:#8b7355;" onclick="openRandomModal('${record.id}')">檢視相片</button>`;
+                }
+            }
+            return `<div class="task-card"><div style="font-size:1.05rem; font-weight:600; margin-bottom:10px;">${title}</div><span class="status-badge ${statusClass}">${statusText}</span><div style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">期限: ${displayDeadline}</div>${btnHtml}</div>`;
         }
-        
-        return `<div class="task-card"><div style="font-size:1.05rem; font-weight:600; margin-bottom:10px;">${title}</div><span class="status-badge ${statusClass}">${statusText}</span><div style="font-size:0.85rem; color:var(--text-muted); margin-top:12px;">期限: ${displayDeadline}</div>${btnHtml}</div>`;
-    }
- 
 
-          // ==========================================
-        // 閱讀器 Modals (微調：顯示已註銷帳號)
+        // ==========================================
+        // 閱讀器 Modals (加入了語錄渲染)
         // ==========================================
         function escapeHtml(str) { return str?str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"):str; }
         
@@ -860,13 +955,26 @@
             db.ref(`conversations/${letterId}`).once('value').then(snap => {
                 const msgs = snap.val() || {}; let html = '';
                 Object.values(msgs).forEach(m => {
-                    // 【優化】如果找不到使用者資料，顯示為「已註銷的帳號」
                     const senderName = dbUsers[m.senderUid] ? dbUsers[m.senderUid].name : '👻 已註銷的帳號';
                     const isOriginal = m.senderUid === letter.senderUid;
                     const d = new Date(m.timestamp); const tStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
                     let fText = escapeHtml(m.text).replace(/【目前進度】/g, '<span class="letter-section-divider">目前閱讀頁數</span>').replace(/【思考問題】/g, '<span class="letter-section-divider">思考問題</span>').replace(/【閱讀心得】/g, '<span class="letter-section-divider">閱讀感悟</span>');
                     let img = m.imageUrl ? `<a href="${m.imageUrl}" target="_blank" class="letter-img-wrap"><img src="${m.imageUrl}" class="letter-img" loading="lazy"></a>` : '';
-                    html += `<div class="letter-sheet ${isOriginal ? 'my-letter' : 'partner-letter'}"><div class="letter-header-meta"><span>${isOriginal ? '✍️' : '📬'} [${escapeHtml(senderName)}] 的${isOriginal?'手札':'回音'}</span><span>${tStr}</span></div><div class="letter-text">${fText}</div>${img}</div>`;
+                    
+                    // 🌟 渲染可能附帶的文學語錄卡片
+                    let attachedQuoteHtml = '';
+                    if (m.attachedQuoteId && LIT_QUOTES[m.attachedQuoteId]) {
+                        const q = LIT_QUOTES[m.attachedQuoteId];
+                        attachedQuoteHtml = `
+                            <div style="background-color: #fcfbf8; border: 1px solid #dcd5c9; border-left: 4px solid #d4af37; padding: 25px 30px; margin: 30px 0; border-radius: 4px; box-shadow: 0 8px 20px rgba(139, 115, 85, 0.06); position:relative;">
+                                <div style="position:absolute; top:10px; left:15px; font-size:3rem; color:rgba(212,175,55,0.15); font-family:Georgia,serif; line-height:1;">❝</div>
+                                <div style="font-family: var(--font-serif); font-size: 1.15rem; color: #4a4238; line-height: 1.8; letter-spacing: 1.5px; position:relative; z-index:2; margin-bottom: 15px; text-align: justify;">${escapeHtml(q.text)}</div>
+                                <div style="font-family: var(--font-sans); font-size: 0.9rem; color: #8b7355; text-align: right; font-weight: 500;">— ${escapeHtml(q.author)}《${escapeHtml(q.book)}》</div>
+                            </div>
+                        `;
+                    }
+
+                    html += `<div class="letter-sheet ${isOriginal ? 'my-letter' : 'partner-letter'}"><div class="letter-header-meta"><span>${isOriginal ? '✍️' : '📬'} [${escapeHtml(senderName)}] 的${isOriginal?'手札':'回音'}</span><span>${tStr}</span></div><div class="letter-text">${fText}</div>${attachedQuoteHtml}${img}</div>`;
                 }); flow.innerHTML = html;
             });
         }
@@ -874,7 +982,7 @@
         function openRandomModal(subId) {
             const sub = dbRandomSubs[subId]; if(!sub) return;
             const flow = document.getElementById('polaroid-flow');
-            const studentName = dbUsers[sub.senderUid] ? dbUsers[sub.senderUid].name : '未知學生';
+            const studentName = dbUsers[sub.senderUid] ? dbUsers[sub.senderUid].name : '👻 已註銷的帳號';
             const d = new Date(sub.timestamp); const tStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
             
             flow.innerHTML = `
