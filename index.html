@@ -2541,56 +2541,60 @@ function auditAntiCheat() {
 
         
 
-      function healPool() {
-    db.ref('users').once('value').then(userSnap => {
-        const users = userSnap.val() || {};
-        const isMeTeacher = isTeacherEmail(currentUser.email);
+    function healPool() {
+            // 🌟 流量終極優化：改為讀取極輕量的 user_meta
+            db.ref('user_meta').once('value').then(userSnap => {
+                const users = userSnap.val() || {};
+                const isMeTeacher = isTeacherEmail(currentUser.email);
 
-        // 處理閱讀心得的孤兒信
-        db.ref('unassigned_letters').once('value').then(snap => {
-            const pool = snap.val() || {}; 
-            const ids = Object.keys(pool).filter(id => {
-                if (pool[id].senderUid === currentUser.uid) return false;
-                const senderEmail = users[pool[id].senderUid] ? users[pool[id].senderUid].email : '';
-                return isMeTeacher === isTeacherEmail(senderEmail); // 隔離
-            });
+                // 處理閱讀心得的孤兒信
+                db.ref('unassigned_letters').once('value').then(snap => {
+                    const pool = snap.val() || {}; 
+                    const ids = Object.keys(pool).filter(id => {
+                        if (pool[id].senderUid === currentUser.uid) return false;
+                        const senderEmail = users[pool[id].senderUid] ? users[pool[id].senderUid].email : '';
+                        return isMeTeacher === isTeacherEmail(senderEmail); 
+                    });
 
-            if (ids.length > 0) {
-                const rId = ids[Math.floor(Math.random() * ids.length)];
-                db.ref(`letters/${rId}`).once('value').then(lSnap => {
-                    const lData = lSnap.val(); if(lData) {
-                        db.ref(`letters/${rId}/recipientUid`).set(currentUser.uid); db.ref(`unassigned_letters/${rId}`).remove(); const now = firebase.database.ServerValue.TIMESTAMP;
-                        db.ref(`user_threads/${currentUser.uid}/${rId}`).set({ letterId: rId, type: 'reading', bookTitle: lData.bookTitle, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: now });
-                        db.ref(`user_threads/${lData.senderUid}/${rId}`).set({ letterId: rId, type: 'reading', bookTitle: lData.bookTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: now });
-                        db.ref(`users/${currentUser.uid}/receivedCount`).transaction(count => (count || 0) + 1);
+                    if (ids.length > 0) {
+                        const rId = ids[Math.floor(Math.random() * ids.length)];
+                        db.ref(`letters/${rId}`).once('value').then(lSnap => {
+                            const lData = lSnap.val(); if(lData) {
+                                db.ref(`letters/${rId}/recipientUid`).set(currentUser.uid); db.ref(`unassigned_letters/${rId}`).remove(); const now = firebase.database.ServerValue.TIMESTAMP;
+                                db.ref(`user_threads/${currentUser.uid}/${rId}`).set({ letterId: rId, type: 'reading', bookTitle: lData.bookTitle, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: now });
+                                db.ref(`user_threads/${lData.senderUid}/${rId}`).set({ letterId: rId, type: 'reading', bookTitle: lData.bookTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: now });
+                                
+                                db.ref(`users/${currentUser.uid}/receivedCount`).transaction(count => (count || 0) + 1);
+                                db.ref(`user_meta/${currentUser.uid}/receivedCount`).transaction(count => (count || 0) + 1); // 同步更新
+                            }
+                        });
                     }
                 });
-            }
-        });
 
-        // 處理探索任務的孤兒信
-        db.ref('unassigned_random_letters').once('value').then(snap => {
-            const pool = snap.val() || {}; 
-            const ids = Object.keys(pool).filter(id => {
-                if (pool[id].senderUid === currentUser.uid) return false;
-                const senderEmail = users[pool[id].senderUid] ? users[pool[id].senderUid].email : '';
-                return isMeTeacher === isTeacherEmail(senderEmail); // 隔離
-            });
+                // 處理探索任務的孤兒信
+                db.ref('unassigned_random_letters').once('value').then(snap => {
+                    const pool = snap.val() || {}; 
+                    const ids = Object.keys(pool).filter(id => {
+                        if (pool[id].senderUid === currentUser.uid) return false;
+                        const senderEmail = users[pool[id].senderUid] ? users[pool[id].senderUid].email : '';
+                        return isMeTeacher === isTeacherEmail(senderEmail); 
+                    });
 
-            if (ids.length > 0) {
-                const rId = ids[Math.floor(Math.random() * ids.length)];
-                db.ref(`letters/${rId}`).once('value').then(lSnap => {
-                    const lData = lSnap.val(); if(lData) {
-                        db.ref(`letters/${rId}/recipientUid`).set(currentUser.uid); db.ref(`unassigned_random_letters/${rId}`).remove(); const now = firebase.database.ServerValue.TIMESTAMP;
-                        db.ref(`user_threads/${currentUser.uid}/${rId}`).set({ letterId: rId, type: 'random', bookTitle: lData.bookTitle, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: now });
-                        db.ref(`user_threads/${lData.senderUid}/${rId}`).set({ letterId: rId, type: 'random', bookTitle: lData.bookTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: now });
-                        db.ref(`users/${currentUser.uid}/receivedRandomCount`).transaction(count => (count || 0) + 1);
+                    if (ids.length > 0) {
+                        const rId = ids[Math.floor(Math.random() * ids.length)];
+                        db.ref(`letters/${rId}`).once('value').then(lSnap => {
+                            const lData = lSnap.val(); if(lData) {
+                                db.ref(`letters/${rId}/recipientUid`).set(currentUser.uid); db.ref(`unassigned_random_letters/${rId}`).remove(); const now = firebase.database.ServerValue.TIMESTAMP;
+                                db.ref(`user_threads/${currentUser.uid}/${rId}`).set({ letterId: rId, type: 'random', bookTitle: lData.bookTitle, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: now });
+                                db.ref(`user_threads/${lData.senderUid}/${rId}`).set({ letterId: rId, type: 'random', bookTitle: lData.bookTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: now });
+                                
+                                db.ref(`users/${currentUser.uid}/receivedRandomCount`).transaction(count => (count || 0) + 1);
+                            }
+                        });
                     }
                 });
-            }
-        });
-    });
-}
+            });
+        }
 
       // 在學生端 HTML 搜尋 "function renderTasks()" 並將整段替換為以下程式碼：
 function switchTaskTab(tab) {
@@ -3245,16 +3249,16 @@ else processReply(letterId, partnerUid, ObjectData);
             }});
         }
 
-       function processLog(data) {
+      function processLog(data) {
             const ts = firebase.database.ServerValue.TIMESTAMP; const ref = db.ref('letters').push();
-            db.ref('users').once('value').then(snap => {
+            // 🌟 流量終極優化：改為讀取極輕量的 user_meta，避免下載全校學生的龐大背包與紀錄
+            db.ref('user_meta').once('value').then(snap => {
                 const users = snap.val() || {}; 
                 const isMeTeacher = isTeacherEmail(currentUser.email);
                 
-                // 【新增】隔離對象：排除自己，且老師只能配對老師、學生只能配對學生
                 let eligibleUids = Object.keys(users).filter(u => {
                     if (u === currentUser.uid) return false;
-                  const targetIsTeacher = (users[u].classId === 'teacher_class') || isTeacherEmail(users[u].email);
+                    const targetIsTeacher = (users[u].classId === 'teacher_class') || isTeacherEmail(users[u].email);
                     return isMeTeacher === targetIsTeacher;
                 });
                 
@@ -3262,23 +3266,19 @@ else processReply(letterId, partnerUid, ObjectData);
           
                 if (eligibleUids.length > 0) {
                     if (selectedTaskIndex === 'free') {
-    // ✨ 自由撰寫邏輯：發送給「最近上線的前 3 名同學」中的隨機一位
-    eligibleUids.sort((a, b) => {
-        let timeA = users[a].lastLoginTime || 0;
-        let timeB = users[b].lastLoginTime || 0;
-        return timeB - timeA; // 降序排列
-    });
-    
-    // 取最多前 3 名 (如果全班不到 3 人則取實際人數)
-    let topK = Math.min(3, eligibleUids.length);
-    
-    // 從這 topK 人中隨機抽一位
-    rec = eligibleUids[Math.floor(Math.random() * topK)];
-    
-    // 為了不干擾常規任務的公平性，自由信件我們依然稍微加總收到次數
-    db.ref(`users/${rec}/receivedCount`).set((users[rec].receivedCount || 0) + 1);
-} else {
-                        // 📖 常規任務邏輯：維持原本的「收到信件最少」的公平分配
+                        eligibleUids.sort((a, b) => {
+                            let timeA = users[a].lastLoginTime || 0;
+                            let timeB = users[b].lastLoginTime || 0;
+                            return timeB - timeA;
+                        });
+                        
+                        let topK = Math.min(3, eligibleUids.length);
+                        rec = eligibleUids[Math.floor(Math.random() * topK)];
+                        
+                        let newCount = (users[rec].receivedCount || 0) + 1;
+                        db.ref(`users/${rec}/receivedCount`).set(newCount);
+                        db.ref(`user_meta/${rec}/receivedCount`).set(newCount); // 同步更新
+                    } else {
                         let minCount = Infinity; 
                         eligibleUids.forEach(uid => { 
                             let count = users[uid].receivedCount || 0; 
@@ -3286,47 +3286,46 @@ else processReply(letterId, partnerUid, ObjectData);
                         });
                         let candidates = eligibleUids.filter(uid => (users[uid].receivedCount || 0) === minCount); 
                         rec = candidates[Math.floor(Math.random() * candidates.length)];
+                        
                         db.ref(`users/${rec}/receivedCount`).set(minCount + 1);
+                        db.ref(`user_meta/${rec}/receivedCount`).set(minCount + 1); // 同步更新
                     }
                 }
+                
                 ref.set({ 
-    id: ref.key, 
-    senderUid: currentUser.uid, 
-    bookTitle: data.title, 
-    timestamp: ts, 
-    taskIndex: selectedTaskIndex, 
-    taskDate: selectedTaskDate, // <--- 加上這行，永遠鎖定日期！
-    recipientUid: rec 
-}).then(() => {
+                    id: ref.key, 
+                    senderUid: currentUser.uid, 
+                    bookTitle: data.title, 
+                    timestamp: ts, 
+                    taskIndex: selectedTaskIndex, 
+                    taskDate: selectedTaskDate,
+                    recipientUid: rec 
+                }).then(() => {
                     db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: ts });
                     if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
                     else db.ref(`unassigned_letters/${ref.key}`).set({ senderUid: currentUser.uid });
-             db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, attachedQuoteId: data.quoteId || null, timestamp: ts }).then(() => {
- 
-                        // 並在底下的重置區塊加上清除語錄狀態：
+                    
+                    db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, attachedQuoteId: data.quoteId || null, timestamp: ts }).then(() => {
                         removeAttachedQuote();
                         isSubmittingLog = false; 
                         
-                        // 👇👇👇 新增這兩行：將按鈕狀態還原，讓用家可以再次提交 👇👇👇
+                        // 恢復按鈕狀態
                         const btn = document.getElementById('btn-submit-task');
                         if (btn) {
                             btn.innerText = "封裝寄出心得";
                             btn.disabled = false;
                         }
-                        // 👆👆👆 新增結束 👆👆👆
                         
-                        // 【新增】成功寄出後，清除這四個欄位的 SessionStorage 暫存
                         clearDrafts(['draft_r_title', 'draft_r_page', 'draft_r_q', 'draft_r_c']);
                         
                         document.getElementById('book-title').value = ''; document.getElementById('book-page').value = ''; document.getElementById('log-question').value = ''; document.getElementById('log-content').value = ''; 
                         document.getElementById('book-image').value=''; selectedFileBase64=null; document.getElementById('file-name-display').innerText="尚未選擇圖片"; document.getElementById('image-preview').style.display = 'none'; 
                         document.getElementById('write-editor').style.display = 'none'; document.getElementById('task-grid').style.display = 'grid'; 
                         if(document.getElementById('free-read-btn-wrap')) document.getElementById('free-read-btn-wrap').style.display = 'block';
-                        renderTasks(); showToast('心得已隨信箋寄出！'); 
                         
-                        // 完成閱讀心得給予 1000 積分並觸發抽獎動畫
+                        renderTasks(); showToast('心得已隨信箋寄出！'); 
                         addPointsAndGacha(1000, true);
-                        healPool(); // 在寄信成功後，順便幫系統分配一封孤兒信
+                        healPool(); 
                     });
                 });
             });
@@ -3334,27 +3333,25 @@ else processReply(letterId, partnerUid, ObjectData);
 
 
 function processRandomTask(data) {
-    const ts = firebase.database.ServerValue.TIMESTAMP; 
-    const ref = db.ref('letters').push(); 
-    const subRef = db.ref('random_task_submissions').push(); 
+            const ts = firebase.database.ServerValue.TIMESTAMP; 
+            const ref = db.ref('letters').push(); 
+            const subRef = db.ref('random_task_submissions').push(); 
 
-    db.ref('users').once('value').then(snap => {
-        const users = snap.val() || {}; 
-        const isMeTeacher = isTeacherEmail(currentUser.email);
+            // 🌟 流量終極優化：改為讀取極輕量的 user_meta
+            db.ref('user_meta').once('value').then(snap => {
+                const users = snap.val() || {}; 
+                const isMeTeacher = isTeacherEmail(currentUser.email);
 
-        // 【新增】隔離對象
-        let eligibleUids = Object.keys(users).filter(u => {
-            if (u === currentUser.uid) return false;
-          const targetIsTeacher = (users[u].classId === 'teacher_class') || isTeacherEmail(users[u].email);
-            return isMeTeacher === targetIsTeacher;
-        });
-        
-       // 每次寄信，更新自己的最後寄信時間（代表最後活躍）
+                let eligibleUids = Object.keys(users).filter(u => {
+                    if (u === currentUser.uid) return false;
+                    const targetIsTeacher = (users[u].classId === 'teacher_class') || isTeacherEmail(users[u].email);
+                    return isMeTeacher === targetIsTeacher;
+                });
+                
                 db.ref(`users/${currentUser.uid}/lastSentTime`).set(ts);
 
-               let rec = "";
+                let rec = "";
                 if (eligibleUids.length > 0) {
-                    // 📸 探索任務只有常規模式：維持「收到信件最少」的公平分配
                     let minCount = Infinity; 
                     eligibleUids.forEach(uid => { 
                         let count = users[uid].receivedCount || 0; 
@@ -3362,48 +3359,44 @@ function processRandomTask(data) {
                     });
                     let candidates = eligibleUids.filter(uid => (users[uid].receivedCount || 0) === minCount); 
                     rec = candidates[Math.floor(Math.random() * candidates.length)];
+                    
                     db.ref(`users/${rec}/receivedCount`).set(minCount + 1);
+                    db.ref(`user_meta/${rec}/receivedCount`).set(minCount + 1); // 同步更新
                 }
 
-        // 1. 寫入繳交區 (維持任務清單打勾狀態)
-        subRef.set({
-            id: subRef.key, senderUid: currentUser.uid, classId: currentUser.classId || 'default',
-            taskDate: selectedTaskDate, drawnTask: currentDrawnState.drawnTask, text: data.text,
-            imageUrl: data.imageUrl, timestamp: ts, letterId: ref.key
-        });
+                subRef.set({
+                    id: subRef.key, senderUid: currentUser.uid, classId: currentUser.classId || 'default',
+                    taskDate: selectedTaskDate, drawnTask: currentDrawnState.drawnTask, text: data.text,
+                    imageUrl: data.imageUrl, timestamp: ts, letterId: ref.key
+                });
 
-        // 2. 寫入信件區並分配對象
-        const boxTitle = `生活探索：${selectedTaskDate}`; // 讓列表顯示辨識用
-        ref.set({ 
-            id: ref.key, senderUid: currentUser.uid, type: 'random', bookTitle: boxTitle, 
-            timestamp: ts, recipientUid: rec 
-        }).then(() => {
-            db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({ letterId: ref.key, type: 'random', bookTitle: boxTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: ts });
-            if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, type: 'random', bookTitle: boxTitle, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
-            else db.ref(`unassigned_random_letters/${ref.key}`).set({ senderUid: currentUser.uid });
-            
-            // 組合對話內容
-            const combinedText = `【探索任務】\n${currentDrawnState.drawnTask}\n\n【備註與感悟】\n${data.text || '（無備註）'}`;
-            
-       db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: combinedText, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
-                const btn = document.getElementById('btn-submit-random');
-                btn.innerText = "封裝完成任務"; btn.disabled = false;
-                
-                // 【新增】成功寄出後，清除備註文字的 SessionStorage 暫存
-                clearDrafts(['draft_rand_n']);
-                
-                document.getElementById('random-editor').style.display = 'none'; 
-                document.getElementById('random-task-grid').style.display = 'grid'; 
-                renderTasks(); showToast('探索任務已隨信箋寄出！'); 
-                
-                // 👇👇👇 加上這行：完成探索任務給予 500 積分（通常不觸發強制抽獎動畫，只加分）
-                addPointsAndGacha(500, false);
-            healPool(); // ✅ 新增：在寄信成功後，順便幫系統分配一封孤兒信
+                const boxTitle = `生活探索：${selectedTaskDate}`; 
+                ref.set({ 
+                    id: ref.key, senderUid: currentUser.uid, type: 'random', bookTitle: boxTitle, 
+                    timestamp: ts, recipientUid: rec 
+                }).then(() => {
+                    db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({ letterId: ref.key, type: 'random', bookTitle: boxTitle, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: ts });
+                    if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, type: 'random', bookTitle: boxTitle, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
+                    else db.ref(`unassigned_random_letters/${ref.key}`).set({ senderUid: currentUser.uid });
+                    
+                    const combinedText = `【探索任務】\n${currentDrawnState.drawnTask}\n\n【備註與感悟】\n${data.text || '（無備註）'}`;
+                    
+                    db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: combinedText, imageUrl: data.imageUrl, timestamp: ts }).then(() => {
+                        const btn = document.getElementById('btn-submit-random');
+                        btn.innerText = "封裝完成任務"; btn.disabled = false;
+                        
+                        clearDrafts(['draft_rand_n']);
+                        
+                        document.getElementById('random-editor').style.display = 'none'; 
+                        document.getElementById('random-task-grid').style.display = 'grid'; 
+                        renderTasks(); showToast('探索任務已隨信箋寄出！'); 
+                        
+                        addPointsAndGacha(500, false);
+                        healPool(); 
+                    });
+                });
             });
-        });
-    });
-}
-
+        }
         
 
       function processReply(id, pUid, ObjectData) {
