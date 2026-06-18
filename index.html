@@ -9703,6 +9703,7 @@ function createNeonSign(text, bgColor, neonColor, isVertical) {
 
 
 // 8. 新增：香港經典路牌紋理 (白底黑框黑字)
+// 8. 新增：香港經典路牌紋理 (白底黑框黑字)
 function createStreetSignTexture(zhText, enText) {
     const canvas = document.createElement('canvas');
     canvas.width = 512; canvas.height = 128;
@@ -9920,7 +9921,7 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     recHit.position.set(0, 5, 0); recHit.userData = {type: 'shop_record'};
     recGrp.add(recHit); buildingsGrp.add(recGrp);
 
-   // --- 3. 街道佈景 (作為前景點綴，全部移向兩側邊緣，把中央視野讓給商店) ---
+ // --- 3. 街道佈景 (作為前景點綴，全部移向兩側邊緣，把中央視野讓給商店) ---
     const stallGrp = new THREE.Group();
     stallGrp.position.set(5, 0, -50); // 往左側邊緣推開
     const stallMat = new THREE.MeshStandardMaterial({map: createCorrugatedMetalTexture('#1c5c36'), roughness: 0.8});
@@ -10060,7 +10061,7 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
 
 
     
-}
+
 // =====================================================================
 // 🌆 同步商店街的時間與光影 (包含街燈與招牌發光)
 // =====================================================================
