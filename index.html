@@ -9886,21 +9886,25 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
 // 💡 新增：明亮的室內牆面，讓透視感與展示效果更強
     const brightInteriorMat = new THREE.MeshStandardMaterial({color: 0xddddcc});
  
-    // 🏬 店舖 A：文苑文具
+    // 🏬 店舖 A：文苑文具 (開門展示)
     const statGrp = new THREE.Group();
     statGrp.position.set(0, 0, 15);
-    statGrp.add(createTangLauUpperFloors(7.5, 0, 20, '#8fbc8f')); // 修正寬度為 20 確保無縫
+    statGrp.add(createTangLauUpperFloors(7.5, 0, 20, '#8fbc8f'));
     
     const statWall = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 20), new THREE.MeshStandardMaterial({map: createMosaicTileTexture('#8fbc8f')}));
     statWall.position.set(7.5, 7.5, 0); statGrp.add(statWall);
     
-    const statWindow = new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 18), shopGlassMat);
-    statWindow.position.set(0, 5, 0); statGrp.add(statWindow);
-    
-    // 👇 內部陳設：文具店明亮內裝與商品展示
+    // 👇 修改：將一大片玻璃改為一半玻璃窗、一半打開的玻璃門
+    const statWindow = new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 12), shopGlassMat);
+    statWindow.position.set(0, 5, -3); statGrp.add(statWindow);
+    const statDoor = new THREE.Mesh(new THREE.BoxGeometry(5, 9.8, 0.5), shopGlassMat);
+    statDoor.position.set(2.5, 5, 3); // 門向內推開
+    statGrp.add(statDoor);
+ 
     const statInside = new THREE.Mesh(new THREE.BoxGeometry(5, 9, 16), brightInteriorMat);
     statInside.position.set(3, 5, 0); statInside.userData = { isShopInside: true }; statGrp.add(statInside);
     
+    // 👇 內部陳設：文具店明亮內裝與商品展示
     const statProps = new THREE.Group();
     statProps.position.set(2, 0, 0);
     // 巨大的鉛筆模型作櫥窗展示
@@ -9911,16 +9915,27 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     pTip.position.y = 5.6; giantPencil.add(pTip);
     const pLead = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.4, 6), new THREE.MeshStandardMaterial({color: 0x333333}));
     pLead.position.y = 6.0; giantPencil.add(pLead);
-    giantPencil.position.set(-1.0, 1, 5);
-    giantPencil.rotation.z = -0.2;
+    giantPencil.position.set(-1.0, 1, 5); giantPencil.rotation.z = -0.2;
     statProps.add(giantPencil);
-    // 書架與木製櫃台
+    // 木櫃台與桌上商品 (紙張與筆筒)
     const counter = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 10), new THREE.MeshStandardMaterial({color: 0x8b7355}));
     counter.position.set(0, 1.5, -2); statProps.add(counter);
+    const paperStack = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 1.6), new THREE.MeshStandardMaterial({color: 0xffffff}));
+    paperStack.position.set(0, 3.25, -4); statProps.add(paperStack);
+    const paperStack2 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 1.6), new THREE.MeshStandardMaterial({color: 0xffffff}));
+    paperStack2.position.set(0, 3.2, -1); paperStack2.rotation.y = 0.2; statProps.add(paperStack2);
+    // 筆筒與色筆
+    for(let i=0; i<3; i++) {
+        const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.6, 16), new THREE.MeshStandardMaterial({color: 0x4a789c}));
+        cup.position.set(0.3, 3.3, 1 + i*0.8);
+        const pen = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.8), new THREE.MeshStandardMaterial({color: 0xcc4444}));
+        pen.position.set(0.35, 3.6, 1 + i*0.8); pen.rotation.z = 0.2;
+        statProps.add(cup, pen);
+    }
     statGrp.add(statProps);
  
     const shutterA = new THREE.Mesh(new THREE.BoxGeometry(1.2, 5, 20), shutterMat);
-    shutterA.position.set(0, 12.5, 0); statGrp.add(shutterA); // 鐵閘為捲起狀態
+    shutterA.position.set(0, 12.5, 0); statGrp.add(shutterA);
  
     const awningA = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 20), new THREE.MeshStandardMaterial({map: createAwningTexture('#e8c35d'), roughness: 0.9}));
     awningA.position.set(-2, 10, 0); awningA.rotation.z = -0.3; awningA.castShadow = true; statGrp.add(awningA);
@@ -9934,33 +9949,49 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     statGrp.add(statHit); buildingsGrp.add(statGrp);
  
  
-    // 🏬 店舖 B：霓虹黑膠
+    // 🏬 店舖 B：霓虹黑膠 (開門展示)
     const recGrp = new THREE.Group();
-    // 修正 Z 軸位置，與文具店完美並排接合
     recGrp.position.set(0, 0, -5);
     recGrp.add(createTangLauUpperFloors(7.5, 0, 20, '#c28585'));
  
     const recWall = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 20), new THREE.MeshStandardMaterial({map: createConcreteTexture()}));
     recWall.position.set(7.5, 7.5, 0); recGrp.add(recWall);
     
-    const recWindow = new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 18), shopGlassMat);
-    recWindow.position.set(0, 5, 0); recGrp.add(recWindow);
+    // 👇 修改：留出門的位置
+    const recWindow = new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 12), shopGlassMat);
+    recWindow.position.set(0, 5, 3); recGrp.add(recWindow);
+    const recDoor = new THREE.Mesh(new THREE.BoxGeometry(5, 9.8, 0.5), shopGlassMat);
+    recDoor.position.set(2.5, 5, -3); // 向內推開
+    recGrp.add(recDoor);
     
-    // 👇 內部陳設：黑膠店暗紅色復古風與唱片展示
+    // 👇 內部陳設：黑膠店暗紅色復古風與唱機展示
     const recInside = new THREE.Mesh(new THREE.BoxGeometry(5, 9, 16), new THREE.MeshStandardMaterial({color: 0x6e2c2c}));
     recInside.position.set(3, 5, 0); recInside.userData = { isShopInside: true }; recGrp.add(recInside);
  
     const recProps = new THREE.Group();
     recProps.position.set(2, 0, 0);
-    // 牆上巨大的黑膠唱片裝飾，讓人一眼看懂
+    // 牆上巨大的黑膠唱片裝飾
     for(let i=-1; i<=1; i+=2) {
         const vinyl = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 0.2, 32), new THREE.MeshStandardMaterial({color: 0x111111}));
-        vinyl.rotation.x = Math.PI/2;
-        vinyl.position.set(1.4, 5, i * 4);
+        vinyl.rotation.x = Math.PI/2; vinyl.position.set(1.4, 5, i * 4);
         const centerLabel = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.25, 16), new THREE.MeshStandardMaterial({color: Math.random()*0xffffff}));
-        centerLabel.rotation.x = Math.PI/2;
-        centerLabel.position.set(1.4, 5, i * 4);
+        centerLabel.rotation.x = Math.PI/2; centerLabel.position.set(1.4, 5, i * 4);
         recProps.add(vinyl, centerLabel);
+    }
+    // 黑膠唱機與唱片箱
+    const rDesk = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.5, 6), new THREE.MeshStandardMaterial({color: 0x3a2518}));
+    rDesk.position.set(-0.5, 1.25, 2); recProps.add(rDesk);
+    const playerBase = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.3, 2), new THREE.MeshStandardMaterial({color: 0xcccccc}));
+    playerBase.position.set(-0.5, 2.65, 2); recProps.add(playerBase);
+    const platter = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.1, 32), new THREE.MeshStandardMaterial({color: 0x111}));
+    platter.position.set(-0.5, 2.85, 2); recProps.add(platter);
+    const tonearm = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 1.2), new THREE.MeshStandardMaterial({color: 0x888888}));
+    tonearm.position.set(-0.1, 2.9, 1.5); tonearm.rotation.y = 0.5; recProps.add(tonearm);
+    for(let i=0; i<2; i++) {
+        const crate = new THREE.Mesh(new THREE.BoxGeometry(2, 1.5, 2), new THREE.MeshStandardMaterial({color: 0x8b5a2b}));
+        crate.position.set(-0.5, 0.75, -2 - i*2.5); recProps.add(crate);
+        const records = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 1.8), new THREE.MeshStandardMaterial({color: 0x111111}));
+        records.position.set(-0.5, 1.2, -2 - i*2.5); recProps.add(records);
     }
     recGrp.add(recProps);
  
@@ -9977,6 +10008,13 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     const recHit = new THREE.Mesh(new THREE.BoxGeometry(5, 10, 20), new THREE.MeshBasicMaterial({visible:false}));
     recHit.position.set(0, 5, 0); recHit.userData = {type: 'shop_record'};
     recGrp.add(recHit); buildingsGrp.add(recGrp);
+
+
+
+
+
+
+    
  
  
     // 🏗️ 為未來擴張準備的 6 間周邊空置店舖 (拉下鐵閘)
@@ -10153,14 +10191,11 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     stopPole.position.y = 3.5; stopPole.castShadow = true;
     stopGrp.add(stopPole);
     
-    // 👇 修正：移除 X 軸的 Math.PI，改為單純依靠 Z 軸旋轉，確保字體不會上下倒轉
     const stopSign = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.1, 32), busStopMat);
     stopSign.rotation.set(0, 0, Math.PI / 2);
-    stopSign.position.set(0, 6.5, 0);
+    // 👇 修正：將 X 座標設為 -0.15，讓站牌往馬路方向推出來，完美貼合鐵桿表面不再穿模
+    stopSign.position.set(-0.15, 6.5, 0);
     stopGrp.add(stopSign);
-    
-    streetScene.add(stopGrp);
-
         
     }
 
