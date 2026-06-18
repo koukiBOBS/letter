@@ -9880,55 +9880,111 @@ const shopGlassMat = new THREE.MeshStandardMaterial({
 
     // 優化：高質感玻璃與正確的冷氣機定位
 // 優化：高質感純淨玻璃與正確的冷氣機定位
+// 🎨 零效能生成：無邊框、純淨的日系斜紋玻璃高光
+function createCleanGlassTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    
+    // 完全透明的底色，不畫任何邊框
+    ctx.clearRect(0, 0, 256, 256);
+    
+    // 旋轉畫布來畫出漂亮的對角線反光
+    ctx.save();
+    ctx.translate(128, 128);
+    ctx.rotate(-Math.PI / 4);
+    
+    // 主高光 (柔和漸層)
+    const grad1 = ctx.createLinearGradient(0, -30, 0, 30);
+    grad1.addColorStop(0, 'rgba(255, 255, 255, 0)');
+    grad1.addColorStop(0.5, 'rgba(255, 255, 255, 0.65)');
+    grad1.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = grad1;
+    ctx.fillRect(-200, -30, 400, 60);
+ 
+    // 副高光 (細長銳利)
+    const grad2 = ctx.createLinearGradient(0, 40, 0, 50);
+    grad2.addColorStop(0, 'rgba(255, 255, 255, 0)');
+    grad2.addColorStop(0.5, 'rgba(255, 255, 255, 0.3)');
+    grad2.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = grad2;
+    ctx.fillRect(-200, 40, 400, 10);
+    
+    ctx.restore();
+ 
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+ 
+// 宣告一個全域變數來快取貼圖，極大化節省手機記憶體
+let sharedCleanGlassTex = null;
+ 
+// 🏬 優化版：具備立體窗框與真實反光的唐樓生成器
 function createTangLauUpperFloors(x, z, width, baseColor) {
     const floorGrp = new THREE.Group();
     const wallMat = new THREE.MeshStandardMaterial({map: createMosaicTileTexture(baseColor), roughness: 0.9});
     
-    // 🌟 1. 改用與店面完全相同邏輯的「純材質玻璃」
-    // 移除 map 貼圖，純靠金屬度(metalness)與環境倒影(envMap)撐起玻璃質感
+    if (!sharedCleanGlassTex) sharedCleanGlassTex = createCleanGlassTexture();
+ 
+    // 🌟 1. 真正具備質感的玻璃材質
     const upperGlassMat = new THREE.MeshStandardMaterial({
-        color: 0xddeeff,       // 淺淺的冰藍色
-        roughness: 0.05,       // 極度平滑
-        metalness: 0.9,        // 強烈反光
+        color: 0x99ccff,              // 冰藍色基底
+        map: sharedCleanGlassTex,     // 套用剛才寫的斜線高光貼圖
         transparent: true,
-        opacity: 0.75,         // 稍微提高不透明度，讓窗戶顏色穩固一致
+        opacity: 0.7,                 // 保持通透，透出後方的深色底板
+        metalness: 0.95,              // 極強的金屬反射感
+        roughness: 0.05,              // 表面極度平滑
         envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
-        envMapIntensity: 3.0,
-        side: THREE.FrontSide  // 單面渲染，效能更好且絕無交叉干擾
+        envMapIntensity: 2.5,
+        side: THREE.FrontSide         // 單面渲染，防止內部交叉透視
     });
+    
+    // 🌟 2. 窗框與室內陰影底板材質
+    const frameMat = new THREE.MeshBasicMaterial({color: 0x111b24});
+ 
+    // 建築主體
     const building = new THREE.Mesh(new THREE.BoxGeometry(width, 60, 25), wallMat);
     building.position.set(x, 45, z);
     building.castShadow = true; building.receiveShadow = true;
     floorGrp.add(building);
-    // 🌟 2. 將幾何體與底板材質提出迴圈外共用，大幅節省手機記憶體與運算效能！
-    const winGeo = new THREE.PlaneGeometry(4, 5);
-    const backingMat = new THREE.MeshBasicMaterial({color: 0x334455}); // 統一的深灰藍色室內底板
+ 
+    // 共用幾何體：外側窗框(大)、內側玻璃(小)
+    const frameGeo = new THREE.PlaneGeometry(4, 5);
+    const glassGeo = new THREE.PlaneGeometry(3.6, 4.6); // 稍微縮小，自然形成黑色的窗框邊緣！
     for(let fy=20; fy<=65; fy+=10) {
         for(let fz=z-8; fz<=z+8.1; fz+=8) {
             
-            // 統一深色的不透光內室
-            const winBacking = new THREE.Mesh(winGeo, backingMat);
-            winBacking.position.set(x - width/2 - 0.03, fy, fz);
-            winBacking.rotation.y = -Math.PI/2;
-            floorGrp.add(winBacking);
-            // 🌟 3. 乾淨統一的窗戶 (移除之前導致十字紋的 UV 偏移)
-            const win = new THREE.Mesh(winGeo, upperGlassMat);
-            win.position.set(x - width/2 - 0.05, fy, fz);
+            // A. 鋪底：深色窗框與室內陰影
+            const frame = new THREE.Mesh(frameGeo, frameMat);
+            frame.position.set(x - width/2 - 0.03, fy, fz);
+            frame.rotation.y = -Math.PI/2;
+            floorGrp.add(frame);
+            
+            // B. 玻璃本體 (獨立複製 Geometry 方便做隨機高光)
+            const win = new THREE.Mesh(glassGeo.clone(), upperGlassMat);
+            win.position.set(x - width/2 - 0.05, fy, fz); // 玻璃比底板稍微再往外凸出一點點
             win.rotation.y = -Math.PI/2;
-            win.userData = { isWindow: true }; // 保留發光標記
+            win.userData = { isWindow: true }; // 保留給夜晚發光用
+            
+            // 💡 魔法：隨機偏移這塊玻璃的 UV 貼圖，每塊窗戶的高光都在不同位置！
+            // 因為貼圖沒有邊框，所以這樣做絕對不會跑出難看的十字線。
+            const uvs = win.geometry.attributes.uv;
+            const randomOffsetX = Math.random();
+            const randomOffsetY = Math.random();
+            for (let i = 0; i < uvs.count; i++) {
+                uvs.setXY(i, uvs.getX(i) + randomOffsetX, uvs.getY(i) + randomOffsetY);
+            }
+            
             floorGrp.add(win);
             
-            // 冷氣機 (保持原樣)
+            // C. 冷氣機 (機率出現)
             if (Math.random() > 0.4) {
                 const ac = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 2.2), new THREE.MeshStandardMaterial({color:0xd0d0d0, roughness:0.8}));
                 ac.position.set(x - width/2 + 0.3, fy - 3.2, fz);
                 ac.castShadow = true;
                 floorGrp.add(ac);
-                
-                const acVent = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), new THREE.MeshBasicMaterial({color:0x111}));
-                acVent.position.set(x - width/2 - 0.46, fy - 3.2, fz);
-                acVent.rotation.y = -Math.PI/2;
-                floorGrp.add(acVent);
             }
         }
     }
