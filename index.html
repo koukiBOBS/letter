@@ -1401,6 +1401,83 @@
         font-size: 0.55rem;
     }
 }
+
+
+
+        /* =====================================================================
+ * 📝 編輯器介面沉浸感升級 (閱讀心得、生活探索、紀錄)
+ * ===================================================================== */
+/* 編輯器主體改為復古紙張質感 */
+.editor {
+    background-color: #fcfbf8 !important;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E") !important;
+    border: 1px solid #e3d9c6 !important;
+    border-radius: 4px !important;
+    box-shadow: 0 20px 40px rgba(139, 115, 85, 0.08), inset 0 0 40px rgba(180, 160, 130, 0.05) !important;
+    padding: 45px 50px !important;
+}
+
+/* 標題與標籤文字調暖，增加文學感 */
+.editor .serif-text, .editor h3 { color: #4a4238 !important; letter-spacing: 2px; }
+.field-label {
+    color: #8b7355 !important;
+    letter-spacing: 2px !important;
+    font-size: 1.05rem !important;
+    margin-bottom: 12px !important;
+}
+
+/* 單行輸入框改為「底線填空」風格 */
+.input-box {
+    background-color: transparent !important;
+    border: none !important;
+    border-bottom: 1px dashed #c4b8aa !important;
+    border-radius: 0 !important;
+    padding: 10px 5px !important;
+    color: #4a4238 !important;
+    font-size: 1.15rem !important;
+    transition: all 0.3s;
+}
+.input-box:focus {
+    border-bottom-color: #8b7355 !important;
+    background-color: rgba(180, 160, 130, 0.05) !important;
+}
+
+/* 多行文本框加入「信紙橫線」背景 */
+.textarea {
+    background-color: transparent !important;
+    border: 1px solid #e3d9c6 !important;
+    border-radius: 4px !important;
+    color: #4a4238 !important;
+    line-height: 2.2 !important; /* 配合格線高度 */
+    background-image: repeating-linear-gradient(to bottom, transparent, transparent 34px, rgba(180, 160, 130, 0.15) 34px, rgba(180, 160, 130, 0.15) 35px) !important;
+    background-attachment: local !important; /* 讓橫線會跟著文字一起上下捲動 */
+    background-position: top 0 left 0 !important;
+}
+.textarea:focus {
+    border-color: #b4a08c !important;
+    background-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* 上傳相片區塊美化 */
+.upload-container {
+    background: rgba(250, 247, 242, 0.5) !important;
+    border: 1px dashed #dcd5c9 !important;
+    border-radius: 4px !important;
+    padding: 25px !important;
+}
+.upload-btn {
+    background: #fffdfa !important;
+    border: 1px solid #e3d9c6 !important;
+    color: #8b7355 !important;
+    border-radius: 4px !important;
+    font-family: var(--font-serif);
+    box-shadow: 0 4px 6px rgba(139, 115, 85, 0.05);
+}
+.upload-btn:hover {
+    background: #f4f0e6 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(139, 115, 85, 0.1);
+}
         
         
     </style>
