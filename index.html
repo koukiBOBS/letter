@@ -9688,9 +9688,6 @@ function createAgedPlasterTexture(baseColor) {
     tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
     return tex;
 }
-
-        
-
 // 2. 工業風清水模 / 舊牆面 
 function createConcreteTexture() {
     const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
@@ -10066,8 +10063,6 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     return floorGrp;
 }
 
-    
-
 // 💡 新增：室內牆面材質 (使用全新名稱避免衝突)
     const brightShopMat = new THREE.MeshStandardMaterial({color: 0xfffae6, side: THREE.BackSide, roughness: 0.8});
     const darkShopMat = new THREE.MeshStandardMaterial({color: 0x4a2525, side: THREE.BackSide, roughness: 0.9});
@@ -10078,7 +10073,7 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     statGrp.add(createTangLauUpperFloors(7.5, 0, 20, '#8fbc8f'));
     
     // 重新建構一樓外牆：改用左、右、上三塊積木拼接，留出中間的空洞給玻璃門窗
-const statTileMat = new THREE.MeshStandardMaterial({map: createAgedPlasterTexture('#8fbc8f')});
+   const statTileMat = new THREE.MeshStandardMaterial({map: createAgedPlasterTexture('#8fbc8f')});
     const statWallL = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 2), statTileMat);
     statWallL.position.set(7.5, 7.5, 9); statGrp.add(statWallL); // 左柱
     const statWallR = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 2), statTileMat);
