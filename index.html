@@ -7233,8 +7233,10 @@ const outsideWorldBox = new THREE.Box3(
 );
  
 function animateRoom() {
-
-// === 新增：如果身處商店街，完全跳過房間的渲染與計算 ===
+    // 💡 【關鍵修復】：必須放在最上面！保證 3D 引擎的心跳永遠不會停止
+    requestAnimationFrame(animateRoom);
+ 
+    // === 新增：如果身處商店街，完全跳過房間的渲染與計算 ===
     if (typeof isAtStreet !== 'undefined' && isAtStreet && typeof streetScene !== 'undefined' && streetScene) {
         if(controls) controls.update();
         
@@ -7247,12 +7249,10 @@ function animateRoom() {
         }
         
         renderer.render(streetScene, camera);
-        return; // 直接中斷，不渲染房間！
+        return; // 這裡中斷只會跳過房間的渲染，不會殺死整個 3D 引擎了！
     }
-
-    
-    requestAnimationFrame(animateRoom);
-    // 1. 如果畫面被 UI 遮擋，或手機退到背景(縮小網頁)，直接罷工不計算，釋放 100% 效能！
+ 
+    // 1. 如果畫面被 UI 遮擋...
     if (isRoomPaused() || !isAppActive) return;
     // 更新視錐體矩陣 (取得目前攝影機看得到的範圍)
     if (camera) {
@@ -9547,37 +9547,30 @@ function enterShoppingStreet() {
         }
         
         // 將攝影機加入到「街道場景」，而不是房間場景
-        if (typeof streetScene === 'undefined' || !streetScene) {
+    if (typeof streetScene === 'undefined' || !streetScene) {
             buildShoppingStreet();
         }
         streetScene.add(camera);
         
         isAtStreet = true;
         if (typeof syncStreetEnvironment === 'function') syncStreetEnvironment();
-        
-        if (typeof ferrisWheelGrp !== 'undefined' && streetScene) {
-            streetScene.add(ferrisWheelGrp.parent);
-            ferrisWheelGrp.parent.position.set(-60, 0, -80);
-            ferrisWheelGrp.parent.rotation.y = Math.PI / 4;
-            ferrisWheelGrp.parent.matrixAutoUpdate = true;
-        }
  
         // 🌟 第一人稱沉浸式視角設定
-        controls.enabled = true; // 確保控制器被喚醒
+        controls.enabled = true; // 確保允許滑動螢幕轉頭
         controls.minAzimuthAngle = -Infinity;
         controls.maxAzimuthAngle = Infinity;
         controls.minPolarAngle = Math.PI / 3;
         controls.maxPolarAngle = Math.PI / 1.5;
-        controls.enablePan = false;
+        controls.enablePan = false; // 禁用雙指平移，防穿幫
  
-        // 💡 將相機與目標點的距離鎖死在 0.1
+        // 💡 魔法機制：將相機與目標點的距離鎖死在 0.1，這會強制讓 OrbitControls 變成第一人稱轉頭！
         controls.minDistance = 0.1;
         controls.maxDistance = 0.1;
  
-        // 🛑 【關鍵修復 3】：將相機與目標點的 Y 軸設為完全一致 (6)，避免微小差距造成 NaN 崩潰
+        // 🛑 初始化人物站立位置與視線目標 (兩者相距 0.1)
         camera.position.set(-15, 6, 0);
         controls.target.set(-14.9, 6, 0);
-        camera.lookAt(-14.9, 6, 0); // 強制對齊方向
+        camera.lookAt(-14.9, 6, 0); // 強制對齊視線
         controls.update();
  
         // 重新顯示搖桿
