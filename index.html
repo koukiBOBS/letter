@@ -7185,8 +7185,10 @@ const outsideWorldBox = new THREE.Box3(
 );
  
 function animateRoom() {
-
-// === 新增：如果身處商店街，完全跳過房間的渲染與計算 ===
+    // 👇 關鍵修復：必須把這行放在函數的「最頂端」，確保無論如何都會持續呼叫下一幀！
+    requestAnimationFrame(animateRoom);
+ 
+    // === 如果身處商店街，完全跳過房間的渲染與計算 ===
     if (typeof isAtStreet !== 'undefined' && isAtStreet && typeof streetScene !== 'undefined' && streetScene) {
         if(controls) controls.update();
         
@@ -7199,8 +7201,11 @@ function animateRoom() {
         }
         
         renderer.render(streetScene, camera);
-        return; // 直接中斷，不渲染房間！
+        return; // 直接中斷，不渲染房間
     }
+ 
+    // 1. 如果畫面被 UI 遮擋，或手機退到背景，直接罷工不計算，釋放 100% 效能！
+    if (isRoomPaused() || !isAppActive) return;
 
     
     requestAnimationFrame(animateRoom);
@@ -8321,19 +8326,18 @@ function acceptBankruptcy() {
             let nextX = camera.position.x + dir.x * -currentWalk;
             let nextZ = camera.position.z + dir.z * -currentWalk;
 
-            if (typeof isAtStreet !== 'undefined' && isAtStreet) {
+         if (typeof isAtStreet !== 'undefined' && isAtStreet) {
                 // 🌟 商店街防穿牆與合理邊界設定
-                nextX = Math.max(-65, Math.min(15, nextX)); // X < 15 防止穿入店舖玻璃門內
+                nextX = Math.max(-65, Math.min(15, nextX)); // 防止穿入店舖玻璃門內
                 nextZ = Math.max(-80, Math.min(80, nextZ)); // 限制在馬路首尾之間
-
+ 
                 camera.position.x = nextX;
                 camera.position.z = nextZ;
-                camera.position.y = 6; 
+                camera.position.y = 6;
                 controls.target.copy(camera.position).add(dir.multiplyScalar(20));
                 
-                // 🛑 終極防鎖死保護：強制讓鏡頭與 controls 嚴格看齊
-                camera.lookAt(controls.target);
-
+                // 💡 刪除了 camera.lookAt，讓 controls.update() 自然接管，手感與室內完全一致
+ 
             } else {
                 // 🏠 原有房間的防撞設定
                 const playerRadius = 4.0;
@@ -8351,24 +8355,23 @@ function acceptBankruptcy() {
                     }
                     return {x: cx, z: cz};
                 }
-
+ 
                 let p = pushOutRect(nextX, nextZ, 0, 0, 32, 16);
                 nextX = p.x; nextZ = p.z;
                 p = pushOutRect(nextX, nextZ, 0, 59, 80, 10);
                 nextX = p.x; nextZ = p.z;
                 p = pushOutRect(nextX, nextZ, 58, 22, 8, 18);
                 nextX = p.x; nextZ = p.z;
-
+ 
                 nextX = Math.max(-50, Math.min(50, nextX));
                 nextZ = Math.max(-10, Math.min(50, nextZ));
-
+ 
                 camera.position.x = nextX;
                 camera.position.z = nextZ;
-                camera.position.y = 16; 
+                camera.position.y = 16;
                 controls.target.copy(camera.position).add(dir.multiplyScalar(20));
                 
-                // 🛑 終極防鎖死保護：強制讓鏡頭與 controls 嚴格看齊
-                camera.lookAt(controls.target);
+                // 💡 同樣刪除了 camera.lookAt
             }
         }
     }
