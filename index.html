@@ -2699,30 +2699,29 @@ function renderTasks() {
     const rGrid = document.getElementById('task-grid'); 
     const randGrid = document.getElementById('random-task-grid');
     if(!rGrid || !randGrid) return; 
-    rGrid.innerHTML = ''; randGrid.innerHTML = '';
+    
+    // 渲染前先清空畫面
+    rGrid.innerHTML = ''; 
+    randGrid.innerHTML = '';
     
     if (!currentUser) return; // 確保有登入才執行
     const classId = currentUser.classId || 'default';
     
     // 取得該班級的任務設定
-  // 取得該班級的任務設定
-            db.ref(`classes/${classId}`).once('value').then(classSnap => {
-                const classData = classSnap.val() || {};
-                
-                // 🛡️ 防呆機制：確保 Firebase 傳回來的是乾淨的陣列，防止被轉成 Object 導致畫面空白崩潰
-                const getSafeArray = (data) => {
-                    if (!data) return [];
-                    if (Array.isArray(data)) return data.filter(x => x !== null && x !== undefined);
-                    return Object.values(data).filter(x => x !== null && x !== undefined);
-                };
-                
-                let readingTasks = getSafeArray(classData.tasks);
-                let randomTasks = getSafeArray(classData.randomTasks);
-                
-                // 👇 注入開發面板產生的本地模擬任務（這只存在於老師當前的瀏覽器中，不會影響學生）
- 
+    db.ref(`classes/${classId}`).once('value').then(classSnap => {
+        const classData = classSnap.val() || {};
         
-        // 👇 注入開發面板產生的本地模擬任務（這只存在於老師當前的瀏覽器中，不會影響學生）
+        // 🛡️ 防呆機制：確保 Firebase 傳回來的是乾淨的陣列，防止被轉成 Object 導致畫面空白崩潰
+        const getSafeArray = (data) => {
+            if (!data) return [];
+            if (Array.isArray(data)) return data.filter(x => x !== null && x !== undefined && x !== "");
+            return Object.values(data).filter(x => x !== null && x !== undefined && x !== "");
+        };
+        
+        let readingTasks = getSafeArray(classData.tasks);
+        let randomTasks = getSafeArray(classData.randomTasks);
+        
+        // 👇 注入開發面板產生的本地模擬任務
         if (window.mockReadingTasks) readingTasks = readingTasks.concat(window.mockReadingTasks);
         if (window.mockRandomTasks) randomTasks = randomTasks.concat(window.mockRandomTasks);
         
@@ -2737,16 +2736,18 @@ function renderTasks() {
             drawnTasksData = drawnSnap.val() || {};
             randomSubmissions = randSubs;
 
-            // 【新增】用來記錄是否有未解任務的開關
             let hasPendingTasks = false; 
 
-
-// --- 新增：重置並準備日曆資料 ---
-        // --- 新增：重置並準備日曆資料 ---
+            // --- 重置並準備日曆資料 ---
             calendarTasksData = {};
-            const todayReset = new Date().setHours(0,0,0,0);
+            
+            // 輔助函數：將日期字串轉換為乾淨的 MM/DD 格式
+            const formatShortDate = (dStr) => {
+                const d = new Date(dStr);
+                return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+            };
 
-            // 修改：加入 deadlineStr 參數，讓印章蓋在截止日那格
+            // 修改：加入 deadlineStr 參數，讓印章精準蓋在截止日那格
             function addCalTask(releaseDateStr, deadlineStr, type, doneRecord) {
                 if (!calendarTasksData[deadlineStr]) calendarTasksData[deadlineStr] = [];
                 let status = 'pending';
@@ -2756,43 +2757,30 @@ function renderTasks() {
 
                 if (doneRecord) {
                     const submitTime = new Date(doneRecord.timestamp).getTime();
-                    status = (submitTime < limitTime) ? 'ontime' : 'late';
+                    status = (submitTime <= limitTime) ? 'ontime' : 'late';
                 } else {
                     status = (Date.now() >= limitTime) ? 'overdue' : 'pending';
                 }
                 
-                // 將任務寫入日曆的「截止日」那一格
                 calendarTasksData[deadlineStr].push({ type, status });
             }
 
-
-            
-           // 1. 渲染閱讀任務
+            // ==========================================
+            // 📖 1. 渲染閱讀任務
+            // ==========================================
             const submittedReadingDates = readingLetters.map(l => l.taskDate || (readingTasks[l.taskIndex] && new Date(l.timestamp).setHours(0,0,0,0) >= new Date(readingTasks[l.taskIndex]).setHours(0,0,0,0) ? readingTasks[l.taskIndex] : null)).filter(v=>v);
             const rMap = {}; 
             readingLetters.forEach(l => { 
                 let d = l.taskDate; 
                 if(!d && readingTasks[l.taskIndex] && new Date(l.timestamp).setHours(0,0,0,0) >= new Date(readingTasks[l.taskIndex]).setHours(0,0,0,0)) d = readingTasks[l.taskIndex]; 
-                if(d) rMap[d] = l; // 改為儲存完整 record
+                if(d) rMap[d] = l; // 儲存完整 record
             });
             
-          // 過濾出所有自由撰寫的紀錄
             const freeReadingLetters = readingLetters.filter(l => l.taskIndex === 'free');
             if (readingTasks.length === 0 && freeReadingLetters.length === 0) {
                 rGrid.innerHTML = '<div class="empty-state"><p>目前尚未有閱讀任務與自由撰寫紀錄。</p></div>';
             }
-          // ==========================================
-            // 📖 1. 渲染閱讀任務卡片
-            // ==========================================
-    // 輔助函數：將日期字串轉換為乾淨的 MM/DD 格式
-            const formatShortDate = (dStr) => {
-                const d = new Date(dStr);
-                return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
-            };
 
-          // ==========================================
-            // 📖 1. 渲染閱讀任務卡片
-            // ==========================================
             readingTasks.forEach((dateStr, i) => {
                 const unlocked = new Date().setHours(0,0,0,0) >= new Date(dateStr).setHours(0,0,0,0);
                 const done = submittedReadingDates.includes(dateStr);
@@ -2803,37 +2791,31 @@ function renderTasks() {
                 const limitTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
                 const isLate = !done && Date.now() >= limitTime;
                 
-               addCalTask(dateStr, deadlineStr, 'reading', rMap[dateStr]);
+                addCalTask(dateStr, deadlineStr, 'reading', rMap[dateStr]);
                 if (unlocked && !done) { hasPendingTasks = true; }
 
                 const el = document.createElement('div'); 
                 el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
                 
-              // 🛑 核心修復：強制移除 CSS 中的全灰濾鏡，讓時間軸保留鮮明色彩，
-                // 但同時將「未開放」卡片的整體背景改為灰色，加強鎖定感。
                 if (!unlocked) {
                     el.style.filter = "none"; 
                     el.style.opacity = "0.85"; 
-                    el.style.backgroundColor = "#f1f5f9"; // 淺灰藍背景
-                    el.style.borderColor = "#cbd5e1";     // 灰色邊框
-                    el.style.borderStyle = "dashed";      // 虛線邊框增加未解鎖的視覺感
+                    el.style.backgroundColor = "#f1f5f9"; 
+                    el.style.borderColor = "#cbd5e1";     
+                    el.style.borderStyle = "dashed";      
                 }
 
                 // --- 雙色時間軸 UI 設計 ---
-                let startColor = '#548ca8'; // 開放日：莫蘭迪藍
-                let endColor = isLate ? '#ef4444' : '#d98a6c'; // 截止日：紅色(逾期) 或 莫蘭迪橘(正常)
+                let startColor = '#548ca8'; 
+                let endColor = isLate ? '#ef4444' : '#d98a6c'; 
                 let lineStyle = '';
                 let startIcon = '';
                 let endIcon = '';
 
                 if (!unlocked) {
-                    // 未開放：保留鮮明顏色，加上鎖頭，線條改為虛線
-              
                     lineStyle = `border-top: 2px dashed #cbd5e1; background: transparent;`;
                 } else {
-                    // 已開放：雙色漸層實線
                     lineStyle = `background: linear-gradient(to right, ${startColor}, ${endColor});`;
-    
                 }
 
                 let dateHtml = '';
@@ -2869,155 +2851,111 @@ function renderTasks() {
                 rGrid.appendChild(el);
             });
 
-            // ==========================================
-            // 📸 2. 渲染生活探索卡片
-            // ==========================================
-            if (randomTasks.length === 0) randGrid.innerHTML = '<div class="empty-state"><p>目前尚未設定探索任務。</p></div>';
-            
-            randomTasks.forEach((dateStr, i) => {
-                const unlocked = true; // 探索任務預設皆為解鎖
-                const done = submittedRandomDates.includes(dateStr);
-                
-                let dDate = new Date(new Date(dateStr).getTime() + 86400000);
-                let deadlineStr = `${dDate.getFullYear()}-${String(dDate.getMonth()+1).padStart(2,'0')}-${String(dDate.getDate()).padStart(2,'0')}`;
-                
-                const limitTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
-                const isLate = !done && Date.now() >= limitTime;
-                
-                const randRecord = randMap[dateStr];
-           addCalTask(dateStr, deadlineStr, 'random', randRecord);
-                if (!done) { hasPendingTasks = true; }
-
-                const el = document.createElement('div'); 
-                el.className = `task-card ${done ? 'completed' : ''}`;
-                
-                // --- 雙色時間軸 UI 設計 ---
-                let startColor = '#548ca8'; 
-                let endColor = isLate ? '#ef4444' : '#d98a6c'; 
-                let lineStyle = `background: linear-gradient(to right, ${startColor}, ${endColor});`;
-                let endIcon = isLate ? '<span style="font-size:0.8rem; margin-left:4px;">⚠️</span>' : '';
-
-                let dateHtml = '';
-                if (done) {
-                    dateHtml = `<span class="task-date" style="color:#6b8e73; font-weight:bold; font-size:1.05rem; letter-spacing:1px; margin-top:12px; display:block;">✓ 任務已達成</span>`;
-                } else {
-                    const endBg = isLate ? 'rgba(239,68,68,0.1)' : 'rgba(217,138,108,0.12)';
-                    dateHtml = `
-                        <div style="display:flex; align-items:center; justify-content:center; width:100%; margin-top:18px; font-family:var(--font-sans); font-size:0.9rem; font-weight:600;">
-                            <span style="color:${startColor}; background:rgba(84,140,168,0.12); padding:3px 8px; border-radius:6px;">${formatShortDate(dateStr)}</span>
-                            
-                            <div style="flex-grow:1; display:flex; align-items:center; margin:0 6px;">
-                                <div style="width:5px; height:5px; border-radius:50%; background:${startColor};"></div>
-                                <div style="flex-grow:1; height:2px; ${lineStyle}"></div>
-                                <div style="width:5px; height:5px; border-radius:50%; background:${endColor};"></div>
-                            </div>
-                            
-                            <span style="color:${endColor}; background:${endBg}; padding:3px 8px; border-radius:6px;">${formatShortDate(deadlineStr)}${endIcon}</span>
-                        </div>
-                    `;
-                    if (drawnTasksData[dateStr]) { 
-                        dateHtml += `<div style="margin-top:12px; font-size:0.75rem; color:#8b7355; font-weight:600; letter-spacing:1px; background:#fdfaf6; padding:2px 8px; border-radius:10px; display:inline-block;">已抽籤，待繳交</div>`; 
-                    }
-                }
-
-                el.innerHTML = `<span class="task-num" style="margin-bottom:5px;">第 ${i+1} 回探索</span>${dateHtml}`;
-                
-                el.onclick = () => {
-                    if(done) openChatModal(randMap[dateStr].letterId);
-                    else handleRandomTaskClick(dateStr);
-                }; 
-                randGrid.appendChild(el);
-            });
-
-            
-// --- 渲染「自由撰寫」的紀錄卡片 ---
+            // --- 渲染「自由撰寫」的紀錄卡片 ---
             freeReadingLetters.forEach((l) => {
                 const el = document.createElement('div'); 
-                el.className = `task-card completed`; // 自由撰寫一定是已完成寄出的狀態
+                el.className = `task-card completed`; 
                 
-                // 擷取寄出日期與書名
                 const d = new Date(l.timestamp);
                 const dateText = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
-                let shortTitle = l.bookTitle.length > 8 ? l.bookTitle.substring(0, 8) + '...' : l.bookTitle;
+                let safeTitle = l.bookTitle || '未命名書籍';
+                let shortTitle = safeTitle.length > 8 ? safeTitle.substring(0, 8) + '...' : safeTitle;
                 
-                // 設定卡片版面 (與常規任務保持一致)
                 el.innerHTML = `<span class="task-num">✨ 自由分享</span><span class="task-date">《${escapeHtml(shortTitle)}》<br>${dateText} 寄出</span>`;
                 
-                // 點擊卡片直接開啟信紙介面
                 el.onclick = () => {
                     openChatModal(l.id);
                 }; 
                 rGrid.appendChild(el);
             });
-            
 
-           // 2. 渲染隨機任務
-            // 2. 渲染隨機任務
-             const submittedRandomDates = randSubs.map(s => s.taskDate);
+            // ==========================================
+            // 📸 2. 渲染生活探索卡片
+            // ==========================================
+            const submittedRandomDates = randSubs.map(s => s.taskDate);
             
-            // 👇 【新增】：在這裡呼叫破產檢查系統 👇
-            checkAndTriggerBankruptcy(readingTasks, randomTasks, submittedReadingDates, submittedRandomDates);
-            // 👆 【新增結束】 👆
+            // 👇 呼叫破產檢查系統
+            if (typeof checkAndTriggerBankruptcy === 'function') {
+                checkAndTriggerBankruptcy(readingTasks, randomTasks, submittedReadingDates, submittedRandomDates);
+            }
 
-            // 【新增】建立一個 Map 方便透過日期找到對應的繳交紀錄與 letterId
             const randMap = {};
             randSubs.forEach(s => {
                 randMap[s.taskDate] = s;
             });
 
-          randomTasks.forEach((dateStr, i) => {
-                const unlocked = true; 
-                const done = submittedRandomDates.includes(dateStr);
-                
-                // 計算真正的截止日期 (發放日的隔天)
-                let dDate = new Date(new Date(dateStr).getTime() + 86400000);
-                let deadlineStr = `${dDate.getFullYear()}-${String(dDate.getMonth()+1).padStart(2,'0')}-${String(dDate.getDate()).padStart(2,'0')}`;
-                
-                // 超過 48 小時視為逾期
-                const limitTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
-                const isLate = !done && Date.now() >= limitTime;
-                
-                // 📝 寫入日曆資料
-                const randRecord = randMap[dateStr];
-              addCalTask(dateStr, deadlineStr, 'random', randRecord);
+            if (randomTasks.length === 0) {
+                randGrid.innerHTML = '<div class="empty-state"><p>目前尚未設定探索任務。</p></div>';
+            } else {
+                randomTasks.forEach((dateStr, i) => {
+                    const done = submittedRandomDates.includes(dateStr);
+                    
+                    let dDate = new Date(new Date(dateStr).getTime() + 86400000);
+                    let deadlineStr = `${dDate.getFullYear()}-${String(dDate.getMonth()+1).padStart(2,'0')}-${String(dDate.getDate()).padStart(2,'0')}`;
+                    
+                    const limitTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
+                    const isLate = !done && Date.now() >= limitTime;
+                    
+                    const randRecord = randMap[dateStr];
+                    addCalTask(dateStr, deadlineStr, 'random', randRecord);
+                    if (!done) { hasPendingTasks = true; }
 
-                if (!done) { hasPendingTasks = true; }
+                    const el = document.createElement('div'); 
+                    el.className = `task-card ${done ? 'completed' : ''}`;
+                    
+                    // --- 雙色時間軸 UI 設計 ---
+                    let startColor = '#548ca8'; 
+                    let endColor = isLate ? '#ef4444' : '#d98a6c'; 
+                    let lineStyle = `background: linear-gradient(to right, ${startColor}, ${endColor});`;
+                    let endIcon = isLate ? '<span style="font-size:0.8rem; margin-left:4px;">⚠️</span>' : '';
 
-                const el = document.createElement('div'); 
-                el.className = `task-card ${done ? 'completed' : ''}`;
-                
-                let dateTextHtml = `<span class="task-date">${deadlineStr} 截止</span>`;
-                if (isLate) {
-                    dateTextHtml = `<span class="task-date" style="color: #ef4444; font-weight: bold;">⚠️ 已逾期 (限期: ${deadlineStr})</span>`;
-                }
-                el.innerHTML = `<span class="task-num">第 ${i+1} 回探索</span>${dateTextHtml}`;
-                if (!done && drawnTasksData[dateStr]) { el.innerHTML += `<div style="margin-top:10px; font-size:0.8rem; color:#8b7355; font-weight:600;">已抽籤，待繳交</div>`; }
-                
-                el.onclick = () => {
-                    if(done) {
-                        // 【修改】直接打開信紙對話框，顯示自己的隨機探索信件
-                        openChatModal(randMap[dateStr].letterId);
+                    let dateHtml = '';
+                    if (done) {
+                        dateHtml = `<span class="task-date" style="color:#6b8e73; font-weight:bold; font-size:1.05rem; letter-spacing:1px; margin-top:12px; display:block;">✓ 任務已達成</span>`;
                     } else {
-                        handleRandomTaskClick(dateStr);
+                        const endBg = isLate ? 'rgba(239,68,68,0.1)' : 'rgba(217,138,108,0.12)';
+                        dateHtml = `
+                            <div style="display:flex; align-items:center; justify-content:center; width:100%; margin-top:18px; font-family:var(--font-sans); font-size:0.9rem; font-weight:600;">
+                                <span style="color:${startColor}; background:rgba(84,140,168,0.12); padding:3px 8px; border-radius:6px;">${formatShortDate(dateStr)}</span>
+                                
+                                <div style="flex-grow:1; display:flex; align-items:center; margin:0 6px;">
+                                    <div style="width:5px; height:5px; border-radius:50%; background:${startColor};"></div>
+                                    <div style="flex-grow:1; height:2px; ${lineStyle}"></div>
+                                    <div style="width:5px; height:5px; border-radius:50%; background:${endColor};"></div>
+                                </div>
+                                
+                                <span style="color:${endColor}; background:${endBg}; padding:3px 8px; border-radius:6px;">${formatShortDate(deadlineStr)}${endIcon}</span>
+                            </div>
+                        `;
+                        if (drawnTasksData[dateStr]) { 
+                            dateHtml += `<div style="margin-top:12px; font-size:0.75rem; color:#8b7355; font-weight:600; letter-spacing:1px; background:#fdfaf6; padding:2px 8px; border-radius:10px; display:inline-block;">已抽籤，待繳交</div>`; 
+                        }
                     }
-                }; randGrid.appendChild(el);
-            });
 
-            // 📝 最後，呼叫渲染日曆函數 (放在 Promise 迴圈跑完的尾巴)
+                    el.innerHTML = `<span class="task-num" style="margin-bottom:5px;">第 ${i+1} 回探索</span>${dateHtml}`;
+                    
+                    el.onclick = () => {
+                        if(done) openChatModal(randMap[dateStr].letterId);
+                        else handleRandomTaskClick(dateStr);
+                    }; 
+                    randGrid.appendChild(el);
+                });
+            }
+
+            // 📝 最後，呼叫渲染日曆函數
             renderCalendar();
 
-            // 【新增】這就是 Promise 結束的地方！
-            // 迴圈都跑完後，根據檢查結果控制 3D 信封顯示與否
             if (indicatorTasks) {
                 indicatorTasks.visible = hasPendingTasks;
             }
 
+            // 顯示備忘通知
+            if (typeof checkAndShowWelcomeMemo === 'function') {
+                checkAndShowWelcomeMemo(readingTasks, randomTasks, submittedReadingDates, submittedRandomDates);
+            }
 
-// 在它的下方加入這行呼叫：
-checkAndShowWelcomeMemo(readingTasks, randomTasks, submittedReadingDates, submittedRandomDates);
-
-            
-
+        }).catch(err => {
+            console.error("任務載入失敗：", err);
         });
     });
 }
