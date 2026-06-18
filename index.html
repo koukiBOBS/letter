@@ -9884,8 +9884,8 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
 }
 
 // 💡 新增：明亮的室內牆面，讓透視感與展示效果更強
-    const brightInteriorMat = new THREE.MeshStandardMaterial({color: 0xfffae6, side: THREE.BackSide, roughness: 0.8});
-    const darkInteriorMat = new THREE.MeshStandardMaterial({color: 0x4a2525, side: THREE.BackSide, roughness: 0.9});
+    const brightShopMat = new THREE.MeshStandardMaterial({color: 0xfffae6, side: THREE.BackSide, roughness: 0.8});
+    const darkShopMat = new THREE.MeshStandardMaterial({color: 0x4a2525, side: THREE.BackSide, roughness: 0.9});
  
     // 🏬 店舖 A：文苑文具 (開門展示)
     const statGrp = new THREE.Group();
@@ -9979,7 +9979,7 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     const recWallTop = new THREE.Mesh(new THREE.BoxGeometry(15, 5, 16), recTileMat);
     recWallTop.position.set(7.5, 12.5, 0); recGrp.add(recWallTop);
     
-    const recInside = new THREE.Mesh(new THREE.BoxGeometry(14.8, 14.8, 15.8), darkInteriorMat);
+   const recInside = new THREE.Mesh(new THREE.BoxGeometry(14.8, 14.8, 15.8), darkShopMat);
     recInside.position.set(7.5, 7.5, 0); recInside.userData = { isShopInside: true }; recGrp.add(recInside);
     
     // 👇 櫥窗與開門
