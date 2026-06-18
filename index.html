@@ -2951,75 +2951,65 @@ function renderTasks() {
             });
             
 
-       // =====================================
-            // 📸 2. 渲染探索任務 (絕對防呆版)
-            // =====================================
-            try {
-                const submittedRandomDates = randSubs.map(s => s.taskDate);
+           // 2. 渲染隨機任務
+            // 2. 渲染隨機任務
+             const submittedRandomDates = randSubs.map(s => s.taskDate);
+            
+            // 👇 【新增】：在這裡呼叫破產檢查系統 👇
+            checkAndTriggerBankruptcy(readingTasks, randomTasks, submittedReadingDates, submittedRandomDates);
+            // 👆 【新增結束】 👆
+
+            // 【新增】建立一個 Map 方便透過日期找到對應的繳交紀錄與 letterId
+            const randMap = {};
+            randSubs.forEach(s => {
+                randMap[s.taskDate] = s;
+            });
+
+          randomTasks.forEach((dateStr, i) => {
+                const unlocked = true; 
+                const done = submittedRandomDates.includes(dateStr);
                 
-                // 呼叫破產檢查系統 (如果函數存在)
-                if (typeof checkAndTriggerBankruptcy === 'function') {
-                    checkAndTriggerBankruptcy(readingTasks, randomTasks, submittedReadingDates, submittedRandomDates);
+                // 計算真正的截止日期 (發放日的隔天)
+                let dDate = new Date(new Date(dateStr).getTime() + 86400000);
+                let deadlineStr = `${dDate.getFullYear()}-${String(dDate.getMonth()+1).padStart(2,'0')}-${String(dDate.getDate()).padStart(2,'0')}`;
+                
+                // 超過 48 小時視為逾期
+                const limitTime = new Date(dateStr).setHours(0,0,0,0) + (86400000 * 2);
+                const isLate = !done && Date.now() >= limitTime;
+                
+                // 📝 寫入日曆資料
+                const randRecord = randMap[dateStr];
+              addCalTask(dateStr, deadlineStr, 'random', randRecord);
+
+                if (!done) { hasPendingTasks = true; }
+
+                const el = document.createElement('div'); 
+                el.className = `task-card ${done ? 'completed' : ''}`;
+                
+                let dateTextHtml = `<span class="task-date">${deadlineStr} 截止</span>`;
+                if (isLate) {
+                    dateTextHtml = `<span class="task-date" style="color: #ef4444; font-weight: bold;">⚠️ 已逾期 (限期: ${deadlineStr})</span>`;
                 }
-                const randMap = {};
-                randSubs.forEach(s => { randMap[s.taskDate] = s; });
-                // 防呆：確保 randomTasks 真的存在且有長度
-                if (!randomTasks || randomTasks.length === 0) {
-                    randGrid.innerHTML = '<div class="empty-state"><p>目前尚未設定探索任務。</p></div>';
-                } else {
-                    randomTasks.forEach((dateStr, i) => {
-                        // 防呆：過濾掉意外混入的空資料
-                        if (!dateStr || typeof dateStr !== 'string') return;
-                        
-                        const done = submittedRandomDates.includes(dateStr);
-                        
-                        // 安全計算日期逾期 (避開 Safari/iOS 的 Invalid Date 崩潰問題)
-                        let isLate = false;
-                        if (!done) {
-                            let p = dateStr.split('-');
-                            if (p.length === 3) {
-                                let deadline = new Date(p[0], p[1]-1, p[2]).setHours(0,0,0,0);
-                                let today = new Date().setHours(0,0,0,0);
-                                isLate = today > deadline;
-                            }
-                        }
-                        
-                        // 寫入日曆資料 (加入防護網)
-                        try {
-                            const randRecord = randMap[dateStr];
-                            addCalTask(dateStr, 'random', randRecord);
-                        } catch(e) { console.error("寫入日曆失敗", e); }
-                        if (!done) { hasPendingTasks = true; }
-                        const el = document.createElement('div');
-                        el.className = `task-card ${done ? 'completed' : ''}`;
-                        el.style.display = 'block'; // 強制顯示，防止被未知的 CSS 隱藏
-                        
-                        let dateTextHtml = `<span class="task-date">${dateStr} 截止</span>`;
-                        if (isLate) {
-                            dateTextHtml = `<span class="task-date" style="color: #ef4444; font-weight: bold;">⚠️ 已逾期 (限期: ${dateStr})</span>`;
-                        }
-                        let htmlContent = `<span class="task-num">第 ${i+1} 回探索</span>${dateTextHtml}`;
-                        
-                        // 防呆：確保 drawnTasksData 變數存在才檢查，避免 Cannot read properties of null
-                        if (!done && typeof drawnTasksData !== 'undefined' && drawnTasksData && drawnTasksData[dateStr]) {
-                            htmlContent += `<div style="margin-top:10px; font-size:0.8rem; color:#8b7355; font-weight:600;">已抽籤，待繳交</div>`;
-                        }
-                        
-                        el.innerHTML = htmlContent;
-                        
-                        el.onclick = () => {
-                            if(done) {
-                                openChatModal(randMap[dateStr].letterId);
-                            } else {
-                                handleRandomTaskClick(dateStr);
-                            }
-                        };
-                        randGrid.appendChild(el);
-                    });
-                }
-            } catch (err) {
-                console.error("探索任務渲染時發生錯誤：", err);
-                randGrid.innerHTML = '<div class="empty-state"><p style="color:#ef4444;">探索任務載入異常，請重整網頁。</p></div>';
+                el.innerHTML = `<span class="task-num">第 ${i+1} 回探索</span>${dateTextHtml}`;
+                if (!done && drawnTasksData[dateStr]) { el.innerHTML += `<div style="margin-top:10px; font-size:0.8rem; color:#8b7355; font-weight:600;">已抽籤，待繳交</div>`; }
+                
+                el.onclick = () => {
+                    if(done) {
+                        // 【修改】直接打開信紙對話框，顯示自己的隨機探索信件
+                        openChatModal(randMap[dateStr].letterId);
+                    } else {
+                        handleRandomTaskClick(dateStr);
+                    }
+                }; randGrid.appendChild(el);
+            });
+
+            // 📝 最後，呼叫渲染日曆函數 (放在 Promise 迴圈跑完的尾巴)
+            renderCalendar();
+
+            // 【新增】這就是 Promise 結束的地方！
+            // 迴圈都跑完後，根據檢查結果控制 3D 信封顯示與否
+            if (indicatorTasks) {
+                indicatorTasks.visible = hasPendingTasks;
             }
 
 
