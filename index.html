@@ -3301,11 +3301,19 @@ else processReply(letterId, partnerUid, ObjectData);
                     db.ref(`user_threads/${currentUser.uid}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: true, hasUnread: false, hasBeenRepliedTo: false, hasReplied: false, lastUpdated: ts });
                     if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
                     else db.ref(`unassigned_letters/${ref.key}`).set({ senderUid: currentUser.uid });
-              db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, attachedQuoteId: data.quoteId || null, timestamp: ts }).then(() => {
+             db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, attachedQuoteId: data.quoteId || null, timestamp: ts }).then(() => {
  
-// 並在底下的重置區塊加上清除語錄狀態：
-removeAttachedQuote();
+                        // 並在底下的重置區塊加上清除語錄狀態：
+                        removeAttachedQuote();
                         isSubmittingLog = false; 
+                        
+                        // 👇👇👇 新增這兩行：將按鈕狀態還原，讓用家可以再次提交 👇👇👇
+                        const btn = document.getElementById('btn-submit-task');
+                        if (btn) {
+                            btn.innerText = "封裝寄出心得";
+                            btn.disabled = false;
+                        }
+                        // 👆👆👆 新增結束 👆👆👆
                         
                         // 【新增】成功寄出後，清除這四個欄位的 SessionStorage 暫存
                         clearDrafts(['draft_r_title', 'draft_r_page', 'draft_r_q', 'draft_r_c']);
@@ -3313,12 +3321,12 @@ removeAttachedQuote();
                         document.getElementById('book-title').value = ''; document.getElementById('book-page').value = ''; document.getElementById('log-question').value = ''; document.getElementById('log-content').value = ''; 
                         document.getElementById('book-image').value=''; selectedFileBase64=null; document.getElementById('file-name-display').innerText="尚未選擇圖片"; document.getElementById('image-preview').style.display = 'none'; 
                         document.getElementById('write-editor').style.display = 'none'; document.getElementById('task-grid').style.display = 'grid'; 
-                       if(document.getElementById('free-read-btn-wrap')) document.getElementById('free-read-btn-wrap').style.display = 'block';
+                        if(document.getElementById('free-read-btn-wrap')) document.getElementById('free-read-btn-wrap').style.display = 'block';
                         renderTasks(); showToast('心得已隨信箋寄出！'); 
                         
-                        // 👇👇👇 加上這行：完成閱讀心得給予 1000 積分並觸發抽獎動畫
+                        // 完成閱讀心得給予 1000 積分並觸發抽獎動畫
                         addPointsAndGacha(1000, true);
-                    healPool(); // ✅ 新增：在寄信成功後，順便幫系統分配一封孤兒信
+                        healPool(); // 在寄信成功後，順便幫系統分配一封孤兒信
                     });
                 });
             });
