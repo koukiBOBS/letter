@@ -2889,7 +2889,7 @@ function renderTasks() {
                 randMap[s.taskDate] = s;
             });
 
-           if (randomTasks.length === 0) {
+         if (randomTasks.length === 0) {
                 randGrid.innerHTML = '<div class="empty-state"><p>目前尚未設定探索任務。</p></div>';
             } else {
                 randomTasks.forEach((dateStr, i) => {
@@ -2902,7 +2902,6 @@ function renderTasks() {
                     const isLate = !done && Date.now() > limitTime;
                     
                     const randRecord = randMap[dateStr];
-                    // 傳入 dateStr 作為日曆標記
                     addCalTask(dateStr, deadlineStr, 'random', randRecord);
                     if (!done) { hasPendingTasks = true; }
 
@@ -2913,13 +2912,17 @@ function renderTasks() {
                     if (done) {
                         dateHtml = `<span class="task-date" style="color:#6b8e73; font-weight:bold; font-size:1.05rem; letter-spacing:1px; margin-top:12px; display:block;">✓ 任務已達成</span>`;
                     } else {
-                        // 依照要求，這裡只顯示純粹的截止日期，不顯示進度條
-                        const textColor = isLate ? '#ef4444' : '#d98a6c';
-                        const endIcon = isLate ? '<span style="font-size:0.8rem; margin-left:4px;">⚠️已逾期</span>' : '';
+                        // 👇 這裡完全套用與閱讀任務相同的橙色（逾期則為紅色）標籤樣式
+                        let endColor = isLate ? '#ef4444' : '#d98a6c'; 
+                        let endBg = isLate ? 'rgba(239,68,68,0.1)' : 'rgba(217,138,108,0.12)';
+                        let endIcon = isLate ? '<span style="font-size:0.8rem; margin-left:4px;">⚠️已逾期</span>' : '';
                         
                         dateHtml = `
-                            <div style="margin-top:18px; font-family:var(--font-sans); font-size:1.05rem; font-weight:600; color:${textColor};">
-                                截止日期：${formatShortDate(deadlineStr)} ${endIcon}
+                            <div style="display:flex; align-items:center; justify-content:center; width:100%; margin-top:18px; font-family:var(--font-sans); font-size:0.95rem; font-weight:600;">
+                                <span style="color:var(--text-muted); margin-right:8px;">截止於</span>
+                                <span style="color:${endColor}; background:${endBg}; padding:3px 10px; border-radius:6px; letter-spacing:1px;">
+                                    ${formatShortDate(deadlineStr)}${endIcon}
+                                </span>
                             </div>
                         `;
                         if (drawnTasksData[dateStr]) { 
