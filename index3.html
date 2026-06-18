@@ -1813,7 +1813,10 @@ function renderTasks() {
     const rGrid = document.getElementById('task-grid');
     const randGrid = document.getElementById('random-task-grid');
     if(!rGrid || !randGrid) return;
-    rGrid.innerHTML = ''; randGrid.innerHTML = '';
+    
+    // 渲染前先清空畫面
+    rGrid.innerHTML = '';
+    randGrid.innerHTML = '';
     
     if (!currentUser) return; // 確保有登入才執行
     const classId = currentUser.classId || 'default';
@@ -1822,7 +1825,7 @@ function renderTasks() {
     db.ref(`classes/${classId}`).once('value').then(classSnap => {
         const classData = classSnap.val() || {};
         
-        // 👇 修正重點：加入陣列防呆處理，避免 Firebase 將不連續陣列轉為物件導致迴圈崩潰
+        // 🛡️ 防呆處理：確保拿到的任務必定是標準陣列 (解決 Firebase 退化問題)
         function getArraySafe(data) {
             if (!data) return [];
             if (Array.isArray(data)) return data.filter(x => x !== null && x !== undefined);
@@ -1832,7 +1835,7 @@ function renderTasks() {
         let readingTasks = getArraySafe(classData.tasks);
         let randomTasks = getArraySafe(classData.randomTasks);
         
-        // 👇 注入開發面板產生的本地模擬任務（這只存在於老師當前的瀏覽器中，不會影響學生）
+        // 注入開發面板產生的本地模擬任務
         if (window.mockReadingTasks) readingTasks = readingTasks.concat(window.mockReadingTasks);
         if (window.mockRandomTasks) randomTasks = randomTasks.concat(window.mockRandomTasks);
         
@@ -1846,20 +1849,18 @@ function renderTasks() {
             const randSubs = Object.values(randSnap.val() || {});
             drawnTasksData = drawnSnap.val() || {};
             randomSubmissions = randSubs;
-
-            // 【新增】用來記錄是否有未解任務的開關
-            let hasPendingTasks = false; 
-
-
-// --- 新增：重置並準備日曆資料 ---
+ 
+            let hasPendingTasks = false;
+ 
+            // --- 重置並準備日曆資料 ---
             calendarTasksData = {};
             const todayReset = new Date().setHours(0,0,0,0);
-
+ 
             function addCalTask(dateStr, type, doneRecord) {
                 if (!calendarTasksData[dateStr]) calendarTasksData[dateStr] = [];
                 let status = 'pending';
                 const deadline = new Date(dateStr).setHours(0,0,0,0);
-
+ 
                 if (doneRecord) {
                     const submitTime = new Date(doneRecord.timestamp).setHours(0,0,0,0);
                     status = (submitTime <= deadline) ? 'ontime' : 'late';
@@ -1868,121 +1869,128 @@ function renderTasks() {
                 }
                 calendarTasksData[dateStr].push({ type, status });
             }
-
-
-            
-           // 1. 渲染閱讀任務
-            const submittedReadingDates = readingLetters.map(l => l.taskDate || (readingTasks[l.taskIndex] && new Date(l.timestamp).setHours(0,0,0,0) >= new Date(readingTasks[l.taskIndex]).setHours(0,0,0,0) ? readingTasks[l.taskIndex] : null)).filter(v=>v);
-            const rMap = {}; 
-            readingLetters.forEach(l => { 
-                let d = l.taskDate; 
-                if(!d && readingTasks[l.taskIndex] && new Date(l.timestamp).setHours(0,0,0,0) >= new Date(readingTasks[l.taskIndex]).setHours(0,0,0,0)) d = readingTasks[l.taskIndex]; 
-                if(d) rMap[d] = l; // 改為儲存完整 record
-            });
-            
-          // 過濾出所有自由撰寫的紀錄
-            const freeReadingLetters = readingLetters.filter(l => l.taskIndex === 'free');
-            if (readingTasks.length === 0 && freeReadingLetters.length === 0) {
-                rGrid.innerHTML = '<div class="empty-state"><p>目前尚未有閱讀任務與自由撰寫紀錄。</p></div>';
-            }
-            readingTasks.forEach((dateStr, i) => {
-                const unlocked = new Date().setHours(0,0,0,0) >= new Date(dateStr).setHours(0,0,0,0);
-                const done = submittedReadingDates.includes(dateStr);
+ 
+            // =====================================
+            // 📖 1. 渲染閱讀任務 (加入防護網，避免舊資料造成崩潰)
+            // =====================================
+            let submittedReadingDates = [];
+            try {
+                submittedReadingDates = readingLetters.map(l => l.taskDate || (readingTasks[l.taskIndex] && new Date(l.timestamp).setHours(0,0,0,0) >= new Date(readingTasks[l.taskIndex]).setHours(0,0,0,0) ? readingTasks[l.taskIndex] : null)).filter(v=>v);
+                const rMap = {};
+                readingLetters.forEach(l => {
+                    let d = l.taskDate;
+                    if(!d && readingTasks[l.taskIndex] && new Date(l.timestamp).setHours(0,0,0,0) >= new Date(readingTasks[l.taskIndex]).setHours(0,0,0,0)) d = readingTasks[l.taskIndex];
+                    if(d) rMap[d] = l;
+                });
                 
-                // 📝 寫入日曆資料
-                addCalTask(dateStr, 'reading', rMap[dateStr]);
-
-                if (unlocked && !done) { hasPendingTasks = true; }
-
-                const el = document.createElement('div'); el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
-                el.innerHTML = `<span class="task-num">第 ${i+1} 回閱讀</span><span class="task-date">${dateStr} 開放</span>`;
-                el.onclick = () => {
-                    if(done) openChatModal(rMap[dateStr].id);
-                    else if(unlocked) {
-                        if(hasUnrepliedLetters) return alert("您有尚未回覆的信件，請先回覆。");
-                        selectedTaskIndex = i; selectedTaskDate = dateStr;
-                        rGrid.style.display = 'none'; document.getElementById('write-editor').style.display = 'block';
-                    } else alert("時空未到，尚未開放。");
-                }; rGrid.appendChild(el);
-            });
-
-// --- 渲染「自由撰寫」的紀錄卡片 ---
-            freeReadingLetters.forEach((l) => {
-                const el = document.createElement('div'); 
-                el.className = `task-card completed`; // 自由撰寫一定是已完成寄出的狀態
-                
-                // 擷取寄出日期與書名
-                const d = new Date(l.timestamp);
-                const dateText = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
-                let shortTitle = l.bookTitle.length > 8 ? l.bookTitle.substring(0, 8) + '...' : l.bookTitle;
-                
-                // 設定卡片版面 (與常規任務保持一致)
-                el.innerHTML = `<span class="task-num">✨ 自由分享</span><span class="task-date">《${escapeHtml(shortTitle)}》<br>${dateText} 寄出</span>`;
-                
-                // 點擊卡片直接開啟信紙介面
-                el.onclick = () => {
-                    openChatModal(l.id);
-                }; 
-                rGrid.appendChild(el);
-            });
-            
-
-           // 2. 渲染隨機任務
-            // 2. 渲染隨機任務
-             const submittedRandomDates = randSubs.map(s => s.taskDate);
-            
-            // 👇 【新增】：在這裡呼叫破產檢查系統 👇
-            checkAndTriggerBankruptcy(readingTasks, randomTasks, submittedReadingDates, submittedRandomDates);
-            // 👆 【新增結束】 👆
-
-            // 【新增】建立一個 Map 方便透過日期找到對應的繳交紀錄與 letterId
-            const randMap = {};
-            randSubs.forEach(s => {
-                randMap[s.taskDate] = s;
-            });
-
-            if (randomTasks.length === 0) randGrid.innerHTML = '<div class="empty-state"><p>目前尚未設定探索任務。</p></div>';
-            randomTasks.forEach((dateStr, i) => {
-                const unlocked = true; 
-                const done = submittedRandomDates.includes(dateStr);
-                const isLate = !done && new Date().setHours(0,0,0,0) > new Date(dateStr).setHours(0,0,0,0);
-                
-                // 📝 寫入日曆資料
-                const randRecord = randMap[dateStr];
-                addCalTask(dateStr, 'random', randRecord);
-
-                if (!done) { hasPendingTasks = true; }
-
-                const el = document.createElement('div'); 
-                el.className = `task-card ${done ? 'completed' : ''}`;
-                
-                let dateTextHtml = `<span class="task-date">${dateStr} 截止</span>`;
-                if (isLate) {
-                    dateTextHtml = `<span class="task-date" style="color: #ef4444; font-weight: bold;">⚠️ 已逾期 (限期: ${dateStr})</span>`;
+                const freeReadingLetters = readingLetters.filter(l => l.taskIndex === 'free');
+                if (readingTasks.length === 0 && freeReadingLetters.length === 0) {
+                    rGrid.innerHTML = '<div class="empty-state"><p>目前尚未有閱讀任務與自由撰寫紀錄。</p></div>';
                 }
-
-                el.innerHTML = `<span class="task-num">第 ${i+1} 回探索</span>${dateTextHtml}`;
-                if (!done && drawnTasksData[dateStr]) { el.innerHTML += `<div style="margin-top:10px; font-size:0.8rem; color:#8b7355; font-weight:600;">已抽籤，待繳交</div>`; }
-                
-                el.onclick = () => {
-                    if(done) {
-                        // 【修改】直接打開信紙對話框，顯示自己的隨機探索信件
-                        openChatModal(randMap[dateStr].letterId);
-                    } else {
-                        handleRandomTaskClick(dateStr);
-                    }
-                }; randGrid.appendChild(el);
-            });
-
-            // 📝 最後，呼叫渲染日曆函數 (放在 Promise 迴圈跑完的尾巴)
-            renderCalendar();
-
-            // 【新增】這就是 Promise 結束的地方！
-            // 迴圈都跑完後，根據檢查結果控制 3D 信封顯示與否
-            if (indicatorTasks) {
-                indicatorTasks.visible = hasPendingTasks;
+ 
+                readingTasks.forEach((dateStr, i) => {
+                    const unlocked = new Date().setHours(0,0,0,0) >= new Date(dateStr).setHours(0,0,0,0);
+                    const done = submittedReadingDates.includes(dateStr);
+                    
+                    // 📝 寫入日曆資料
+                    addCalTask(dateStr, 'reading', rMap[dateStr]);
+                    if (unlocked && !done) { hasPendingTasks = true; }
+ 
+                    const el = document.createElement('div');
+                    el.className = `task-card ${done ? 'completed' : ''} ${!unlocked && !done ? 'locked' : ''}`;
+                    el.innerHTML = `<span class="task-num">第 ${i+1} 回閱讀</span><span class="task-date">${dateStr} 開放</span>`;
+                    el.onclick = () => {
+                        if(done) openChatModal(rMap[dateStr].id);
+                        else if(unlocked) {
+                            if(hasUnrepliedLetters) return alert("您有尚未回覆的信件，請先回覆。");
+                            selectedTaskIndex = i; selectedTaskDate = dateStr;
+                            rGrid.style.display = 'none'; document.getElementById('write-editor').style.display = 'block';
+                        } else alert("時空未到，尚未開放。");
+                    };
+                    rGrid.appendChild(el);
+                });
+ 
+                // 自由撰寫
+                freeReadingLetters.forEach((l) => {
+                    const el = document.createElement('div');
+                    el.className = `task-card completed`;
+                    const d = new Date(l.timestamp);
+                    const dateText = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+                    
+                    // 🛡️ 舊資料防呆：如果舊紀錄遺失了書名，給予預設值避免長度判斷崩潰
+                    let safeTitle = l.bookTitle || '未命名書籍';
+                    let shortTitle = safeTitle.length > 8 ? safeTitle.substring(0, 8) + '...' : safeTitle;
+                    
+                    el.innerHTML = `<span class="task-num">✨ 自由分享</span><span class="task-date">《${escapeHtml(shortTitle)}》<br>${dateText} 寄出</span>`;
+                    el.onclick = () => { openChatModal(l.id); };
+                    rGrid.appendChild(el);
+                });
+            } catch (err) {
+                console.error("閱讀任務渲染時遇到舊資料衝突：", err);
+                rGrid.innerHTML = '<div class="empty-state"><p style="color:#ef4444;">部分閱讀紀錄因格式老舊無法顯示，但不影響新任務運作。</p></div>';
             }
-
+ 
+            // =====================================
+            // 📸 2. 渲染探索任務 (加入防護網隔離)
+            // =====================================
+            try {
+                const submittedRandomDates = randSubs.map(s => s.taskDate);
+                
+                // 呼叫破產檢查系統 (如果函數存在)
+                if (typeof checkAndTriggerBankruptcy === 'function') {
+                    checkAndTriggerBankruptcy(readingTasks, randomTasks, submittedReadingDates, submittedRandomDates);
+                }
+ 
+                const randMap = {};
+                randSubs.forEach(s => { randMap[s.taskDate] = s; });
+ 
+                if (randomTasks.length === 0) {
+                    randGrid.innerHTML = '<div class="empty-state"><p>目前尚未設定探索任務。</p></div>';
+                } else {
+                    randomTasks.forEach((dateStr, i) => {
+                        const done = submittedRandomDates.includes(dateStr);
+                        const isLate = !done && new Date().setHours(0,0,0,0) > new Date(dateStr).setHours(0,0,0,0);
+                        
+                        // 📝 寫入日曆資料
+                        const randRecord = randMap[dateStr];
+                        addCalTask(dateStr, 'random', randRecord);
+ 
+                        if (!done) { hasPendingTasks = true; }
+ 
+                        const el = document.createElement('div');
+                        el.className = `task-card ${done ? 'completed' : ''}`;
+                        
+                        let dateTextHtml = `<span class="task-date">${dateStr} 截止</span>`;
+                        if (isLate) {
+                            dateTextHtml = `<span class="task-date" style="color: #ef4444; font-weight: bold;">⚠️ 已逾期 (限期: ${dateStr})</span>`;
+                        }
+ 
+                        el.innerHTML = `<span class="task-num">第 ${i+1} 回探索</span>${dateTextHtml}`;
+                        if (!done && drawnTasksData[dateStr]) {
+                            el.innerHTML += `<div style="margin-top:10px; font-size:0.8rem; color:#8b7355; font-weight:600;">已抽籤，待繳交</div>`;
+                        }
+                        
+                        el.onclick = () => {
+                            if(done) {
+                                openChatModal(randMap[dateStr].letterId);
+                            } else {
+                                handleRandomTaskClick(dateStr);
+                            }
+                        };
+                        randGrid.appendChild(el);
+                    });
+                }
+            } catch (err) {
+                console.error("探索任務渲染時發生錯誤：", err);
+                randGrid.innerHTML = '<div class="empty-state"><p style="color:#ef4444;">探索任務載入異常，可能是舊資料衝突。</p></div>';
+            }
+ 
+            // 📝 最後呼叫渲染日曆與信封提示
+            renderCalendar();
+            if (indicatorTasks) { indicatorTasks.visible = hasPendingTasks; }
+ 
+        }).catch(err => {
+            console.error("從資料庫拉取任務資料時發生錯誤：", err);
         });
     });
 }
