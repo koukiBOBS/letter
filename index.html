@@ -4342,6 +4342,43 @@ function createPowderMetalTexture(baseColorHex) {
 
 
 
+// 🎨 零效能生成：印象派油畫風格的行人剪影 (利用色塊欺騙視覺)
+function createPersonTexture(coatColor) {
+    const canvas = document.createElement('canvas');
+    // 使用狹長比例，符合人體
+    canvas.width = 64; canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+
+    // 輔助函數：畫出柔和的油畫筆觸色塊
+    function drawBlob(x, y, rx, ry, color, alpha) {
+        ctx.fillStyle = color;
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // 1. 腳底的微弱陰影 (讓人物接地氣，不輕飄飄)
+    drawBlob(32, 122, 20, 4, '#000000', 0.3);
+
+    // 2. 深灰色的基礎人體輪廓 (頭、軀幹、模糊的雙腿)
+    drawBlob(32, 22, 7, 10, '#1a1f24', 0.95);  // 頭
+    drawBlob(32, 70, 12, 35, '#1a1f24', 0.9);  // 軀幹
+    drawBlob(26, 105, 5, 20, '#111111', 0.7);  // 左腿筆觸
+    drawBlob(38, 105, 5, 20, '#111111', 0.7);  // 右腿筆觸
+
+    // 3. 點睛之筆：一抹鮮豔的衣服色彩 (大衣/圍巾/裙子)
+    // 這是印象派的精髓，讓剪影瞬間活過來
+    drawBlob(32, 60, 14, 25, coatColor, 0.6); // 外層渲染
+    drawBlob(32, 55, 9, 20, coatColor, 0.9);  // 內層核心
+
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+}
+
+
+        
+
 
 // 👇 替換：專屬「商店街對岸」的天際線光點 (稀疏油畫/印象派風格，防閃爍)
 // 👇 替換：專屬「商店街對岸」的天際線光點 (極度稀疏的油畫/印象派風格)
@@ -7451,6 +7488,25 @@ function animateRoom() {
                 c.lookAt(0, c.position.y, 0);
             });
         }
+
+
+// 🚶‍♀️ 6. 印象派行人漫步
+        if (typeof animScenery.pedestrians !== 'undefined') {
+            animScenery.pedestrians.forEach(p => {
+                // 1. 水平移動
+                p.position.x += p.userData.speed;
+                
+                // 走到底自動從另一邊走出來
+                if (p.position.x > 200) p.position.x = -200;
+                else if (p.position.x < -200) p.position.x = 200;
+
+                // 2. 💡 步伐的靈魂：利用 x 座標產生絕對同步的上下微小起伏
+                // 這樣不用寫複雜的動畫，他們每前進一步身體就會自然地上下微彈！
+                p.position.y = p.userData.baseY + Math.abs(Math.sin(p.position.x * 3.0)) * 0.15;
+            });
+        }
+
+        
     }
  
     // ==========================================
@@ -10298,6 +10354,47 @@ function buildShoppingStreet() {
             pTreeLeaf.setColorAt(i, new THREE.Color().setHSL(0.25 + Math.random()*0.1, 0.6, 0.3));
         }
         streetScene.add(planterIMesh, seatIMesh, pTreeTrunk, pTreeLeaf);
+
+
+// ==========================================
+        // 🚶‍♀️ 4.5 印象派動態行人 (Sprite 粒子)
+        // ==========================================
+        animScenery.pedestrians = [];
+        // 提供幾種經典的服裝點綴色 (芥末黃、酒紅、海軍藍、卡其色、米白)
+        const coatColors = ['#d4af37', '#8b3a3a', '#3a5f8b', '#c2b280', '#eeeeee'];
+        
+        for(let i=0; i<30; i++) { // 30 個人散佈在整條長廊上
+            const color = coatColors[Math.floor(Math.random() * coatColors.length)];
+            const pMat = new THREE.SpriteMaterial({
+                map: createPersonTexture(color), 
+                transparent: true, 
+                depthWrite: false // 避免透明邊緣互相遮擋產生黑框
+            });
+            const person = new THREE.Sprite(pMat);
+            
+            // 隨機散佈在長廊的 X 軸，並分配在靠近海或靠近店舖的 Z 軸
+            const isNearSea = Math.random() > 0.5;
+            const xPos = -200 + Math.random() * 400;
+            const zPos = isNearSea ? -18 : -8; // 行人道的位置
+            
+            // 稍微有高矮胖瘦的隨機差異
+            const scale = 5.5 + Math.random() * 1.5; 
+            person.scale.set(scale * 0.5, scale, 1);
+            
+            // 記錄初始 Y 軸與行走速度
+            const baseY = 0.5 + (scale / 2);
+            person.position.set(xPos, baseY, zPos);
+            
+            // 有人往左走，有人往右走，速度各有不同
+            const speed = (0.02 + Math.random() * 0.03) * (Math.random() > 0.5 ? 1 : -1);
+            
+            person.userData = { speed: speed, baseY: baseY };
+            streetScene.add(person);
+            animScenery.pedestrians.push(person);
+        }
+
+
+        
 
 // 🏙️ 5. 單層繪製法：無 Z-fighting 閃爍的絕對清晰天際線
         // ==========================================
