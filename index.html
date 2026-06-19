@@ -3725,7 +3725,9 @@ function renderCalendar() {
     const cellsContainer = document.getElementById('calendar-cells');
     cellsContainer.innerHTML = '';
     
-    const todayStr = new Date().toISOString().split('T')[0];
+   // 💡 修正時區問題：不使用 toISOString() 避免 UTC 時差，直接強制抓取本地的精準年月日
+    const _now = new Date();
+    const todayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}-${String(_now.getDate()).padStart(2, '0')}`;
 
     // 填補月初的空白格子
     for (let i = 0; i < firstDay; i++) {
