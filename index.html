@@ -4343,8 +4343,7 @@ function createPowderMetalTexture(baseColorHex) {
 
 
 
-// 👇 替換：專屬「商店街對岸」的點彩派微光貼圖 (極致柔和暈光版)
-// 👇 替換：專屬「商店街對岸」的高質感微縮窗景貼圖 (寫實網格版)
+// 👇 替換：專屬「商店街對岸」的天際線光點 (稀疏油畫/印象派風格，防閃爍)
 function createCityLightsTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 512; canvas.height = 512;
@@ -4354,52 +4353,42 @@ function createCityLightsTexture() {
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, 512, 512); 
 
-    // 寫實的窗戶燈光：日光燈白、鎢絲燈黃、螢幕微藍
-    const lightColors = ['#ffffff', '#ffeedd', '#ffddaa', '#dcf0ff'];
+    // 指定的色彩：白、微藍、暖黃、橙、紅
+    const colors = ['#ffffff', '#dcf0ff', '#ffddaa', '#ff9955', '#ff4444'];
 
-    // 建築格柵：模擬樓層與窗框
-    const floorHeight = 8; // 每層樓的高度
-    const windowWidth = 6; // 窗戶寬度
-    const windowGap = 4;   // 窗戶間距
+    // 🌟 極少量：整張貼圖只畫約 18 筆光點，達到象徵性點綴
+    const dotCount = 18;
 
-    for (let y = 0; y < 512; y += floorHeight) { 
-        // 隨機整層暗燈 (模擬空置樓層或下班)
-        if (Math.random() > 0.85) continue; 
-
-        for (let x = 0; x < 512; x += (windowWidth + windowGap)) { 
-            // 只有約 25% 的窗戶會亮起，製造真實的疏密感
-            if (Math.random() > 0.75) { 
-                ctx.fillStyle = lightColors[Math.floor(Math.random() * lightColors.length)];
-                
-                // 畫出極其微小且銳利的長方形窗戶
-                ctx.fillRect(x, y + 2, windowWidth, floorHeight - 4);
-                
-                // 偶爾有特別亮的辦公室，稍微加強光暈
-                if (Math.random() > 0.9) {
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-                    ctx.fillRect(x - 1, y + 1, windowWidth + 2, floorHeight - 2);
-                }
-            }
+    for (let i = 0; i < dotCount; i++) { 
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+        
+        // 像油畫筆觸一樣，稍微不規則、大一點的色塊 (8 到 14 px)
+        // 放大尺寸可以抵抗遠距離的模糊，並且徹底消除閃爍
+        const size = 8 + Math.random() * 6; 
+        
+        ctx.globalAlpha = 0.8 + Math.random() * 0.2;
+        ctx.fillRect(x, y, size, size + (Math.random() * 4 - 2)); 
+        
+        // 偶爾在旁邊補一筆稍微淡一點的顏色，營造厚塗手繪感
+        if (Math.random() > 0.5) {
+            ctx.globalAlpha = 0.4;
+            ctx.fillRect(x - 4, y + 3, size, size);
         }
-    }
-
-    // 在貼圖最頂端加入幾個航空障礙紅燈 (高樓頂部的閃爍紅燈)
-    for (let x = 10; x < 512; x += 120) {
-        ctx.fillStyle = '#ff2222';
-        ctx.fillRect(x + Math.random()*20, 0, 4, 4);
     }
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping; 
     tex.wrapT = THREE.RepeatWrapping;
     
-    // ⚠️ 關鍵：使用 NearestFilter 保持窗戶的「像素級銳利感」，防止距離遠時變成一團糊
-    tex.minFilter = THREE.NearestFilter;
-    tex.magFilter = THREE.NearestFilter;
+    // ⚠️ 關鍵防閃爍：恢復開啟 Mipmap 平滑過濾！
+    // 這樣在鏡頭移動時，光點邊緣會平滑過渡，絕對不會再有一閃一閃的劣質感
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
     
     return tex;
 }
-
         
 // 👇 新增：零效能 GPU 頂點海浪注入器
 function injectWaveShader(material) {
@@ -10321,7 +10310,7 @@ function buildShoppingStreet() {
         }
         streetScene.add(planterIMesh, seatIMesh, pTreeTrunk, pTreeLeaf);
 
- // 🏙️ 5. 單層繪製法：無 Z-fighting 閃爍的絕對清晰天際線
+// 🏙️ 5. 單層繪製法：無 Z-fighting 閃爍的絕對清晰天際線
         // ==========================================
         const cityLightsTex = createCityLightsTexture();
         
@@ -10343,14 +10332,12 @@ function buildShoppingStreet() {
                 '#include <uv_vertex>',
                 `
                 #include <uv_vertex>
-                // 獲取每一棟大廈在 3D 世界中的實際寬高比例
                 float scaleX = length(vec3(instanceMatrix[0][0], instanceMatrix[0][1], instanceMatrix[0][2]));
                 float scaleY = length(vec3(instanceMatrix[1][0], instanceMatrix[1][1], instanceMatrix[1][2]));
                 
-                // ⚠️ 關鍵魔法：根據大廈尺寸重複拼貼紋理 (Tiling)。
-                // 數字 0.06 決定了窗戶的密集度。數字越大窗戶越密越小。
-                // 這樣可以保證寬大廈和瘦大廈的窗戶大小是一模一樣的，絕不拉伸變形！
-                vUv = uv * vec2(scaleX * 0.06, scaleY * 0.06); 
+                // ⚠️ 調整為 0.015：將貼圖拉大，讓光點顯得更大且稀疏
+                // 這樣每棟大廈上就只會有幾點如油畫筆觸般的象徵性光芒
+                vUv = uv * vec2(scaleX * 0.015, scaleY * 0.015); 
                 `
             );
         };
