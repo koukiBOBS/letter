@@ -8101,7 +8101,7 @@ if (type === 'painting' || type === 'bookcase') {
             toggleRadio();
       // 在 onPointerUp(e) 裡，找到檢查 type 的區塊，加入以下判斷：
 } else if(type === 'stereo') {
-            openMusicPlayer();
+            openMusicPlayer('stereo'); // 👈 告訴系統：這是從家裡音響打開的！
         }
         
         else if (type === 'bus') {
