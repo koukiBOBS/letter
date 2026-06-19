@@ -10225,12 +10225,6 @@ function buildShoppingStreet() {
     street.receiveShadow = true;
     streetScene.add(street);
 
-// A. 海濱長廊步道 (清水模質感)
-    const promenadeMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
-    const promenade = new THREE.Mesh(new THREE.BoxGeometry(40, 0.5, 200), promenadeMat);
-    promenade.position.set(-30, -4.7, 0); // 緊貼馬路左側
-    promenade.receiveShadow = true;
-    streetScene.add(promenade);
 
     // 👇 新增：極低效能負擔的海濱防浪堤 (消波塊群)
     // 利用簡單的四面體(Tetrahedron)模擬消波塊，並用 InstancedMesh 讓 400 顆石頭只算 1 次繪圖指令！
@@ -10530,14 +10524,13 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         buildingsGrp.add(createExpansionShop(-45, '#a5b0a3', '#4e5a59'));
         buildingsGrp.add(createExpansionShop(-65, '#d4c7b8', '#8a7d6d'));
 
-        // ==========================================
-        // 4. 海濱長廊、欄杆與花槽
-        // ==========================================
-        const promenadeMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
-        const promenade = new THREE.Mesh(new THREE.BoxGeometry(40, 0.5, 400), promenadeMat);
-        promenade.position.set(-35, 0.1, 0); 
-        promenade.receiveShadow = true;
-        streetScene.add(promenade);
+ // A. 海濱長廊步道 (清水模質感)
+    const promenadeMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
+    const promenade = new THREE.Mesh(new THREE.BoxGeometry(40, 0.5, 200), promenadeMat);
+    promenade.position.set(-30, -4.7, 0); // 緊貼馬路左側
+    promenade.receiveShadow = true;
+    streetScene.add(promenade);
+
 
        // B. 香港經典海濱金屬欄杆 (實例化，幾百根柱子只要 1 次運算)
     // 💡 加上 fakeGlassEnv 虛擬環境光，金屬度拉滿，產生極度逼真的不鏽鋼反光，且零效能負擔！
