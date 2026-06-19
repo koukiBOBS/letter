@@ -7492,8 +7492,8 @@ function animateRoom() {
                 p.position.z += p.userData.speedZ;
                 
                 // 👇 修正：將路人的循環邊界擴展到 900，讓他們在超長街道上合理分佈
-                if (p.position.z > 900) p.position.z = -900;
-                else if (p.position.z < -900) p.position.z = 900;
+                if (p.position.z > 900) p.position.z = -190;
+                else if (p.position.z < -900) p.position.z = 190;
 
                 // X 軸邊界：碰到欄杆或店門口就轉身往回走
                 if (p.position.x > 15) { p.position.x = 15; p.userData.speedX *= -1; }
