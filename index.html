@@ -5008,6 +5008,15 @@ let roomCameraBackup = { cp: new THREE.Vector3(), ct: new THREE.Vector3() };
 function goToBalcony() {
     if (isAtBalcony) return;
     isAtBalcony = true;
+
+          // 👇 新增這行：出室外時自動關閉所有音樂 👇
+    stopAllRoomAudio();
+
+    // 👇 新增：出露台時，顯示左右宏大風景與海面
+    if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = true;
+
+    roomCameraBackup.cp.copy(camera.position);
+    roomCameraBackup.ct.copy(controls.target);
     
     // 👇 新增：出露台時，顯示左右宏大風景與海面
     if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = true;
@@ -8318,6 +8327,45 @@ function toggleRadio() {
         gsap.to(radioGrp.scale, {y: 0.9, duration: 0.1, yoyo: true, repeat: 1});
     }
 }
+
+
+
+// 👇 新增：統一關閉室內所有音源的函數
+function stopAllRoomAudio() {
+    let hasAudioStopped = false;
+
+    // 1. 關閉收音機 (香港電台)
+    if (typeof isRadioPlaying !== 'undefined' && isRadioPlaying) {
+        const audio = document.getElementById('rthk-audio');
+        if(audio) audio.pause();
+        isRadioPlaying = false;
+        
+        // 熄滅收音機上的指示燈
+        if(typeof radioLED !== 'undefined' && radioLED) {
+            radioLED.material.color.setHex(0x882222);
+            radioLED.material.emissive.setHex(0x550000);
+        }
+        hasAudioStopped = true;
+    }
+
+    // 2. 關閉黑膠唱片機
+    if (typeof rIsPlaying !== 'undefined' && rIsPlaying) {
+        if (typeof recordAudio !== 'undefined') {
+            recordAudio.pause();
+        }
+        // 更新 UI 為暫停狀態
+        if (typeof updatePlayingVisuals === 'function') {
+            updatePlayingVisuals(false);
+        }
+        hasAudioStopped = true;
+    }
+
+    // 如果真的有切斷音樂，顯示一小段提示
+    if (hasAudioStopped) {
+        setTimeout(() => showToast("🚪 步出室外，室內音樂已自動停止"), 500);
+    }
+}
+
 
         
 
