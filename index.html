@@ -10583,18 +10583,39 @@ function syncStreetEnvironment() {
     // 遍歷商店街所有材質，手動上色與開關燈
     streetScene.traverse(child => {
         // 1. 處理獨立發光的物理材質物件 (店舖、街燈)
+       // 1. 處理獨立發光的物理材質物件 (商鋪、招牌、辦公室)
         if (child.material && child.material.emissive) {
+            // 霓虹燈
             if (child.userData.isNeon) {
+                child.material.emissiveIntensity = isNightOrDusk ? 3.5 : 0.0;
+                child.material.emissive.setHex(0xffffff);
+            }
+            // 橫向大招牌
+            if (child.userData.isSignboard) {
                 child.material.emissiveIntensity = isNightOrDusk ? 2.5 : 0.0;
                 child.material.emissive.setHex(0xffffff);
             }
+            // 店舖內部 (超明亮透光)
             if (child.userData.isShopInside) {
-                child.material.emissive.setHex(isNightOrDusk ? 0xffcc88 : 0x000000);
-                child.material.emissiveIntensity = isNightOrDusk ? 1.0 : 0.0;
+                child.material.emissive.setHex(isNightOrDusk ? 0xffeebb : 0x000000);
+                child.material.emissiveIntensity = isNightOrDusk ? 2.5 : 0.0;
             }
-            if (child.userData.isStreetLight) {
-                child.material.emissiveIntensity = isNightOrDusk ? 2.0 : 0.0;
+            // 上層辦公室窗戶 (錯落有致的燈光)
+            if (child.material.userData && child.material.userData.isOfficeLight) {
+                // 只有部分辦公室會開燈，並且利用 lightLevel 產生不同亮度
+                if (isNightOrDusk && child.material.userData.lightLevel > 0.4) {
+                    child.material.emissive.setHex(0xfff5e6); // 暖白辦公室光
+                    child.material.emissiveIntensity = 1.0 + child.material.userData.lightLevel;
+                } else {
+                    child.material.emissiveIntensity = 0.0;
+                }
             }
+        }
+        
+        // 路燈
+        if (child.isPointLight && child.name === 'realLight') {
+            child.intensity = isNightOrDusk ? 3.5 : 0.0;
+            child.distance = 60; 
         }
         if (child.isPointLight && child.name === 'realLight') {
             child.intensity = isNightOrDusk ? 1.2 : 0.0;
