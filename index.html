@@ -7335,6 +7335,37 @@ function animateRoom() {
  
     // 只有當視線掃到窗外時，才去計算耗費 CPU 的海浪、雲朵、車輛與摩天輪
     if (isLookingOutside) {
+
+
+// 🌊 0 效能海浪動畫 (紋理滾動)
+        if (streetWaterTex) {
+            streetWaterTex.offset.x -= 0.0005; // 模擬水流方向
+            streetWaterTex.offset.y -= 0.001;
+        }
+
+        // ✨ 點點漁燈飄浮與閃爍
+        if (typeof animScenery.fishingLights !== 'undefined') {
+            const time = Date.now() * 0.002;
+            animScenery.fishingLights.forEach(light => {
+                // 微微隨波逐流
+                light.position.x += light.userData.speedX;
+                if(light.position.x > 100) light.position.x = -1300;
+                else if(light.position.x < -1300) light.position.x = 100;
+                
+                // 隨海浪上下浮動
+                light.position.y = light.userData.baseY + Math.sin(time + light.userData.phase) * 0.3;
+
+                // 夜晚閃爍，白天隱藏
+                if (currentEnvParams && (currentEnvParams.phaseStr === 'night' || currentEnvParams.phaseStr === 'dusk')) {
+                    // 呼吸燈閃爍效果
+                    light.material.opacity = 0.4 + Math.sin(time * 1.5 + light.userData.phase) * 0.6;
+                } else {
+                    light.material.opacity = 0; 
+                }
+            });
+        }
+
+        
       // ==========================================
         // 1. 車輛邏輯 (配合無盡道路延伸)
         // ==========================================
@@ -9722,6 +9753,32 @@ window.devSimulateShoppingStreet = function() {
 let streetScene = null;
 let isAtStreet = false;
 let roomVisibilityBackup = [];
+// 👇 新增全域變數與動態海浪紋理生成
+let streetWaterTex = null;
+
+
+
+        function createDynamicWaterTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#0a1a2a'; 
+    ctx.fillRect(0, 0, 512, 512);
+    // 繪製海面的微波反光
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    for(let i=0; i<300; i++) {
+        ctx.fillRect(Math.random()*512, Math.random()*512, 10 + Math.random()*30, 1.5);
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; 
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(20, 20); // 讓波浪密集一點
+    return tex;
+}
+
+
+
+        
 
 // 1. 舊式唐樓「紙皮石」馬賽克外牆 (加入光影倒角與歲月水痕)
 // 1. 寫實風香港大廈外牆 (帶有微小顆粒與歲月水痕，取代原本的馬賽克磚)
@@ -9985,16 +10042,24 @@ function buildShoppingStreet() {
         streetDir.shadow.camera.top = 80; streetDir.shadow.camera.bottom = -80;
         streetScene.add(streetDir);
 
+      // ==========================================
+        // 1 & 4. 消除懸空感與動態海面 (0效能消耗紋理滾動)
         // ==========================================
-        // 1. 消除懸空感：無盡的海洋與地平線山脈
-        // ==========================================
-        const oceanBase = new THREE.Mesh(
-            new THREE.PlaneGeometry(8000, 8000), 
-            new THREE.MeshBasicMaterial({color: 0x0a1a2a}) 
-        );
+        if (!streetWaterTex) streetWaterTex = createDynamicWaterTexture();
+        
+        const oceanBaseMat = new THREE.MeshBasicMaterial({ map: streetWaterTex });
+        const oceanBase = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000), oceanBaseMat);
         oceanBase.rotation.x = -Math.PI/2;
         oceanBase.position.set(0, -6.5, 0); 
         streetScene.add(oceanBase);
+
+        const staticSea = new THREE.Mesh(
+            new THREE.PlaneGeometry(800, 800), 
+            new THREE.MeshStandardMaterial({ map: streetWaterTex, color: 0x1a3b5c, roughness: 0.1, metalness: 0.8 })
+        );
+        staticSea.rotation.x = -Math.PI/2;
+        staticSea.position.set(-255, -5, 0); 
+        streetScene.add(staticSea);
 
         const islandMat = new THREE.MeshBasicMaterial({color: 0x050a10, fog: false});
         for(let i=0; i<15; i++) {
@@ -10371,85 +10436,95 @@ function buildShoppingStreet() {
         staticSea.position.set(-255, -5, 0); 
         streetScene.add(staticSea);
 
-        // ==========================================
-        // 🌃 5. 對岸維港：深遠的空間感與璀璨燈火
+         // ==========================================
+        // 🌃 5. 對岸維港：完整顯示與豐富色彩
         // ==========================================
         const bTex = createBuildingTexture();
         const bEmissiveTex = createBuildingEmissiveTexture();
+        const buildCountPerColor = 40; // 每種顏色40棟，總共160棟大廈
         
-        const skylineMat = new THREE.MeshStandardMaterial({ color: 0x1a2530, roughness: 0.9, fog: true });
-        const skylineLightMat = new THREE.MeshStandardMaterial({
-            color: 0x1a2530, roughness: 0.9, map: bTex, 
-            emissiveMap: bEmissiveTex, emissive: 0xffea99, emissiveIntensity: 0.0,
-            fog: false 
-        }); 
+        // 四種香港常見夜景燈光顏色 (暖黃、白、青藍、霓虹粉)
+        const cityColors = [0xffea99, 0xffffff, 0xaaddff, 0xffbbee];
+        const skylineIMeshes = [];
         
-        const buildCount = 80;
-        const skylineIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), skylineMat, buildCount);
-        const skylineLightIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), skylineLightMat, buildCount);
-        
-        for(let i=0; i<buildCount; i++) {
-            let w = 60 + Math.random() * 80;
-            let h = 200 + Math.random() * 600; 
-            let d = 60 + Math.random() * 80;
+        // 暗色主體
+        const skylineMat = new THREE.MeshStandardMaterial({ color: 0x121a22, roughness: 0.9, fog: true });
+        const skylineBaseIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), skylineMat, buildCountPerColor * 4);
+        skylineBaseIMesh.frustumCulled = false; // 🚫 關鍵：防止大廈因視角運算錯誤而消失
+        streetScene.add(skylineBaseIMesh);
+
+        let globalBIndex = 0;
+
+        cityColors.forEach((colorHex, colorIndex) => {
+            const lightMat = new THREE.MeshStandardMaterial({
+                color: 0x121a22, roughness: 0.9, map: bTex, 
+                emissiveMap: bEmissiveTex, emissive: colorHex, emissiveIntensity: 0.0,
+                fog: false // 燈光不受霧氣影響，保持璀璨
+            }); 
             
-            dummyTools.position.set(-800 - Math.random()*400, h/2 - 20, -1000 + Math.random()*2000);
-            dummyTools.scale.set(w, h, d);
-            dummyTools.updateMatrix();
+            const lightIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), lightMat, buildCountPerColor);
+            lightIMesh.frustumCulled = false; // 🚫 關鍵防消失
+            lightIMesh.userData.isWindow = true; 
             
-            skylineIMesh.setMatrixAt(i, dummyTools.matrix);
-            skylineLightIMesh.setMatrixAt(i, dummyTools.matrix);
-        }
-        
-        skylineLightIMesh.userData.isWindow = true; 
-        streetScene.add(skylineIMesh, skylineLightIMesh);
+            for(let i=0; i<buildCountPerColor; i++) {
+                let w = 40 + Math.random() * 60;
+                let h = 200 + Math.random() * 500; 
+                let d = 40 + Math.random() * 60;
+                
+                // 調整 Z 軸距離，控制在 -300 到 -700 之間，確保全部在相機 far 範圍內
+                dummyTools.position.set(-600 - Math.random()*800, h/2 - 20, -300 - Math.random()*400);
+                dummyTools.scale.set(w, h, d);
+                dummyTools.updateMatrix();
+                
+                lightIMesh.setMatrixAt(i, dummyTools.matrix);
+                skylineBaseIMesh.setMatrixAt(globalBIndex++, dummyTools.matrix);
+            }
+            streetScene.add(lightIMesh);
+            skylineIMeshes.push(lightIMesh);
+        });
 
         // ==========================================
-        // 🛥️ 6. 零效能漁船與閃爍漁燈
+        // 🛥️ 6. 點點漁燈 (Sprite 粒子系統，0 效能負擔)
         // ==========================================
-        animScenery.boats = [];
-        const boatMat = new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.9});
-        const cabinMat = new THREE.MeshStandardMaterial({color: 0xdddddd, roughness: 0.8});
+        animScenery.fishingLights = [];
+        
+        // 製作發光圓點貼圖
+        const glowCanvas = document.createElement('canvas');
+        glowCanvas.width = 32; glowCanvas.height = 32;
+        const gCtx = glowCanvas.getContext('2d');
+        const gGrad = gCtx.createRadialGradient(16,16,0,16,16,16);
+        gGrad.addColorStop(0, 'rgba(255, 240, 180, 1)');
+        gGrad.addColorStop(0.2, 'rgba(255, 200, 50, 0.8)');
+        gGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        gCtx.fillStyle = gGrad; gCtx.beginPath(); gCtx.arc(16,16,16,0,Math.PI*2); gCtx.fill();
+        
+        const glowTex = new THREE.CanvasTexture(glowCanvas);
+        const spriteMat = new THREE.SpriteMaterial({
+            map: glowTex, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: true
+        });
 
-        for(let i=0; i<6; i++) {
-            const boatGrp = new THREE.Group();
-            
-            const hull = new THREE.Mesh(new THREE.BoxGeometry(12, 3, 4), boatMat);
-            hull.position.y = 1.5; boatGrp.add(hull);
-            const cabin = new THREE.Mesh(new THREE.BoxGeometry(5, 3, 3), cabinMat);
-            cabin.position.set(-1, 4.5, 0); boatGrp.add(cabin);
-
-            const canvas = document.createElement('canvas');
-            canvas.width = 32; canvas.height = 32;
-            const ctx = canvas.getContext('2d');
-            const grad = ctx.createRadialGradient(16,16,0,16,16,16);
-            grad.addColorStop(0, 'rgba(255, 230, 150, 1)');
-            grad.addColorStop(0.3, 'rgba(255, 200, 100, 0.8)');
-            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(16,16,16,0,Math.PI*2); ctx.fill();
-            
-            const lightSprite = new THREE.Sprite(new THREE.SpriteMaterial({
-                map: new THREE.CanvasTexture(canvas), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false
-            }));
-            lightSprite.scale.set(15, 15, 1);
-            lightSprite.position.set(-1, 7, 0); 
-            boatGrp.add(lightSprite);
-
-            const isFar = Math.random() > 0.5;
-            boatGrp.position.set(
-                isFar ? -400 - Math.random()*200 : -150 - Math.random()*100, 
-                -4.5, 
-                -500 + Math.random()*1000
+        // 散佈 150 個點點漁燈
+        for(let i=0; i<150; i++) {
+            const lightSprite = new THREE.Sprite(spriteMat);
+            // 隨機散佈在海面上
+            lightSprite.position.set(
+                -100 - Math.random() * 1200, 
+                -4.0 + Math.random() * 1.5, // 貼近海面
+                -100 - Math.random() * 500
             );
             
-            boatGrp.userData = {
-                speed: (0.1 + Math.random()*0.15) * (Math.random() > 0.5 ? 1 : -1),
-                light: lightSprite,
-                randomOffset: Math.random() * 100
+            // 遠處的燈比較小，近處的稍微大一點
+            const sSize = 3 + Math.random() * 5;
+            lightSprite.scale.set(sSize, sSize, 1);
+            
+            lightSprite.userData = {
+                phase: Math.random() * 100,
+                speedX: (Math.random() - 0.5) * 0.05,
+                baseY: lightSprite.position.y
             };
             
-            streetScene.add(boatGrp);
-            animScenery.boats.push(boatGrp);
+            streetScene.add(lightSprite);
+            animScenery.fishingLights.push(lightSprite);
         }
         
         // ==========================================
