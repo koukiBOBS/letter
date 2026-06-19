@@ -4339,22 +4339,6 @@ function createPowderMetalTexture(baseColorHex) {
 
 
 
-// 專屬發光貼圖 (背景純黑，只有窗戶會亮，解決整棟大廈發光的 BUG)
-function createBuildingEmissiveTexture() {
-    const canvas = document.createElement('canvas'); 
-    canvas.width = 128; canvas.height = 256; 
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, 128, 256); // 純黑牆體不發光
-    ctx.fillStyle = '#ffffff'; // 純白窗戶發光
-    for(let y=6; y<250; y+=8) { 
-        for(let x=10; x<110; x+=25) { 
-            if(Math.random() > 0.3) ctx.fillRect(x, y, 14, 4);
-        } 
-    }
-    const tex = new THREE.CanvasTexture(canvas); 
-    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; 
-    return tex;
-}
 
         
 
@@ -4484,22 +4468,56 @@ function createCloudTexture() {
     return tex;
 }
         
-      function createBuildingTexture() {
-            const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 256; const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#445'; ctx.fillRect(0, 0, 128, 256); ctx.fillStyle = '#ffea99'; 
-            
-            // 為了抵銷大廈垂直方向的拉伸，將窗戶畫成「寬度大於高度」的扁平矩形
-            // 順便縮小 y 軸間距，讓大樓有更多層樓，比例更自然
-            for(let y=6; y<250; y+=8) { 
-                for(let x=10; x<110; x+=25) { 
-                    if(Math.random() > 0.3) ctx.fillRect(x, y, 14, 4); // 畫成寬 14、高 4 的扁長形
-                } 
-            }
-            const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
-        }
+    // 🌆 升級版：大廈外牆紋理 (畫出扁平的窗戶外框，預先抵銷 3D 拉伸)
+function createBuildingTexture() {
+    const canvas = document.createElement('canvas'); 
+    canvas.width = 512; canvas.height = 512; 
+    const ctx = canvas.getContext('2d');
+    
+    ctx.fillStyle = '#2c3e50'; // 深灰藍色外牆
+    ctx.fillRect(0, 0, 512, 512); 
+    
+    ctx.fillStyle = '#1a252f'; // 窗戶暗格
+    // 故意畫成極度扁平的形狀 (寬 20, 高 2)，大廈拉高時就會變成方形
+    for(let y = 4; y < 512; y += 6) { 
+        for(let x = 10; x < 512; x += 30) { 
+            ctx.fillRect(x, y, 20, 2); 
+        } 
+    }
+    const tex = new THREE.CanvasTexture(canvas); 
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; 
+    return tex;
+}
 
-        
-  
+// 🌃 升級版：五光十色斑駁發光貼圖 (真實香港夜景感)
+function createBuildingEmissiveTexture() {
+    const canvas = document.createElement('canvas'); 
+    canvas.width = 512; canvas.height = 512; 
+    const ctx = canvas.getContext('2d');
+    
+    ctx.fillStyle = '#000000'; 
+    ctx.fillRect(0, 0, 512, 512); // 底色純黑不發光
+    
+    // 香港夜景的經典窗戶色調：暖白、冷白、鎢絲黃、霓虹粉、青藍、橙光
+    const winColors = ['#fff7e6', '#e6f7ff', '#ffcc88', '#ff99cc', '#88eeff', '#ffaa66'];
+    
+    for(let y = 4; y < 512; y += 6) { 
+        for(let x = 10; x < 512; x += 30) { 
+            // 透過柏林噪聲概念製造「斑駁感」 (一區一區亮或暗)
+            let noise = Math.sin(x * 0.05) * Math.cos(y * 0.05);
+            
+            // 隨機 + 群聚效應，大約 40% 的窗戶會亮
+            if (Math.random() > 0.4 && noise > -0.2) {
+                // 隨機挑選一種燈光顏色
+                ctx.fillStyle = winColors[Math.floor(Math.random() * winColors.length)];
+                ctx.fillRect(x, y, 20, 2); // 尺寸必須與外牆暗格完全一致
+            }
+        } 
+    }
+    const tex = new THREE.CanvasTexture(canvas); 
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; 
+    return tex;
+}
 
         
         function createFloorTexture() {
@@ -7386,6 +7404,26 @@ function animateRoom() {
                 c.lookAt(0, c.position.y, 0);
             });
         }
+
+
+// 🌊 動態海浪：零效能頂點波浪運算 (維持 60FPS)
+        if (window.dynamicSeaGeo) {
+            const time = Date.now() * 0.0015;
+            const posAttr = window.dynamicSeaGeo.attributes.position;
+            const origY = window.dynamicSeaGeo.userData.origY;
+            
+            for(let i = 0; i < posAttr.count; i++) {
+                const x = posAttr.getX(i);
+                const z = posAttr.getZ(i);
+                // 簡單而優雅的雙重正弦波，產生交錯起伏感
+                const waveY = Math.sin(x * 0.02 + time) * Math.cos(z * 0.02 + time) * 2.5;
+                posAttr.setY(i, origY[i] + waveY);
+            }
+            posAttr.needsUpdate = true; // 通知顯示卡更新網格
+            window.dynamicSeaGeo.computeVertexNormals(); // 讓光影跟著波浪起伏閃爍
+        }
+
+        
     }
  
     // ==========================================
@@ -9991,23 +10029,29 @@ function buildShoppingStreet() {
         streetDir.shadow.camera.top = 80; streetDir.shadow.camera.bottom = -80;
         streetScene.add(streetDir);
 
+      // ==========================================
+        // 🌊 1. 極低效能消耗：動態起伏海面 (房間與街道共用邏輯)
         // ==========================================
-        // 1. 動態海面與島嶼 (紋理滾動版)
-        // ==========================================
-        if (!streetWaterTex) streetWaterTex = createDynamicWaterTexture();
+        const oceanBaseMat = new THREE.MeshStandardMaterial({
+            color: 0x0a1a2a, roughness: 0.1, metalness: 0.8, flatShading: true
+        });
         
-        const oceanBaseMat = new THREE.MeshBasicMaterial({ map: streetWaterTex });
-        const oceanBase = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000), oceanBaseMat);
-        oceanBase.rotation.x = -Math.PI/2;
-        oceanBase.position.set(0, -6.5, 0); 
-        streetScene.add(oceanBase);
-
-        const islandMat = new THREE.MeshBasicMaterial({color: 0x050a10, fog: false});
-        for(let i=0; i<15; i++) {
-            const island = new THREE.Mesh(new THREE.ConeGeometry(200 + Math.random()*300, 100 + Math.random()*150, 16), islandMat);
-            island.position.set(-1500 + Math.random()*500, 20, -2000 + i*400);
-            streetScene.add(island);
+        // 建立 60x40 網格 (2400頂點，手機處理毫無壓力)
+        const seaGeo = new THREE.PlaneGeometry(3000, 3000, 60, 40);
+        seaGeo.rotateX(-Math.PI/2);
+        
+        // 儲存原始 Y 軸座標供波浪運算使用
+        seaGeo.userData.origY = new Float32Array(seaGeo.attributes.position.count);
+        for(let i=0; i<seaGeo.attributes.position.count; i++) {
+            seaGeo.userData.origY[i] = seaGeo.attributes.position.getY(i);
         }
+        
+        const oceanBase = new THREE.Mesh(seaGeo, oceanBaseMat);
+        oceanBase.position.set(0, -6.5, -500); 
+        streetScene.add(oceanBase);
+        
+        // 將波浪幾何體存入全域變數，供 animateRoom 調用
+        window.dynamicSeaGeo = seaGeo;
 
         // ==========================================
         // 2. 地面：紅色拼花磚與盲人磚
@@ -10225,44 +10269,54 @@ function buildShoppingStreet() {
         streetScene.add(planterIMesh, seatIMesh, pTreeTrunk, pTreeLeaf);
 
         // ==========================================
-        // 🌃 5. 對岸維港：完整顯示與豐富色彩
+        // 🌃 5. 對岸維港：無死角環繞式滿版大廈 (InstancedMesh)
         // ==========================================
         const bTex = createBuildingTexture();
-        const bEmissiveTex = createBuildingEmissiveTexture();
-        const buildCountPerColor = 40; 
-        const cityColors = [0xffea99, 0xffffff, 0xaaddff, 0xffbbee];
-        
-        const skylineMat = new THREE.MeshStandardMaterial({ color: 0x121a22, roughness: 0.9, fog: true });
-        const skylineBaseIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), skylineMat, buildCountPerColor * 4);
-        skylineBaseIMesh.frustumCulled = false; // 🚫 防止消失
-        streetScene.add(skylineBaseIMesh);
+        const bEmissiveTex1 = createBuildingEmissiveTexture();
+        const bEmissiveTex2 = createBuildingEmissiveTexture(); // 產生第二種斑駁圖案防重複
+        const bEmissiveTex3 = createBuildingEmissiveTexture();
 
-        let globalBIndex = 0;
-        cityColors.forEach((colorHex) => {
-            const lightMat = new THREE.MeshStandardMaterial({
-                color: 0x121a22, roughness: 0.9, map: bTex, 
-                emissiveMap: bEmissiveTex, emissive: colorHex, emissiveIntensity: 0.0,
-                fog: false 
-            }); 
+        // 使用三種材質，白天的外牆都是暗藍灰，晚上窗戶會亮起五光十色
+        const cityMats = [
+            new THREE.MeshStandardMaterial({ color: 0x223344, roughness: 0.9, map: bTex, emissiveMap: bEmissiveTex1, emissive: 0xffffff, emissiveIntensity: 0.0, fog: true }),
+            new THREE.MeshStandardMaterial({ color: 0x334455, roughness: 0.9, map: bTex, emissiveMap: bEmissiveTex2, emissive: 0xffffff, emissiveIntensity: 0.0, fog: true }),
+            new THREE.MeshStandardMaterial({ color: 0x1a252f, roughness: 0.9, map: bTex, emissiveMap: bEmissiveTex3, emissive: 0xffffff, emissiveIntensity: 0.0, fog: true })
+        ];
+        
+        const totalBuildings = 800; // 滿滿一排，800 棟大廈！
+        const buildingsPerMat = Math.floor(totalBuildings / 3);
+        
+        const dummyB = new THREE.Object3D();
+        window.cityInstancedMeshes = []; // 存入全域供日夜交替調用
+
+        cityMats.forEach((mat, index) => {
+            const iMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat, buildingsPerMat);
+            iMesh.frustumCulled = false; // 🚫 防止視角轉動時整批消失
+            iMesh.userData.isWindow = true; // 標記為會發光的物體
             
-            const lightIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), lightMat, buildCountPerColor);
-            lightIMesh.frustumCulled = false; 
-            lightIMesh.userData.isWindow = true; 
-            
-            for(let i=0; i<buildCountPerColor; i++) {
-                let w = 40 + Math.random() * 60;
-                let h = 200 + Math.random() * 500; 
+            for(let i=0; i<buildingsPerMat; i++) {
+                // 生成半圓形弧度分佈 (涵蓋左中右所有海面視角)
+                let angle = Math.random() * Math.PI; 
+                // 距離玩家 600 到 1200 單位 (背景深處)
+                let radius = 600 + Math.random() * 600; 
+                
+                let x = Math.cos(angle) * radius;
+                let z = -Math.sin(angle) * radius - 100; // 確保都在海面遠處
+                
+                let w = 40 + Math.random() * 80;
+                let h = 200 + Math.random() * 600; // 高低起伏錯落
                 let d = 40 + Math.random() * 60;
                 
-                // 控制 Z 軸距離，確保不被相機裁切
-                dummyTools.position.set(-600 - Math.random()*800, h/2 - 20, -300 - Math.random()*400);
-                dummyTools.scale.set(w, h, d);
-                dummyTools.updateMatrix();
+                dummyB.position.set(x, h/2 - 20, z);
+                dummyB.scale.set(w, h, d);
+                // 大廈面向海中心
+                dummyB.rotation.y = -angle - Math.PI/2; 
+                dummyB.updateMatrix();
                 
-                lightIMesh.setMatrixAt(i, dummyTools.matrix);
-                skylineBaseIMesh.setMatrixAt(globalBIndex++, dummyTools.matrix);
+                iMesh.setMatrixAt(i, dummyB.matrix);
             }
-            streetScene.add(lightIMesh);
+            streetScene.add(iMesh);
+            window.cityInstancedMeshes.push(iMesh);
         });
 
         // ==========================================
@@ -10392,11 +10446,13 @@ function syncStreetEnvironment() {
                 child.material.emissiveIntensity = isNightOrDusk ? 1.0 : 0.0;
             }
             // 大廈窗戶
+           // 大廈窗戶 (五光十色斑駁亮起)
             if (child.userData.isWindow) {
-    child.material.emissive.setHex(isNightOrDusk && Math.random() > 0.3 ? 0xffea99 : 0x000000);
-    // 🌟 因為退到極遠處，亮度加倍到 3.0 才有璀璨感
-    child.material.emissiveIntensity = isNightOrDusk ? 3.0 : 0.0;
-}
+                // 取消原本的黃光，改用純白光 (因為顏色已經畫在貼圖上了)
+                child.material.emissive.setHex(0xffffff); 
+                // 晚上發光強度大增，白天關閉
+                child.material.emissiveIntensity = isNightOrDusk ? 3.0 : 0.0;
+            }
             // 街燈燈泡表面發光
             if (child.userData.isStreetLight) {
                 child.material.emissiveIntensity = isNightOrDusk ? 2.0 : 0.0;
