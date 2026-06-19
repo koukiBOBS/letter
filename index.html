@@ -7506,6 +7506,83 @@ function animateRoom() {
                 }
             });
         }
+
+// 🎆 7. 零效能煙火更新 (自動判定僅限夜晚爆發)
+        if (currentEnvParams && currentEnvParams.phaseStr === 'night' && animScenery.fireworks) {
+            animScenery.fireworks.mesh.visible = true;
+            const fwData = animScenery.fireworks.data;
+            const positions = animScenery.fireworks.positions;
+            const colors = animScenery.fireworks.colors;
+            let needsUpdate = false;
+
+            for (let f=0; f<fwData.length; f++) {
+                let fw = fwData[f];
+                if (!fw.active) {
+                    fw.timer -= 1;
+                    if (fw.timer <= 0) {
+                        // 隨機在大廈上方爆發 (X:大廈深處, Y:高空, Z:海面與城市範圍)
+                        const cx = 500 + Math.random() * 1500; 
+                        const cy = 250 + Math.random() * 250;  
+                        const cz = -2000 + Math.random() * 4000;
+                        
+                        fw.active = true;
+                        fw.timer = 70 + Math.random() * 30; // 煙火壽命
+                        
+                        for (let i=0; i<80; i++) {
+                            let p = fw.particles[i];
+                            p.x = cx; p.y = cy; p.z = cz;
+                            // 球狀均勻散開計算
+                            let theta = Math.random() * Math.PI * 2;
+                            let phi = Math.acos(Math.random() * 2 - 1);
+                            let speed = 4 + Math.random() * 8; // 爆炸擴散速度
+                            p.vx = Math.sin(phi) * Math.cos(theta) * speed;
+                            p.vy = Math.sin(phi) * Math.sin(theta) * speed;
+                            p.vz = Math.cos(phi) * speed;
+                        }
+                    }
+                } else {
+                    fw.timer -= 1;
+                    let fade = Math.max(0, fw.timer / 30.0); // 壽命末期逐漸淡出
+                    if (fade > 1) fade = 1;
+
+                    if (fw.timer <= 0) {
+                        fw.active = false;
+                        fw.timer = 50 + Math.random() * 100; // 兩次煙火之間的休息時間
+                        for (let i=0; i<80; i++) {
+                            positions[fw.particles[i].idx * 3 + 1] = -9999; // 隱藏至地下
+                        }
+                        needsUpdate = true;
+                    } else {
+                        for (let i=0; i<80; i++) {
+                            let p = fw.particles[i];
+                            p.x += p.vx; p.y += p.vy; p.z += p.vz;
+                            p.vx *= 0.95; p.vy *= 0.95; p.vz *= 0.95; // 模擬空氣阻力
+                            p.vy -= 0.15; // 模擬重力下墜的拋物線拖尾
+
+                            let idx = p.idx * 3;
+                            positions[idx] = p.x;
+                            positions[idx+1] = p.y;
+                            positions[idx+2] = p.z;
+                            colors[idx] = p.color.r * fade;
+                            colors[idx+1] = p.color.g * fade;
+                            colors[idx+2] = p.color.b * fade;
+                        }
+                        needsUpdate = true;
+                    }
+                }
+            }
+            if (needsUpdate) {
+                // 通知顯示卡重新渲染頂點數據
+                animScenery.fireworks.mesh.geometry.attributes.position.needsUpdate = true;
+                animScenery.fireworks.mesh.geometry.attributes.color.needsUpdate = true;
+            }
+        } else if (animScenery.fireworks) {
+            animScenery.fireworks.mesh.visible = false; // 白天自動隱藏，徹底切斷 CPU 計算
+        }
+
+    } // <--- 這是 isLookingOutside 的閉合大括號
+
+        
         
     }
  
@@ -10243,6 +10320,76 @@ function buildShoppingStreet() {
 
 
 
+// 🎆 零效能煙火系統 (Points + BufferGeometry)
+function createFireworks() {
+    const particleCount = 400; // 5 朵煙火，每朵 80 顆粒子，極低負擔
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+
+    // 🌟 零效能生成：發光粒子貼圖
+    const canvas = document.createElement('canvas');
+    canvas.width = 32; canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createRadialGradient(16,16,0, 16,16,16);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(16,16,16,0,Math.PI*2); ctx.fill();
+    const texture = new THREE.CanvasTexture(canvas);
+
+    const material = new THREE.PointsMaterial({
+        size: 45, // 遠方的高空，尺寸要夠大
+        map: texture,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        vertexColors: true
+    });
+
+    const points = new THREE.Points(geometry, material);
+    points.frustumCulled = false; // 避免邊界計算錯誤導致閃爍
+    
+    // 煙火物理數據庫
+    const fwData = [];
+    const fwColors = [
+        new THREE.Color(0xff5555), // 櫻桃紅
+        new THREE.Color(0x55ff55), // 翡翠綠
+        new THREE.Color(0x55aaff), // 寶石藍
+        new THREE.Color(0xffff55), // 燦爛黃
+        new THREE.Color(0xff55ff)  // 夢幻紫
+    ];
+
+    for(let f=0; f<5; f++) {
+        let fData = { active: false, timer: Math.random() * 100, particles: [] };
+        for(let i=0; i<80; i++) {
+            fData.particles.push({
+                idx: f * 80 + i,
+                x: 0, y: -9999, z: 0,
+                vx: 0, vy: 0, vz: 0,
+                color: fwColors[f]
+            });
+        }
+        fwData.push(fData);
+    }
+
+    // 存入全域變數以供動畫更新
+    animScenery.fireworks = {
+        mesh: points,
+        data: fwData,
+        positions: positions,
+        colors: colors
+    };
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    return points;
+}
+
+        
+
 
 
 // 🎨 零效能生成：真實發光窗戶漸層貼圖 (灰階版：中午偏白)
@@ -10679,6 +10826,11 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         const stopPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 7, 16), new THREE.MeshStandardMaterial({color: 0x555555, metalness: 0.8})); stopPole.position.y = 3.5; stopPole.castShadow = true; stopGrp.add(stopPole);
         const stopSign = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.1, 32), new THREE.MeshStandardMaterial({map: createBusStopTexture(), roughness: 0.8})); stopSign.rotation.set(0, 0, Math.PI / 2); stopSign.position.set(-0.15, 6.5, 0); stopGrp.add(stopSign);
         streetScene.add(stopGrp);
+
+
+
+// 加入煙火系統
+        streetScene.add(createFireworks());
 
     } catch (error) {
         console.error("商店街渲染崩潰：", error);
