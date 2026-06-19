@@ -10245,18 +10245,18 @@ function buildShoppingStreet() {
 
 
 
-// 🎨 零效能生成：真實發光窗戶漸層貼圖 (中心白亮、邊緣暖橘黃)
+// 🎨 零效能生成：真實發光窗戶漸層貼圖 (灰階版：中午偏白)
 function getWindowGlowTexture() {
     if (window._winGlowTex) return window._winGlowTex;
     const canvas = document.createElement('canvas');
     canvas.width = 16; canvas.height = 64; 
     const ctx = canvas.getContext('2d');
     
-    // 畫出類似室內日光燈管/燈箱的漸層，創造出極佳的發光錯覺
+    // 灰階漸層：中間純白，上下微灰，創造燈箱立體感
     const grad = ctx.createLinearGradient(0, 0, 0, 64);
-    grad.addColorStop(0, '#e68a00');   // 頂部邊緣：深暖橘色
-    grad.addColorStop(0.5, '#ffffff'); // 中心核心：純亮白色
-    grad.addColorStop(1, '#e68a00');   // 底部邊緣：深暖橘色
+    grad.addColorStop(0, '#777777');   
+    grad.addColorStop(0.5, '#ffffff'); 
+    grad.addColorStop(1, '#777777');   
     
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 16, 64);
@@ -10289,35 +10289,38 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
 
     const wallX = x - width/2; 
     
-    // 🚨 關鍵修復 1：玻璃寬度稍微內縮 (width - 0.2)，徹底解決大廈相鄰時的邊緣穿模閃爍！
+    // 🚨 玻璃寬度稍微內縮 (width - 0.2)，徹底解決大廈相鄰時的邊緣穿模閃爍！
     const glassWidth = width - 0.2; 
     const glassHeight = 8; // 每層落地窗高度
 
-    // 取得高亮漸層貼圖
+    // 取得白底漸層貼圖
     const glowTex = getWindowGlowTexture();
 
-    // 3. 建造 5 橫行無縫玻璃幕牆 (顏色全部一致！)
+    // 3. 建造 5 橫行無縫玻璃幕牆 (補滿最頂層，無垂直切割)
     for(let fy = 22; fy <= 62; fy += 10) { 
         const winGrp = new THREE.Group();
         winGrp.position.set(wallX, fy, z);
         winGrp.rotation.y = -Math.PI/2; 
         floorGrp.add(winGrp);
 
-        // 🚨 關鍵修復 2：無死角的極亮暖黃燈箱材質
+        // 每層獨立隨機判定，避免所有大樓都一模一樣
+        const isLit = Math.random() > 0.15; // 85% 機率亮起，營造熱鬧感
+
+        // 🚨 核心魔法：白天偏白，夜晚染上黃昏暖黃色，且無視距離變暗
         const backingMat = new THREE.MeshStandardMaterial({
-            map: glowTex,             // 賦予漸層色彩
-            emissiveMap: glowTex,     // 讓漸層色彩發光
-            emissive: 0xffffff,       // 原色發光
-            emissiveIntensity: 0.0,   // 預設關閉，由系統控制
-            fog: false                // 🚨 關鍵修復 3：免疫環境濃霧，遠看絕對不會變暗！
+            map: glowTex,             // 白天顯示純淨的白色漸層
+            color: 0xffffff,          // 確保底色乾淨
+            emissiveMap: glowTex,     // 讓漸層部位發光
+            emissive: isLit ? 0xffa033 : 0x000000, // 💡 關鍵：發光時強制染上「黃昏的極度溫暖橘黃色」
+            emissiveIntensity: 0.0,   // 預設關閉，由系統日夜控制
+            fog: false                // 💡 關鍵：免疫環境濃霧，遠看絕對不會變暗！
         });
 
-        // 乾淨的一整塊發光背板 (已徹底刪除遮陽簾剪影)
         const backing = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, glassHeight), backingMat);
         backing.position.z = 0.05; 
         
-        // 💡 巧妙利用 isStreetLight 標籤，這會讓日夜系統將其亮度推到 2.0 (比原本的 1.0 亮兩倍！)
-        backing.userData.isStreetLight = true; 
+        // 綁定 isStreetLight，日夜系統會把它亮度推到 2.0 (極亮！)
+        if (isLit) backing.userData.isStreetLight = true; 
         winGrp.add(backing);
 
         // 覆蓋在外層的連貫大玻璃
