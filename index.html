@@ -4346,30 +4346,49 @@ function createPowderMetalTexture(baseColorHex) {
 // 👇 替換：專屬「商店街對岸」的點彩派微光貼圖 (防模糊、放大版)
 function createCityLightsTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 1024; canvas.height = 1024; // 提高解析度
+    canvas.width = 1024; canvas.height = 1024;
     const ctx = canvas.getContext('2d');
     
     // 底色必須為純黑，因為在 emissiveMap 中黑色代表不發光
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, 1024, 1024); 
 
-    // 繁星點點的冷暖色調：暖金、橘黃、冰藍、粉紫、純白、青綠
-    const lightColors = ['#ffccaa', '#ff9955', '#aaddff', '#ff88cc', '#ffffff', '#88ffcc'];
+    // 豐富的城市燈光色彩：暖黃、亮橙、暖紅、冰藍、純白、青藍
+    const lightColors = ['#ffddaa', '#ffaa55', '#ff4422', '#aaddff', '#ffffff', '#ccffff', '#88ccff'];
 
-    for(let i = 0; i < 20000; i++) {
-        ctx.fillStyle = lightColors[Math.floor(Math.random() * lightColors.length)];
-        ctx.globalAlpha = 0.5 + Math.random() * 0.5; 
-        
-        // 放大光點！讓遠方的大廈依然能看見明顯的燈光
-        const size = 2 + Math.random() * 4; 
-        ctx.fillRect(Math.random() * 1024, Math.random() * 1024, size, size);
+    // 模擬樓層與窗戶的規律網格，而不是純隨機雜訊
+    const spacing = 12; // 窗戶間距
+    for (let y = 0; y < 1024; y += spacing) { 
+        for (let x = 0; x < 1024; x += spacing) { 
+            // 只有約 15% 的窗戶會亮起，製造大城市的疏密與真實感
+            if (Math.random() > 0.85) { 
+                ctx.fillStyle = lightColors[Math.floor(Math.random() * lightColors.length)];
+                
+                // 窗戶本身的大小 (微小且銳利)
+                const w = 3 + Math.random() * 4;
+                const h = 3 + Math.random() * 4;
+                
+                // 畫出高光窗戶
+                ctx.globalAlpha = 0.8 + Math.random() * 0.2;
+                ctx.fillRect(x, y, w, h);
+                
+                // 偶爾加上微弱的光暈擴散效果
+                if (Math.random() > 0.5) {
+                    ctx.globalAlpha = 0.2;
+                    ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+                }
+            }
+        }
     }
+
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping; 
     tex.wrapT = THREE.RepeatWrapping;
+    // 強制保持銳利，防止被 Three.js 糊化
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
     return tex;
 }
-
 
         
 // 👇 新增：零效能 GPU 頂點海浪注入器
@@ -10295,13 +10314,13 @@ function buildShoppingStreet() {
      // ==========================================
         // 🏙️ 5. 單層繪製法：無 Z-fighting 閃爍的絕對清晰天際線
         // ==========================================
-        const cityLightsTex = createCityLightsTexture();
+         const cityLightsTex = createCityLightsTexture();
         
         const skylineMat = new THREE.MeshStandardMaterial({ 
             color: 0x05080c,         // 預設外牆顏色
-            emissiveMap: cityLightsTex, // 貼上我們畫好的冷暖光點
-            emissive: 0xffffff,      // 啟動自發光
-            emissiveIntensity: 0.0,  // 預設白天關燈
+            emissiveMap: cityLightsTex, 
+            emissive: 0xffffff,      
+            emissiveIntensity: 0.0,  
             roughness: 1.0,
             fog: false               // 強制無視濃霧，永保清晰
         });
@@ -10317,8 +10336,10 @@ function buildShoppingStreet() {
                 #include <uv_vertex>
                 float scaleX = length(vec3(instanceMatrix[0][0], instanceMatrix[0][1], instanceMatrix[0][2]));
                 float scaleY = length(vec3(instanceMatrix[1][0], instanceMatrix[1][1], instanceMatrix[1][2]));
-                // 調整參數，讓光點在大廈上顯得密集而遙遠
-                vUv = uv * vec2(scaleX * 0.015, scaleY * 0.015); 
+                
+                // ⚠️ 關鍵修復：將原本的 0.015 放大為 0.08！
+                // 這會強制貼圖在大廈表面重複非常多次，把原本巨大的光點縮小成「針尖般」的精緻微光！
+                vUv = uv * vec2(scaleX * 0.08, scaleY * 0.08); 
                 `
             );
         };
