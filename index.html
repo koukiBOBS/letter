@@ -10169,78 +10169,106 @@ function buildShoppingStreet() {
         const shutterMat = new THREE.MeshStandardMaterial({map: createRollerShutterTexture(), metalness: 0.6, roughness: 0.5});
         const darkInteriorMat = new THREE.MeshStandardMaterial({color: 0x110a05});
 
-        function createTangLauUpperFloors(x, z, width, baseColor) {
+      function createTangLauUpperFloors(x, z, width, baseColor) {
             const floorGrp = new THREE.Group();
-            const wallMat = new THREE.MeshStandardMaterial({map: getSafeAgedPlaster(baseColor), roughness: 0.95});
             
+            // 1. 現代商業大廈的乾淨外牆材質 (鋁材複合板/平滑石材質感)
+            const wallMat = new THREE.MeshStandardMaterial({
+                color: baseColor, 
+                roughness: 0.3, 
+                metalness: 0.15 
+            });
+            
+            // 主建築體
             const building = new THREE.Mesh(new THREE.BoxGeometry(width, 60, 25), wallMat);
             building.position.set(x, 45, z);
             building.castShadow = true; building.receiveShadow = true;
             floorGrp.add(building);
-         
+
+            // 2. 高質感玻璃幕牆材質 (保留您要求的高反光玻璃質感)
             const upperGlassMat = new THREE.MeshStandardMaterial({
-                color: 0xcceeff, roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.45,         
+                color: 0x88ccff, roughness: 0.0, metalness: 1.0, transparent: true, opacity: 0.6,         
                 envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
-                envMapIntensity: 3.0, side: THREE.FrontSide  
+                envMapIntensity: 4.0, side: THREE.FrontSide  
             });
-         
-            const frameMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.6, roughness: 0.4 });
-            const winWidth = 4; const winHeight = 5; const wallX = x - width/2; 
-         
-            for(let fy=20; fy<=65; fy+=10) {
-                for(let fz=z-8; fz<=z+8.1; fz+=8) {
-                    const winGrp = new THREE.Group();
-                    winGrp.position.set(wallX, fy, fz);
-                    winGrp.rotation.y = -Math.PI/2;
-                    floorGrp.add(winGrp);
-         
-                    const backing = new THREE.Mesh(new THREE.PlaneGeometry(winWidth, winHeight), darkInteriorMat);
-                    backing.position.z = 0.02;
-                    winGrp.add(backing);
-         
-                    if (Math.random() > 0.2) {
-                        const curtainColors = [0xeeeeee, 0xffddaa, 0xadd8e6, 0xffb6c1, 0x90ee90];
-                        const cMat = new THREE.MeshStandardMaterial({color: curtainColors[Math.floor(Math.random() * curtainColors.length)], roughness: 0.9});
-                        const style = Math.random();
-                        if (style > 0.6) {
-                            const cW = winWidth * (0.3 + Math.random()*0.4);
-                            const curtain = new THREE.Mesh(new THREE.PlaneGeometry(cW, winHeight), cMat);
-                            curtain.position.set(-winWidth/2 + cW/2, 0, 0.04);
-                            winGrp.add(curtain);
-                        } else if (style > 0.3) {
-                            const cW = winWidth * 0.25;
-                            const cL = new THREE.Mesh(new THREE.PlaneGeometry(cW, winHeight), cMat); cL.position.set(-winWidth/2 + cW/2, 0, 0.04);
-                            const cR = new THREE.Mesh(new THREE.PlaneGeometry(cW, winHeight), cMat); cR.position.set(winWidth/2 - cW/2, 0, 0.04);
-                            winGrp.add(cL, cR);
-                        } else {
-                            const curtain = new THREE.Mesh(new THREE.PlaneGeometry(winWidth, winHeight), cMat);
-                            curtain.position.set(0, 0, 0.04);
-                            winGrp.add(curtain);
-                            backing.userData.isWindow = false;
-                            curtain.userData.isWindow = true; 
-                        }
-                    } else {
-                        backing.userData.isWindow = true; 
-                    }
-         
-                    const glass = new THREE.Mesh(new THREE.PlaneGeometry(winWidth, winHeight), upperGlassMat);
-                    glass.position.z = 0.1;
-                    winGrp.add(glass);
-         
-                    const fThick = 0.2; const fDepth = 0.15; const fZ = 0.12;     
-                    const fTop = new THREE.Mesh(new THREE.BoxGeometry(winWidth + fThick*2, fThick, fDepth), frameMat); fTop.position.set(0, winHeight/2 + fThick/2, fZ);
-                    const fBot = new THREE.Mesh(new THREE.BoxGeometry(winWidth + fThick*2, fThick, fDepth), frameMat); fBot.position.set(0, -winHeight/2 - fThick/2, fZ);
-                    const fLeft = new THREE.Mesh(new THREE.BoxGeometry(fThick, winHeight, fDepth), frameMat); fLeft.position.set(-winWidth/2 - fThick/2, 0, fZ);
-                    const fRight = new THREE.Mesh(new THREE.BoxGeometry(fThick, winHeight, fDepth), frameMat); fRight.position.set(winWidth/2 + fThick/2, 0, fZ);
-                    const fMidV = new THREE.Mesh(new THREE.BoxGeometry(fThick*0.8, winHeight, fDepth*0.6), frameMat); fMidV.position.set(0, 0, fZ - 0.02);
-                    const fMidH = new THREE.Mesh(new THREE.BoxGeometry(winWidth, fThick*0.8, fDepth*0.6), frameMat); fMidH.position.set(0, 0.5, fZ - 0.02);
-         
-                    winGrp.add(fTop, fBot, fLeft, fRight, fMidV, fMidH);
+            
+            // 現代金屬窗框與深色室內
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.2 });
+            const darkInteriorMat = new THREE.MeshStandardMaterial({color: 0x050a0f}); 
+
+            const wallX = x - width/2; 
+            const glassWidth = 22; // 橫跨大部分寬度，形成幕牆感
+            const glassHeight = 8; // 每層的玻璃高度
+
+            // 3. 建造現代玻璃幕牆 (Glass Curtain Wall)
+            for(let fy = 22; fy <= 62; fy += 10) {
+                const winGrp = new THREE.Group();
+                winGrp.position.set(wallX, fy, z);
+                winGrp.rotation.y = -Math.PI/2; // 面向街道
+                floorGrp.add(winGrp);
+
+                // 內部遮光板 (讓玻璃看起來有深度，晚上微透光)
+                const backing = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, glassHeight), darkInteriorMat);
+                backing.position.z = 0.05;
+                backing.userData.isShopInside = true; 
+                winGrp.add(backing);
+
+                // 玻璃本體
+                const glass = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, glassHeight), upperGlassMat);
+                glass.position.z = 0.2;
+                winGrp.add(glass);
+
+                // 橫向金屬窗框 (幕牆的上下框架)
+                const fThick = 0.3;
+                const fTop = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.2, fThick, 0.3), frameMat);
+                fTop.position.set(0, glassHeight/2, 0.2);
+                const fBot = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.2, fThick, 0.3), frameMat);
+                fBot.position.set(0, -glassHeight/2, 0.2);
+                winGrp.add(fTop, fBot);
+
+                // 直向金屬分割線 (現代辦公/商場大樓的經典格柵)
+                for(let sx = -glassWidth/2; sx <= glassWidth/2 + 0.1; sx += 2.2) {
+                    const fVert = new THREE.Mesh(new THREE.BoxGeometry(0.15, glassHeight, 0.25), frameMat);
+                    fVert.position.set(sx, 0, 0.25);
+                    winGrp.add(fVert);
                 }
             }
+
+            // 4. 中環/尖沙嘴特色：巨型外牆電子廣告屏幕 (LED Billboard)
+            // 隨機在部分大廈外牆生成平貼的巨型屏幕
+            if (Math.random() > 0.4) {
+                const boardWidth = 12 + Math.random() * 6;
+                const boardHeight = 15 + Math.random() * 20; // 屏幕可能橫跨兩三層樓
+                
+                // 廣告看板基座 (稍微凸出外牆)
+                const boardBase = new THREE.Mesh(new THREE.BoxGeometry(0.6, boardHeight, boardWidth), frameMat);
+                boardBase.position.set(wallX - 0.2, 40, z + (Math.random() > 0.5 ? 1 : -1));
+                floorGrp.add(boardBase);
+
+                // 螢幕發光面設計
+                const screenColors = ['#00aaff', '#ff00aa', '#ffaa00', '#ffffff', '#aa00ff'];
+                const screenColor = screenColors[Math.floor(Math.random() * screenColors.length)];
+                
+                // 利用原有的霓虹燈函數產生現代品牌 Logo 視覺
+                const brandNames = ['GLOBAL', 'VISION', 'LUXURY', 'STYLE', 'NEXUS', 'GALAXY'];
+                const brand = brandNames[Math.floor(Math.random() * brandNames.length)];
+                const tex = createNeonSign(brand, '#050505', screenColor, false);
+                
+                const screenMat = new THREE.MeshStandardMaterial({
+                    map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.0, roughness: 0.1
+                });
+                
+                const screen = new THREE.Mesh(new THREE.PlaneGeometry(boardWidth - 0.4, boardHeight - 0.4), screenMat);
+                screen.rotation.y = -Math.PI/2; // 面向街道
+                screen.position.set(wallX - 0.51, 40, boardBase.position.z);
+                screen.userData = { isNeon: true }; // 連結日夜系統，晚上自動發出強光
+                floorGrp.add(screen);
+            }
+
             return floorGrp;
         }
 
+        
         // 🏬 店舖 A：文苑文具 
         const statGrp = new THREE.Group();
         statGrp.position.set(0, 0, 15);
