@@ -8512,8 +8512,9 @@ function acceptBankruptcy() {
                 let nextX = camera.position.x + moveVec.x;
                 let nextZ = camera.position.z + moveVec.z;
 
-            nextX = Math.max(-53, Math.min(15, nextX));
-             nextZ = Math.max(-240, Math.min(240, nextZ));
+    nextX = Math.max(-53, Math.min(15, nextX));
+                // 你的路面長度是 500 (從 -250 到 250)，將極限放寬到 240，可以走得很遠又不會掉出去
+                nextZ = Math.max(-240, Math.min(240, nextZ));
 
                 let deltaX = nextX - camera.position.x;
                 let deltaZ = nextZ - camera.position.z;
@@ -10214,13 +10215,11 @@ function buildShoppingStreet() {
             streetScene.add(island);
         }
 
-        // ==========================================
-        // 2. 地面：紅色拼花磚與盲人磚
-        // ============================濱長廊步道 (清水模質==============
-      // --- 1. 地面：清水模廣場與盲人磚 ---
-    // 💡 將原本突兀的紅磚改為冷色調的清水模，更符合海濱防浪堤的氛圍
+// --- 1. 地面：清水模廣場與盲人磚 ---
     const streetMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
- const street = new THREE.Mesh(new THREE.PlaneGeometry(150, 500), streetMat);
+    // 將寬度縮小為 69，並設定位置，這樣地面的左側邊界就會精準停在欄杆(-54)，外面直接是海！
+    const street = new THREE.Mesh(new THREE.PlaneGeometry(69, 500), streetMat);
+    street.position.set(-19.5, 0, 0); 
     street.rotation.x = -Math.PI/2;
     street.receiveShadow = true;
     streetScene.add(street);
@@ -10524,12 +10523,11 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         buildingsGrp.add(createExpansionShop(-45, '#a5b0a3', '#4e5a59'));
         buildingsGrp.add(createExpansionShop(-65, '#d4c7b8', '#8a7d6d'));
 
- // A. 海濱長廊步道 (清水模質感)
+// A. 海濱長廊步道 (清水模質感)
     const promenadeMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
-   const promenade = new THREE.Mesh(new THREE.BoxGeometry(40, 0.5, 500), promenadeMat);
-    promenade.position.set(-30, -4.7, 0); // 緊貼馬路左側
-    promenade.receiveShadow = true;
-    streetScene.add(promenade);
+    // 寬度微調為 41，位置左移到 -33.5，完美貼齊欄杆邊緣
+    const promenade = new THREE.Mesh(new THREE.BoxGeometry(41, 0.5, 500), promenadeMat);
+    promenade.position.set(-33.5, -4.7, 0);
 
 
        // B. 香港經典海濱金屬欄杆 (實例化，幾百根柱子只要 1 次運算)
