@@ -1517,7 +1517,30 @@
 
 
 
-
+/* 自訂文具選擇按鈕 */
+.stationery-btn {
+    padding: 12px 20px;
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+    color: #4a4238;
+    border: 1px solid #dcd5c9;
+    border-radius: 8px;
+    background: #fffdfa;
+    cursor: pointer;
+    outline: none;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.2s;
+    box-shadow: 0 2px 5px rgba(139, 115, 85, 0.05);
+}
+.stationery-btn:hover {
+    background: #f4f0e6;
+    border-color: #b4a08c;
+    transform: translateY(-2px);
+}
 
         
         
@@ -1811,9 +1834,10 @@
                 <div class="editor" id="write-editor" style="display: none; max-width: 900px; margin: 0 auto;">
                     <h3 id="task-title" class="serif-text" style="margin-bottom: 30px; font-size: 1.5rem;">撰寫任務</h3>
 
-  <div class="stationery-selector" id="write-stationery-selector">
-                        <select id="write-paper-select" class="stationery-select"><option value="default">📜 預設宣紙</option></select>
-                        <select id="write-ink-select" class="stationery-select"><option value="default">🖋️ 預設墨褐</option></select>
+ <!-- 👇 改進版：點擊彈出視覺化視窗的文具選擇按鈕 -->
+                    <div class="stationery-selector" id="write-stationery-selector">
+                        <button id="btn-write-paper" class="stationery-btn" onclick="openStationerySelector('write', 'paper')">📜 預設宣紙</button>
+                        <button id="btn-write-ink" class="stationery-btn" onclick="openStationerySelector('write', 'ink')">🖋️ 預設墨褐</button>
                     </div>
                     
                     <div class="field-group flex-row">
@@ -1943,6 +1967,7 @@
 
 
 
+
 <!-- 🏬 文苑文具店 -->
 <div id="modal-stationery-shop" class="room-modal">
     <div class="room-modal-content" style="background-color: #f4f0e6; background-image: url('data:image/svg+xml,%3Csvg viewBox=\\'0 0 200 200\\' xmlns=\\'http://www.w3.org/2000/svg\\'%3E%3Cfilter id=\\'noiseFilter\\'%3E%3CfeTurbulence type=\\'fractalNoise\\' baseFrequency=\\'0.8\\' numOctaves=\\'3\\' stitchTiles=\\'stitch\\'/%3E%3C/filter%3E%3Crect width=\\'100%25\\' height=\\'100%25\\' filter=\\'url(%23noiseFilter)\\' opacity=\\'0.04\\'/%3E%3C/svg%3E');">
@@ -1958,6 +1983,18 @@
         
         <h3 style="font-family: var(--font-serif); color: #6b4423; margin-top: 40px; border-left: 4px solid #6b4423; padding-left: 10px;">🖋️ 墨水顏色</h3>
         <div class="shop-grid" id="shop-inks-grid"></div>
+    </div>
+</div>
+
+
+
+    <!-- 🎨 寫信/回信時的文具挑選視窗 -->
+<div id="modal-stationery-selector" class="room-modal" style="z-index: 70000;">
+    <div class="room-modal-content" style="background-color: #fcfbf8; max-width: 800px;">
+        <button class="room-modal-close" onclick="document.getElementById('modal-stationery-selector').style.display='none'">×</button>
+        <h2 class="modal-title" id="stationery-selector-title" style="text-align: center; color: #4a4238; border-bottom: 1px dashed #dcd5c9;">挑選文具</h2>
+        <p style="text-align: center; color: #8b7355; margin-bottom: 20px;">點擊以套用至目前的信件中</p>
+        <div class="shop-grid" id="stationery-selector-grid"></div>
     </div>
 </div>
     
@@ -2484,6 +2521,72 @@ window.buyStationery = function(type, id, price) {
         });
     }
 };
+
+
+// 記錄目前信件選擇的文具狀態
+window.selectedStationery = {
+    write: { paper: 'default', ink: 'default' },
+    reply: { paper: 'default', ink: 'default' }
+};
+let currentStationeryContext = 'write';
+let currentStationeryType = 'paper';
+
+// 打開視覺化挑選視窗
+window.openStationerySelector = function(context, type) {
+    currentStationeryContext = context;
+    currentStationeryType = type;
+    
+    document.getElementById('stationery-selector-title').innerText = (type === 'paper') ? '📜 挑選信紙' : '🖋️ 挑選墨水';
+    const grid = document.getElementById('stationery-selector-grid');
+    grid.innerHTML = '';
+    
+    const registry = (type === 'paper') ? PAPER_REGISTRY : INK_REGISTRY;
+    
+    Object.keys(registry).forEach(id => {
+        // 檢查是否擁有：預設款永遠擁有，其他款檢查 userInventory
+        const isOwned = (id === 'default') || !!userInventory[`${type}_${id}`];
+        if (!isOwned) return; // 沒有買的就不顯示
+        
+        const item = registry[id];
+        const imgSrc = generateStationeryIcon(type, id);
+        const isSelected = window.selectedStationery[context][type] === id;
+        
+        // 如果是被選中的，加上明顯的金黃色邊框標示
+        const selectedStyle = isSelected ? 'border-color: #d4af37; box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.3); background: #fffcf5;' : '';
+        
+        grid.innerHTML += `
+            <div class="shop-item" style="cursor: pointer; ${selectedStyle}" onclick="confirmStationerySelection('${id}')">
+                <img src="${imgSrc}" style="background: #fff; padding: 5px; border-radius: 4px;">
+                <h4 style="${isSelected ? 'color: #d4af37;' : ''}">${item.name}</h4>
+            </div>
+        `;
+    });
+    
+    document.getElementById('modal-stationery-selector').style.display = 'flex';
+};
+
+// 點擊卡片確認選用
+window.confirmStationerySelection = function(id) {
+    // 儲存狀態
+    window.selectedStationery[currentStationeryContext][currentStationeryType] = id;
+    
+    // 更新按鈕文字
+    const registry = (currentStationeryType === 'paper') ? PAPER_REGISTRY : INK_REGISTRY;
+    const icon = (currentStationeryType === 'paper') ? '📜' : '🖋️';
+    const btn = document.getElementById(`btn-${currentStationeryContext}-${currentStationeryType}`);
+    
+    if (btn) {
+        btn.innerHTML = `${icon} ${registry[id].name}`;
+        btn.style.borderColor = '#d4af37'; // 選完後給按鈕一個提示色
+        btn.style.color = '#8b7355';
+    }
+    
+    // 關閉視窗
+    document.getElementById('modal-stationery-selector').style.display = 'none';
+};
+
+
+        
 
 // 更新寫信/回信的下拉選單
 function updateStationerySelectors() {
@@ -3477,10 +3580,10 @@ window.openFreeReadingEditor = function() {
         <span>✍️ 提筆回信</span><span>紙短情長</span>
     </div>
     
-    <!-- 👇 新增回信時的選紙選墨選單 -->
+  <!-- 👇 改進版：回信時的文具選擇按鈕 -->
     <div class="stationery-selector" style="margin-bottom: 15px;">
-        <select id="reply-paper-select" class="stationery-select"></select>
-        <select id="reply-ink-select" class="stationery-select"></select>
+        <button id="btn-reply-paper" class="stationery-btn" onclick="openStationerySelector('reply', 'paper')">📜 預設宣紙</button>
+        <button id="btn-reply-ink" class="stationery-btn" onclick="openStationerySelector('reply', 'ink')">🖋️ 預設墨褐</button>
     </div>
 
     <textarea id="reply-text" class="textarea ${hwClass}" ${roAttr} placeholder="${placeholderText}"></textarea>
@@ -3509,14 +3612,6 @@ window.openFreeReadingEditor = function() {
 
                         // 安全檢查：確保真的有找到輸入框才綁定事件
                         if (replyInput) {
-                            // 👇 動態把玩家擁有的文具塞進選單裡
-                            if (typeof updateStationerySelectors === 'function') updateStationerySelectors();
-                            const rPaper = document.getElementById('reply-paper-select');
-                            const rInk = document.getElementById('reply-ink-select');
-                            const wPaper = document.getElementById('write-paper-select');
-                            const wInk = document.getElementById('write-ink-select');
-                            if(rPaper && wPaper) rPaper.innerHTML = wPaper.innerHTML;
-                            if(rInk && wInk) rInk.innerHTML = wInk.innerHTML;
 
                         if (!isTypingAllowed(currentUser.email)) {
                                 replyInput.addEventListener('click', function() { openHwKeyboard(this); });
@@ -3540,8 +3635,8 @@ window.openFreeReadingEditor = function() {
                                 const txt = replyInput ? replyInput.value.trim() : ''; 
                                 if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
                                 
-                               const pId = document.getElementById('reply-paper-select') ? document.getElementById('reply-paper-select').value : 'default';
-                                const iId = document.getElementById('reply-ink-select') ? document.getElementById('reply-ink-select').value : 'default';
+                             const pId = window.selectedStationery.reply.paper;
+                                const iId = window.selectedStationery.reply.ink;
                                 
                              playAnim('reply', id, partnerUid, { text: txt, quoteId: currentAttachedQuoteId, paperId: pId, inkId: iId });
                                 
@@ -3773,8 +3868,8 @@ function processRandomTask(data) {
             throw new Error("圖片伺服器回傳格式錯誤，為保護系統已終止傳送。");
         }
 
-  const paperId = document.getElementById('write-paper-select') ? document.getElementById('write-paper-select').value : 'default';
-        const inkId = document.getElementById('write-ink-select') ? document.getElementById('write-ink-select').value : 'default';
+ const paperId = window.selectedStationery.write.paper;
+        const inkId = window.selectedStationery.write.ink;
         const combinedText = `【目前進度】\n第 ${page} 頁\n\n【思考問題】\n${question}\n\n【閱讀心得】\n${text}`;
         playAnim('log', null, null, { title: title, text: combinedText, imageUrl: result.url, quoteId: currentAttachedQuoteId, paperId: paperId, inkId: inkId });
     } catch (error) { 
