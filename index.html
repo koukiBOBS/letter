@@ -10235,12 +10235,11 @@ function buildShoppingStreet() {
     tetrapodIMesh.castShadow = true; tetrapodIMesh.receiveShadow = true;
     
     const dummyTetra = new THREE.Object3D();
-   for(let i=0; i<tetrapodCount; i++) {
-        const zPos = -100 + Math.random() * 200; 
-        // 👇 緊貼邊緣(-49.5)開始，往海裡延伸
-        const xPos = -49.5 - Math.random() * 12; 
-        // 👇 加大下墜斜率(0.8)，讓消波塊看起來是直接跌入 y=-8 的海面中
-        const yPos = -5 - Math.abs(xPos + 49.5) * 0.8 + (Math.random()-0.5)*1.5; 
+    for(let i=0; i<tetrapodCount; i++) {
+        const zPos = -100 + Math.random() * 200; // 沿著海岸線分佈
+        const xPos = -49 - Math.random() * 15;   // 從欄杆邊緣(-48)向海裡延伸
+        // 計算斜坡：越往海裡延伸，高度越深
+        const yPos = -3.5 - Math.abs(xPos + 48) * 0.5 + (Math.random()-0.5)*1.5; 
         
         dummyTetra.position.set(xPos, yPos, zPos);
         dummyTetra.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
@@ -10542,22 +10541,19 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
         envMapIntensity: 2.0
     });
-       // 頂部扶手
-    const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 200), railMat);
-    topRail.position.set(-49.5, -1.5, 0); // 👇 往外推到懸崖絕對邊緣
-    topRail.castShadow = true;
-    streetScene.add(topRail);
-    
-    // 垂直欄杆柱子 (100根)
-    const postCount = 100;
-    const postIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.2, 3.5, 0.2), railMat, postCount);
-    postIMesh.castShadow = true;
-    const dummyTools = new THREE.Object3D();
-    for(let i=0; i<postCount; i++) {
-        dummyTools.position.set(-49.5, -3.2, -99 + i*2); // 👇 對齊頂部扶手
-        dummyTools.updateMatrix();
-        postIMesh.setMatrixAt(i, dummyTools.matrix);
-    }
+        const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 400), railMat);
+        topRail.position.set(-54, 3.5, 0); topRail.castShadow = true;
+        streetScene.add(topRail);
+        
+        const postCount = 200;
+        const postIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.2, 3.5, 0.2), railMat, postCount);
+        postIMesh.castShadow = true;
+        const dummyTools = new THREE.Object3D();
+        for(let i=0; i<postCount; i++) {
+            dummyTools.position.set(-54, 1.75, -198 + i*2);
+            dummyTools.updateMatrix();
+            postIMesh.setMatrixAt(i, dummyTools.matrix);
+        }
         streetScene.add(postIMesh);
 
         const planterMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), color: 0xcccccc});
