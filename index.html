@@ -8513,7 +8513,7 @@ function acceptBankruptcy() {
                 let nextZ = camera.position.z + moveVec.z;
 
             nextX = Math.max(-53, Math.min(15, nextX));
-                nextZ = Math.max(-95, Math.min(95, nextZ));
+             nextZ = Math.max(-240, Math.min(240, nextZ));
 
                 let deltaX = nextX - camera.position.x;
                 let deltaZ = nextZ - camera.position.z;
@@ -10220,7 +10220,7 @@ function buildShoppingStreet() {
       // --- 1. 地面：清水模廣場與盲人磚 ---
     // 💡 將原本突兀的紅磚改為冷色調的清水模，更符合海濱防浪堤的氛圍
     const streetMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
-    const street = new THREE.Mesh(new THREE.PlaneGeometry(150, 200), streetMat);
+ const street = new THREE.Mesh(new THREE.PlaneGeometry(150, 500), streetMat);
     street.rotation.x = -Math.PI/2;
     street.receiveShadow = true;
     streetScene.add(street);
@@ -10252,7 +10252,7 @@ function buildShoppingStreet() {
         
 
         const tactileMat = new THREE.MeshStandardMaterial({color: 0xddaa00, roughness: 0.9});
-        const tactileLine = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 400), tactileMat);
+    const tactileLine = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 500), tactileMat);
         tactileLine.position.set(10, 0.05, 0); tactileLine.receiveShadow = true;
         streetScene.add(tactileLine);
 
@@ -10526,7 +10526,7 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
 
  // A. 海濱長廊步道 (清水模質感)
     const promenadeMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
-    const promenade = new THREE.Mesh(new THREE.BoxGeometry(40, 0.5, 200), promenadeMat);
+   const promenade = new THREE.Mesh(new THREE.BoxGeometry(40, 0.5, 500), promenadeMat);
     promenade.position.set(-30, -4.7, 0); // 緊貼馬路左側
     promenade.receiveShadow = true;
     streetScene.add(promenade);
@@ -10541,16 +10541,16 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
         envMapIntensity: 2.0
     });
-        const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 400), railMat);
+      const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 500), railMat);
         topRail.position.set(-54, 3.5, 0); topRail.castShadow = true;
         streetScene.add(topRail);
         
-        const postCount = 200;
+        const postCount = 250;
         const postIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.2, 3.5, 0.2), railMat, postCount);
         postIMesh.castShadow = true;
         const dummyTools = new THREE.Object3D();
         for(let i=0; i<postCount; i++) {
-            dummyTools.position.set(-54, 1.75, -198 + i*2);
+            dummyTools.position.set(-54, 1.75, -250 + i*2);
             dummyTools.updateMatrix();
             postIMesh.setMatrixAt(i, dummyTools.matrix);
         }
