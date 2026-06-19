@@ -10194,17 +10194,16 @@ function buildShoppingStreet() {
         // ==========================================
         if (!streetWaterTex) streetWaterTex = createDynamicWaterTexture();
         
-        // 增加 emissive 微光，確保海水在黃昏/夜晚不會變全黑
-        const oceanBaseMat = new THREE.MeshStandardMaterial({ 
-            map: streetWaterTex, color: 0x1a4568, roughness: 0.1, metalness: 0.8,
-            emissive: 0x05101a, emissiveIntensity: 1.0 
-        });
-        if(typeof injectWaveShader !== 'undefined') injectWaveShader(oceanBaseMat); 
-        
-        const oceanBase = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000, 100, 100), oceanBaseMat);
-        oceanBase.rotation.x = -Math.PI/2;
-        oceanBase.position.set(0, -6.5, 0); 
-        streetScene.add(oceanBase);
+    // 手機放棄昂貴的金屬反射，改用 Phong 材質，並大幅降低網格複雜度
+const oceanBaseMat = isTouchDevice ? 
+    new THREE.MeshPhongMaterial({ map: streetWaterTex, color: 0x1a4568, emissive: 0x05101a, shininess: 50 }) :
+    new THREE.MeshStandardMaterial({ map: streetWaterTex, color: 0x1a4568, roughness: 0.1, metalness: 0.8, emissive: 0x05101a, emissiveIntensity: 1.0 });
+
+if(typeof injectWaveShader !== 'undefined') injectWaveShader(oceanBaseMat); 
+
+// 頂點數從 10000 大幅降至 400 (手機) / 1600 (電腦)，視覺上幾乎看不出差異
+const segments = isTouchDevice ? 20 : 40;
+const oceanBase = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000, segments, segments), oceanBaseMat);
 
         // 🏝️ 島嶼：強制無視濃霧(fog:false)，嚴格放在大廈後方解決穿模
         const islandMat = new THREE.MeshBasicMaterial({color: 0x1a252c, fog: false});
@@ -10330,67 +10329,68 @@ function getWindowGlowTexture() {
 function createTangLauUpperFloors(x, z, width, baseColor) {
     const floorGrp = new THREE.Group();
     
-    // 1. 高級商業大廈外牆 (保持深邃碳灰底色)
-    const wallMat = new THREE.MeshStandardMaterial({
-        color: 0x2b3036, roughness: 0.6, metalness: 0.2 
-    });
+    // 🚀 優化 1：手機改用 Lambert 材質，免去粗糙度與金屬度的高昂計算
+    const wallMat = isTouchDevice ? 
+        new THREE.MeshLambertMaterial({ color: 0x2b3036 }) : 
+        new THREE.MeshStandardMaterial({ color: 0x2b3036, roughness: 0.6, metalness: 0.2 });
     
     const building = new THREE.Mesh(new THREE.BoxGeometry(width, 60, 25), wallMat);
     building.position.set(x, 45, z);
-    building.castShadow = true; building.receiveShadow = true;
+    
+    // 🚀 優化 2：手機關閉這棟大樓投射與接收陰影
+    building.castShadow = !isTouchDevice; 
+    building.receiveShadow = !isTouchDevice;
     floorGrp.add(building);
 
-    // 2. 玻璃材質 (完全還原你要求的高級反光玻璃)
-    const upperGlassMat = new THREE.MeshStandardMaterial({
-        color: 0xcceeff, roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.45,         
-        envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
-        envMapIntensity: 3.0, side: THREE.FrontSide  
-    });
+    // 🚀 優化 3：手機版玻璃改用 Basic 材質，不計算環境反射，單純半透明
+    const upperGlassMat = isTouchDevice ? 
+        new THREE.MeshBasicMaterial({ color: 0x99ccff, transparent: true, opacity: 0.25, side: THREE.FrontSide }) :
+        new THREE.MeshStandardMaterial({
+            color: 0xcceeff, roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.45,         
+            envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
+            envMapIntensity: 3.0, side: THREE.FrontSide  
+        });
     
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.2 });
+    const frameMat = isTouchDevice ? 
+        new THREE.MeshLambertMaterial({ color: 0x111111 }) :
+        new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.2 });
 
     const wallX = x - width/2; 
-    
-    // 🚨 玻璃寬度稍微內縮 (width - 0.2)，徹底解決大廈相鄰時的邊緣穿模閃爍！
     const glassWidth = width - 0.2; 
-    const glassHeight = 8; // 每層落地窗高度
+    const glassHeight = 8; 
 
-    // 取得白底漸層貼圖
     const glowTex = getWindowGlowTexture();
 
-    // 3. 建造 5 橫行無縫玻璃幕牆 (補滿最頂層，無垂直切割)
     for(let fy = 22; fy <= 62; fy += 10) { 
         const winGrp = new THREE.Group();
         winGrp.position.set(wallX, fy, z);
         winGrp.rotation.y = -Math.PI/2; 
         floorGrp.add(winGrp);
 
-        // 每層獨立隨機判定，避免所有大樓都一模一樣
-        const isLit = Math.random() > 0.15; // 85% 機率亮起，營造熱鬧感
+        const isLit = Math.random() > 0.15; 
 
-        // 🚨 核心魔法：白天偏白，夜晚染上黃昏暖黃色，且無視距離變暗
-        const backingMat = new THREE.MeshStandardMaterial({
-            map: glowTex,             // 白天顯示純淨的白色漸層
-            color: 0xffffff,          // 確保底色乾淨
-            emissiveMap: glowTex,     // 讓漸層部位發光
-            emissive: isLit ? 0xffa033 : 0x000000, // 💡 關鍵：發光時強制染上「黃昏的極度溫暖橘黃色」
-            emissiveIntensity: 0.0,   // 預設關閉，由系統日夜控制
-            fog: false                // 💡 關鍵：免疫環境濃霧，遠看絕對不會變暗！
-        });
+        // 🚀 優化 4：手機版背板不計算自發光(emissive)，直接用顏色模擬亮燈
+        const backingMat = isTouchDevice ? 
+            new THREE.MeshBasicMaterial({
+                map: glowTex,
+                color: isLit ? 0xffcc88 : 0x777777, // 手機直接改變底色來模擬亮/暗
+                fog: false 
+            }) :
+            new THREE.MeshStandardMaterial({
+                map: glowTex, color: 0xffffff, emissiveMap: glowTex, 
+                emissive: isLit ? 0xffa033 : 0x000000, emissiveIntensity: 0.0, fog: false
+            });
 
         const backing = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, glassHeight), backingMat);
         backing.position.z = 0.05; 
         
-        // 綁定 isStreetLight，日夜系統會把它亮度推到 2.0 (極亮！)
         if (isLit) backing.userData.isStreetLight = true; 
         winGrp.add(backing);
 
-        // 覆蓋在外層的連貫大玻璃
         const glass = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, glassHeight), upperGlassMat);
         glass.position.z = 0.2;
         winGrp.add(glass);
 
-        // 上下極細橫向邊框收邊 (無直框)
         const fThick = 0.15; 
         const fTop = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.1, fThick, 0.25), frameMat);
         fTop.position.set(0, glassHeight/2, 0.15);
@@ -10399,7 +10399,6 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         winGrp.add(fTop, fBot);
     }
 
-    // 4. 巨型外牆電子廣告屏幕 (LED Billboard)
     if (Math.random() > 0.4) {
         const boardWidth = 12 + Math.random() * 6;
         const boardHeight = 15 + Math.random() * 20; 
@@ -10414,9 +10413,10 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         const brand = brandNames[Math.floor(Math.random() * brandNames.length)];
         const tex = createNeonSign(brand, '#050505', screenColor, false);
         
-        const screenMat = new THREE.MeshStandardMaterial({
-            map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.0, roughness: 0.1
-        });
+        // 🚀 優化 5：廣告牌材質手機降級
+        const screenMat = isTouchDevice ? 
+            new THREE.MeshBasicMaterial({ map: tex }) :
+            new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.0, roughness: 0.1 });
         
         const screen = new THREE.Mesh(new THREE.PlaneGeometry(boardWidth - 0.2, boardHeight - 0.2), screenMat);
         screen.rotation.y = -Math.PI/2;
@@ -10425,11 +10425,13 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         floorGrp.add(screen);
     }
 
-    // 5. 環境氣氛暖光
-    const streetWarmingLight = new THREE.PointLight(0xffaa55, 0.0, 70);
-    streetWarmingLight.position.set(wallX - 10.0, 25, z);
-    streetWarmingLight.name = 'realLight'; 
-    floorGrp.add(streetWarmingLight);
+    // 🚀 優化 6：完全拔除手機版的環境點光源 (極大幅度減少 draw calls)
+    if (!isTouchDevice) {
+        const streetWarmingLight = new THREE.PointLight(0xffaa55, 0.0, 70);
+        streetWarmingLight.position.set(wallX - 10.0, 25, z);
+        streetWarmingLight.name = 'realLight'; 
+        floorGrp.add(streetWarmingLight);
+    }
 
     return floorGrp;
 }
