@@ -7330,105 +7330,54 @@ function animateRoom() {
     // ⚡ 效能優化區：精準判斷是否看到窗外
     // ==========================================
  
-    // 只要視線掃到「窗外的虛擬區域」，或是玩家正站在露台上，就判定為正在看窗外
+   // 只要視線掃到「窗外的虛擬區域」，或是玩家正站在露台上，就判定為正在看窗外
     let isLookingOutside = isAtBalcony || cameraFrustum.intersectsBox(outsideWorldBox);
  
-    // 只有當視線掃到窗外時，才去計算耗費 CPU 的海浪、雲朵、車輛與摩天輪
     if (isLookingOutside) {
+        // 1. 車輛邏輯 (配合無盡道路延伸)
+        let refX = (isRidingBus && activeBus) ? activeBus.position.x : 0;
+        
+        animScenery.cars.forEach(c => {
+            c.position.x += c.userData.speed;
+            if (!isRidingBus || c !== activeBus) {
+                if(c.position.x > refX + 250) c.position.x = refX - 250;
+                else if(c.position.x < refX - 250) c.position.x = refX + 250;
+            }
+        });
 
-
-// 🌊 0 效能海浪動畫 (紋理滾動)
+        // 🎡 2. 摩天輪轉動
+        if(typeof ferrisWheelGrp !== 'undefined') {
+            ferrisWheelGrp.rotation.z -= 0.0015;
+            if (typeof fwCabins !== 'undefined') {
+                fwCabins.forEach(cabin => cabin.rotation.z = -ferrisWheelGrp.rotation.z);
+            }
+        }
+ 
+        // 🌊 3. 0效能海浪動畫 (紋理滾動，取代頂點運算)
         if (streetWaterTex) {
             streetWaterTex.offset.x -= 0.0005; // 模擬水流方向
             streetWaterTex.offset.y -= 0.001;
         }
 
-        // ✨ 點點漁燈飄浮與閃爍
+        // ✨ 4. 點點漁燈飄浮與閃爍
         if (typeof animScenery.fishingLights !== 'undefined') {
             const time = Date.now() * 0.002;
             animScenery.fishingLights.forEach(light => {
-                // 微微隨波逐流
                 light.position.x += light.userData.speedX;
                 if(light.position.x > 100) light.position.x = -1300;
                 else if(light.position.x < -1300) light.position.x = 100;
                 
-                // 隨海浪上下浮動
                 light.position.y = light.userData.baseY + Math.sin(time + light.userData.phase) * 0.3;
 
-                // 夜晚閃爍，白天隱藏
                 if (currentEnvParams && (currentEnvParams.phaseStr === 'night' || currentEnvParams.phaseStr === 'dusk')) {
-                    // 呼吸燈閃爍效果
                     light.material.opacity = 0.4 + Math.sin(time * 1.5 + light.userData.phase) * 0.6;
                 } else {
                     light.material.opacity = 0; 
                 }
             });
         }
-
-        
-      // ==========================================
-        // 1. 車輛邏輯 (配合無盡道路延伸)
-        // ==========================================
-        let refX = (isRidingBus && activeBus) ? activeBus.position.x : 0;
-        
-        animScenery.cars.forEach(c => {
-            c.position.x += c.userData.speed;
-            
-            // 如果這台車不是玩家正在坐的巴士，則讓它圍繞在玩家附近循環
-            if (!isRidingBus || c !== activeBus) {
-                // 250 是極限濃霧區，車輛在濃霧中傳送，玩家肉眼絕對看不出破綻
-                if(c.position.x > refX + 250) c.position.x = refX - 250;
-                else if(c.position.x < refX - 250) c.position.x = refX + 250;
-            }
-        });
-
-        // 🛥️ 漁船移動與漁燈閃爍
-        if (typeof animScenery.boats !== 'undefined') {
-            const time = Date.now() * 0.002;
-            animScenery.boats.forEach(b => {
-                b.position.z += b.userData.speed;
-                if(b.position.z > 600) b.position.z = -600;
-                else if(b.position.z < -600) b.position.z = 600;
-                
-                b.rotation.x = Math.sin(time + b.userData.randomOffset) * 0.05;
-                b.rotation.z = Math.cos(time + b.userData.randomOffset) * 0.02;
-
-                if (currentEnvParams && (currentEnvParams.phaseStr === 'night' || currentEnvParams.phaseStr === 'dusk')) {
-                    let flicker = 0.5 + Math.sin(time * 2 + b.userData.randomOffset) * 0.3 + Math.sin(time * 8) * 0.2;
-                    b.userData.light.material.opacity = Math.max(0.1, Math.min(1.0, flicker));
-                } else {
-                    b.userData.light.material.opacity = 0; 
-                }
-            });
-        }
  
-        // 2. 🎡 摩天輪
-        if(typeof ferrisWheelGrp !== 'undefined') {
-            const rotationSpeed = 0.0015;
-            ferrisWheelGrp.rotation.z -= rotationSpeed;
-            if (typeof fwCabins !== 'undefined') {
-                fwCabins.forEach(cabin => {
-                    cabin.rotation.z = -ferrisWheelGrp.rotation.z;
-                });
-            }
-        }
- 
-        // 3. 🌊 海水波浪 (最耗效能的頂點運算)
-        if (typeof sea !== 'undefined') {
-            const time = Date.now() * 0.0015;
-            const posAttr = sea.geometry.attributes.position;
-            for(let i=0; i<posAttr.count; i++) {
-                const x = posAttr.getX(i);
-                const y = posAttr.getY(i);
-                // 這裡使用 Date.now()，所以即使暫停計算，重新看海時波浪也會完美接上，不會有跳動感！
-                const wave1 = Math.sin(x * 0.04 + time) * 1.5;
-                const wave2 = Math.cos(y * 0.03 + time * 0.8) * 1.5;
-                posAttr.setZ(i, sea.userData.originalZ[i] + wave1 + wave2);
-            }
-            posAttr.needsUpdate = true;
-        }
- 
-        // 4. ☁️ 雲朵飄動
+        // ☁️ 5. 雲朵飄動
         if (typeof clouds !== 'undefined' && clouds.length > 0) {
             clouds.forEach(c => {
                 c.userData.angle -= c.userData.speed;
@@ -10015,11 +9964,12 @@ function createBusStopTexture() {
         
 
 // 🛠️ 建造獨立的港式商店街場景 (極致沉浸與防崩潰安全版)
+// 🛠️ 建造獨立的港式商店街場景 (極致沉浸與防崩潰安全版 + 效能優化)
 function buildShoppingStreet() {
     try {
         streetScene = new THREE.Scene();
         
-        // 💡 內建安全紋理函數：確保不會因為遺失全域函數而報錯黑屏
+        // 💡 內建安全紋理函數
         function getSafeAgedPlaster(baseColor) {
             const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512; const ctx = canvas.getContext('2d');
             ctx.fillStyle = baseColor; ctx.fillRect(0, 0, 512, 512);
@@ -10029,7 +9979,6 @@ function buildShoppingStreet() {
             const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; return tex;
         }
 
-        // 💡 基礎環境光
         const streetAmbient = new THREE.AmbientLight(0xffffff, 0.4);
         streetAmbient.name = 'streetAmbient';
         streetScene.add(streetAmbient);
@@ -10042,8 +9991,8 @@ function buildShoppingStreet() {
         streetDir.shadow.camera.top = 80; streetDir.shadow.camera.bottom = -80;
         streetScene.add(streetDir);
 
-      // ==========================================
-        // 1 & 4. 消除懸空感與動態海面 (0效能消耗紋理滾動)
+        // ==========================================
+        // 1. 動態海面與島嶼 (紋理滾動版)
         // ==========================================
         if (!streetWaterTex) streetWaterTex = createDynamicWaterTexture();
         
@@ -10052,14 +10001,6 @@ function buildShoppingStreet() {
         oceanBase.rotation.x = -Math.PI/2;
         oceanBase.position.set(0, -6.5, 0); 
         streetScene.add(oceanBase);
-
-        const staticSea = new THREE.Mesh(
-            new THREE.PlaneGeometry(800, 800), 
-            new THREE.MeshStandardMaterial({ map: streetWaterTex, color: 0x1a3b5c, roughness: 0.1, metalness: 0.8 })
-        );
-        staticSea.rotation.x = -Math.PI/2;
-        staticSea.position.set(-255, -5, 0); 
-        streetScene.add(staticSea);
 
         const islandMat = new THREE.MeshBasicMaterial({color: 0x050a10, fog: false});
         for(let i=0; i<15; i++) {
@@ -10128,9 +10069,7 @@ function buildShoppingStreet() {
          
                     if (Math.random() > 0.2) {
                         const curtainColors = [0xeeeeee, 0xffddaa, 0xadd8e6, 0xffb6c1, 0x90ee90];
-                        const cColor = curtainColors[Math.floor(Math.random() * curtainColors.length)];
-                        const cMat = new THREE.MeshStandardMaterial({color: cColor, roughness: 0.9});
-                        
+                        const cMat = new THREE.MeshStandardMaterial({color: curtainColors[Math.floor(Math.random() * curtainColors.length)], roughness: 0.9});
                         const style = Math.random();
                         if (style > 0.6) {
                             const cW = winWidth * (0.3 + Math.random()*0.4);
@@ -10139,10 +10078,8 @@ function buildShoppingStreet() {
                             winGrp.add(curtain);
                         } else if (style > 0.3) {
                             const cW = winWidth * 0.25;
-                            const cL = new THREE.Mesh(new THREE.PlaneGeometry(cW, winHeight), cMat);
-                            cL.position.set(-winWidth/2 + cW/2, 0, 0.04);
-                            const cR = new THREE.Mesh(new THREE.PlaneGeometry(cW, winHeight), cMat);
-                            cR.position.set(winWidth/2 - cW/2, 0, 0.04);
+                            const cL = new THREE.Mesh(new THREE.PlaneGeometry(cW, winHeight), cMat); cL.position.set(-winWidth/2 + cW/2, 0, 0.04);
+                            const cR = new THREE.Mesh(new THREE.PlaneGeometry(cW, winHeight), cMat); cR.position.set(winWidth/2 - cW/2, 0, 0.04);
                             winGrp.add(cL, cR);
                         } else {
                             const curtain = new THREE.Mesh(new THREE.PlaneGeometry(winWidth, winHeight), cMat);
@@ -10155,122 +10092,47 @@ function buildShoppingStreet() {
                         backing.userData.isWindow = true; 
                     }
          
-                    if (Math.random() > 0.7) {
-                        const clothColors = [0xff4444, 0x4444ff, 0xffffff, 0xffff44];
-                        const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.2), new THREE.MeshBasicMaterial({color: clothColors[Math.floor(Math.random()*4)]}));
-                        cloth.position.set((Math.random()-0.5)*2, 0.5, 0.06);
-                        winGrp.add(cloth);
-                    }
-         
                     const glass = new THREE.Mesh(new THREE.PlaneGeometry(winWidth, winHeight), upperGlassMat);
                     glass.position.z = 0.1;
                     winGrp.add(glass);
          
                     const fThick = 0.2; const fDepth = 0.15; const fZ = 0.12;     
-         
-                    const fTop = new THREE.Mesh(new THREE.BoxGeometry(winWidth + fThick*2, fThick, fDepth), frameMat);
-                    fTop.position.set(0, winHeight/2 + fThick/2, fZ);
-                    const fBot = new THREE.Mesh(new THREE.BoxGeometry(winWidth + fThick*2, fThick, fDepth), frameMat);
-                    fBot.position.set(0, -winHeight/2 - fThick/2, fZ);
-                    const fLeft = new THREE.Mesh(new THREE.BoxGeometry(fThick, winHeight, fDepth), frameMat);
-                    fLeft.position.set(-winWidth/2 - fThick/2, 0, fZ);
-                    const fRight = new THREE.Mesh(new THREE.BoxGeometry(fThick, winHeight, fDepth), frameMat);
-                    fRight.position.set(winWidth/2 + fThick/2, 0, fZ);
-                    
-                    const fMidV = new THREE.Mesh(new THREE.BoxGeometry(fThick*0.8, winHeight, fDepth*0.6), frameMat);
-                    fMidV.position.set(0, 0, fZ - 0.02);
-                    const fMidH = new THREE.Mesh(new THREE.BoxGeometry(winWidth, fThick*0.8, fDepth*0.6), frameMat);
-                    fMidH.position.set(0, 0.5, fZ - 0.02);
+                    const fTop = new THREE.Mesh(new THREE.BoxGeometry(winWidth + fThick*2, fThick, fDepth), frameMat); fTop.position.set(0, winHeight/2 + fThick/2, fZ);
+                    const fBot = new THREE.Mesh(new THREE.BoxGeometry(winWidth + fThick*2, fThick, fDepth), frameMat); fBot.position.set(0, -winHeight/2 - fThick/2, fZ);
+                    const fLeft = new THREE.Mesh(new THREE.BoxGeometry(fThick, winHeight, fDepth), frameMat); fLeft.position.set(-winWidth/2 - fThick/2, 0, fZ);
+                    const fRight = new THREE.Mesh(new THREE.BoxGeometry(fThick, winHeight, fDepth), frameMat); fRight.position.set(winWidth/2 + fThick/2, 0, fZ);
+                    const fMidV = new THREE.Mesh(new THREE.BoxGeometry(fThick*0.8, winHeight, fDepth*0.6), frameMat); fMidV.position.set(0, 0, fZ - 0.02);
+                    const fMidH = new THREE.Mesh(new THREE.BoxGeometry(winWidth, fThick*0.8, fDepth*0.6), frameMat); fMidH.position.set(0, 0.5, fZ - 0.02);
          
                     winGrp.add(fTop, fBot, fLeft, fRight, fMidV, fMidH);
-         
-                    if (Math.random() > 0.5) {
-                        const acGrp = new THREE.Group();
-                        acGrp.position.set((Math.random() > 0.5 ? 1 : -1), -1.8, 0.6);
-                        winGrp.add(acGrp);
-         
-                        const acBody = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, 1.8), new THREE.MeshStandardMaterial({color:0xdddddd, roughness:0.8}));
-                        acBody.castShadow = true;
-                        acGrp.add(acBody);
-         
-                        const acVent = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), new THREE.MeshBasicMaterial({color:0x222}));
-                        acVent.position.set(0, 0, 0.91);
-                        acGrp.add(acVent);
-                    }
                 }
             }
             return floorGrp;
         }
 
-        const brightShopMat = new THREE.MeshStandardMaterial({color: 0xfffae6, side: THREE.BackSide, roughness: 0.8});
-        const darkShopMat = new THREE.MeshStandardMaterial({color: 0x4a2525, side: THREE.BackSide, roughness: 0.9});
-     
         // 🏬 店舖 A：文苑文具 
         const statGrp = new THREE.Group();
         statGrp.position.set(0, 0, 15);
         statGrp.add(createTangLauUpperFloors(7.5, 0, 20, '#8fbc8f'));
         
         const statTileMat = new THREE.MeshStandardMaterial({map: getSafeAgedPlaster('#8fbc8f')});
-        const statWallL = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 2), statTileMat);
-        statWallL.position.set(7.5, 7.5, 9); statGrp.add(statWallL); 
-        const statWallR = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 2), statTileMat);
-        statWallR.position.set(7.5, 7.5, -9); statGrp.add(statWallR); 
-        const statWallTop = new THREE.Mesh(new THREE.BoxGeometry(15, 5, 16), statTileMat);
-        statWallTop.position.set(7.5, 12.5, 0); statGrp.add(statWallTop); 
+        const statWallL = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 2), statTileMat); statWallL.position.set(7.5, 7.5, 9); statGrp.add(statWallL); 
+        const statWallR = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 2), statTileMat); statWallR.position.set(7.5, 7.5, -9); statGrp.add(statWallR); 
+        const statWallTop = new THREE.Mesh(new THREE.BoxGeometry(15, 5, 16), statTileMat); statWallTop.position.set(7.5, 12.5, 0); statGrp.add(statWallTop); 
         
-        const statInside = new THREE.Mesh(new THREE.BoxGeometry(14.8, 14.8, 15.8), brightShopMat);
-        statInside.position.set(7.5, 7.5, 0);
-        statInside.userData = { isShopInside: true };
-        statGrp.add(statInside);
+        const statInside = new THREE.Mesh(new THREE.BoxGeometry(14.8, 14.8, 15.8), new THREE.MeshStandardMaterial({color: 0xfffae6, side: THREE.BackSide, roughness: 0.8}));
+        statInside.position.set(7.5, 7.5, 0); statInside.userData = { isShopInside: true }; statGrp.add(statInside);
      
-        const statWindow = new THREE.Mesh(new THREE.BoxGeometry(0.2, 10, 10), shopGlassMat);
-        statWindow.position.set(0, 5, -3); 
-        statGrp.add(statWindow);
-        const statDoor = new THREE.Mesh(new THREE.BoxGeometry(4.5, 9.8, 0.2), shopGlassMat);
-        statDoor.position.set(1.5, 5, 3.5); 
-        statDoor.rotation.y = -Math.PI / 3;
-        statGrp.add(statDoor);
+        const statWindow = new THREE.Mesh(new THREE.BoxGeometry(0.2, 10, 10), shopGlassMat); statWindow.position.set(0, 5, -3); statGrp.add(statWindow);
+        const statDoor = new THREE.Mesh(new THREE.BoxGeometry(4.5, 9.8, 0.2), shopGlassMat); statDoor.position.set(1.5, 5, 3.5); statDoor.rotation.y = -Math.PI / 3; statGrp.add(statDoor);
         
-        const statProps = new THREE.Group();
-        const giantPencil = new THREE.Group();
-        const pBody = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 5, 6), new THREE.MeshStandardMaterial({color: 0xf5d061}));
-        pBody.position.y = 2.5; giantPencil.add(pBody);
-        const pTip = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.2, 6), new THREE.MeshStandardMaterial({color: 0xe3cca8}));
-        pTip.position.y = 5.6; giantPencil.add(pTip);
-        const pLead = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.4, 6), new THREE.MeshStandardMaterial({color: 0x333333}));
-        pLead.position.y = 6.0; giantPencil.add(pLead);
-        giantPencil.position.set(1.5, 0, -5); giantPencil.rotation.z = -0.2; 
-        statProps.add(giantPencil);
+        const shutterA = new THREE.Mesh(new THREE.BoxGeometry(1.2, 5, 20), shutterMat); shutterA.position.set(0, 12.5, 0); statGrp.add(shutterA);
+        const awningA = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 20), new THREE.MeshStandardMaterial({map: createAwningTexture('#e8c35d'), roughness: 0.9})); awningA.position.set(-2, 10, 0); awningA.rotation.z = -0.3; awningA.castShadow = true; statGrp.add(awningA);
         
-        const counter = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 10), new THREE.MeshStandardMaterial({color: 0x8b7355}));
-        counter.position.set(8, 1.5, -2); statProps.add(counter);
-        const paperStack = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 1.6), new THREE.MeshStandardMaterial({color: 0xffffff}));
-        paperStack.position.set(8, 3.25, -4); statProps.add(paperStack);
-        const paperStack2 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 1.6), new THREE.MeshStandardMaterial({color: 0xffffff}));
-        paperStack2.position.set(8, 3.2, -1); paperStack2.rotation.y = 0.2; statProps.add(paperStack2);
-        for(let i=0; i<3; i++) {
-            const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.6, 16), new THREE.MeshStandardMaterial({color: 0x4a789c}));
-            cup.position.set(7.5, 3.3, 1 + i*1.2);
-            const pen = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.2), new THREE.MeshStandardMaterial({color: 0xcc4444}));
-            pen.position.set(7.55, 3.6, 1 + i*1.2); pen.rotation.z = 0.3;
-            statProps.add(cup, pen);
-        }
-        const poster = new THREE.Mesh(new THREE.PlaneGeometry(6, 4), new THREE.MeshStandardMaterial({color: 0x8fc2d6}));
-        poster.position.set(14.8, 8, 0); poster.rotation.y = -Math.PI/2;
-        statProps.add(poster);
-        statGrp.add(statProps);
-     
-        const shutterA = new THREE.Mesh(new THREE.BoxGeometry(1.2, 5, 20), shutterMat);
-        shutterA.position.set(0, 12.5, 0); statGrp.add(shutterA);
-        const awningA = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 20), new THREE.MeshStandardMaterial({map: createAwningTexture('#e8c35d'), roughness: 0.9}));
-        awningA.position.set(-2, 10, 0); awningA.rotation.z = -0.3; awningA.castShadow = true; statGrp.add(awningA);
         const texA = createNeonSign('文苑', '#111', '#00ffcc', false);
-        const signA = new THREE.Mesh(new THREE.BoxGeometry(0.5, 3.5, 8), new THREE.MeshStandardMaterial({map: texA, emissiveMap: texA}));
-        signA.position.set(-0.5, 13, 0); signA.userData = { isNeon: true }; statGrp.add(signA);
-     
-        const statHit = new THREE.Mesh(new THREE.BoxGeometry(5, 10, 20), new THREE.MeshBasicMaterial({visible:false}));
-        statHit.position.set(0, 5, 0); statHit.userData = {type: 'shop_stationery'};
-        statGrp.add(statHit); buildingsGrp.add(statGrp);
+        const signA = new THREE.Mesh(new THREE.BoxGeometry(0.5, 3.5, 8), new THREE.MeshStandardMaterial({map: texA, emissiveMap: texA})); signA.position.set(-0.5, 13, 0); signA.userData = { isNeon: true }; statGrp.add(signA);
+        
+        const statHit = new THREE.Mesh(new THREE.BoxGeometry(5, 10, 20), new THREE.MeshBasicMaterial({visible:false})); statHit.position.set(0, 5, 0); statHit.userData = {type: 'shop_stationery'}; statGrp.add(statHit); buildingsGrp.add(statGrp);
      
         // 🏬 店舖 B：霓虹黑膠 
         const recGrp = new THREE.Group();
@@ -10278,77 +10140,33 @@ function buildShoppingStreet() {
         recGrp.add(createTangLauUpperFloors(7.5, 0, 20, '#c28585'));
      
         const recTileMat = new THREE.MeshStandardMaterial({map: createConcreteTexture()});
-        const recWallL = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 2), recTileMat);
-        recWallL.position.set(7.5, 7.5, 9); recGrp.add(recWallL);
-        const recWallR = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 2), recTileMat);
-        recWallR.position.set(7.5, 7.5, -9); recGrp.add(recWallR);
-        const recWallTop = new THREE.Mesh(new THREE.BoxGeometry(15, 5, 16), recTileMat);
-        recWallTop.position.set(7.5, 12.5, 0); recGrp.add(recWallTop);
+        const recWallL = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 2), recTileMat); recWallL.position.set(7.5, 7.5, 9); recGrp.add(recWallL);
+        const recWallR = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 2), recTileMat); recWallR.position.set(7.5, 7.5, -9); recGrp.add(recWallR);
+        const recWallTop = new THREE.Mesh(new THREE.BoxGeometry(15, 5, 16), recTileMat); recWallTop.position.set(7.5, 12.5, 0); recGrp.add(recWallTop);
         
-        const recInside = new THREE.Mesh(new THREE.BoxGeometry(14.8, 14.8, 15.8), darkShopMat);
+        const recInside = new THREE.Mesh(new THREE.BoxGeometry(14.8, 14.8, 15.8), new THREE.MeshStandardMaterial({color: 0x4a2525, side: THREE.BackSide, roughness: 0.9}));
         recInside.position.set(7.5, 7.5, 0); recInside.userData = { isShopInside: true }; recGrp.add(recInside);
         
-        const recWindow = new THREE.Mesh(new THREE.BoxGeometry(0.2, 10, 10), shopGlassMat);
-        recWindow.position.set(0, 5, 3); 
-        recGrp.add(recWindow);
-        const recDoor = new THREE.Mesh(new THREE.BoxGeometry(4.5, 9.8, 0.2), shopGlassMat);
-        recDoor.position.set(1.5, 5, -3.5); 
-        recDoor.rotation.y = Math.PI / 3;
-        recGrp.add(recDoor);
+        const recWindow = new THREE.Mesh(new THREE.BoxGeometry(0.2, 10, 10), shopGlassMat); recWindow.position.set(0, 5, 3); recGrp.add(recWindow);
+        const recDoor = new THREE.Mesh(new THREE.BoxGeometry(4.5, 9.8, 0.2), shopGlassMat); recDoor.position.set(1.5, 5, -3.5); recDoor.rotation.y = Math.PI / 3; recGrp.add(recDoor);
         
-        const recProps = new THREE.Group();
-        for(let i=-1; i<=1; i+=2) {
-            const vinyl = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.5, 0.2, 32), new THREE.MeshStandardMaterial({color: 0x111111}));
-            vinyl.rotation.z = Math.PI/2;
-            vinyl.position.set(14.8, 8, i * 4); 
-            const centerLabel = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.25, 16), new THREE.MeshStandardMaterial({color: Math.random()*0xffffff}));
-            centerLabel.rotation.z = Math.PI/2;
-            centerLabel.position.set(14.8, 8, i * 4);
-            recProps.add(vinyl, centerLabel);
-        }
-        const rDesk = new THREE.Mesh(new THREE.BoxGeometry(4, 3, 10), new THREE.MeshStandardMaterial({color: 0x3a2518}));
-        rDesk.position.set(6, 1.5, 2); recProps.add(rDesk);
+        const shutterB = new THREE.Mesh(new THREE.BoxGeometry(1.2, 5, 20), shutterMat); shutterB.position.set(0, 12.5, 0); recGrp.add(shutterB);
+        const awningB = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 20), new THREE.MeshStandardMaterial({map: createAwningTexture('#4a789c'), roughness: 0.9})); awningB.position.set(-2.5, 9.5, 0); awningB.rotation.z = -0.25; awningB.castShadow = true; recGrp.add(awningB);
         
-        const playerBase = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.4, 2.8), new THREE.MeshStandardMaterial({color: 0xcccccc}));
-        playerBase.position.set(6, 3.2, 2); recProps.add(playerBase);
-        const platter = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.1, 32), new THREE.MeshStandardMaterial({color: 0x111}));
-        platter.position.set(6, 3.45, 2); recProps.add(platter);
-        const tonearm = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 1.8), new THREE.MeshStandardMaterial({color: 0x888888}));
-        tonearm.position.set(6.6, 3.55, 1.2); tonearm.rotation.y = 0.5; recProps.add(tonearm);
-        
-        for(let i=0; i<2; i++) {
-            const crate = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.0, 2.5), new THREE.MeshStandardMaterial({color: 0x8b5a2b}));
-            crate.position.set(6, 1.0, -3 - i*3); recProps.add(crate);
-            const records = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, 2.2), new THREE.MeshStandardMaterial({color: 0x111111}));
-            records.position.set(6, 1.5, -3 - i*3); records.rotation.x = 0.1; recProps.add(records);
-        }
-        recGrp.add(recProps);
-     
-        const shutterB = new THREE.Mesh(new THREE.BoxGeometry(1.2, 5, 20), shutterMat);
-        shutterB.position.set(0, 12.5, 0); recGrp.add(shutterB);
-        const awningB = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 20), new THREE.MeshStandardMaterial({map: createAwningTexture('#4a789c'), roughness: 0.9}));
-        awningB.position.set(-2.5, 9.5, 0); awningB.rotation.z = -0.25; awningB.castShadow = true; recGrp.add(awningB);
         const texB = createNeonSign('黑膠唱片', '#111', '#ff00aa', true);
-        const signB = new THREE.Mesh(new THREE.BoxGeometry(6, 18, 0.5), new THREE.MeshStandardMaterial({map: texB, emissiveMap: texB}));
-        signB.position.set(-5, 20, -10); signB.rotation.y = -Math.PI/6; signB.userData = { isNeon: true }; recGrp.add(signB);
+        const signB = new THREE.Mesh(new THREE.BoxGeometry(6, 18, 0.5), new THREE.MeshStandardMaterial({map: texB, emissiveMap: texB})); signB.position.set(-5, 20, -10); signB.rotation.y = -Math.PI/6; signB.userData = { isNeon: true }; recGrp.add(signB);
      
-        const recHit = new THREE.Mesh(new THREE.BoxGeometry(5, 10, 20), new THREE.MeshBasicMaterial({visible:false}));
-        recHit.position.set(0, 5, 0); recHit.userData = {type: 'shop_record'};
-        recGrp.add(recHit); buildingsGrp.add(recGrp);
+        const recHit = new THREE.Mesh(new THREE.BoxGeometry(5, 10, 20), new THREE.MeshBasicMaterial({visible:false})); recHit.position.set(0, 5, 0); recHit.userData = {type: 'shop_record'}; recGrp.add(recHit); buildingsGrp.add(recGrp);
      
         // 🏗️ 周邊空置店舖 
         function createExpansionShop(zPos, baseColor, awningColor) {
             const emptyGrp = new THREE.Group();
             emptyGrp.position.set(0, 0, zPos);
             emptyGrp.add(createTangLauUpperFloors(7.5, 0, 20, baseColor));
-            const wall = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 20), new THREE.MeshStandardMaterial({map: createConcreteTexture()}));
-            wall.position.set(7.5, 7.5, 0); emptyGrp.add(wall);
-            const shutter = new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 18), shutterMat);
-            shutter.position.set(0.1, 5, 0); emptyGrp.add(shutter);
-            const shutterBox = new THREE.Mesh(new THREE.BoxGeometry(1.2, 5, 20), shutterMat);
-            shutterBox.position.set(0, 12.5, 0); emptyGrp.add(shutterBox);
-            const awning = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 20), new THREE.MeshStandardMaterial({map: createAwningTexture(awningColor), roughness: 0.9}));
-            awning.position.set(-2, 10, 0); awning.rotation.z = -0.3; awning.castShadow = true; emptyGrp.add(awning);
+            const wall = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 20), new THREE.MeshStandardMaterial({map: createConcreteTexture()})); wall.position.set(7.5, 7.5, 0); emptyGrp.add(wall);
+            const shutter = new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 18), shutterMat); shutter.position.set(0.1, 5, 0); emptyGrp.add(shutter);
+            const shutterBox = new THREE.Mesh(new THREE.BoxGeometry(1.2, 5, 20), shutterMat); shutterBox.position.set(0, 12.5, 0); emptyGrp.add(shutterBox);
+            const awning = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 20), new THREE.MeshStandardMaterial({map: createAwningTexture(awningColor), roughness: 0.9})); awning.position.set(-2, 10, 0); awning.rotation.z = -0.3; awning.castShadow = true; emptyGrp.add(awning);
             return emptyGrp;
         }
      
@@ -10359,18 +10177,8 @@ function buildShoppingStreet() {
         buildingsGrp.add(createExpansionShop(-45, '#a5b0a3', '#4e5a59'));
         buildingsGrp.add(createExpansionShop(-65, '#d4c7b8', '#8a7d6d'));
 
-        // --- 街道佈景 ---
-        const stallGrp = new THREE.Group();
-        stallGrp.position.set(5, 0, -35);
-        const stallMat = new THREE.MeshStandardMaterial({map: createCorrugatedMetalTexture('#1c5c36'), roughness: 0.8});
-        const stallBody = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 10), stallMat);
-        stallBody.position.y = 3; stallBody.castShadow = true; stallGrp.add(stallBody);
-        const stallRoof = new THREE.Mesh(new THREE.PlaneGeometry(8, 12), stallMat);
-        stallRoof.position.set(-1, 6.5, 0); stallRoof.rotation.x = -Math.PI/2; stallRoof.rotation.y = -0.2; stallRoof.castShadow = true; stallGrp.add(stallRoof);
-        streetScene.add(stallGrp);
-
         // ==========================================
-        // 🌊 4. 左側海濱長廊、欄杆與修復花槽
+        // 4. 海濱長廊、欄杆與花槽
         // ==========================================
         const promenadeMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
         const promenade = new THREE.Mesh(new THREE.BoxGeometry(40, 0.5, 400), promenadeMat);
@@ -10380,8 +10188,7 @@ function buildShoppingStreet() {
 
         const railMat = new THREE.MeshStandardMaterial({color: 0x8899a6, metalness: 0.7, roughness: 0.3});
         const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 400), railMat);
-        topRail.position.set(-54, 3.5, 0); 
-        topRail.castShadow = true;
+        topRail.position.set(-54, 3.5, 0); topRail.castShadow = true;
         streetScene.add(topRail);
         
         const postCount = 200;
@@ -10409,61 +10216,37 @@ function buildShoppingStreet() {
 
         for(let i=0; i<planterCount; i++) {
             let zPos = -160 + i * 30;
-            dummyTools.position.set(-25, 1.0, zPos); 
-            dummyTools.scale.set(1,1,1); dummyTools.updateMatrix();
-            planterIMesh.setMatrixAt(i, dummyTools.matrix);
-            
-            dummyTools.position.set(-25, 1.8, zPos);
-            dummyTools.updateMatrix();
-            seatIMesh.setMatrixAt(i, dummyTools.matrix);
-
-            dummyTools.position.set(-25, 3.5, zPos);
-            dummyTools.updateMatrix();
-            pTreeTrunk.setMatrixAt(i, dummyTools.matrix);
-
-            dummyTools.position.set(-25, 6.5, zPos);
-            dummyTools.scale.set(1, 1.2, 1); dummyTools.updateMatrix();
-            pTreeLeaf.setMatrixAt(i, dummyTools.matrix);
+            dummyTools.position.set(-25, 1.0, zPos); dummyTools.scale.set(1,1,1); dummyTools.updateMatrix(); planterIMesh.setMatrixAt(i, dummyTools.matrix);
+            dummyTools.position.set(-25, 1.8, zPos); dummyTools.updateMatrix(); seatIMesh.setMatrixAt(i, dummyTools.matrix);
+            dummyTools.position.set(-25, 3.5, zPos); dummyTools.updateMatrix(); pTreeTrunk.setMatrixAt(i, dummyTools.matrix);
+            dummyTools.position.set(-25, 6.5, zPos); dummyTools.scale.set(1, 1.2, 1); dummyTools.updateMatrix(); pTreeLeaf.setMatrixAt(i, dummyTools.matrix);
             pTreeLeaf.setColorAt(i, new THREE.Color().setHSL(0.25 + Math.random()*0.1, 0.6, 0.3));
         }
         streetScene.add(planterIMesh, seatIMesh, pTreeTrunk, pTreeLeaf);
 
-        const staticSea = new THREE.Mesh(
-            new THREE.PlaneGeometry(400, 400), 
-            new THREE.MeshStandardMaterial({color: 0x1a3b5c, roughness: 0.1, metalness: 0.8})
-        );
-        staticSea.rotation.x = -Math.PI/2;
-        staticSea.position.set(-255, -5, 0); 
-        streetScene.add(staticSea);
-
-         // ==========================================
+        // ==========================================
         // 🌃 5. 對岸維港：完整顯示與豐富色彩
         // ==========================================
         const bTex = createBuildingTexture();
         const bEmissiveTex = createBuildingEmissiveTexture();
-        const buildCountPerColor = 40; // 每種顏色40棟，總共160棟大廈
-        
-        // 四種香港常見夜景燈光顏色 (暖黃、白、青藍、霓虹粉)
+        const buildCountPerColor = 40; 
         const cityColors = [0xffea99, 0xffffff, 0xaaddff, 0xffbbee];
-        const skylineIMeshes = [];
         
-        // 暗色主體
         const skylineMat = new THREE.MeshStandardMaterial({ color: 0x121a22, roughness: 0.9, fog: true });
         const skylineBaseIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), skylineMat, buildCountPerColor * 4);
-        skylineBaseIMesh.frustumCulled = false; // 🚫 關鍵：防止大廈因視角運算錯誤而消失
+        skylineBaseIMesh.frustumCulled = false; // 🚫 防止消失
         streetScene.add(skylineBaseIMesh);
 
         let globalBIndex = 0;
-
-        cityColors.forEach((colorHex, colorIndex) => {
+        cityColors.forEach((colorHex) => {
             const lightMat = new THREE.MeshStandardMaterial({
                 color: 0x121a22, roughness: 0.9, map: bTex, 
                 emissiveMap: bEmissiveTex, emissive: colorHex, emissiveIntensity: 0.0,
-                fog: false // 燈光不受霧氣影響，保持璀璨
+                fog: false 
             }); 
             
             const lightIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), lightMat, buildCountPerColor);
-            lightIMesh.frustumCulled = false; // 🚫 關鍵防消失
+            lightIMesh.frustumCulled = false; 
             lightIMesh.userData.isWindow = true; 
             
             for(let i=0; i<buildCountPerColor; i++) {
@@ -10471,7 +10254,7 @@ function buildShoppingStreet() {
                 let h = 200 + Math.random() * 500; 
                 let d = 40 + Math.random() * 60;
                 
-                // 調整 Z 軸距離，控制在 -300 到 -700 之間，確保全部在相機 far 範圍內
+                // 控制 Z 軸距離，確保不被相機裁切
                 dummyTools.position.set(-600 - Math.random()*800, h/2 - 20, -300 - Math.random()*400);
                 dummyTools.scale.set(w, h, d);
                 dummyTools.updateMatrix();
@@ -10480,15 +10263,13 @@ function buildShoppingStreet() {
                 skylineBaseIMesh.setMatrixAt(globalBIndex++, dummyTools.matrix);
             }
             streetScene.add(lightIMesh);
-            skylineIMeshes.push(lightIMesh);
         });
 
         // ==========================================
-        // 🛥️ 6. 點點漁燈 (Sprite 粒子系統，0 效能負擔)
+        // 🛥️ 6. 點點漁燈 (Sprite 粒子系統)
         // ==========================================
         animScenery.fishingLights = [];
         
-        // 製作發光圓點貼圖
         const glowCanvas = document.createElement('canvas');
         glowCanvas.width = 32; glowCanvas.height = 32;
         const gCtx = glowCanvas.getContext('2d');
@@ -10498,146 +10279,71 @@ function buildShoppingStreet() {
         gGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
         gCtx.fillStyle = gGrad; gCtx.beginPath(); gCtx.arc(16,16,16,0,Math.PI*2); gCtx.fill();
         
-        const glowTex = new THREE.CanvasTexture(glowCanvas);
         const spriteMat = new THREE.SpriteMaterial({
-            map: glowTex, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: true
+            map: new THREE.CanvasTexture(glowCanvas), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: true
         });
 
-        // 散佈 150 個點點漁燈
         for(let i=0; i<150; i++) {
             const lightSprite = new THREE.Sprite(spriteMat);
-            // 隨機散佈在海面上
-            lightSprite.position.set(
-                -100 - Math.random() * 1200, 
-                -4.0 + Math.random() * 1.5, // 貼近海面
-                -100 - Math.random() * 500
-            );
-            
-            // 遠處的燈比較小，近處的稍微大一點
-            const sSize = 3 + Math.random() * 5;
-            lightSprite.scale.set(sSize, sSize, 1);
-            
-            lightSprite.userData = {
-                phase: Math.random() * 100,
-                speedX: (Math.random() - 0.5) * 0.05,
-                baseY: lightSprite.position.y
-            };
-            
+            lightSprite.position.set(-100 - Math.random() * 1200, -4.0 + Math.random() * 1.5, -100 - Math.random() * 500);
+            const sSize = 3 + Math.random() * 5; lightSprite.scale.set(sSize, sSize, 1);
+            lightSprite.userData = { phase: Math.random() * 100, speedX: (Math.random() - 0.5) * 0.05, baseY: lightSprite.position.y };
             streetScene.add(lightSprite);
             animScenery.fishingLights.push(lightSprite);
         }
         
         // ==========================================
-        // 📮 港式綠色郵筒 
+        // 7~10. 街景細節 (郵筒、消防栓、街燈、招牌)
         // ==========================================
-        const postboxGrp = new THREE.Group();
-        postboxGrp.position.set(5, 0, -20);
-        streetScene.add(postboxGrp);
+        const postboxGrp = new THREE.Group(); postboxGrp.position.set(5, 0, -20); streetScene.add(postboxGrp);
         const pbMat = new THREE.MeshStandardMaterial({color: 0x006633, roughness: 0.6, metalness: 0.1});
-        const pbDarkMat = new THREE.MeshBasicMaterial({color: 0x111111});
-        const pbBody = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.8, 2.2), pbMat);
-        pbBody.position.y = 2.1; pbBody.castShadow = true; postboxGrp.add(pbBody);
-        const pbBase = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.2, 2.4), pbMat);
-        pbBase.position.y = 0.1; pbBase.castShadow = true; postboxGrp.add(pbBase);
-        const pbHood = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 2.2, 12), pbMat);
-        pbHood.rotation.x = Math.PI/2; pbHood.position.y = 4.0; pbHood.castShadow = true; postboxGrp.add(pbHood);
-        const pbSlotHood = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 0.4), pbMat);
-        pbSlotHood.position.set(0, 3.5, 1.2); postboxGrp.add(pbSlotHood);
-        const pbSlot = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.2), pbDarkMat);
-        pbSlot.position.set(0, 3.3, 1.11); postboxGrp.add(pbSlot); 
-        const pbTimePlate = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.0), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.9}));
-        pbTimePlate.position.set(0, 2.2, 1.11); postboxGrp.add(pbTimePlate);
+        const pbBody = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.8, 2.2), pbMat); pbBody.position.y = 2.1; pbBody.castShadow = true; postboxGrp.add(pbBody);
+        const pbBase = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.2, 2.4), pbMat); pbBase.position.y = 0.1; pbBase.castShadow = true; postboxGrp.add(pbBase);
+        const pbHood = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 2.2, 12), pbMat); pbHood.rotation.x = Math.PI/2; pbHood.position.y = 4.0; pbHood.castShadow = true; postboxGrp.add(pbHood);
+        const pbSlotHood = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 0.4), pbMat); pbSlotHood.position.set(0, 3.5, 1.2); postboxGrp.add(pbSlotHood);
+        const pbSlot = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.2), new THREE.MeshBasicMaterial({color: 0x111111})); pbSlot.position.set(0, 3.3, 1.11); postboxGrp.add(pbSlot); 
+        const pbTimePlate = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.0), new THREE.MeshStandardMaterial({color: 0xeeeeee, roughness: 0.9})); pbTimePlate.position.set(0, 2.2, 1.11); postboxGrp.add(pbTimePlate);
      
-        // ==========================================
-        // 🧯 港式紅色消防栓 
-        // ==========================================
-        const hydrantGrp = new THREE.Group();
-        hydrantGrp.position.set(6, 0, 25);
-        streetScene.add(hydrantGrp);
+        const hydrantGrp = new THREE.Group(); hydrantGrp.position.set(6, 0, 25); streetScene.add(hydrantGrp);
         const hyMat = new THREE.MeshStandardMaterial({color: 0xcc2222, roughness: 0.4, metalness: 0.3}); 
         const hySilver = new THREE.MeshStandardMaterial({color: 0xaaaaaa, roughness: 0.5, metalness: 0.8}); 
-        const hyBody = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 2.2, 12), hyMat);
-        hyBody.position.y = 1.1; hyBody.castShadow = true; hydrantGrp.add(hyBody);
-        const hyBase = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.3, 12), hyMat);
-        hyBase.position.y = 0.15; hyBase.castShadow = true; hydrantGrp.add(hyBase);
-        const hyTop = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 12, 0, Math.PI*2, 0, Math.PI/2), hyMat);
-        hyTop.position.y = 2.2; hydrantGrp.add(hyTop);
-        const hyNut = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.2, 6), hySilver); 
-        hyNut.position.y = 2.75; hydrantGrp.add(hyNut);
-        const hyOutL = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.6, 12), hyMat);
-        hyOutL.rotation.z = Math.PI/2; hyOutL.position.set(-0.6, 1.4, 0); hydrantGrp.add(hyOutL);
-        const hyCapL = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.1, 12), hySilver);
-        hyCapL.rotation.z = Math.PI/2; hyCapL.position.set(-0.95, 1.4, 0); hydrantGrp.add(hyCapL);
-        const hyOutR = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.6, 12), hyMat);
-        hyOutR.rotation.z = Math.PI/2; hyOutR.position.set(0.6, 1.4, 0); hydrantGrp.add(hyOutR);
-        const hyCapR = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.1, 12), hySilver);
-        hyCapR.rotation.z = Math.PI/2; hyCapR.position.set(0.95, 1.4, 0); hydrantGrp.add(hyCapR);
+        const hyBody = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 2.2, 12), hyMat); hyBody.position.y = 1.1; hyBody.castShadow = true; hydrantGrp.add(hyBody);
+        const hyBase = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.3, 12), hyMat); hyBase.position.y = 0.15; hyBase.castShadow = true; hydrantGrp.add(hyBase);
+        const hyTop = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 12, 0, Math.PI*2, 0, Math.PI/2), hyMat); hyTop.position.y = 2.2; hydrantGrp.add(hyTop);
+        const hyNut = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.2, 6), hySilver); hyNut.position.y = 2.75; hydrantGrp.add(hyNut);
+        const hyOutL = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.6, 12), hyMat); hyOutL.rotation.z = Math.PI/2; hyOutL.position.set(-0.6, 1.4, 0); hydrantGrp.add(hyOutL);
+        const hyCapL = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.1, 12), hySilver); hyCapL.rotation.z = Math.PI/2; hyCapL.position.set(-0.95, 1.4, 0); hydrantGrp.add(hyCapL);
+        const hyOutR = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.6, 12), hyMat); hyOutR.rotation.z = Math.PI/2; hyOutR.position.set(0.6, 1.4, 0); hydrantGrp.add(hyOutR);
+        const hyCapR = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.1, 12), hySilver); hyCapR.rotation.z = Math.PI/2; hyCapR.position.set(0.95, 1.4, 0); hydrantGrp.add(hyCapR);
 
-        // 街燈與路牌
         const poleMat = new THREE.MeshStandardMaterial({color: 0x333333, metalness: 0.6});
-        const lampCasingMat = new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8});
-        
         for (let z of [30, -5, -45]) {
-            const lampGrp = new THREE.Group();
-            lampGrp.position.set(4, 0, z);
-            const base = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 2, 16), poleMat);
-            base.position.y = 1; base.castShadow = true; lampGrp.add(base);
-            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.4, 20, 16), poleMat);
-            pole.position.y = 12; pole.castShadow = true; lampGrp.add(pole);
-            const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 6), poleMat);
-            arm.position.set(-2.5, 21.5, 0); arm.rotation.z = Math.PI/2.5; lampGrp.add(arm);
-            const hood = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, 1.0), lampCasingMat);
-            hood.position.set(-5, 22.5, 0); lampGrp.add(hood);
-            const bulb = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), new THREE.MeshStandardMaterial({color:0xffffff, emissive:0xffddaa, emissiveIntensity:0}));
-            bulb.position.set(-5, 22.28, 0); bulb.rotation.x = Math.PI/2; bulb.userData = { isStreetLight: true }; lampGrp.add(bulb);
-            const pointLight = new THREE.PointLight(0xffddaa, 0, 40);
-            pointLight.position.set(-5, 21, 0); pointLight.castShadow = true; pointLight.shadow.bias = -0.002; pointLight.name = 'realLight';
-            bulb.add(pointLight);
-
+            const lampGrp = new THREE.Group(); lampGrp.position.set(4, 0, z);
+            const base = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 2, 16), poleMat); base.position.y = 1; base.castShadow = true; lampGrp.add(base);
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.4, 20, 16), poleMat); pole.position.y = 12; pole.castShadow = true; lampGrp.add(pole);
+            const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 6), poleMat); arm.position.set(-2.5, 21.5, 0); arm.rotation.z = Math.PI/2.5; lampGrp.add(arm);
+            const hood = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, 1.0), new THREE.MeshStandardMaterial({color: 0x222222, roughness: 0.8})); hood.position.set(-5, 22.5, 0); lampGrp.add(hood);
+            const bulb = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), new THREE.MeshStandardMaterial({color:0xffffff, emissive:0xffddaa, emissiveIntensity:0})); bulb.position.set(-5, 22.28, 0); bulb.rotation.x = Math.PI/2; bulb.userData = { isStreetLight: true }; lampGrp.add(bulb);
+            const pointLight = new THREE.PointLight(0xffddaa, 0, 40); pointLight.position.set(-5, 21, 0); pointLight.castShadow = true; pointLight.shadow.bias = -0.002; pointLight.name = 'realLight'; bulb.add(pointLight);
             if (z === 30 || z === -5) {
-                const zhText = z === 30 ? '海濱道' : '梳士巴利道';
-                const enText = z === 30 ? 'Promenade Rd.' : 'Salisbury Rd.';
-                const streetSignTex = createStreetSignTexture(zhText, enText);
-                const streetSignMat = new THREE.MeshStandardMaterial({map: streetSignTex, roughness: 0.6});
-                const streetSign = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.5, 6.0), streetSignMat);
-                streetSign.position.set(-1.0, 8.5, 0);
-                lampGrp.add(streetSign);
+                const streetSignMat = new THREE.MeshStandardMaterial({map: createStreetSignTexture(z===30?'海濱道':'梳士巴利道', z===30?'Promenade Rd.':'Salisbury Rd.'), roughness: 0.6});
+                const streetSign = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.5, 6.0), streetSignMat); streetSign.position.set(-1.0, 8.5, 0); lampGrp.add(streetSign);
             }
             streetScene.add(lampGrp);
         }
 
-        // 🏮 香港經典當舖招牌 
         const pawnTex = createPawnSignTexture();
-        const pawnMat = new THREE.MeshStandardMaterial({
-            map: pawnTex, emissiveMap: pawnTex, emissive: 0xffffff, emissiveIntensity: 0
-        });
-        const pawnSign = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 0.2), pawnMat);
-        pawnSign.position.set(3, 22, -25);
-        pawnSign.userData = { isNeon: true };
-        buildingsGrp.add(pawnSign);
+        const pawnSign = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 0.2), new THREE.MeshStandardMaterial({map: pawnTex, emissiveMap: pawnTex, emissive: 0xffffff, emissiveIntensity: 0}));
+        pawnSign.position.set(3, 22, -25); pawnSign.userData = { isNeon: true }; buildingsGrp.add(pawnSign);
      
-        // 🚏 巴士站牌
-        const busStopTex = createBusStopTexture();
-        const busStopMat = new THREE.MeshStandardMaterial({map: busStopTex, roughness: 0.8});
-        const stopPoleMat = new THREE.MeshStandardMaterial({color: 0x555555, metalness: 0.8});
-        const stopGrp = new THREE.Group();
-        stopGrp.position.set(11, 0, 25);
-        
-        const stopPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 7, 16), stopPoleMat);
-        stopPole.position.y = 3.5; stopPole.castShadow = true;
-        stopGrp.add(stopPole);
-        
-        const stopSign = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.1, 32), busStopMat);
-        stopSign.rotation.set(0, 0, Math.PI / 2);
-        stopSign.position.set(-0.15, 6.5, 0);
-        stopGrp.add(stopSign);
-        
+        const stopGrp = new THREE.Group(); stopGrp.position.set(11, 0, 25);
+        const stopPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 7, 16), new THREE.MeshStandardMaterial({color: 0x555555, metalness: 0.8})); stopPole.position.y = 3.5; stopPole.castShadow = true; stopGrp.add(stopPole);
+        const stopSign = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.1, 32), new THREE.MeshStandardMaterial({map: createBusStopTexture(), roughness: 0.8})); stopSign.rotation.set(0, 0, Math.PI / 2); stopSign.position.set(-0.15, 6.5, 0); stopGrp.add(stopSign);
         streetScene.add(stopGrp);
 
     } catch (error) {
-        // 🚨 安全網：如果有任何函數缺失導致崩潰，至少會彈出提示並在終端機列印詳細錯誤！
         console.error("商店街渲染崩潰：", error);
-        alert("載入商店街時發生錯誤：" + error.message + "\n(請將此截圖告知開發者)");
+        alert("載入商店街時發生錯誤：" + error.message);
     }
 }
 
