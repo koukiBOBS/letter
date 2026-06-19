@@ -10218,37 +10218,32 @@ function buildShoppingStreet() {
 
 // --- 1. 地面：清水模廣場與城市基底 ---
     const streetMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
-    // 將道路延伸至濃霧極限 (長度 800，覆蓋 Z: 250 到 -550)
-    const streetGeo = new THREE.PlaneGeometry(69, 800);
-    streetGeo.computeBoundingSphere(); 
-    streetGeo.boundingSphere.radius = 1000; // 🎯 魔法：擴大邊界球，解決視角邊緣突然消失的 BUG，無需關閉效能優化
-    const street = new THREE.Mesh(streetGeo, streetMat);
+    // 將道路延伸至濃霧邊界 (長度 800，覆蓋 Z: 250 到 -550)
+    const street = new THREE.Mesh(new THREE.PlaneGeometry(69, 800), streetMat);
     street.position.set(-19.5, 0, -150); 
     street.rotation.x = -Math.PI/2;
     street.receiveShadow = true;
     streetScene.add(street);
 
+    // 城市基底向遠方延伸
     const cityGroundMat = new THREE.MeshStandardMaterial({color: 0x1a1a1a, roughness: 1.0});
-    const cityGroundGeo = new THREE.BoxGeometry(400, 20, 800);
-    cityGroundGeo.computeBoundingSphere(); cityGroundGeo.boundingSphere.radius = 1000;
-    const cityGround = new THREE.Mesh(cityGroundGeo, cityGroundMat);
+    const cityGround = new THREE.Mesh(new THREE.BoxGeometry(400, 20, 800), cityGroundMat);
     cityGround.position.set(215, -10, -150); 
     streetScene.add(cityGround);
 
-    // 垂直防波堤 (延伸至濃霧極限)
+    // 垂直防波堤 (延伸至濃霧深處)
     const seaWallMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), color: 0x555555});
-    const mainWallGeo = new THREE.BoxGeometry(1, 15, 800);
-    mainWallGeo.computeBoundingSphere(); mainWallGeo.boundingSphere.radius = 1000;
-    const mainWall = new THREE.Mesh(mainWallGeo, seaWallMat);
+    // 正面主防波堤
+    const mainWall = new THREE.Mesh(new THREE.BoxGeometry(1, 15, 800), seaWallMat);
     mainWall.position.set(-54.5, -7.5, -150);
     streetScene.add(mainWall);
     
-    // 右端 (Z=250) 封口防波堤，左端開放通往城市
+    // 只有右端 (Z=250) 有封口防波堤，左端取消以連通遠方城市
     const endWall1 = new THREE.Mesh(new THREE.BoxGeometry(70, 15, 1), seaWallMat);
     endWall1.position.set(-19.5, -7.5, 250);
     streetScene.add(endWall1);
 
-    // 👇 海濱防浪堤 (消波塊群) 數量從 2500 砍到 600，大幅減少載入時間與渲染壓力
+    // 👇 海濱防浪堤 (消波塊群) 延伸至濃霧區
     const tetrapodGeo = new THREE.TetrahedronGeometry(2.0, 0); 
     const tetrapodMat = new THREE.MeshStandardMaterial({color: 0x888888, roughness: 0.9});
     const tetrapodCount = 600; 
@@ -10260,12 +10255,12 @@ function buildShoppingStreet() {
         let xPos, zPos, yPos;
         const edge = Math.random();
         if (edge < 0.85) {
-            // 正面海岸線，只延伸至 Z=-400 (濃霧覆蓋區)，不浪費算力
+            // 正面海岸線，延伸至 -400 (剛好隱入霧中)
             zPos = 250 - Math.random() * 650; 
             xPos = -54 - Math.random() * 15;   
             yPos = -3.5 - Math.abs(xPos + 54) * 0.5 + (Math.random()-0.5)*1.5; 
         } else {
-            // 右側過渡 (封口處堆疊)
+            // 右側過渡 (只有右邊轉角)
             xPos = -58 + Math.random() * 50; 
             zPos = 250 + Math.random() * 15;
             yPos = -3.5 - Math.abs(zPos - 250) * 0.5 + (Math.random()-0.5)*1.5;
@@ -10278,6 +10273,12 @@ function buildShoppingStreet() {
         tetrapodIMesh.setMatrixAt(i, dummyTetra.matrix);
     }
     streetScene.add(tetrapodIMesh);
+
+    // 盲人磚也向左延伸
+    const tactileMat = new THREE.MeshStandardMaterial({color: 0xddaa00, roughness: 0.9});
+    const tactileLine = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 800), tactileMat);
+    tactileLine.position.set(10, 0.05, -150); tactileLine.receiveShadow = true;
+    streetScene.add(tactileLine);
         
 
         const tactileMat = new THREE.MeshStandardMaterial({color: 0xddaa00, roughness: 0.9});
@@ -10568,22 +10569,20 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     });
     
     // 1. 正面長欄杆延伸到濃霧區 (長度 800)
-    const topRailGeo = new THREE.BoxGeometry(0.5, 0.3, 800);
-    topRailGeo.computeBoundingSphere(); topRailGeo.boundingSphere.radius = 1000; // 🎯 防止邊緣消失
-    const topRail = new THREE.Mesh(topRailGeo, railMat);
+    const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 800), railMat);
     topRail.position.set(-54, 3.5, -150); 
     topRail.castShadow = true;
     streetScene.add(topRail);
     
-    // 2. 只有右端 (Z=250) 有欄杆封口，左端開放
+    // 2. 只有右端 (Z=250) 有欄杆封口，左端完全開放
     const endRailTop1 = new THREE.Mesh(new THREE.BoxGeometry(69, 0.3, 0.5), railMat);
     endRailTop1.position.set(-19.5, 3.5, 250); endRailTop1.castShadow = true;
     streetScene.add(endRailTop1);
         
     const dummyTools = new THREE.Object3D();
     
-    // 3. 正面立柱數量從 1250 砍回 350 (足以涵蓋視線範圍)
-    const postCount = 350;
+    // 3. 正面立柱延伸 (涵蓋 250 到 -400)
+    const postCount = 325;
     const postIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.2, 3.5, 0.2), railMat, postCount);
     postIMesh.castShadow = true;
     for(let i=0; i<postCount; i++) {
@@ -10798,7 +10797,7 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
 
     const poleMat = new THREE.MeshStandardMaterial({color: 0x333333, metalness: 0.6});
         // 刪除被濃霧完全遮蔽的路燈，減少高耗能的 PointLight 計算
-        for (let z of [30, -5, -45, -120, -220, -350]) {
+      for (let z of [30, -5, -45, -150, -320]) {
             const lampGrp = new THREE.Group(); lampGrp.position.set(4, 0, z);
             const base = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 2, 16), poleMat); base.position.y = 1; base.castShadow = true; lampGrp.add(base);
             const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.4, 20, 16), poleMat); pole.position.y = 12; pole.castShadow = true; lampGrp.add(pole);
