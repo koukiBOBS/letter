@@ -7485,20 +7485,20 @@ function animateRoom() {
 
 
 // 🚶‍♀️ 6. 印象派行人漫步
-  // 🚶‍♀️ 6. 印象派行人漫步
-        if (typeof animScenery.pedestrians !== 'undefined') {
+   if (typeof animScenery.pedestrians !== 'undefined') {
             animScenery.pedestrians.forEach(p => {
                 p.position.x += p.userData.speedX;
                 p.position.z += p.userData.speedZ;
                 
-                // 👇 修正：將路人的循環邊界擴展到 900，讓他們在超長街道上合理分佈
-                if (p.position.z > 900) p.position.z = -190;
-                else if (p.position.z < -900) p.position.z = 190;
+                // Z 軸邊界：走到底從另一頭出來
+                if (p.position.z > 200) p.position.z = -200;
+                else if (p.position.z < -200) p.position.z = 200;
 
                 // X 軸邊界：碰到欄杆或店門口就轉身往回走
                 if (p.position.x > 15) { p.position.x = 15; p.userData.speedX *= -1; }
-                else if (p.position.x < -48) { p.position.x = -48; p.userData.speedX *= -1; }
+                else if (p.position.x < -45) { p.position.x = -45; p.userData.speedX *= -1; }
 
+                // 只有在移動時才會有步伐起伏
                 const speed = Math.hypot(p.userData.speedX, p.userData.speedZ);
                 if (speed > 0.001) {
                     p.userData.walkDist += speed;
@@ -8512,8 +8512,9 @@ function acceptBankruptcy() {
                 let nextX = camera.position.x + moveVec.x;
                 let nextZ = camera.position.z + moveVec.z;
 
-          nextX = Math.max(-53, Math.min(15, nextX));
-                nextZ = Math.max(-200, Math.min(200, nextZ));
+            nextX = Math.max(-53, Math.min(15, nextX));
+                nextZ = Math.max(-95, Math.min(95, nextZ));
+
                 let deltaX = nextX - camera.position.x;
                 let deltaZ = nextZ - camera.position.z;
 
@@ -10213,52 +10214,46 @@ function buildShoppingStreet() {
             streetScene.add(island);
         }
 
-      // ==========================================
-        // 2. 地面：海濱長廊與消波塊 (精準邊界裁切版)
         // ==========================================
-        
-        // A. 海濱長廊步道 (清水模質感，延長至 2000)
-        const promenadeMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
-        
-        // 💡 魔法 1：步道寬度設為 41，剛好從馬路邊緣(x:-13)填滿到欄杆(x:-54)！
-        const promenade = new THREE.Mesh(new THREE.BoxGeometry(41, 0.5, 200), promenadeMat);
-        promenade.position.set(-33.5, -4.7, 0); 
-        promenade.receiveShadow = true;
-        streetScene.add(promenade);
+        // 2. 地面：紅色拼花磚與盲人磚
+        // ============================濱長廊步道 (清水模質==============
+      // --- 1. 地面：清水模廣場與盲人磚 ---
+    // 💡 將原本突兀的紅磚改為冷色調的清水模，更符合海濱防浪堤的氛圍
+    const streetMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
+    const street = new THREE.Mesh(new THREE.PlaneGeometry(150, 200), streetMat);
+    street.rotation.x = -Math.PI/2;
+    street.receiveShadow = true;
+    streetScene.add(street);
 
-        // 💡 魔法 2：店鋪前方的行人路 (填補馬路右側到店鋪的空間)
-        const sidewalkRight = new THREE.Mesh(new THREE.BoxGeometry(20, 0.5, 200), promenadeMat);
-        sidewalkRight.position.set(23, -4.7, 0); // 從馬路邊緣(x:13)到店鋪
-        sidewalkRight.receiveShadow = true;
-        streetScene.add(sidewalkRight);
 
-        // B. 極低效能負擔的海濱防浪堤 (消波塊群)
-        const tetrapodGeo = new THREE.TetrahedronGeometry(2.0, 0); 
-        const tetrapodMat = new THREE.MeshStandardMaterial({color: 0x888888, roughness: 0.9});
-        const tetrapodCount = 1500; // 配合長度增加數量
-        const tetrapodIMesh = new THREE.InstancedMesh(tetrapodGeo, tetrapodMat, tetrapodCount);
-        tetrapodIMesh.castShadow = true; tetrapodIMesh.receiveShadow = true;
+    // 👇 新增：極低效能負擔的海濱防浪堤 (消波塊群)
+    // 利用簡單的四面體(Tetrahedron)模擬消波塊，並用 InstancedMesh 讓 400 顆石頭只算 1 次繪圖指令！
+    const tetrapodGeo = new THREE.TetrahedronGeometry(2.0, 0); 
+    const tetrapodMat = new THREE.MeshStandardMaterial({color: 0x888888, roughness: 0.9});
+    const tetrapodCount = 400; 
+    const tetrapodIMesh = new THREE.InstancedMesh(tetrapodGeo, tetrapodMat, tetrapodCount);
+    tetrapodIMesh.castShadow = true; tetrapodIMesh.receiveShadow = true;
+    
+    const dummyTetra = new THREE.Object3D();
+    for(let i=0; i<tetrapodCount; i++) {
+        const zPos = -100 + Math.random() * 200; // 沿著海岸線分佈
+        const xPos = -49 - Math.random() * 15;   // 從欄杆邊緣(-48)向海裡延伸
+        // 計算斜坡：越往海裡延伸，高度越深
+        const yPos = -3.5 - Math.abs(xPos + 48) * 0.5 + (Math.random()-0.5)*1.5; 
         
-        const dummyTetra = new THREE.Object3D();
-        for(let i=0; i<tetrapodCount; i++) {
-            const zPos = -1000 + Math.random() * 2000; 
-            // 💡 魔法 3：消波塊直接從欄杆外側 (-54) 開始往海裡堆疊
-            const xPos = -54 - Math.random() * 12;   
-            const yPos = -4.5 - Math.abs(xPos + 54) * 0.5 + (Math.random()-0.5)*1.5; 
-            
-            dummyTetra.position.set(xPos, yPos, zPos);
-            dummyTetra.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
-            dummyTetra.scale.setScalar(0.8 + Math.random()*0.6);
-            dummyTetra.updateMatrix();
-            tetrapodIMesh.setMatrixAt(i, dummyTetra.matrix);
-        }
-        streetScene.add(tetrapodIMesh);
+        dummyTetra.position.set(xPos, yPos, zPos);
+        dummyTetra.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+        dummyTetra.scale.setScalar(0.8 + Math.random()*0.6);
+        dummyTetra.updateMatrix();
+        tetrapodIMesh.setMatrixAt(i, dummyTetra.matrix);
+    }
+    streetScene.add(tetrapodIMesh);
 
-        // C. 盲人磚導盲線
+        
+
         const tactileMat = new THREE.MeshStandardMaterial({color: 0xddaa00, roughness: 0.9});
-        const tactileLine = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 2000), tactileMat);
-        tactileLine.position.set(-20, -4.4, 0); // 放在左側步道上
-        tactileLine.receiveShadow = true;
+        const tactileLine = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 400), tactileMat);
+        tactileLine.position.set(10, 0.05, 0); tactileLine.receiveShadow = true;
         streetScene.add(tactileLine);
 
         // ==========================================
