@@ -1619,10 +1619,11 @@
         radial-gradient(at 90% 20%, hsla(40, 90%, 70%, 0.35), transparent 60%);
 }
 
+/* 1. 替換原本的 .music-player-content */
 .music-player-content {
     width: 95%;
     max-width: 500px;
-    height: 90vh; /* 鎖死最大高度 */
+    height: 90vh;
     margin: 0 auto;
     padding: 20px;
     background: rgba(20, 30, 48, 0.6);
@@ -1632,9 +1633,16 @@
     border: 1px solid rgba(230, 180, 80, 0.3);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     display: flex;
-    flex-direction: column; /* 垂直排版核心 */
+    flex-direction: column;
     box-sizing: border-box;
-    overflow: hidden; /* 防止外溢 */
+    
+    /* ★ 關鍵修改 1：允許整體面板在極端小螢幕時可以上下滑動，防止底部被裁切 */
+    overflow-y: auto; 
+    scrollbar-width: none; /* 隱藏 Firefox 捲軸以保持美觀 */
+}
+/* 隱藏 Chrome/Safari 捲軸 */
+.music-player-content::-webkit-scrollbar {
+    display: none;
 }
 
 .music-player-header { display: flex; align-items: center; margin-bottom: 15px; flex-shrink: 0; }
@@ -1678,10 +1686,15 @@
 .time-display { flex-shrink: 0; display: flex; justify-content: space-between; font-size: 0.8rem; color: #8a9ba8; margin-bottom: 10px; }
 .volume-control-player { flex-shrink: 0; display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
 
-/* 播放清單 */
+/* 2. 替換原本的 .playlist */
 .playlist {
     flex-shrink: 0;
-    height: 120px; /* 固定高度 */
+    
+    /* ★ 關鍵修改 2：取消死板的 120px，改用動態比例 */
+    height: auto; 
+    min-height: 100px; /* 保證最少能顯示幾首歌 */
+    max-height: 35vh;  /* 根據螢幕高度動態限制清單長度 */
+    
     overflow-y: auto;
     list-style: none;
     background: rgba(0,0,0,0.3);
@@ -1694,14 +1707,17 @@
 .playlist-item.active { background: linear-gradient(90deg, rgba(255,107,107,0.8), rgba(255,159,67,0.8)); color: #fff; font-weight: bold; }
 .playlist-item.locked { opacity: 0.4; pointer-events: none; }
 
-/* 針對小螢幕進一步壓縮 */
+/* 3. 替換原本的 @media (max-height: 700px) */
 @media (max-height: 700px) {
-    .cd-cover-wrapper { width: 35%; }
-    .lyrics-container { font-size: 1rem; }
-    .playlist { height: 90px; }
-    .player-controls { gap: 10px; }
-    .player-btn { width: 40px; height: 40px; }
-    .play-pause-btn { width: 50px; height: 50px; }
+    .music-player-content { padding: 15px; } /* 小螢幕稍微減少面板四周留白 */
+    .cd-cover-wrapper { width: 30%; max-width: 130px; } /* 縮小 CD 封面 */
+    .cd-cover-container { margin-bottom: 10px; }
+    .lyrics-container { font-size: 1rem; min-height: 50px; margin-bottom: 10px; } /* 壓縮歌詞與間距 */
+    .player-controls { gap: 10px; margin-bottom: 10px; }
+    .player-btn { width: 38px; height: 38px; }
+    .play-pause-btn { width: 46px; height: 46px; font-size: 1.2rem; }
+    .volume-control-player { margin-bottom: 5px; }
+    .playlist { min-height: 80px; }
 }
         
         
