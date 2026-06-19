@@ -10374,19 +10374,45 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
 }
      
         
-        // 🏬 店舖 A：文苑文具 
+       // 🏬 店舖 A：文苑文具 
         const statGrp = new THREE.Group();
         statGrp.position.set(0, 0, 15);
         statGrp.add(createTangLauUpperFloors(7.5, 0, 20, '#8fbc8f'));
         
+        // 外部牆面保持受光影影響
         const statTileMat = new THREE.MeshStandardMaterial({map: getSafeAgedPlaster('#8fbc8f')});
         const statWallL = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 2), statTileMat); statWallL.position.set(7.5, 7.5, 9); statGrp.add(statWallL); 
         const statWallR = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 2), statTileMat); statWallR.position.set(7.5, 7.5, -9); statGrp.add(statWallR); 
         const statWallTop = new THREE.Mesh(new THREE.BoxGeometry(15, 5, 16), statTileMat); statWallTop.position.set(7.5, 12.5, 0); statGrp.add(statWallTop); 
         
-        const statInside = new THREE.Mesh(new THREE.BoxGeometry(14.8, 14.8, 15.8), new THREE.MeshStandardMaterial({color: 0xfffae6, side: THREE.BackSide, roughness: 0.8}));
+        // 💡 修改：內部牆壁改用 MeshBasicMaterial，永遠保持明亮，不隨距離變暗
+        const statInside = new THREE.Mesh(new THREE.BoxGeometry(14.8, 14.8, 15.8), new THREE.MeshBasicMaterial({color: 0xfffae6, side: THREE.BackSide}));
         statInside.position.set(7.5, 7.5, 0); statInside.userData = { isShopInside: true }; statGrp.add(statInside);
      
+        // 💡 新增：文具店內部陳設 (全部使用 BasicMaterial，保持明亮且零效能負擔)
+        const statProps = new THREE.Group();
+        // 巨大的鉛筆模型作櫥窗展示
+        const giantPencil = new THREE.Group();
+        const pBody = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 5, 6), new THREE.MeshBasicMaterial({color: 0xf5d061})); pBody.position.y = 2.5; giantPencil.add(pBody);
+        const pTip = new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.2, 6), new THREE.MeshBasicMaterial({color: 0xe3cca8})); pTip.position.y = 5.6; giantPencil.add(pTip);
+        const pLead = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.4, 6), new THREE.MeshBasicMaterial({color: 0x333333})); pLead.position.y = 6.0; giantPencil.add(pLead);
+        giantPencil.position.set(1.5, 0, -5); giantPencil.rotation.z = -0.2; statProps.add(giantPencil);
+        
+        // 木櫃台與桌上紙張
+        const counter = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 10), new THREE.MeshBasicMaterial({color: 0x8b7355})); counter.position.set(8, 1.5, -2); statProps.add(counter);
+        const paperStack = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 1.6), new THREE.MeshBasicMaterial({color: 0xffffff})); paperStack.position.set(8, 3.25, -4); statProps.add(paperStack);
+        const paperStack2 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 1.6), new THREE.MeshBasicMaterial({color: 0xffffff})); paperStack2.position.set(8, 3.2, -1); paperStack2.rotation.y = 0.2; statProps.add(paperStack2);
+        
+        // 筆筒與色筆 (極低分段數以優化效能)
+        for(let i=0; i<3; i++) {
+            const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.6, 6), new THREE.MeshBasicMaterial({color: 0x4a789c})); cup.position.set(7.5, 3.3, 1 + i*1.2);
+            const pen = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.2, 4), new THREE.MeshBasicMaterial({color: 0xcc4444})); pen.position.set(7.55, 3.6, 1 + i*1.2); pen.rotation.z = 0.3;
+            statProps.add(cup, pen);
+        }
+        // 牆上畫布/海報
+        const poster = new THREE.Mesh(new THREE.PlaneGeometry(6, 4), new THREE.MeshBasicMaterial({color: 0x8fc2d6})); poster.position.set(14.8, 8, 0); poster.rotation.y = -Math.PI/2; statProps.add(poster);
+        statGrp.add(statProps);
+
         const statWindow = new THREE.Mesh(new THREE.BoxGeometry(0.2, 10, 10), shopGlassMat); statWindow.position.set(0, 5, -3); statGrp.add(statWindow);
         const statDoor = new THREE.Mesh(new THREE.BoxGeometry(4.5, 9.8, 0.2), shopGlassMat); statDoor.position.set(1.5, 5, 3.5); statDoor.rotation.y = -Math.PI / 3; statGrp.add(statDoor);
         
@@ -10403,14 +10429,39 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         recGrp.position.set(0, 0, -5);
         recGrp.add(createTangLauUpperFloors(7.5, 0, 20, '#c28585'));
      
+        // 外部牆面保持受光影影響
         const recTileMat = new THREE.MeshStandardMaterial({map: createConcreteTexture()});
         const recWallL = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 2), recTileMat); recWallL.position.set(7.5, 7.5, 9); recGrp.add(recWallL);
         const recWallR = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 2), recTileMat); recWallR.position.set(7.5, 7.5, -9); recGrp.add(recWallR);
         const recWallTop = new THREE.Mesh(new THREE.BoxGeometry(15, 5, 16), recTileMat); recWallTop.position.set(7.5, 12.5, 0); recGrp.add(recWallTop);
         
-        const recInside = new THREE.Mesh(new THREE.BoxGeometry(14.8, 14.8, 15.8), new THREE.MeshStandardMaterial({color: 0x4a2525, side: THREE.BackSide, roughness: 0.9}));
+        // 💡 修改：內部牆壁改用 MeshBasicMaterial，永遠保持明亮
+        const recInside = new THREE.Mesh(new THREE.BoxGeometry(14.8, 14.8, 15.8), new THREE.MeshBasicMaterial({color: 0x4a2525, side: THREE.BackSide}));
         recInside.position.set(7.5, 7.5, 0); recInside.userData = { isShopInside: true }; recGrp.add(recInside);
         
+        // 💡 新增：黑膠店內部陳設 (全部使用 BasicMaterial，保持明亮且零效能負擔)
+        const recProps = new THREE.Group();
+        // 牆上巨大的黑膠唱片裝飾 (加入中心鮮豔的標籤，讓它在遠處也能被看見)
+        const labelColors = [0xff4444, 0x44aaff];
+        for(let i=-1; i<=1; i+=2) {
+            const vinyl = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.5, 0.2, 16), new THREE.MeshBasicMaterial({color: 0x111111})); vinyl.rotation.z = Math.PI/2; vinyl.position.set(14.8, 8, i * 4); 
+            const centerLabel = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.25, 16), new THREE.MeshBasicMaterial({color: labelColors[i === 1 ? 0 : 1]})); centerLabel.rotation.z = Math.PI/2; centerLabel.position.set(14.8, 8, i * 4);
+            recProps.add(vinyl, centerLabel);
+        }
+        
+        // 黑膠唱機與木質唱片箱
+        const rDesk = new THREE.Mesh(new THREE.BoxGeometry(4, 3, 10), new THREE.MeshBasicMaterial({color: 0x3a2518})); rDesk.position.set(6, 1.5, 2); recProps.add(rDesk);
+        const playerBase = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.4, 2.8), new THREE.MeshBasicMaterial({color: 0xcccccc})); playerBase.position.set(6, 3.2, 2); recProps.add(playerBase);
+        const platter = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.1, 16), new THREE.MeshBasicMaterial({color: 0x111111})); platter.position.set(6, 3.45, 2); recProps.add(platter);
+        const tonearm = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 1.8), new THREE.MeshBasicMaterial({color: 0x888888})); tonearm.position.set(6.6, 3.55, 1.2); tonearm.rotation.y = 0.5; recProps.add(tonearm);
+        
+        // 裝滿唱片的箱子
+        for(let i=0; i<2; i++) {
+            const crate = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.0, 2.5), new THREE.MeshBasicMaterial({color: 0x8b5a2b})); crate.position.set(6, 1.0, -3 - i*3); recProps.add(crate);
+            const records = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, 2.2), new THREE.MeshBasicMaterial({color: 0x111111})); records.position.set(6, 1.5, -3 - i*3); records.rotation.x = 0.1; recProps.add(records);
+        }
+        recGrp.add(recProps);
+
         const recWindow = new THREE.Mesh(new THREE.BoxGeometry(0.2, 10, 10), shopGlassMat); recWindow.position.set(0, 5, 3); recGrp.add(recWindow);
         const recDoor = new THREE.Mesh(new THREE.BoxGeometry(4.5, 9.8, 0.2), shopGlassMat); recDoor.position.set(1.5, 5, -3.5); recDoor.rotation.y = Math.PI / 3; recGrp.add(recDoor);
         
@@ -10421,7 +10472,9 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         const signB = new THREE.Mesh(new THREE.BoxGeometry(6, 18, 0.5), new THREE.MeshStandardMaterial({map: texB, emissiveMap: texB})); signB.position.set(-5, 20, -10); signB.rotation.y = -Math.PI/6; signB.userData = { isNeon: true }; recGrp.add(signB);
      
         const recHit = new THREE.Mesh(new THREE.BoxGeometry(5, 10, 20), new THREE.MeshBasicMaterial({visible:false})); recHit.position.set(0, 5, 0); recHit.userData = {type: 'shop_record'}; recGrp.add(recHit); buildingsGrp.add(recGrp);
-     
+
+
+        
         // 🏗️ 周邊空置店舖 
         function createExpansionShop(zPos, baseColor, awningColor) {
             const emptyGrp = new THREE.Group();
