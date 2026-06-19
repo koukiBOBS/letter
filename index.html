@@ -2558,15 +2558,25 @@ window.devSimulateBankruptcy = function() {
 
 // 💎 開發測試：一鍵擁有全部資產與權限
 window.devUnlockAllAssets = function() {
-    if(confirm("確定要直接解鎖所有資產嗎？這會讓您擁有所有家具與權限，畫面將會重新載入。")) {
+    if(confirm("確定要直接解鎖所有資產(包含家具、文具、唱片)嗎？畫面將會重新載入。")) {
         let fullInventory = {};
         
-        // 遍歷道具字典，把所有東西都塞進背包
-        Object.keys(ITEM_REGISTRY).forEach(id => {
-            fullInventory[id] = true;
-        });
+        // 1. 解鎖家具
+        if (typeof ITEM_REGISTRY !== 'undefined') {
+            Object.keys(ITEM_REGISTRY).forEach(id => fullInventory[id] = true);
+        }
+        // 2. 解鎖唱片
+        if (typeof RECORD_REGISTRY !== 'undefined') {
+            Object.keys(RECORD_REGISTRY).forEach(id => fullInventory[id] = true);
+        }
+        // 3. 解鎖文具 (紙與墨)
+        if (typeof PAPER_REGISTRY !== 'undefined') {
+            Object.keys(PAPER_REGISTRY).forEach(id => fullInventory[`paper_${id}`] = true);
+        }
+        if (typeof INK_REGISTRY !== 'undefined') {
+            Object.keys(INK_REGISTRY).forEach(id => fullInventory[`ink_${id}`] = true);
+        }
         
-        // 給予 99999 分，並寫入完整背包
         db.ref(`users/${currentUser.uid}/points`).set(99999);
         db.ref(`users/${currentUser.uid}/inventory`).set(fullInventory).then(() => {
             showToast("💎 已發放滿配資產！重新載入中...");
@@ -3237,31 +3247,36 @@ window.buyRecord = function(id, price) {
     }
 };
 
-// 3. 播放器核心邏輯
+
+// ==========================================
+// 🎧 音樂播放器核心邏輯 (完美還原詞海拾心)
+// ==========================================
 let recordAudio = new Audio();
 recordAudio.volume = 0.7;
 let rIsPlaying = false;
 let rPlaylist = [];
 let rCurrentIndex = 0;
 let rLyrics = [];
-let rPlaybackMode = 'sequential'; // 'sequential' 或 'shuffle'
-let rLoopMode = 'list'; // 'list', 'single', 'none'
+let rPlaybackMode = 'sequential'; 
+let rLoopMode = 'list'; 
 let rIsUpdatingSlider = false;
 
-// 兩種模式的 SVG 圖示
+// 圖示 SVG (與詞海拾心完全一致)
 const seqIcon = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M4 6H20V8H4V6M4 11H20V13H4V11M4 16H20V18H4V16Z"/></svg>`;
 const shufIcon = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M10.59 9.17L5.41 4L4 5.41L9.17 10.59L10.59 9.17M14.83 13.41L13.41 14.83L18.59 20L20 18.59L14.83 13.41M5.41 20L4 18.59L18.59 4L20 5.41L5.41 20Z"/></svg>`;
 const loopListIcon = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M7 7H17V10L21 6L17 2V5H5V12H7V7M17 17H7V14L3 18L7 22V19H19V12H17V17Z"/></svg>`;
 const loopSingleIcon = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M7 7H17V10L21 6L17 2V5H5V12H7V7M17 17H7V14L3 18L7 22V19H19V12H17V17Z M13 15V9H12L10 10V11H11.5V15H13Z"/></svg>`;
 
+// 開啟播放器
 window.openMusicPlayer = function() {
     initMusicPlayer();
     document.getElementById('modal-music-player').style.display = 'flex';
 };
 
+// 初始化播放清單
 function initMusicPlayer() {
-    // 篩選出已購買的歌曲
     rPlaylist = [];
+    // 嚴格篩選出用家真正擁有的唱片
     Object.keys(RECORD_REGISTRY).forEach(id => {
         if (userInventory[id]) {
             rPlaylist.push(RECORD_REGISTRY[id]);
@@ -3271,11 +3286,13 @@ function initMusicPlayer() {
     const ul = document.getElementById('playlist');
     ul.innerHTML = '';
     
+    // 如果沒有唱片，顯示明確提示
     if (rPlaylist.length === 0) {
-        ul.innerHTML = '<li style="color:#8a9ba8; text-align:center; padding: 20px;">您尚未購買任何唱片。</li>';
+        ul.innerHTML = '<li style="color:#8a9ba8; text-align:center; padding: 20px;">您尚未購買任何唱片，請先在商店購買。</li>';
         return;
     }
 
+    // 渲染歌單
     rPlaylist.forEach((item, index) => {
         const li = document.createElement('li');
         li.className = `playlist-item ${index === rCurrentIndex ? 'active' : ''}`;
@@ -3284,25 +3301,27 @@ function initMusicPlayer() {
         ul.appendChild(li);
     });
 
+    // 初始化按鈕圖示
     document.getElementById('playbackModeBtn').innerHTML = rPlaybackMode === 'shuffle' ? shufIcon : seqIcon;
     document.getElementById('loopBtn').innerHTML = rLoopMode === 'single' ? loopSingleIcon : loopListIcon;
 }
 
+// 核心播放函數 (負責載入與播放)
 function playRecordSong(index) {
-    if (rPlaylist.length === 0) return;
+    if (index < 0 || index >= rPlaylist.length) return;
     rCurrentIndex = index;
     const song = rPlaylist[index];
     
-    // 更新 UI
+    // 1. 更新 UI 文字與封面
     document.getElementById('nowPlaying').innerText = `正在播放: ${song.name}`;
     document.getElementById('cdCoverImage').src = songCovers[song.file] || songCovers["default"];
     
-    // 刷新清單高亮
+    // 2. 更新歌單高亮狀態
     document.querySelectorAll('#playlist .playlist-item').forEach((li, i) => {
         li.className = `playlist-item ${i === index ? 'active' : ''}`;
     });
 
-    // 準備歌詞
+    // 3. 載入並更新歌詞
     rLyrics = songData[song.file]?.lyrics || [];
     const lCont = document.getElementById('lyricsContainer');
     lCont.innerHTML = '';
@@ -3317,28 +3336,46 @@ function playRecordSong(index) {
         });
     }
 
-    // 播放音訊
+    // 4. 關閉房間環境音 (收音機)
+    if (typeof isRadioPlaying !== 'undefined' && isRadioPlaying) {
+        if(typeof toggleRadio === 'function') toggleRadio();
+    }
+
+    // 5. 執行播放
     recordAudio.src = song.file;
     recordAudio.play().then(() => {
-        rIsPlaying = true;
-        document.getElementById('playPauseBtn').innerHTML = '&#10074;&#10074;';
-        document.getElementById('cdCoverImage').classList.add('playing');
-        
-        // 暫停房間內的收音機 (避免聲音打架)
-        if (typeof isRadioPlaying !== 'undefined' && isRadioPlaying) {
-            toggleRadio(); 
-        }
-    }).catch(e => console.log('播放被攔截或發生錯誤:', e));
+        updatePlayingVisuals(true);
+    }).catch(e => {
+        console.log('播放器播放失敗 (可能是瀏覽器阻擋):', e);
+        updatePlayingVisuals(false);
+    });
 }
 
-// 監聽播放進度與歌詞同步
+// 統一的視覺更新函數 (與詞海拾心邏輯一致)
+function updatePlayingVisuals(isPlaying) {
+    const cdCover = document.getElementById('cdCoverImage');
+    const playBtn = document.getElementById('playPauseBtn');
+    
+    if (isPlaying) {
+        rIsPlaying = true;
+        playBtn.innerHTML = '&#10074;&#10074;'; // 雙豎線 (暫停符號)
+        cdCover.classList.add('playing');
+    } else {
+        rIsPlaying = false;
+        playBtn.innerHTML = '&#9658;'; // 三角形 (播放符號)
+        cdCover.classList.remove('playing');
+    }
+}
+
+// 監聽播放器時間更新 (進度條與歌詞)
 recordAudio.addEventListener('timeupdate', () => {
+    // 只有當用家沒有在拖曳進度條時，才自動更新
     if (!rIsUpdatingSlider) {
         document.getElementById('progressSlider').value = recordAudio.currentTime;
         document.getElementById('currentTime').innerText = formatTime(recordAudio.currentTime);
     }
     
-    // 同步歌詞
+    // 歌詞滾動同步
     if (rLyrics.length > 0) {
         let activeIdx = -1;
         for (let i = 0; i < rLyrics.length; i++) {
@@ -3348,26 +3385,35 @@ recordAudio.addEventListener('timeupdate', () => {
         }
         document.querySelectorAll('.lyric-line').forEach((line, i) => {
             line.classList.toggle('active', i === activeIdx);
-            if (i === activeIdx) line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (i === activeIdx) {
+                line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         });
     }
 });
 
+// 當讀取到音軌資訊時，設定進度條最大值
 recordAudio.addEventListener('loadedmetadata', () => {
     document.getElementById('progressSlider').max = recordAudio.duration;
     document.getElementById('duration').innerText = formatTime(recordAudio.duration);
 });
 
+// 當歌曲播放完畢
 recordAudio.addEventListener('ended', () => {
+    updatePlayingVisuals(false);
     if (rLoopMode === 'single') {
-        recordAudio.play();
+        recordAudio.currentTime = 0;
+        recordAudio.play().then(() => updatePlayingVisuals(true));
     } else {
         playNextRecord();
     }
 });
 
+// 上下首邏輯
 function playNextRecord() {
-    if (rPlaylist.length <= 1) return;
+    if (rPlaylist.length === 0) return;
+    if (rPlaylist.length === 1) { playRecordSong(0); return; }
+    
     let nextIdx;
     if (rPlaybackMode === 'shuffle') {
         do { nextIdx = Math.floor(Math.random() * rPlaylist.length); } while (nextIdx === rCurrentIndex);
@@ -3378,32 +3424,38 @@ function playNextRecord() {
 }
 
 function playPrevRecord() {
-    if (rPlaylist.length <= 1) return;
+    if (rPlaylist.length === 0) return;
     let nextIdx = (rCurrentIndex - 1 + rPlaylist.length) % rPlaylist.length;
     playRecordSong(nextIdx);
 }
 
 function formatTime(sec) {
+    if (isNaN(sec)) return "0:00";
     const m = Math.floor(sec / 60);
     const s = Math.floor(sec % 60);
     return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-// 綁定按鈕事件
+// ==========================================
+// 綁定 UI 按鈕事件
+// ==========================================
 document.getElementById('playPauseBtn').addEventListener('click', () => {
+    // 防呆：如果沒有歌曲
     if (rPlaylist.length === 0) return;
-    if (!recordAudio.src) { playRecordSong(0); return; }
+    
+    // 防呆：如果還沒有載入任何音訊來源，直接播第一首
+    if (!recordAudio.src || recordAudio.src.endsWith('/')) { 
+        playRecordSong(0); 
+        return; 
+    }
     
     if (rIsPlaying) {
         recordAudio.pause();
-        rIsPlaying = false;
-        document.getElementById('playPauseBtn').innerHTML = '&#9658;';
-        document.getElementById('cdCoverImage').classList.remove('playing');
+        updatePlayingVisuals(false);
     } else {
-        recordAudio.play();
-        rIsPlaying = true;
-        document.getElementById('playPauseBtn').innerHTML = '&#10074;&#10074;';
-        document.getElementById('cdCoverImage').classList.add('playing');
+        recordAudio.play().then(() => {
+            updatePlayingVisuals(true);
+        }).catch(e => console.log('播放失敗:', e));
     }
 });
 
@@ -3413,6 +3465,7 @@ document.getElementById('prevBtn').addEventListener('click', playPrevRecord);
 document.getElementById('playbackModeBtn').addEventListener('click', function() {
     rPlaybackMode = rPlaybackMode === 'sequential' ? 'shuffle' : 'sequential';
     this.innerHTML = rPlaybackMode === 'shuffle' ? shufIcon : seqIcon;
+    this.classList.toggle('active', rPlaybackMode === 'shuffle');
 });
 
 document.getElementById('loopBtn').addEventListener('click', function() {
@@ -3420,19 +3473,20 @@ document.getElementById('loopBtn').addEventListener('click', function() {
     this.innerHTML = rLoopMode === 'single' ? loopSingleIcon : loopListIcon;
 });
 
+// 進度條拖曳邏輯 (完美解決拉動時回彈的問題)
 document.getElementById('progressSlider').addEventListener('input', (e) => {
-    rIsUpdatingSlider = true;
+    rIsUpdatingSlider = true; // 鎖定自動更新
     document.getElementById('currentTime').innerText = formatTime(e.target.value);
 });
 document.getElementById('progressSlider').addEventListener('change', (e) => {
     recordAudio.currentTime = e.target.value;
-    rIsUpdatingSlider = false;
+    rIsUpdatingSlider = false; // 解鎖自動更新
 });
 
+// 音量控制
 document.getElementById('volumeSliderPlayer').addEventListener('input', (e) => {
     recordAudio.volume = e.target.value;
 });
-
         
 
 
