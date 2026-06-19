@@ -5339,16 +5339,33 @@ function createPowderMetalTexture(baseColorHex) {
 
 
 
-// 🎨 零效能生成：音響防塵網紋理
-function createSpeakerGrillTexture() {
+// 🎨 零效能生成：深色胡桃木紋理 (高級落地音響專用)
+function createWalnutTexture() {
+    const canvas = document.createElement('canvas'); 
+    canvas.width = 512; canvas.height = 512; 
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#3e2115'; // 偏紅的深沉胡桃木底色
+    ctx.fillRect(0,0,512,512); 
+    for(let i=0; i<300; i++) { 
+        ctx.fillStyle = `rgba(30, 10, 5, ${Math.random()*0.35})`; 
+        ctx.fillRect(0, Math.random()*512, 512, Math.random()*5+1); 
+    } 
+    return new THREE.CanvasTexture(canvas);
+}
+
+// 🎨 零效能生成：復古米灰編織防塵網 (高級音箱專用)
+function createVintageGrillTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 128; canvas.height = 128;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#111111'; ctx.fillRect(0, 0, 128, 128); // 網底深黑
-    ctx.fillStyle = '#2a2a2a'; // 網眼反光
+    ctx.fillStyle = '#d4c5b3'; // 溫暖的米灰色編織底
+    ctx.fillRect(0, 0, 128, 128); 
+    ctx.fillStyle = '#9e8c78'; // 較深的網眼交織紋
     for(let y=0; y<128; y+=6) {
         for(let x=0; x<128; x+=6) {
-            ctx.beginPath(); ctx.arc(x+3, y+3, 2, 0, Math.PI*2); ctx.fill();
+            // 交錯排列，創造布料編織感
+            let offsetX = (y % 12 === 0) ? 0 : 3;
+            ctx.beginPath(); ctx.arc(x + offsetX, y + 3, 2.2, 0, Math.PI*2); ctx.fill();
         }
     }
     const tex = new THREE.CanvasTexture(canvas);
@@ -6693,38 +6710,51 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     scene.add(stereoGrp);
     stereoGrp.userData.itemId = 'stereo_system';
 
-    const stereoWoodMat = new THREE.MeshStandardMaterial({ map: createWoodTexture(), roughness: 0.8 });
-    const speakerMat = new THREE.MeshStandardMaterial({ map: createSpeakerGrillTexture(), roughness: 0.9, metalness: 0.1 });
-    const sMetalMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.8, roughness: 0.3 });
+   // === 替換的高級音響材質與組裝開始 ===
+    const stereoWalnutMat = new THREE.MeshStandardMaterial({ map: createWalnutTexture(), roughness: 0.5, metalness: 0.15 }); // 有上漆打蠟的微反光感
+    const vintageGrillMat = new THREE.MeshStandardMaterial({ map: createVintageGrillTexture(), roughness: 1.0 });
+    const brassPanelMat = new THREE.MeshStandardMaterial({ color: 0xcca660, metalness: 0.8, roughness: 0.3 }); // 香檳金屬面板
+    const blackKnobMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.5, roughness: 0.4 }); // 黑色旋鈕
 
-    // 1. 木質主機身
-    const stereoBody = new THREE.Mesh(new THREE.BoxGeometry(6, 14, 5), stereoWoodMat);
+    // 1. 胡桃木質主機身
+    const stereoBody = new THREE.Mesh(new THREE.BoxGeometry(6, 14, 5), stereoWalnutMat);
     stereoBody.position.y = 7;
     stereoBody.castShadow = true;
     stereoGrp.add(stereoBody);
 
-    // 2. 喇叭防塵網 (上下兩個大單體)
-    const speakerTop = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 4.5), speakerMat);
+    // 2. 復古編織防塵網 (上下單體)
+    const speakerTop = new THREE.Mesh(new THREE.PlaneGeometry(4.8, 4.8), vintageGrillMat);
     speakerTop.position.set(0, 10, 2.51);
     stereoGrp.add(speakerTop);
 
-    const speakerBot = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 4.5), speakerMat);
+    const speakerBot = new THREE.Mesh(new THREE.PlaneGeometry(4.8, 4.8), vintageGrillMat);
     speakerBot.position.set(0, 4.5, 2.51);
     stereoGrp.add(speakerBot);
 
-    // 3. 中間的金屬控制面板
-    const ctrlPanel = new THREE.Mesh(new THREE.BoxGeometry(5, 1.5, 0.2), new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.5 }));
+    // 3. 香檳金控制面板
+    const ctrlPanel = new THREE.Mesh(new THREE.BoxGeometry(5, 1.5, 0.2), brassPanelMat);
     ctrlPanel.position.set(0, 7.5, 2.45);
     stereoGrp.add(ctrlPanel);
 
-    // 4. 面板上的金屬旋鈕
-    for(let i=-1.5; i<=1.5; i+=1.5) {
-        const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.3, 16), sMetalMat);
+    // 4. 黑金雙色立體旋鈕
+    for(let i = -1.5; i <= 1.5; i += 1.5) {
+        const knob = new THREE.Group();
         knob.rotation.x = Math.PI / 2;
         knob.position.set(i, 7.5, 2.55);
+        
+        // 金色底座
+        const kBase = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.1, 16), brassPanelMat);
+        kBase.position.y = -0.1;
+        // 黑色頂部
+        const kTop = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.15, 16), blackKnobMat);
+        kTop.position.y = 0.025;
+        
+        knob.add(kBase, kTop);
         stereoGrp.add(knob);
     }
+    // === 替換結束 ===
 
+    
     // 5. 隱形點擊/碰撞判定框
     const stereoHitBox = new THREE.Mesh(new THREE.BoxGeometry(8, 15, 7), new THREE.MeshBasicMaterial({visible: false}));
     stereoHitBox.position.y = 7.5;
