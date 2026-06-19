@@ -1609,6 +1609,100 @@
     transform: translateY(-2px);
 }
 
+
+
+        /* ====== 播放器全新響應式 CSS ====== */
+#modal-music-player {
+    background-color: #0b192f; 
+    background-image: 
+        radial-gradient(at 20% 80%, hsla(190, 80%, 50%, 0.3), transparent 50%),
+        radial-gradient(at 90% 20%, hsla(40, 90%, 70%, 0.35), transparent 60%);
+}
+
+.music-player-content {
+    width: 95%;
+    max-width: 500px;
+    height: 90vh; /* 鎖死最大高度 */
+    margin: 0 auto;
+    padding: 20px;
+    background: rgba(20, 30, 48, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 20px;
+    border: 1px solid rgba(230, 180, 80, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column; /* 垂直排版核心 */
+    box-sizing: border-box;
+    overflow: hidden; /* 防止外溢 */
+}
+
+.music-player-header { display: flex; align-items: center; margin-bottom: 15px; flex-shrink: 0; }
+.close-music-player { background: transparent; border: none; color: #fff; width: 40px; height: 40px; cursor: pointer; transition: 0.3s; }
+.close-music-player:hover { transform: scale(1.1); color: #d4af37; }
+
+/* CD 封面自適應 */
+.cd-cover-container { flex-shrink: 0; display: flex; justify-content: center; margin-bottom: 15px; }
+.cd-cover-wrapper { position: relative; width: 45%; max-width: 200px; aspect-ratio: 1/1; border-radius: 50%; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.cd-cover-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.cd-cover-img.playing { animation: cdSpin 15s linear infinite; }
+@keyframes cdSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.cd-cover-overlay { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%); pointer-events: none; }
+
+.now-playing { flex-shrink: 0; font-size: 1.2rem; color: #e6dfd1; font-weight: 600; text-align: center; margin-bottom: 10px; }
+
+/* 歌詞區 - 可滾動且自適應伸縮 */
+.lyrics-container {
+    flex: 1 1 0; /* 吸收剩餘空間 */
+    min-height: 80px;
+    overflow-y: auto;
+    text-align: center;
+    font-size: 1.1rem;
+    padding: 10px;
+    margin-bottom: 15px;
+    scrollbar-width: none; /* 隱藏 Firefox 捲軸 */
+}
+.lyrics-container::-webkit-scrollbar { display: none; }
+.lyric-line { color: #8a9ba8; margin: 8px 0; transition: all 0.3s ease; }
+.lyric-line.active { color: #17a2b8; font-weight: bold; transform: scale(1.1); text-shadow: 0 0 8px rgba(23,162,184,0.5); }
+
+/* 控制區 */
+.player-controls { flex-shrink: 0; display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 15px; }
+.player-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+.player-btn:hover { background: rgba(23,162,184,0.4); }
+.play-pause-btn { width: 60px; height: 60px; font-size: 1.5rem; background: linear-gradient(45deg, #17a2b8, #0d6efd); border: none; }
+
+/* 進度條與音量 */
+.progress-slider, .setting-slider { width: 100%; -webkit-appearance: none; height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; outline: none; }
+.progress-slider::-webkit-slider-thumb, .setting-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: #17a2b8; border-radius: 50%; cursor: pointer; }
+.time-display { flex-shrink: 0; display: flex; justify-content: space-between; font-size: 0.8rem; color: #8a9ba8; margin-bottom: 10px; }
+.volume-control-player { flex-shrink: 0; display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+
+/* 播放清單 */
+.playlist {
+    flex-shrink: 0;
+    height: 120px; /* 固定高度 */
+    overflow-y: auto;
+    list-style: none;
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px;
+    padding: 5px;
+    margin: 0;
+}
+.playlist-item { padding: 10px; color: #8a9ba8; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; border-radius: 6px; font-size: 0.95rem; }
+.playlist-item:hover { background: rgba(255,255,255,0.1); }
+.playlist-item.active { background: linear-gradient(90deg, rgba(255,107,107,0.8), rgba(255,159,67,0.8)); color: #fff; font-weight: bold; }
+.playlist-item.locked { opacity: 0.4; pointer-events: none; }
+
+/* 針對小螢幕進一步壓縮 */
+@media (max-height: 700px) {
+    .cd-cover-wrapper { width: 35%; }
+    .lyrics-container { font-size: 1rem; }
+    .playlist { height: 90px; }
+    .player-controls { gap: 10px; }
+    .player-btn { width: 40px; height: 40px; }
+    .play-pause-btn { width: 50px; height: 50px; }
+}
         
         
     </style>
@@ -2054,6 +2148,79 @@
 </div>
 
 
+    <!-- 🏬 霓虹黑膠唱片行 -->
+<div id="modal-record-shop" class="room-modal">
+    <div class="room-modal-content" style="background-color: #1a1515; border: 1px solid #4a2525;">
+        <button class="room-modal-close" style="color:#d4af37;" onclick="closeRoomModal(event, 'modal-record-shop')">×</button>
+        <h2 class="modal-title" style="color: #ff00aa; text-align: center; border-bottom: 1px dashed #ff00aa; text-shadow: 0 0 10px rgba(255,0,170,0.5);">霓虹黑膠</h2>
+        <div style="text-align: center; color: #dcd5c9; margin-bottom: 20px;">
+            您的積分：<span id="shop-record-points" style="font-weight: bold; color: #ff00aa; font-size: 1.2rem;">0</span> 分<br>
+            <span style="font-size: 0.9rem;">購買唱片後，可隨時在房間或街道上播放。</span>
+            <div style="margin-top: 15px;">
+                <button class="btn" style="background: linear-gradient(45deg, #ff00aa, #8b00ff); color: #fff; border: none; padding: 10px 25px;" onclick="openMusicPlayer()">🎧 打開我的隨身聽</button>
+            </div>
+        </div>
+        
+        <h3 style="font-family: var(--font-serif); color: #ffaa00; margin-top: 30px; border-left: 4px solid #ffaa00; padding-left: 10px;">🎵 經典單曲</h3>
+        <div class="shop-grid" id="shop-records-grid"></div>
+    </div>
+</div>
+
+<!-- 🎧 音樂播放器 -->
+<div id="modal-music-player" class="room-modal" style="z-index: 80000;">
+    <div class="music-player-content">
+        <div class="music-player-header">
+            <button class="close-music-player" onclick="document.getElementById('modal-music-player').style.display='none'">
+                <svg viewBox="0 0 24 24"><path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" fill="currentColor"/></svg>
+            </button>
+            <div style="flex-grow: 1; text-align: center; color: #d4af37; font-family: var(--font-serif); letter-spacing: 2px;">我的隨身聽</div>
+        </div>
+
+        <!-- CD 封面 -->
+        <div class="cd-cover-container">
+            <div class="cd-cover-wrapper">
+                <img id="cdCoverImage" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" class="cd-cover-img">
+                <div class="cd-cover-overlay"></div>
+            </div>
+        </div>
+
+        <div class="now-playing" id="nowPlaying">正在播放: 無</div>
+        
+        <!-- 歌詞區 -->
+        <div class="lyrics-container" id="lyricsContainer">
+            <div class="no-lyrics">無歌詞</div>
+        </div>
+
+        <!-- 播放控制 -->
+        <div class="player-controls">
+            <button class="player-btn" id="loopBtn" title="循環模式"></button>
+            <button class="player-btn" id="prevBtn" title="上一首">&#9664;&#9664;</button>
+            <button class="player-btn play-pause-btn" id="playPauseBtn" title="播放/暫停">&#9658;</button>
+            <button class="player-btn" id="nextBtn" title="下一首">&#9654;&#9654;</button>
+            <button class="player-btn" id="playbackModeBtn" title="播放模式"></button>
+        </div>
+
+        <!-- 進度條 -->
+        <div class="progress-slider-container" style="width:100%; margin: 10px 0;">
+            <input type="range" class="progress-slider" id="progressSlider" min="0" max="100" value="0">
+        </div>
+        <div class="time-display">
+            <span id="currentTime">0:00</span>
+            <span id="duration">0:00</span>
+        </div>
+
+        <!-- 音量控制 -->
+        <div class="volume-control-player">
+            <label for="volumeSliderPlayer" style="color:#dcd5c9; font-size:0.9rem;">音量</label>
+            <input type="range" class="setting-slider" id="volumeSliderPlayer" min="0" max="1" step="0.01" value="0.7">
+        </div>
+
+        <!-- 播放清單 -->
+        <ul class="playlist" id="playlist"></ul>
+    </div>
+</div>
+
+
 
     <!-- 🎨 寫信/回信時的文具挑選視窗 -->
 <div id="modal-stationery-selector" class="room-modal" style="z-index: 70000;">
@@ -2463,6 +2630,63 @@ const ITEM_REGISTRY = {
     'piano_use': { name: '🎵 學習鋼琴', desc: '掌握指法，解鎖彈奏鋼琴的技能', type: 'privilege', minPts: 10000 },
     'door_use': { name: '🚪 修繕趟門', desc: '修好卡住的趟門，解鎖出外看海', type: 'privilege', minPts: 10000 }
 };
+
+
+
+// 🎵 唱片商品目錄
+const RECORD_REGISTRY = {
+    'record_wait': { name: '等待', file: '等待.mp3', desc: '夜空下的守望與期盼', price: 500 },
+    'record_shadow': { name: '白影', file: '白影.mp3', desc: '荒誕夢境的低語', price: 500 },
+    'record_rain': { name: '下一枝的惆悵', file: '下一枝的惆悵.mp3', desc: '四月未停歇的傾訴', price: 500 },
+    'record_ash': { name: '餘燼落入虛無', file: '餘燼落入虛無.mp3', desc: '火焰跳著靈動的舞蹈', price: 500 },
+    'record_oldhouse': { name: '老屋回憶', file: '老屋回憶.mp3', desc: '桂花樹下的點滴', price: 500 },
+    'record_lifebook': { name: '生命之書', file: '生命之書.mp3', desc: '寫不好的一封家書', price: 500 },
+    'record_photo': { name: '不完美的共生', file: '不完美的共生.mp3', desc: '暗房裡的紅燈閃爍', price: 500 },
+    'record_nosorrow': { name: '不會太悲傷', file: '不會太悲傷.mp3', desc: '星辰和海洋的真相', price: 500 },
+    'record_goodbye': { name: '背著你說再見', file: '背著你說再見.mp3', desc: '海邊浪花還在翻湧', price: 500 },
+    'record_understand': { name: '開始懂了', file: '開始懂了.mp3', desc: '醫院長廊的沉默', price: 500 },
+    'record_beside': { name: '就在你身旁', file: '就在你身旁.mp3', desc: '為你把路照亮', price: 500 },
+    'record_sea': { name: '阿公的海', file: '阿公的海.mp3', desc: '充滿神秘色彩的大海', price: 500 },
+    'record_shell': { name: '貝殼的夢囈', file: '貝殼的夢囈.mp3', desc: '海的溫柔姿態', price: 500 },
+    'record_diary': { name: '被翻開的日記', file: '被翻開的日記.mp3', desc: '深夜歸家的門', price: 500 },
+    'record_paint': { name: '畫顏', file: '畫顏.mp3', desc: '未完成的畫卷', price: 500 },
+    'record_glass': { name: '玻璃盞', file: '玻璃盞.mp3', desc: '破碎的情感', price: 500 },
+    'record_lie': { name: '善意的謊言', file: '善意的謊言.mp3', desc: '故事裡總有熱湯', price: 500 }
+};
+
+// 封面對應表
+const songCovers = {
+    "白影.mp3": "白影.png", "等待.mp3": "等待.png", "餘燼落入虛無.mp3": "餘燼落入虛無.png",
+    "下一枝的惆悵.mp3": "下一枝的惆悵.png", "老屋回憶.mp3": "老屋回憶.png", "生命之書.mp3": "生命之書.png",
+    "不完美的共生.mp3": "不完美的共生.png", "不會太悲傷.mp3": "不會太悲傷.png", "背著你說再見.mp3": "背著你說再見.png",
+    "開始懂了.mp3": "開始懂了.png", "就在你身旁.mp3": "就在你身旁.png", "擁抱風.mp3": "擁抱風.png",
+    "阿公的海.mp3": "阿公的海.png", "貝殼的夢囈.mp3": "貝殼的夢囈.png", "被翻開的日記.mp3": "被翻開的日記.png",
+    "畫顏.mp3": "畫顏.png", "玻璃盞.mp3": "玻璃盞.png", "善意的謊言.mp3": "善意的謊言.png",
+    "default": "標準.png"
+};
+
+// 歌詞庫 (直接抄錄詞海拾心的結構)
+const songData = {
+    "等待.mp3": { lyrics: [{ "time": 9, "text": "月亮高掛在夜空之上" }, { "time": 13, "text": "宛如不眠的眼睛一樣" }, { "time": 17, "text": "靜靜注視著喧囂的人間" }, { "time": 21, "text": "有多少悲歡離合在上演" }, { "time": 27, "text": "它守望著夜的蒼茫" }, { "time": 29, "text": "也守望著黎明的曙光" }, { "time": 33, "text": "在漫長歲月裡等待著" }, { "time": 36, "text": "等待著某個人的出現" }, { "time": 49, "text": "她已經記不清你的模樣" }, { "time": 54, "text": "卻依然在原地默默守望" }, { "time": 58, "text": "那是一種怎樣的深情" }, { "time": 61, "text": "才能如此執著又漫長" }, { "time": 67, "text": "也許你早已把它遺忘" }, { "time": 72, "text": "而她卻還在為你照亮" }, { "time": 76, "text": "在這城市的喧囂之中" }, { "time": 80, "text": "還有多少人在等待著" }] },
+    "白影.mp3": { lyrics: [{ "time": 12, "text": "他走進了一個荒誕的夢境" }, { "time": 18, "text": "夢裡有個重複出現的白影" }, { "time": 24, "text": "白影微笑著準備登上" }, { "time": 30, "text": "有獠牙的火車廂頂" }, { "time": 35, "text": "黃昏一次次的把白影擄走" }, { "time": 41, "text": "他一次次的站在原地目送" }, { "time": 47, "text": "他沒有辦法挽留" }, { "time": 51, "text": "他沒有辦法伸出手" }, { "time": 71, "text": "多年後他還是會常常驚醒" }, { "time": 77, "text": "枕邊總是濕潤的一片狼藉" }, { "time": 83, "text": "白影像餃子皮一樣包裹著他" }, { "time": 90, "text": "越掙扎越陷進去" }, { "time": 95, "text": "黃昏一次次的把白影擄走" }, { "time": 101, "text": "他一次次的站在原地目送" }, { "time": 107, "text": "他只能默默地看" }, { "time": 112, "text": "他只能默默地吐" }] },
+    "下一枝的惆悵.mp3": { lyrics: [{ "time": 16, "text": "北京的雨是四月未停歇的傾訴" }, { "time": 23, "text": "胡同的路是我無法忘卻的孤獨" }, { "time": 31, "text": "拆遷的通知是我還未收拾的包袱" }, { "time": 39, "text": "騎行的外賣是我唯一能做的救贖" }, { "time": 46, "text": "有那麼一刻我以為我忘記了哭" }, { "time": 53, "text": "直到又聞到香煙的溫度" }, { "time": 59, "text": "有那麼一刻我以為我習慣了哭" }, { "time": 65, "text": "直到又看到香煙的閃爍" }, { "time": 82, "text": "你說歲月漫長" }, { "time": 86, "text": "八年風塵僕僕卻也轉眼一晃" }, { "time": 89, "text": "我說光陰匆忙" }, { "time": 91, "text": "我只是忘了我是誰的兒郎" }, { "time": 97, "text": "你說未來長河" }, { "time": 101, "text": "你又點起了下一支的惆悵" }, { "time": 104, "text": "我說人生匆忙" }, { "time": 106, "text": "可我又躲不過歲月的蒼茫" }] },
+    "餘燼落入虛無.mp3": { lyrics: [{ "time": 11, "text": "火焰跳著靈動的舞蹈" }, { "time": 16, "text": "灰燼飄落最後一遭" }, { "time": 20, "text": "燒化的紙錢開始飛向雲霄" }, { "time": 25, "text": "地獄的大門即將來到" }, { "time": 30, "text": "就像那風中飄零的草" }, { "time": 34, "text": "沒有根基只能隨風起" }, { "time": 39, "text": "落飄搖你看那天空中瀰漫的煙" }, { "time": 44, "text": "那是你我生命最終的樣貌" }, { "time": 58, "text": "火焰跳著靈動的舞蹈" }, { "time": 61, "text": "灰燼飄落最後一遭" }, { "time": 67, "text": "燒化的紙錢開始飛向雲霄" }, { "time": 70, "text": "一切似乎就要結束了" }, { "time": 76, "text": "就像那風中飄零的草" }, { "time": 81, "text": "沒有根基只能隨風起" }, { "time": 86, "text": "若飄搖你看那天空中瀰漫的煙" }, { "time": 91, "text": "那是你我生命最終的樣貌" }] },
+    "老屋回憶.mp3": { lyrics: [{ "time": 16, "text": "老屋的木門常年虛掩" }, { "time": 22, "text": "門外種着一棵桂花樹" }, { "time": 28, "text": "秋深時節 花瓣零散一地" }, { "time": 35, "text": "我與爺爺用竹箕收集" }, { "time": 42, "text": "回憶的碎片" }, { "time": 44, "text": "那時的快樂" }, { "time": 46, "text": "是被捕捉後又放生的小魚" }, { "time": 55, "text": "是桂花糕出鍋時的蒸汽" }, { "time": 62, "text": "是一串串銀鈴般的蟲鳴鳥囀" }, { "time": 69, "text": "然而後來" }, { "time": 71, "text": "鈴聲中斷了我所邂逅的花鳥蟲魚" }, { "time": 79, "text": "已是活生生的標本" }] },
+    "生命之書.mp3": { lyrics: [{ "time": 11, "text": "是夢的腳步匆匆沒了回顧" }, { "time": 16, "text": "是電話裡你問我最近是否忙碌" }, { "time": 21, "text": "是我說著還好卻藏起了孤獨" }, { "time": 26, "text": "是你擔憂的目光我假裝不在乎" }, { "time": 31, "text": "是想為你多付出卻不知怎麼傾訴" }, { "time": 36, "text": "是想多些陪伴卻總被現實攔住" }, { "time": 41, "text": "是你慢慢的習慣了獨自守候" }, { "time": 46, "text": "是我想回頭卻已踏上了遠途" }, { "time": 51, "text": "我翻開生命之書卻只看到你的忙碌" }, { "time": 57, "text": "你把所有的愛都默默藏在深處" }, { "time": 62, "text": "你說只要我好你就心滿意足" }, { "time": 67, "text": "可是孩子啊媽你是我一生的守護" }, { "time": 84, "text": "是有多久沒和你一起漫步" }, { "time": 88, "text": "是有多久沒撫摸你的紋路" }, { "time": 94, "text": "是你一個人坐在門口盼著我歸途" }, { "time": 100, "text": "是我把忙碌當作了忽略你的藉口" }, { "time": 106, "text": "我停下忙碌腳步開始用心去領悟" }, { "time": 111, "text": "我聽見了你心裡深藏的牽掛" }, { "time": 116, "text": "你說孩子啊我不要你太辛苦" }, { "time": 122, "text": "只要你快樂我怎樣都可以" }, { "time": 129, "text": "我看見你的臉上已經寫滿了孤獨" }, { "time": 134, "text": "我看見你的眼裡泛著無奈和幸福" }, { "time": 139, "text": "我看見生命之書裡你的付出" }, { "time": 144, "text": "是我寫不好的一封家書" }] },
+    "不完美的共生.mp3": { lyrics: [{ "time": 5, "text": "暗房裡紅燈閃爍" }, { "time": 7, "text": "他在寂靜中清洗器具" }, { "time": 10, "text": "曾以為影像會永恆銘記" }, { "time": 16, "text": "窗外暴雨傾盆" }, { "time": 17, "text": "他欣賞著水流的光暈" }, { "time": 21, "text": "思緒漫過心底的回憶" }, { "time": 27, "text": "窗外雨落如注" }, { "time": 30, "text": "他失了意般坐在顯影液旁" }, { "time": 34, "text": "他曾說過攝影是夢想" }, { "time": 38, "text": "如今現實把他的心敲打" }, { "time": 43, "text": "他感慨時光匆忙" }, { "time": 45, "text": "歲月把一切變得滄桑" }, { "time": 48, "text": "後來他時常對著舊照片凝望" }, { "time": 53, "text": "那是他逝去的過往" }, { "time": 57, "text": "照片裡的妻子笑靨如花" }, { "time": 63, "text": "那時的兒子還未長大" }, { "time": 85, "text": "暗房裡紅燈閃爍" }, { "time": 87, "text": "他在寂靜中清洗器具" }, { "time": 91, "text": "曾以為影像會永恆銘記" }, { "time": 95, "text": "窗外暴雨傾盆" }, { "time": 97, "text": "他欣賞著水流的光暈" }, { "time": 101, "text": "思緒漫過心底的回憶" }, { "time": 107, "text": "後來他終於懂得攝影的意義" }, { "time": 112, "text": "不是追求完美的複製" }, { "time": 116, "text": "他看到光影，斑駁照片已" }, { "time": 121, "text": "被他乾透，接受不完美的過往" }] },
+    "不會太悲傷.mp3": { lyrics: [{ "time": 8, "text": "他騎車載我海邊的那天" }, { "time": 12, "text": "我坐在後座看他的襯衫" }, { "time": 16, "text": "夕陽下他的背影很偉岸" }, { "time": 19, "text": "他說孩子你要快樂平安" }, { "time": 25, "text": "我想我不會太悲傷" }, { "time": 28, "text": "他教會我生命的真相" }, { "time": 33, "text": "生命來自於星辰和海洋" }, { "time": 37, "text": "歸於塵土也很輝煌" }, { "time": 51, "text": "他製作蝴蝶標本的那天" }, { "time": 55, "text": "專注的眼神比平時更溫暖" }, { "time": 59, "text": "他說孩子你要記住每種生命的模樣" }, { "time": 64, "text": "他說孩子你要熱愛自然" }, { "time": 68, "text": "我想我不會太悲傷" }, { "time": 72, "text": "他教會我生命的真相" }, { "time": 76, "text": "生命來自於星辰和海洋" }, { "time": 80, "text": "歸於塵土也很輝煌" }, { "time": 85, "text": "我想我不會太悲傷" }, { "time": 89, "text": "他教會我生命的真相" }, { "time": 93, "text": "生命來自於星辰和海洋" }, { "time": 98, "text": "歸於塵土也很輝煌" }] },
+    "背著你說再見.mp3": { lyrics: [{ "time": 13, "text": "海邊的浪花還在翻湧" }, { "time": 18, "text": "逝去的你我還在懷想" }, { "time": 24, "text": "有一些難過 有一些惆悵" }, { "time": 31, "text": "你怎麼捨得我獨自神傷" }, { "time": 37, "text": "我想我還是選擇記住你的笑臉" }, { "time": 43, "text": "就像你從前總是愛揚起臉" }, { "time": 48, "text": "也許你的一生如流星般劃落" }, { "time": 56, "text": "卻是我生命中最完整的畫面" }, { "time": 76, "text": "如今啊我終於能理解" }, { "time": 82, "text": "生命啊不該有太多掛礙" }, { "time": 87, "text": "你給我的愛 我一生深領會" }, { "time": 94, "text": "就像你希望的那樣樂觀純粹" }, { "time": 100, "text": "我想我還是選擇記住你的笑臉" }, { "time": 106, "text": "就像你從前總是愛揚起臉" }, { "time": 111, "text": "也許你的一生如流星般劃落" }, { "time": 119, "text": "卻是我生命中最完整的畫面" }] },
+    "開始懂了.mp3": { lyrics: [{ "time": 10, "text": "我們肩併肩坐在醫院長廊" }, { "time": 14, "text": "陪伴是這段時光的模樣" }, { "time": 17, "text": "看著點滴在靜靜流淌" }, { "time": 21, "text": "我的心充滿擔憂和感傷" }, { "time": 28, "text": "媽媽你一定要堅強" }, { "time": 32, "text": "我會守在你的身旁" }, { "time": 37, "text": "這句話雖然沒有出口卻是我最真的願望" }, { "time": 65, "text": "我們沉默著坐在醫院長廊" }, { "time": 69, "text": "想找些話來打破這寂靜" }, { "time": 73, "text": "可話到嘴邊卻又嚥下" }, { "time": 77, "text": "也許這是最好的交流吧" }, { "time": 83, "text": "媽媽我開始懂你了" }, { "time": 87, "text": "你有太多的苦埋在心底" }, { "time": 92, "text": "這句話雖然沒有出口卻讓我更加心疼你" }, { "time": 102, "text": "媽媽我開始懂你了" }, { "time": 106, "text": "你有太多的苦埋在心底" }, { "time": 111, "text": "這句話雖然沒有出口卻讓我更加心疼你" }] },
+    "就在你身旁.mp3": { lyrics: [{ "time": 16, "text": "獨自坐在醫院的長廊" }, { "time": 19, "text": "看著點滴在靜靜流淌" }, { "time": 23, "text": "母親就躺在那病床上" }, { "time": 27, "text": "我坐在她的身旁" }, { "time": 31, "text": "我想告訴她我有多堅強" }, { "time": 35, "text": "也想告訴她有我在身旁" }, { "time": 39, "text": "可是話未出口已哽咽在嗓" }, { "time": 43, "text": "最終只握住她的手輕輕搖晃" }, { "time": 49, "text": "你知道就算黑暗讓整個世界無光" }, { "time": 55, "text": "我會為你把路照亮" }, { "time": 57, "text": "受不了看到你無助的模樣" }, { "time": 61, "text": "寫下我分秒必爭的願望" }, { "time": 65, "text": "就算整個世界被寂寞捆綁" }, { "time": 69, "text": "我也不會讓你心傷" }, { "time": 73, "text": "到不了幸福曾許下的遠方" }, { "time": 78, "text": "寫下我歲月依舊的守望" }, { "time": 100, "text": "我想告訴她我有多堅強" }, { "time": 104, "text": "也想告訴她有我在身旁" }, { "time": 108, "text": "可是話未出口已哽咽在嗓" }, { "time": 112, "text": "最終只握住她的手輕輕搖晃" }, { "time": 118, "text": "你知道就算黑暗讓整個世界無光" }, { "time": 124, "text": "我會為你把路照亮" }, { "time": 126, "text": "受不了看到你無助的模樣" }, { "time": 130, "text": "寫下我分秒必爭的願望" }, { "time": 134, "text": "就算整個世界被寂寞捆綁" }, { "time": 138, "text": "我也不會讓你心傷" }, { "time": 142, "text": "到不了幸福曾許下的遠方" }, { "time": 147, "text": "寫下我歲月依舊的守望" }] },
+    "阿公的海.mp3": { lyrics: [{ "time": 3, "text": "阿公說的海啊" }, { "time": 5, "text": "總充滿神秘色彩" }, { "time": 8, "text": "為什麼那大海我一直都沒見到" }, { "time": 14, "text": "直到現在我還是" }, { "time": 17, "text": "喜歡望著那片海" }, { "time": 20, "text": "我和阿公一起默默等待" }, { "time": 29, "text": "海邊的沙灘上矗立著古老的燈塔" }, { "time": 35, "text": "我站在岸邊上想感受海龜的氣息啊" }, { "time": 41, "text": "那些過往的人們" }, { "time": 44, "text": "好像也在盼著它" }, { "time": 47, "text": "他們是否也和我一樣" }, { "time": 55, "text": "院子裡的柚子樹何時才會開花" }, { "time": 60, "text": "那個嚮往的大海我何時才能抵達" }, { "time": 67, "text": "曾經的那艘船兒它是否已經啟航" }, { "time": 73, "text": "它是否還記得我和它" }, { "time": 106, "text": "阿公說的海啊總充滿神秘色彩" }, { "time": 112, "text": "為什麼那大海我一直都沒見到" }, { "time": 119, "text": "直到現在我還是喜歡望著那片海" }, { "time": 130, "text": "我和阿公一起默默等待" }, { "time": 131, "text": "阿公說的海啊它真的讓人著迷" }, { "time": 137, "text": "如果有一天我去了它會不會想我" }, { "time": 142, "text": "如果有機會我要問問它" }, { "time": 150, "text": "什麼時候會回來" }] },
+    "貝殼的夢囈.mp3": { lyrics: [{ "time": 7, "text": "她曾有一個心願渴望看海" }, { "time": 13, "text": "無法親身體驗只能心潮澎湃" }, { "time": 19, "text": "貝殼的聲音在耳邊輕擺" }, { "time": 25, "text": "她想那是海的溫柔姿態" }, { "time": 30, "text": "歲月畫中的老婦微揚著唇角" }, { "time": 36, "text": "滿是褶皺的臉上透著希望" }, { "time": 42, "text": "坐在海邊的她望向遠方的霞光" }, { "time": 48, "text": "臉上的細紋像波浪" }, { "time": 80, "text": "她也曾有一個心願渴望看海" }, { "time": 86, "text": "期望與海相伴哪怕歲月等待" }, { "time": 91, "text": "孫女的話像在唇邊鋪開" }, { "time": 96, "text": "她想那是海的溫柔和愛" }, { "time": 103, "text": "夢中的海擁抱著她輕聲告白" }, { "time": 109, "text": "眼裡的光芒像燈塔一樣亮采" }, { "time": 115, "text": "躺在海邊的他沐浴溫暖的陽光" }, { "time": 121, "text": "毋須人攙扶 臨終她終於看到了海" }] },
+    "被翻開的日記.mp3": { lyrics: [{ "time": 19, "text": "深夜歸家的門被輕輕推開" }, { "time": 23, "text": "桌上的燈照亮疲憊的臉" }, { "time": 27, "text": "父親坐在沙發上沉默發呆" }, { "time": 31, "text": "手中緊握著那本舊日記" }, { "time": 36, "text": "曾以為我們的關係會疏遠" }, { "time": 40, "text": "彼此的內心充滿了傷感" }, { "time": 44, "text": "時間如流水沖淡了矛盾" }, { "time": 49, "text": "溫馨的回憶又浮上心間" }, { "time": 55, "text": "日記裡的秘密被一點點揭開" }, { "time": 59, "text": "才發現我們都曾用心去愛" }, { "time": 64, "text": "往日的爭吵和冷戰化作了淚水在心底流淌" }, { "time": 72, "text": "那本日記成了我們的和解信" }, { "time": 77, "text": "讓彼此的心重新緊相依" }, { "time": 80, "text": "曾經的倔強和誤解" }, { "time": 83, "text": "如今已變成了美好的回憶" }, { "time": 107, "text": "曾以為我們的關係會疏遠" }, { "time": 112, "text": "彼此的內心充滿了傷感" }, { "time": 116, "text": "時間如流水沖淡了矛盾" }, { "time": 120, "text": "溫馨的回憶又浮上心間" }, { "time": 126, "text": "日記裡的秘密被一點點揭開" }, { "time": 131, "text": "才發現我們都曾用心去愛" }, { "time": 136, "text": "往日的爭吵和冷戰化作了淚水在心底流淌" }, { "time": 144, "text": "那本日記成了我們的和解信" }, { "time": 149, "text": "讓彼此的心重新緊相依" }, { "time": 153, "text": "曾經的倔強和誤解" }, { "time": 155, "text": "如今已變成了美好的回憶" }] },
+    "畫顏.mp3": { lyrics: [{ "time": 12, "text": "夢裡又回到那間熟悉的病房" }, { "time": 18, "text": "守在病床邊母親她氣息奄奄" }, { "time": 23, "text": "握著她的手已佈滿皺紋的臉" }, { "time": 29, "text": "讓我再看看妳 讓我再摸摸妳的眼" }, { "time": 35, "text": "畫框中是妳一直未完成的卷" }, { "time": 41, "text": "我們曾經一起度過多少時間" }, { "time": 47, "text": "一滴淚落在畫上暈開一片藍" }, { "time": 52, "text": "這是妳的畫 這是妳的遺憾" }, { "time": 69, "text": "妳走後我把悲傷悄悄隱藏" }, { "time": 75, "text": "害怕回憶起妳那慈祥的模樣" }, { "time": 81, "text": "永遠留在畫中寫下妳的名字" }, { "time": 87, "text": "讓我再呼喚妳 讓我再抱抱妳肩膀" }, { "time": 94, "text": "修復好那幅妳未完成的畫卷" }, { "time": 99, "text": "把妳畫得更美麗比原來好看" }, { "time": 105, "text": "把我們的故事寫進每一筆顏" }, { "time": 111, "text": "讓我再懷念妳 讓我再貼近妳耳畔" }] },
+    "玻璃盞.mp3": { lyrics: [{ "time": 17, "text": "有時爭吵後沈默的夜晚" }, { "time": 22, "text": "你摔門而去淚濕了一衫" }, { "time": 26, "text": "獨坐沙發心冷如冰寒" }, { "time": 30, "text": "這場婚姻已千瘡百孔不堪" }, { "time": 35, "text": "回想從前我們也曾幸福美滿" }, { "time": 40, "text": "怎麼如今變成互相傷害的局面" }, { "time": 44, "text": "是我太倔強 還是你太善變" }, { "time": 48, "text": "一次次的爭吵讓愛漸行漸遠" }, { "time": 52, "text": "我們的婚姻像破碎的玻璃盞" }, { "time": 57, "text": "憤怒之下被丟棄再找碎片" }, { "time": 60, "text": "傷痕清晰可見 心全迷失走遠" }, { "time": 66, "text": "誰能來救救我們 這破碎的原因" }, { "time": 70, "text": "像破碎的玻璃盞" }, { "time": 74, "text": "憤怒之下被丟棄再找碎片" }, { "time": 77, "text": "傷痕清晰可見 心全迷失走遠" }, { "time": 83, "text": "誰能來救救我們 這破碎的緣" }, { "time": 104, "text": "回想從前我們也曾幸福美滿" }, { "time": 108, "text": "怎麼如今變成互相傷害的局面" }, { "time": 112, "text": "是我太倔強 還是你太善變" }, { "time": 117, "text": "一次次的爭吵讓愛漸行漸遠" }, { "time": 121, "text": "我們的婚姻像破碎的玻璃盞" }, { "time": 125, "text": "憤怒之下被丟棄再找碎片" }, { "time": 129, "text": "傷痕清晰可見 心全迷失走遠" }, { "time": 135, "text": "誰能來救救我們 這破碎的原因" }, { "time": 139, "text": "像破碎的玻璃盞" }, { "time": 142, "text": "憤怒之下被丟棄再找碎片" }, { "time": 146, "text": "傷痕清晰可見 心全迷失走遠" }, { "time": 152, "text": "誰能來救救我們 這破碎的緣" }] },
+    "善意的謊言.mp3": { lyrics: [{ "time": 18, "text": "你說我講的故事都太淒涼" }, { "time": 23, "text": "沒有一絲快樂或歡暢" }, { "time": 27, "text": "但你卻來聽我講的每一章" }, { "time": 32, "text": "甚至重複了好多遍" }, { "time": 37, "text": "你不知道其實我也很徬徨" }, { "time": 41, "text": "害怕故事結局太悲傷" }, { "time": 46, "text": "可我更害怕你會失去希望" }, { "time": 51, "text": "所以我只能編下去啊編下去" }, { "time": 55, "text": "我給你講的故事裡總有熱湯" }, { "time": 60, "text": "就像我想給你的人生一樣有暖陽" }, { "time": 64, "text": "你顫抖的雙手和那濕潤的眼眶" }, { "time": 69, "text": "是我見過最心碎的模樣" }, { "time": 74, "text": "我給你講的故事裡總有熱湯" }, { "time": 78, "text": "就像我想給你的人生裡一直有燭光" }, { "time": 83, "text": "可你不知道那些故事都不是真的" }, { "time": 88, "text": "只是我用善意的謊言編織的真相" }, { "time": 98, "text": "你不知道其實我也很徬徨" }, { "time": 102, "text": "害怕故事結局太悲傷" }, { "time": 107, "text": "可我更害怕你會失去希望" }, { "time": 112, "text": "所以我只能編下去啊編下去" }, { "time": 118, "text": "我給你講的故事裡總有熱湯" }, { "time": 122, "text": "就像我想給你的人生一直有燭光" }, { "time": 126, "text": "可你不知道那些故事都不是真的" }, { "time": 132, "text": "只是我用善意的謊言編織的真相" }, { "time": 141, "text": "我給你講的故事裡總有熱湯" }, { "time": 145, "text": "就像我想給你的人生一直有燭光" }, { "time": 150, "text": "可你不知道那些故事都不是真的" }, { "time": 155, "text": "只是我用善意的謊言編織的真相" }] }
+};
+
+        
 
 
 // =====================================================================
@@ -2961,6 +3185,255 @@ db.ref(`classes/${currentUser.classId || 'default'}`).on('value', snap => {
     }
 }
 
+
+
+
+// ====== 黑膠唱片行與音樂播放器邏輯 ======
+
+// 1. 渲染商店介面
+function renderRecordShop() {
+    document.getElementById('shop-record-points').innerText = userPoints;
+    const container = document.getElementById('shop-records-grid');
+    container.innerHTML = '';
+    
+    Object.keys(RECORD_REGISTRY).forEach(id => {
+        const item = RECORD_REGISTRY[id];
+        const isOwned = !!userInventory[id];
+        // 用預設的 CD 封面來做商店圖示
+        const coverImg = songCovers[item.file] || songCovers["default"];
+        
+        const btnHtml = isOwned ? 
+            `<button class="btn" disabled style="background:#eee; color:#999; border:none; padding:8px 20px;">已擁有</button>` :
+            `<button class="btn" style="background:#ff00aa; border:none; padding:8px 20px; color:#fff;" onclick="buyRecord('${id}', ${item.price})">購買</button>`;
+            
+        container.innerHTML += `
+            <div class="shop-item ${isOwned ? 'owned' : ''}" style="border-color: #ffaa00;">
+                <img src="${coverImg}" style="border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">
+                <h4 style="color: #d4af37;">${item.name}</h4>
+                <p>${item.desc}</p>
+                <div class="shop-price" style="color: #ff00aa;">${item.price} 分</div>
+                ${btnHtml}
+            </div>
+        `;
+    });
+}
+
+// 2. 購買唱片
+window.buyRecord = function(id, price) {
+    if (userPoints < price) return alert("積分不足！請多寫信與探索來賺取積分。");
+    if (userInventory[id]) return alert("您已經擁有此唱片了！");
+    
+    if(confirm(`確認花費 ${price} 積分購買 ${RECORD_REGISTRY[id].name} 嗎？`)) {
+        userPoints -= price;
+        userInventory[id] = true;
+        
+        db.ref(`users/${currentUser.uid}/points`).set(userPoints);
+        db.ref(`users/${currentUser.uid}/inventory/${id}`).set(true).then(() => {
+            showToast("🛒 購買成功！您現在可以隨時播放這首歌曲。");
+            document.getElementById('user-points-text').innerText = userPoints;
+            renderRecordShop(); 
+            initMusicPlayer(); // 刷新播放清單
+        });
+    }
+};
+
+// 3. 播放器核心邏輯
+let recordAudio = new Audio();
+recordAudio.volume = 0.7;
+let rIsPlaying = false;
+let rPlaylist = [];
+let rCurrentIndex = 0;
+let rLyrics = [];
+let rPlaybackMode = 'sequential'; // 'sequential' 或 'shuffle'
+let rLoopMode = 'list'; // 'list', 'single', 'none'
+let rIsUpdatingSlider = false;
+
+// 兩種模式的 SVG 圖示
+const seqIcon = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M4 6H20V8H4V6M4 11H20V13H4V11M4 16H20V18H4V16Z"/></svg>`;
+const shufIcon = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M10.59 9.17L5.41 4L4 5.41L9.17 10.59L10.59 9.17M14.83 13.41L13.41 14.83L18.59 20L20 18.59L14.83 13.41M5.41 20L4 18.59L18.59 4L20 5.41L5.41 20Z"/></svg>`;
+const loopListIcon = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M7 7H17V10L21 6L17 2V5H5V12H7V7M17 17H7V14L3 18L7 22V19H19V12H17V17Z"/></svg>`;
+const loopSingleIcon = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M7 7H17V10L21 6L17 2V5H5V12H7V7M17 17H7V14L3 18L7 22V19H19V12H17V17Z M13 15V9H12L10 10V11H11.5V15H13Z"/></svg>`;
+
+window.openMusicPlayer = function() {
+    initMusicPlayer();
+    document.getElementById('modal-music-player').style.display = 'flex';
+};
+
+function initMusicPlayer() {
+    // 篩選出已購買的歌曲
+    rPlaylist = [];
+    Object.keys(RECORD_REGISTRY).forEach(id => {
+        if (userInventory[id]) {
+            rPlaylist.push(RECORD_REGISTRY[id]);
+        }
+    });
+
+    const ul = document.getElementById('playlist');
+    ul.innerHTML = '';
+    
+    if (rPlaylist.length === 0) {
+        ul.innerHTML = '<li style="color:#8a9ba8; text-align:center; padding: 20px;">您尚未購買任何唱片。</li>';
+        return;
+    }
+
+    rPlaylist.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.className = `playlist-item ${index === rCurrentIndex ? 'active' : ''}`;
+        li.textContent = item.name;
+        li.onclick = () => playRecordSong(index);
+        ul.appendChild(li);
+    });
+
+    document.getElementById('playbackModeBtn').innerHTML = rPlaybackMode === 'shuffle' ? shufIcon : seqIcon;
+    document.getElementById('loopBtn').innerHTML = rLoopMode === 'single' ? loopSingleIcon : loopListIcon;
+}
+
+function playRecordSong(index) {
+    if (rPlaylist.length === 0) return;
+    rCurrentIndex = index;
+    const song = rPlaylist[index];
+    
+    // 更新 UI
+    document.getElementById('nowPlaying').innerText = `正在播放: ${song.name}`;
+    document.getElementById('cdCoverImage').src = songCovers[song.file] || songCovers["default"];
+    
+    // 刷新清單高亮
+    document.querySelectorAll('#playlist .playlist-item').forEach((li, i) => {
+        li.className = `playlist-item ${i === index ? 'active' : ''}`;
+    });
+
+    // 準備歌詞
+    rLyrics = songData[song.file]?.lyrics || [];
+    const lCont = document.getElementById('lyricsContainer');
+    lCont.innerHTML = '';
+    if (rLyrics.length === 0) {
+        lCont.innerHTML = '<div class="no-lyrics">純音樂 / 無歌詞</div>';
+    } else {
+        rLyrics.forEach(line => {
+            const p = document.createElement('p');
+            p.className = 'lyric-line';
+            p.innerText = line.text;
+            lCont.appendChild(p);
+        });
+    }
+
+    // 播放音訊
+    recordAudio.src = song.file;
+    recordAudio.play().then(() => {
+        rIsPlaying = true;
+        document.getElementById('playPauseBtn').innerHTML = '&#10074;&#10074;';
+        document.getElementById('cdCoverImage').classList.add('playing');
+        
+        // 暫停房間內的收音機 (避免聲音打架)
+        if (typeof isRadioPlaying !== 'undefined' && isRadioPlaying) {
+            toggleRadio(); 
+        }
+    }).catch(e => console.log('播放被攔截或發生錯誤:', e));
+}
+
+// 監聽播放進度與歌詞同步
+recordAudio.addEventListener('timeupdate', () => {
+    if (!rIsUpdatingSlider) {
+        document.getElementById('progressSlider').value = recordAudio.currentTime;
+        document.getElementById('currentTime').innerText = formatTime(recordAudio.currentTime);
+    }
+    
+    // 同步歌詞
+    if (rLyrics.length > 0) {
+        let activeIdx = -1;
+        for (let i = 0; i < rLyrics.length; i++) {
+            if (rLyrics[i].time <= recordAudio.currentTime) {
+                activeIdx = i;
+            } else { break; }
+        }
+        document.querySelectorAll('.lyric-line').forEach((line, i) => {
+            line.classList.toggle('active', i === activeIdx);
+            if (i === activeIdx) line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+    }
+});
+
+recordAudio.addEventListener('loadedmetadata', () => {
+    document.getElementById('progressSlider').max = recordAudio.duration;
+    document.getElementById('duration').innerText = formatTime(recordAudio.duration);
+});
+
+recordAudio.addEventListener('ended', () => {
+    if (rLoopMode === 'single') {
+        recordAudio.play();
+    } else {
+        playNextRecord();
+    }
+});
+
+function playNextRecord() {
+    if (rPlaylist.length <= 1) return;
+    let nextIdx;
+    if (rPlaybackMode === 'shuffle') {
+        do { nextIdx = Math.floor(Math.random() * rPlaylist.length); } while (nextIdx === rCurrentIndex);
+    } else {
+        nextIdx = (rCurrentIndex + 1) % rPlaylist.length;
+    }
+    playRecordSong(nextIdx);
+}
+
+function playPrevRecord() {
+    if (rPlaylist.length <= 1) return;
+    let nextIdx = (rCurrentIndex - 1 + rPlaylist.length) % rPlaylist.length;
+    playRecordSong(nextIdx);
+}
+
+function formatTime(sec) {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+// 綁定按鈕事件
+document.getElementById('playPauseBtn').addEventListener('click', () => {
+    if (rPlaylist.length === 0) return;
+    if (!recordAudio.src) { playRecordSong(0); return; }
+    
+    if (rIsPlaying) {
+        recordAudio.pause();
+        rIsPlaying = false;
+        document.getElementById('playPauseBtn').innerHTML = '&#9658;';
+        document.getElementById('cdCoverImage').classList.remove('playing');
+    } else {
+        recordAudio.play();
+        rIsPlaying = true;
+        document.getElementById('playPauseBtn').innerHTML = '&#10074;&#10074;';
+        document.getElementById('cdCoverImage').classList.add('playing');
+    }
+});
+
+document.getElementById('nextBtn').addEventListener('click', playNextRecord);
+document.getElementById('prevBtn').addEventListener('click', playPrevRecord);
+
+document.getElementById('playbackModeBtn').addEventListener('click', function() {
+    rPlaybackMode = rPlaybackMode === 'sequential' ? 'shuffle' : 'sequential';
+    this.innerHTML = rPlaybackMode === 'shuffle' ? shufIcon : seqIcon;
+});
+
+document.getElementById('loopBtn').addEventListener('click', function() {
+    rLoopMode = rLoopMode === 'list' ? 'single' : 'list';
+    this.innerHTML = rLoopMode === 'single' ? loopSingleIcon : loopListIcon;
+});
+
+document.getElementById('progressSlider').addEventListener('input', (e) => {
+    rIsUpdatingSlider = true;
+    document.getElementById('currentTime').innerText = formatTime(e.target.value);
+});
+document.getElementById('progressSlider').addEventListener('change', (e) => {
+    recordAudio.currentTime = e.target.value;
+    rIsUpdatingSlider = false;
+});
+
+document.getElementById('volumeSliderPlayer').addEventListener('input', (e) => {
+    recordAudio.volume = e.target.value;
+});
+
+        
 
 
 // 🛡️ 防作弊稽核系統：驗證積分與任務數量是否匹配
@@ -11615,11 +12088,14 @@ window.addEventListener('pointerup', (e) => {
                 document.getElementById('modal-stationery-shop').style.display = 'flex';
                 renderStationeryShop();
             }, 800); // 走近之後再彈出商店視窗
-        } else if(obj.userData.type === 'shop_record') {
-            showToast("🎵 這是霓虹黑膠唱片店，傳來陣陣老歌。\n(未來將在此購買背景音樂與黑膠唱片)");
-            // 走向唱片店，並看向內部
-            moveStreetCam(15, 6, -15, 10, -15);
-        }
+     } else if(obj.userData.type === 'shop_record') {
+    // 走向唱片店，並看向內部
+    moveStreetCam(15, 6, -15, 10, -15);
+    setTimeout(() => {
+        document.getElementById('modal-record-shop').style.display = 'flex';
+        renderRecordShop();
+    }, 800); // 走近之後再彈出商店視窗
+}
     }
 });
         
