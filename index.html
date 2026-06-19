@@ -10503,7 +10503,7 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         const recWallTop = new THREE.Mesh(new THREE.BoxGeometry(15, 5, 16), recTileMat); recWallTop.position.set(7.5, 12.5, 0); recGrp.add(recWallTop);
         
         // 💡 修改：內部牆壁改用 MeshBasicMaterial，永遠保持明亮
-        const recInside = new THREE.Mesh(new THREE.BoxGeometry(14.8, 14.8, 15.8), new THREE.MeshBasicMaterial({color: 0x4a2525, side: THREE.BackSide}));
+       const recInside = new THREE.Mesh(new THREE.BoxGeometry(14.8, 14.8, 15.8), new THREE.MeshBasicMaterial({color: 0x4a2525, side: THREE.BackSide, fog: false}));
         recInside.position.set(7.5, 7.5, 0); recInside.userData = { isShopInside: true }; recGrp.add(recInside);
         
         // 💡 新增：黑膠店內部陳設 (全部使用 BasicMaterial，保持明亮且零效能負擔)
@@ -10992,7 +10992,7 @@ streetScene.background = createSkyTexture(p.skyTop, p.skyBot);
 
 // 🚀 將指數霧改為「線性霧」，設定近距離(150)完全不模糊，遠距離(2500)才完全隱沒。
 // 這樣退遠觀看商店街時，就不會被深色的霧氣籠罩而變暗了！
-streetScene.fog = new THREE.Fog(p.fog, 150, 2500);
+streetScene.fog = new THREE.Fog(p.fog, 400, 3000);
 
   const ambient = streetScene.getObjectByName('streetAmbient');
     if (ambient) {
@@ -11025,17 +11025,29 @@ streetScene.fog = new THREE.Fog(p.fog, 150, 2500);
     // 遍歷商店街所有材質，手動上色與開關燈
     streetScene.traverse(child => {
         // 1. 處理獨立發光的物理材質物件 (店舖、街燈)
-        if (child.material && child.material.emissive) {
-            if (child.userData.isNeon) {
-                child.material.emissiveIntensity = isNightOrDusk ? 2.5 : 0.0;
-                child.material.emissive.setHex(0xffffff);
-            }
-            if (child.userData.isShopInside) {
-                child.material.emissive.setHex(isNightOrDusk ? 0xffcc88 : 0x000000);
-                child.material.emissiveIntensity = isNightOrDusk ? 1.0 : 0.0;
-            }
-            if (child.userData.isStreetLight) {
-                child.material.emissiveIntensity = isNightOrDusk ? 2.0 : 0.0;
+     if (child.userData.isNeon || child.userData.isShopInside || child.userData.isStreetLight) {
+            // 💡 針對手機端 (Basic 材質沒有 emissive，直接改 color)
+            if (child.material.isMeshBasicMaterial) {
+                if (child.userData.isNeon) {
+                    child.material.color.setHex(isNightOrDusk ? 0xffffff : 0x888888);
+                } else if (child.userData.isStreetLight) {
+                    // 夜晚給予極度明亮的暖橘黃色，白天則是關燈的暗灰色
+                    child.material.color.setHex(isNightOrDusk ? 0xffcc77 : 0x555555);
+                }
+            } 
+            // 💡 針對電腦端 (Standard 材質，大幅調高 emissiveIntensity)
+            else if (child.material.emissive) {
+                if (child.userData.isNeon) {
+                    child.material.emissiveIntensity = isNightOrDusk ? 4.0 : 0.0; // 招牌提亮到 4.0
+                    child.material.emissive.setHex(0xffffff);
+                }
+                if (child.userData.isShopInside) {
+                    child.material.emissive.setHex(isNightOrDusk ? 0xffddaa : 0x000000);
+                    child.material.emissiveIntensity = isNightOrDusk ? 1.5 : 0.0;
+                }
+                if (child.userData.isStreetLight) {
+                    child.material.emissiveIntensity = isNightOrDusk ? 4.0 : 0.0; // 上層窗戶提亮到 4.0，徹底擺脫陰沉
+                }
             }
         }
         if (child.isPointLight && child.name === 'realLight') {
