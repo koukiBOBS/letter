@@ -4870,7 +4870,7 @@ function getIdealFov() {
     scene.fog = new THREE.FogExp2(0xc5c1bc, 0.010);
 
 const roomFov = getIdealFov(); // 👈 呼叫智能判斷
-camera = new THREE.PerspectiveCamera(roomFov, window.innerWidth/window.innerHeight, 1.0, 1000);
+camera = new THREE.PerspectiveCamera(roomFov, window.innerWidth/window.innerHeight, 1.0, 4000);
     
   renderer = new THREE.WebGLRenderer({
         antialias: true,
@@ -10292,7 +10292,7 @@ function buildShoppingStreet() {
     
 
         // 🏙️ 5.2 滿版、五光十色、防窗戶變形的大廈群
-        const cityEmissiveTex = createDistantCityEmissive();
+       const cityEmissiveTex = createDistantCityEmissive();
         const cityBaseTex = createBuildingTexture();
         
         const skylineMat = new THREE.MeshStandardMaterial({
@@ -10301,7 +10301,6 @@ function buildShoppingStreet() {
             fog: true
         });
 
-        // 💡 頂級魔法：透過 Shader 自動根據大廈縮放比例來重複貼圖，徹底根除窗戶拉伸變形問題！
         skylineMat.onBeforeCompile = function(shader) {
             shader.vertexShader = `
                 attribute vec3 offset;
@@ -10310,7 +10309,6 @@ function buildShoppingStreet() {
                 '#include <uv_vertex>',
                 `
                 #include <uv_vertex>
-                // 擷取實例矩陣的縮放值，動態調整 UV 重複率
                 float scaleX = length(vec3(instanceMatrix[0][0], instanceMatrix[0][1], instanceMatrix[0][2]));
                 float scaleY = length(vec3(instanceMatrix[1][0], instanceMatrix[1][1], instanceMatrix[1][2]));
                 vUv = uv * vec2(scaleX * 0.025, scaleY * 0.025); 
@@ -10318,22 +10316,21 @@ function buildShoppingStreet() {
             );
         };
 
-        const totalBuildings = 600; // 大量增加，營造滿滿一排的震撼感
+        const totalBuildings = 800; // 數量加到 800 棟，因為用了實例化技術(InstancedMesh)，這對手機效能是 0 負擔
         const skylineIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), skylineMat, totalBuildings);
         skylineIMesh.frustumCulled = false; 
-        skylineIMesh.userData.isDistantCity = true; // 標記以供夜景同步使用
+        skylineIMesh.userData.isDistantCity = true; 
         
         const dummyCity = new THREE.Object3D();
         for(let i=0; i<totalBuildings; i++) {
             let w = 40 + Math.random() * 80;
             let d = 40 + Math.random() * 80;
-            // 混合一般高樓與極少數超級地標
             let h = 200 + Math.pow(Math.random(), 3) * 1200; 
 
-            // 完美的 180 度佈局：Z軸橫跨 -4000 到 +4000，X軸放在對岸深處
-            let zPos = -4000 + Math.random() * 8000;
-            // 讓兩側的大廈稍微向前包圍，形成微弧形海灣
-            let xPos = -1200 - Math.random() * 600 + Math.abs(zPos) * 0.15; 
+            // 👇 完美海灣佈局演算法
+            let zPos = -2000 + Math.random() * 4000; // 橫跨左右各 2000 單位，完全填滿 180 度視野
+            // 利用絕對值(abs)讓兩側的大廈稍微往前彎曲包圍，中央的大廈較遠，形成 U 型海灣
+            let xPos = -600 - Math.random() * 300 + (Math.abs(zPos) * 0.15); 
 
             dummyCity.position.set(xPos, h/2 - 20, zPos);
             dummyCity.scale.set(w, h, d);
@@ -10436,7 +10433,7 @@ function syncStreetEnvironment() {
     
     const p = currentEnvParams;
     streetScene.background = createSkyTexture(p.skyTop, p.skyBot);
-    streetScene.fog = new THREE.FogExp2(p.fog, 0.015); // 城市空氣感
+    streetScene.fog = new THREE.FogExp2(p.fog, 0.01); // 城市空氣感
 
     // 整體環境光
     const ambient = streetScene.getObjectByName('streetAmbient');
