@@ -7507,7 +7507,8 @@ function animateRoom() {
             });
         }
 
-// 🎆 7. 零效能煙火更新 (自動判定僅限夜晚爆發)
+
+        // 🎆 7. 零效能煙火更新 (自動判定僅限夜晚爆發)
         if (currentEnvParams && currentEnvParams.phaseStr === 'night' && animScenery.fireworks) {
             animScenery.fireworks.mesh.visible = true;
             const fwData = animScenery.fireworks.data;
@@ -7579,10 +7580,6 @@ function animateRoom() {
         } else if (animScenery.fireworks) {
             animScenery.fireworks.mesh.visible = false; // 白天自動隱藏，徹底切斷 CPU 計算
         }
-
-    } // <--- 這是 isLookingOutside 的閉合大括號
-
-        
         
     }
  
@@ -10319,7 +10316,6 @@ function buildShoppingStreet() {
 
 
 
-
 // 🎆 零效能煙火系統 (Points + BufferGeometry)
 function createFireworks() {
     const particleCount = 400; // 5 朵煙火，每朵 80 顆粒子，極低負擔
@@ -10387,9 +10383,6 @@ function createFireworks() {
 
     return points;
 }
-
-        
-
 
 
 // 🎨 零效能生成：真實發光窗戶漸層貼圖 (灰階版：中午偏白)
@@ -10826,8 +10819,6 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         const stopPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 7, 16), new THREE.MeshStandardMaterial({color: 0x555555, metalness: 0.8})); stopPole.position.y = 3.5; stopPole.castShadow = true; stopGrp.add(stopPole);
         const stopSign = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.1, 32), new THREE.MeshStandardMaterial({map: createBusStopTexture(), roughness: 0.8})); stopSign.rotation.set(0, 0, Math.PI / 2); stopSign.position.set(-0.15, 6.5, 0); stopGrp.add(stopSign);
         streetScene.add(stopGrp);
-
-
 
 // 加入煙火系統
         streetScene.add(createFireworks());
