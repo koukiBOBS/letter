@@ -10189,19 +10189,25 @@ function buildShoppingStreet() {
         streetDir.shadow.camera.top = 80; streetDir.shadow.camera.bottom = -80;
         streetScene.add(streetDir);
 
-     // ==========================================
-        // 1. 動態海面與島嶼 (GPU 波浪與提亮版)
+   // ==========================================
+        // 1. 動態海面與島嶼 (GPU 波浪、立體反光與效能優化版)
         // ==========================================
-        if (!streetWaterTex) streetWaterTex = createDynamicWaterTexture();
         
-    // 手機放棄昂貴的金屬反射，改用 Phong 材質，並大幅降低網格複雜度
-const oceanBaseMat = new THREE.MeshStandardMaterial({ 
-    map: streetWaterTex, color: 0x1a4568, roughness: 0.1, metalness: 0.8,
-    emissive: 0x05101a, emissiveIntensity: 1.0 
-});
-if(typeof injectWaveShader !== 'undefined') injectWaveShader(oceanBaseMat); 
+        // 🌊 統一海水效果：捨棄舊版平面貼圖，改用與露台完全相同的 flatShading 立體波浪材質
+        // 針對手機端 (isTouchDevice) 放棄昂貴的金屬反射，改用較輕量的 Phong 材質
+        const oceanBaseMat = isTouchDevice ? 
+            new THREE.MeshPhongMaterial({ color: 0x1a3b5c, flatShading: true, shininess: 30 }) :
+            new THREE.MeshStandardMaterial({ color: 0x1a3b5c, roughness: 0.1, metalness: 0.8, flatShading: true });
 
-const oceanBase = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000, 100, 100), oceanBaseMat);
+        // 注入 GPU 頂點波浪動畫運算
+        if(typeof injectWaveShader !== 'undefined') injectWaveShader(oceanBaseMat); 
+
+        // 為了讓波浪有立體感，範圍設為 4000，並依據設備自動調整網格密度 (手機 60, 電腦 120)
+        const segs = isTouchDevice ? 60 : 120;
+        const oceanBase = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000, segs, segs), oceanBaseMat);
+        oceanBase.rotation.x = -Math.PI/2;
+        oceanBase.position.set(0, -5.5, 0); // 高度稍微下降，配合波浪起伏
+        streetScene.add(oceanBase);
 
         // 🏝️ 島嶼：強制無視濃霧(fog:false)，嚴格放在大廈後方解決穿模
         const islandMat = new THREE.MeshBasicMaterial({color: 0x1a252c, fog: false});
@@ -10995,9 +11001,16 @@ streetScene.fog = new THREE.Fog(p.fog, 150, 2500);
     }
     
     // 👇 新增：控制城市光害，讓夜晚的街道地面與行人不再死黑
-    const hemi = streetScene.getObjectByName('streetHemi');
+   const hemi = streetScene.getObjectByName('streetHemi');
     if (hemi) {
-        hemi.intensity = p.phaseStr === 'night' ? 0.45 : (p.phaseStr === 'dusk' ? 0.3 : 0.0);
+        // 晨曦給予溫暖補光，消除黑白死灰感
+        if (p.phaseStr === 'night') hemi.intensity = 0.45;
+        else if (p.phaseStr === 'dusk') hemi.intensity = 0.3;
+        else if (p.phaseStr === 'dawn') {
+            hemi.color.setHex(0xffe4cc); // 晨曦暖橘光
+            hemi.intensity = 0.25;
+        }
+        else hemi.intensity = 0.0;
     }
     
     const dirLight = streetScene.getObjectByName('streetDir');
@@ -11031,16 +11044,23 @@ streetScene.fog = new THREE.Fog(p.fog, 150, 2500);
 
         // 2. 處理遠景 (手動塗色法)
       // 2. 處理遠景 (手動塗色法與開關燈)
-        if (child.userData.isIsland) {
-            // 中午：灰綠色，黃昏/夜晚：深黑色剪影
-            child.material.color.setHex(p.phaseStr === 'noon' ? 0x4a6b66 : 0x0a1015);
+     if (child.userData.isIsland) {
+            // 🌅 晨：帶點日出的暖灰棕色，☀️ 午：灰綠色，🌙 暮/夜：深黑色剪影
+            if (p.phaseStr === 'dawn') child.material.color.setHex(0x6b5e59);
+            else if (p.phaseStr === 'noon') child.material.color.setHex(0x4a6b66);
+            else child.material.color.setHex(0x0a1015);
         }
-     if (child.userData.isDistantCity) {
-            // 🌅 早晨與中午
-            if (p.phaseStr === 'dawn' || p.phaseStr === 'noon') {
-                child.material.color.setHex(0x7894a8);
-                child.material.emissiveIntensity = 0.0; // 關燈
+        if (child.userData.isDistantCity) {
+            if (p.phaseStr === 'dawn') {
+                // 🌅 早晨：染上日出的暖粉橘灰色，不再是黑白灰！
+                child.material.color.setHex(0x9a7b73);
+                child.material.emissiveIntensity = 0.0;
             } 
+            else if (p.phaseStr === 'noon') {
+                // ☀️ 中午：清爽的偏藍灰色
+                child.material.color.setHex(0x7894a8);
+                child.material.emissiveIntensity = 0.0;
+            }
             // 🌇 黃昏微亮 (使用密集貼圖)
             else if (p.phaseStr === 'dusk') {
                 child.material.color.setHex(0x4a3854); 
