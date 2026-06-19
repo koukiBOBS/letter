@@ -2652,6 +2652,7 @@ const ITEM_REGISTRY = {
     'radio': { name: '復古收音機', desc: '實時播放香港電台，陪伴閱讀時光', type: 'model', minPts: 0 },
     'piano_model': { name: '直立式鋼琴', desc: '黑色的典雅樂器實體', type: 'model', minPts: 0 },
     'piano_bench': { name: '鋼琴椅', desc: '搭配鋼琴的皮革長凳', type: 'model', minPts: 0 },
+    'stereo_system': { name: '復古落地音響', desc: '實木打造的音響櫃，點擊可播放已收集的黑膠唱片', type: 'model', minPts: 0 },
    'curtain': { name: '雙層遮光窗簾', desc: '調節室內光線的質感窗簾', type: 'model', minPts: 0 },
     'piano_use': { name: '🎵 學習鋼琴', desc: '掌握指法，解鎖彈奏鋼琴的技能', type: 'privilege', minPts: 10000 },
     'door_use': { name: '🚪 修繕趟門', desc: '修好卡住的趟門，解鎖出外看海', type: 'privilege', minPts: 10000 }
@@ -5055,7 +5056,7 @@ const roomFov = getIdealFov(); // 👈 呼叫智能判斷
 
 
         
-let tcGrp, chairGroup, pianoGrp, benchGrp;
+let tcGrp, chairGroup, pianoGrp, benchGrp, stereoGrp;
 let wallDragMesh; // 新增這一個，用來做牆壁拖曳的隱形邊界
 let floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 let catPlatform = 'floor'; // 記錄貓咪所在位置：'floor', 'desk', 'chair'
@@ -5098,6 +5099,10 @@ function restoreObjectPositions() {
         if(pos.chair && chairGroup) chairGroup.position.set(pos.chair.x, chairGroup.position.y, pos.chair.z);
         if(pos.rack && typeof rackGrp !== 'undefined') rackGrp.position.set(pos.rack.x, rackGrp.position.y, pos.rack.z); 
         if(pos.umbrella && typeof umbGrp !== 'undefined') umbGrp.position.set(pos.umbrella.x, umbGrp.position.y, pos.umbrella.z); 
+        if(pos.stereo && typeof stereoGrp !== 'undefined') {
+            stereoGrp.position.set(pos.stereo.x, 0, pos.stereo.z);
+            if (pos.stereo.ry !== undefined) stereoGrp.rotation.y = pos.stereo.ry;
+        }
         
         // 👇 加入鋼琴與琴椅的讀檔復原
        // 👇 把原本的 piano 與 bench 讀檔替換成這段
@@ -5307,6 +5312,27 @@ function createPowderMetalTexture(baseColorHex) {
     return tex;
 }
 
+
+
+// 🎨 零效能生成：音響防塵網紋理
+function createSpeakerGrillTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128; canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#111111'; ctx.fillRect(0, 0, 128, 128); // 網底深黑
+    ctx.fillStyle = '#2a2a2a'; // 網眼反光
+    for(let y=0; y<128; y+=6) {
+        for(let x=0; x<128; x+=6) {
+            ctx.beginPath(); ctx.arc(x+3, y+3, 2, 0, Math.PI*2); ctx.fill();
+        }
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(2, 4);
+    return tex;
+}
+
+        
 
 
         
@@ -6631,6 +6657,58 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     interactables.push(umbHitBox);
 
 
+
+// ==========================================
+    // 📻 建造復古落地音響 (可移動、點擊播放音樂)
+    // ==========================================
+    stereoGrp = new THREE.Group();
+    stereoGrp.position.set(-25, 0, 10); // 預設擺放位置 (左側牆邊)
+    stereoGrp.rotation.y = Math.PI / 2;
+    scene.add(stereoGrp);
+    stereoGrp.userData.itemId = 'stereo_system'; // 綁定道具 ID 以便解鎖/隱藏
+
+    const stereoWoodMat = new THREE.MeshStandardMaterial({ map: createWoodTexture(), roughness: 0.8 });
+    const speakerMat = new THREE.MeshStandardMaterial({ map: createSpeakerGrillTexture(), roughness: 0.9, metalness: 0.1 });
+    const sMetalMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.8, roughness: 0.3 });
+
+    // 1. 木質主機身
+    const stereoBody = new THREE.Mesh(new THREE.BoxGeometry(6, 14, 5), stereoWoodMat);
+    stereoBody.position.y = 7;
+    stereoBody.castShadow = true;
+    stereoGrp.add(stereoBody);
+
+    // 2. 喇叭防塵網 (上下兩個大單體)
+    const speakerTop = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 4.5), speakerMat);
+    speakerTop.position.set(0, 10, 2.51);
+    stereoGrp.add(speakerTop);
+
+    const speakerBot = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 4.5), speakerMat);
+    speakerBot.position.set(0, 4.5, 2.51);
+    stereoGrp.add(speakerBot);
+
+    // 3. 中間的金屬控制面板
+    const ctrlPanel = new THREE.Mesh(new THREE.BoxGeometry(5, 1.5, 0.2), new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.5 }));
+    ctrlPanel.position.set(0, 7.5, 2.45);
+    stereoGrp.add(ctrlPanel);
+
+    // 4. 面板上的金屬旋鈕
+    for(let i=-1.5; i<=1.5; i+=1.5) {
+        const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.3, 16), sMetalMat);
+        knob.rotation.x = Math.PI / 2;
+        knob.position.set(i, 7.5, 2.55);
+        stereoGrp.add(knob);
+    }
+
+    // 5. 隱形點擊/碰撞判定框
+    const stereoHitBox = new THREE.Mesh(new THREE.BoxGeometry(8, 15, 7), new THREE.MeshBasicMaterial({visible: false}));
+    stereoHitBox.position.y = 7.5;
+    stereoHitBox.userData = { type: 'stereo' };
+    stereoGrp.add(stereoHitBox);
+    interactables.push(stereoHitBox); // 註冊為可點擊/拖曳物件
+
+
+
+    
 // ==========================================
     // 🎹 建造典雅直立式鋼琴與琴椅
     // ==========================================
@@ -7230,6 +7308,7 @@ interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitB
 
     if(typeof chairGroup !== 'undefined') chairGroup.userData.itemId = 'chair';
     if(typeof catGrp !== 'undefined') catGrp.userData.itemId = 'cat';
+    if(typeof stereoGrp !== 'undefined') pos.stereo = {x: stereoGrp.position.x, z: stereoGrp.position.z, ry: stereoGrp.rotation.y};
 
     // 👆 【貼到這裡為止】 👆
 
@@ -7390,11 +7469,11 @@ const intersects = getValidIntersects();
         while(obj.parent && !obj.userData.type) obj = obj.parent;
         const type = obj.userData.type;
 
-if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella', 'piano', 'bench'].includes(type)) {
+if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella', 'piano', 'bench', 'stereo'].includes(type)) {
             let targetObj = obj;
-            if(['plant', 'trash', 'chair', 'cat', 'rack', 'umbrella', 'piano', 'bench'].includes(type)) {
-                targetObj = obj.parent; 
-            }
+           if(['plant', 'trash', 'chair', 'cat', 'rack', 'umbrella', 'piano', 'bench', 'stereo'].includes(type)) {
+    targetObj = obj.parent; 
+}
 
             dragTimer = setTimeout(() => {
                 isDragging = true;
@@ -7512,14 +7591,14 @@ function onPointerMove(e) {
                 dragTarget.position.z = newZ;
             }
         } 
-  else if (['trash', 'chair', 'rack', 'umbrella', 'piano', 'bench'].includes(type)) {
+else if (['trash', 'chair', 'rack', 'umbrella', 'piano', 'bench', 'stereo'].includes(type)) {
             raycaster.ray.intersectPlane(floorPlane, intersectPoint);
             if(intersectPoint) {
                 let newX = intersectPoint.x - dragOffset.x;
                 let newZ = intersectPoint.z - dragOffset.z;
 
                 // 👇 1. 靠近牆壁自動轉向 (專為鋼琴與琴椅設計)
-                if (type === 'piano' || type === 'bench') {
+               if (type === 'piano' || type === 'bench' || type === 'stereo') {
                     // 計算距離四面牆的距離
                     let dRight = 56 - newX;
                     let dLeft = newX - (-56);
@@ -7550,6 +7629,7 @@ function onPointerMove(e) {
                 if (type === 'rack' || type === 'chair') myRadius = 4.5;
                 if (type === 'bench') myRadius = 3.5;
                 if (type === 'piano') myRadius = 7.0; 
+                if (type === 'stereo') myRadius = 4.0;
  
                 function pushOutRect(cx, cz, radius, rx, rz, rw, rd) {
                     let hw = rw / 2, hd = rd / 2;
@@ -7602,7 +7682,9 @@ function onPointerMove(e) {
                     { grp: chairGroup, r: 4.5 },
                     { grp: typeof rackGrp !== 'undefined' ? rackGrp : null, r: 4.5 },
                     { grp: typeof umbGrp !== 'undefined' ? umbGrp : null, r: 2.5 },
-                    { grp: typeof benchGrp !== 'undefined' ? benchGrp : null, r: 3.5 }
+                    { grp: typeof benchGrp !== 'undefined' ? benchGrp : null, r: 3.5 },
+                     { grp: typeof stereoGrp !== 'undefined' ? stereoGrp : null, r: 4.0 }
+                    
                 ];
  
                 for (let iter = 0; iter < 2; iter++) {
@@ -7993,7 +8075,11 @@ if (type === 'painting' || type === 'bookcase') {
         } else if(type === 'radio') {
             toggleRadio();
       // 在 onPointerUp(e) 裡，找到檢查 type 的區塊，加入以下判斷：
-} else if (type === 'bus') {
+} else if(type === 'stereo') {
+            openMusicPlayer();
+        }
+        
+        else if (type === 'bus') {
     // 必須人在露台 (或看著窗外) 時才能上車
     if (isAtBalcony) {
         rideBus(obj);
