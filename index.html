@@ -10783,9 +10783,9 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
                     vec3 pos = center + velocity * t;
                     pos.y -= 45.0 * t * t; 
                     
-                    // 閃爍特效與結尾淡出
-                    float sparkle = 0.7 + 0.3 * sin(uTime * 40.0 + startTime * 15.0);
-                    vAlpha = (1.0 - smoothstep(1.2, lifeTime, t)) * sparkle;
+                   // 閃爍特效與結尾淡出 (降低閃爍速度與明暗落差，使其變得柔和)
+float sparkle = 0.85 + 0.15 * sin(uTime * 15.0 + startTime * 10.0);
+vAlpha = (1.0 - smoothstep(1.2, lifeTime, t)) * sparkle;
                     
                     vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
                     gl_PointSize = 15.0 * vAlpha; // 固定大小，節省手機效能且遠方一樣清晰
