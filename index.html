@@ -4344,59 +4344,58 @@ function createPowderMetalTexture(baseColorHex) {
 
 
 // 👇 替換：專屬「商店街對岸」的點彩派微光貼圖 (極致柔和暈光版)
+// 👇 替換：專屬「商店街對岸」的高質感微縮窗景貼圖 (寫實網格版)
 function createCityLightsTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 1024; canvas.height = 1024;
+    canvas.width = 512; canvas.height = 512;
     const ctx = canvas.getContext('2d');
     
-    // 底色純黑
+    // 底色純黑 (不發光區域)
     ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, 1024, 1024); 
+    ctx.fillRect(0, 0, 512, 512); 
 
-    // 柔和的燈光色彩：純白核心 + 柔和色調光暈
-    const lightDefs = [
-        { core: 'rgba(255, 255, 255, 1.0)', halo: 'rgba(255, 210, 120, ' }, // 暖橘黃
-        { core: 'rgba(255, 255, 255, 1.0)', halo: 'rgba(255, 120, 100, ' }, // 柔粉紅
-        { core: 'rgba(255, 255, 255, 1.0)', halo: 'rgba(120, 200, 255, ' }  // 冰晶藍
-    ];
+    // 寫實的窗戶燈光：日光燈白、鎢絲燈黃、螢幕微藍
+    const lightColors = ['#ffffff', '#ffeedd', '#ffddaa', '#dcf0ff'];
 
-    // 🌟 數量減半：大約只剩 35 點，營造零星幾點亮光的感覺
-    const numLights = 35;
-    
-    // 使用 screen 混合模式，讓暈光交疊時更自然明亮
-    ctx.globalCompositeOperation = 'screen'; 
+    // 建築格柵：模擬樓層與窗框
+    const floorHeight = 8; // 每層樓的高度
+    const windowWidth = 6; // 窗戶寬度
+    const windowGap = 4;   // 窗戶間距
 
-    for (let i = 0; i < numLights; i++) {
-        const x = Math.random() * 1024;
-        const y = Math.random() * 1024;
-        const color = lightDefs[Math.floor(Math.random() * lightDefs.length)];
-        
-        // 繪製超大範圍、極度平滑的「漸層暈光」(Soft Halo)
-        const radius = 30 + Math.random() * 40; 
-        const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
-        
-        // 精調透明度，消除生硬邊界
-        grad.addColorStop(0, color.core);               // 中心亮白
-        grad.addColorStop(0.1, color.halo + '0.7)');    // 內圈主光源
-        grad.addColorStop(0.4, color.halo + '0.2)');    // 中圈柔化擴散
-        grad.addColorStop(1, 'rgba(0,0,0,0)');          // 外圈完美融入黑夜
-        
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.fill();
+    for (let y = 0; y < 512; y += floorHeight) { 
+        // 隨機整層暗燈 (模擬空置樓層或下班)
+        if (Math.random() > 0.85) continue; 
+
+        for (let x = 0; x < 512; x += (windowWidth + windowGap)) { 
+            // 只有約 25% 的窗戶會亮起，製造真實的疏密感
+            if (Math.random() > 0.75) { 
+                ctx.fillStyle = lightColors[Math.floor(Math.random() * lightColors.length)];
+                
+                // 畫出極其微小且銳利的長方形窗戶
+                ctx.fillRect(x, y + 2, windowWidth, floorHeight - 4);
+                
+                // 偶爾有特別亮的辦公室，稍微加強光暈
+                if (Math.random() > 0.9) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.fillRect(x - 1, y + 1, windowWidth + 2, floorHeight - 2);
+                }
+            }
+        }
     }
 
-    // 恢復預設混合模式
-    ctx.globalCompositeOperation = 'source-over';
+    // 在貼圖最頂端加入幾個航空障礙紅燈 (高樓頂部的閃爍紅燈)
+    for (let x = 10; x < 512; x += 120) {
+        ctx.fillStyle = '#ff2222';
+        ctx.fillRect(x + Math.random()*20, 0, 4, 4);
+    }
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping; 
     tex.wrapT = THREE.RepeatWrapping;
     
-    // ⚠️ 恢復開啟平滑過濾 (Mipmap)，讓遠處的燈光自然糊成柔美的散景暈光
-    tex.minFilter = THREE.LinearMipmapLinearFilter;
-    tex.magFilter = THREE.LinearFilter;
+    // ⚠️ 關鍵：使用 NearestFilter 保持窗戶的「像素級銳利感」，防止距離遠時變成一團糊
+    tex.minFilter = THREE.NearestFilter;
+    tex.magFilter = THREE.NearestFilter;
     
     return tex;
 }
@@ -10322,22 +10321,20 @@ function buildShoppingStreet() {
         }
         streetScene.add(planterIMesh, seatIMesh, pTreeTrunk, pTreeLeaf);
 
-     // ==========================================
-        // 🏙️ 5. 單層繪製法：無 Z-fighting 閃爍的絕對清晰天際線
+ // 🏙️ 5. 單層繪製法：無 Z-fighting 閃爍的絕對清晰天際線
         // ==========================================
-         const cityLightsTex = createCityLightsTexture();
+        const cityLightsTex = createCityLightsTexture();
         
         const skylineMat = new THREE.MeshStandardMaterial({ 
             color: 0x05080c,         // 預設外牆顏色
             emissiveMap: cityLightsTex, 
             emissive: 0xffffff,      
-            emissiveIntensity: 0.0,  
+            emissiveIntensity: 0.0,  // 預設白天關燈
             roughness: 1.0,
             fog: false               // 強制無視濃霧，永保清晰
         });
 
-        // 動態調整 UV 防止窗戶/光點變形
-     // 動態調整 UV 防止窗戶/光點變形
+        // 動態調整 UV 防止窗戶變形拉伸，強制完美拼貼
         skylineMat.onBeforeCompile = function(shader) {
             shader.vertexShader = `
                 attribute vec3 offset;
@@ -10346,11 +10343,14 @@ function buildShoppingStreet() {
                 '#include <uv_vertex>',
                 `
                 #include <uv_vertex>
+                // 獲取每一棟大廈在 3D 世界中的實際寬高比例
                 float scaleX = length(vec3(instanceMatrix[0][0], instanceMatrix[0][1], instanceMatrix[0][2]));
                 float scaleY = length(vec3(instanceMatrix[1][0], instanceMatrix[1][1], instanceMatrix[1][2]));
                 
-                // ⚠️ 調整為 0.012，這樣一棟普通高度的大廈只會分到 1~3 個極光點！
-                vUv = uv * vec2(scaleX * 0.012, scaleY * 0.012); 
+                // ⚠️ 關鍵魔法：根據大廈尺寸重複拼貼紋理 (Tiling)。
+                // 數字 0.06 決定了窗戶的密集度。數字越大窗戶越密越小。
+                // 這樣可以保證寬大廈和瘦大廈的窗戶大小是一模一樣的，絕不拉伸變形！
+                vUv = uv * vec2(scaleX * 0.06, scaleY * 0.06); 
                 `
             );
         };
