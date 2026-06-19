@@ -2655,7 +2655,8 @@ const ITEM_REGISTRY = {
     'stereo_system': { name: '復古落地音響', desc: '實木打造的音響櫃，點擊可播放已收集的黑膠唱片', type: 'model', minPts: 0 },
    'curtain': { name: '雙層遮光窗簾', desc: '調節室內光線的質感窗簾', type: 'model', minPts: 0 },
     'piano_use': { name: '🎵 學習鋼琴', desc: '掌握指法，解鎖彈奏鋼琴的技能', type: 'privilege', minPts: 10000 },
-    'door_use': { name: '🚪 修繕趟門', desc: '修好卡住的趟門，解鎖出外看海', type: 'privilege', minPts: 10000 }
+    'door_use': { name: '🚪 修繕趟門', desc: '修好卡住的趟門，解鎖出外看海', type: 'privilege', minPts: 10000 },
+    'bed': { name: '單人木床', desc: '鋪著柔軟格紋被褥的實木床，適合閱讀與休憩', type: 'model', minPts: 0 },
 };
 
 
@@ -5077,7 +5078,7 @@ const roomFov = getIdealFov(); // 👈 呼叫智能判斷
 
 
         
-let tcGrp, chairGroup, pianoGrp, benchGrp, stereoGrp;
+let tcGrp, chairGroup, pianoGrp, benchGrp, stereoGrp, bedGrp;
 let wallDragMesh; // 新增這一個，用來做牆壁拖曳的隱形邊界
 let floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 let catPlatform = 'floor'; // 記錄貓咪所在位置：'floor', 'desk', 'chair'
@@ -5099,6 +5100,7 @@ function saveObjectPositions() {
     if(typeof benchGrp !== 'undefined') pos.bench = {x: benchGrp.position.x, z: benchGrp.position.z, ry: benchGrp.rotation.y};
         // 👇 把音響的存檔貼在這裡
     if(typeof stereoGrp !== 'undefined') pos.stereo = {x: stereoGrp.position.x, z: stereoGrp.position.z, ry: stereoGrp.rotation.y};
+    if(typeof bedGrp !== 'undefined') pos.bed = {x: bedGrp.position.x, z: bedGrp.position.z, ry: bedGrp.rotation.y}; // 👈 加入這行
 
     if(catGrp) pos.cat = {x: catGrp.position.x, y: catGrp.position.y, z: catGrp.position.z, platform: catPlatform};
     
@@ -5138,6 +5140,12 @@ function restoreObjectPositions() {
          if(pos.stereo && typeof stereoGrp !== 'undefined') {
             stereoGrp.position.set(pos.stereo.x, 0, pos.stereo.z);
             if (pos.stereo.ry !== undefined) stereoGrp.rotation.y = pos.stereo.ry;
+        }
+
+         // 👇 加入這段
+        if(pos.bed && typeof bedGrp !== 'undefined') {
+            bedGrp.position.set(pos.bed.x, 0, pos.bed.z);
+            if (pos.bed.ry !== undefined) bedGrp.rotation.y = pos.bed.ry;
         }
 
         if(pos.cat && catGrp) {
@@ -5352,6 +5360,7 @@ function createWalnutTexture() {
     } 
     return new THREE.CanvasTexture(canvas);
 }
+        
 
 // 🎨 零效能生成：復古米灰編織防塵網 (高級音箱專用)
 function createVintageGrillTexture() {
@@ -5374,6 +5383,31 @@ function createVintageGrillTexture() {
     return tex;
 }
 
+
+
+        // 🎨 零效能生成：莫蘭迪綠格紋被褥 (單人床專用)
+function createBlanketTexture() {
+    const canvas = document.createElement('canvas'); 
+    canvas.width = 256; canvas.height = 256; 
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#6b8e73'; // 莫蘭迪綠底色
+    ctx.fillRect(0,0,256,256); 
+    
+    ctx.fillStyle = 'rgba(255,255,255,0.15)'; // 粗白線
+    for(let i=0; i<256; i+=32) { 
+        ctx.fillRect(i, 0, 4, 256); 
+        ctx.fillRect(0, i, 256, 4); 
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.08)'; // 細白線
+    for(let i=16; i<256; i+=32) { 
+        ctx.fillRect(i, 0, 1, 256); 
+        ctx.fillRect(0, i, 256, 1); 
+    }
+    const tex = new THREE.CanvasTexture(canvas); 
+    tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; 
+    tex.repeat.set(4, 4); 
+    return tex;
+}
         
 
 
@@ -6699,6 +6733,66 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     interactables.push(umbHitBox);
 
 
+// ==========================================
+    // 🛏️ 建造單人木床 (可移動、自動靠牆)
+    // ==========================================
+    bedGrp = new THREE.Group();
+    // 預設放在右後方角落 (鋼琴與書櫃之間)
+    bedGrp.position.set(51, 0, 45); 
+    bedGrp.rotation.y = -Math.PI / 2; // 床頭靠著右牆
+    scene.add(bedGrp);
+    bedGrp.userData.itemId = 'bed';
+
+    const bedWoodMat = new THREE.MeshStandardMaterial({ map: createWoodTexture(), roughness: 0.8 });
+    const mattressMat = new THREE.MeshStandardMaterial({ color: 0xeeece0, roughness: 0.9 }); // 暖白色床墊
+    const blanketMat = new THREE.MeshStandardMaterial({ map: createBlanketTexture(), roughness: 0.95 });
+
+    // 1. 床架主體
+    const bedFrame = new THREE.Mesh(new THREE.BoxGeometry(14, 3, 26), bedWoodMat);
+    bedFrame.position.y = 1.5; 
+    bedFrame.castShadow = true; 
+    bedGrp.add(bedFrame);
+    
+    // 2. 床頭板
+    const headboard = new THREE.Mesh(new THREE.BoxGeometry(14, 10, 1.5), bedWoodMat);
+    headboard.position.set(0, 5, -12.25); 
+    headboard.castShadow = true; 
+    bedGrp.add(headboard);
+    
+    // 3. 床尾板
+    const footboard = new THREE.Mesh(new THREE.BoxGeometry(14, 5, 1), bedWoodMat);
+    footboard.position.set(0, 2.5, 12.5); 
+    footboard.castShadow = true; 
+    bedGrp.add(footboard);
+    
+    // 4. 柔軟床墊
+    const mattress = new THREE.Mesh(new THREE.BoxGeometry(13.2, 2.5, 24.5), mattressMat);
+    mattress.position.set(0, 4.25, 0); 
+    mattress.castShadow = true; 
+    bedGrp.add(mattress);
+    
+    // 5. 格紋被子 (蓋在床墊下半部)
+    const blanket = new THREE.Mesh(new THREE.BoxGeometry(13.5, 2.6, 16), blanketMat);
+    blanket.position.set(0, 4.3, 4); 
+    blanket.castShadow = true; 
+    bedGrp.add(blanket);
+
+    // 6. 枕頭
+    const pillow = new THREE.Mesh(new THREE.BoxGeometry(8, 1.5, 4), mattressMat);
+    pillow.position.set(0, 5.8, -9);
+    pillow.rotation.x = 0.15; // 稍微傾斜靠在床頭板
+    pillow.castShadow = true; 
+    bedGrp.add(pillow);
+
+    // 7. 隱形點擊/碰撞判定框
+    const bedHitBox = new THREE.Mesh(new THREE.BoxGeometry(16, 12, 28), new THREE.MeshBasicMaterial({visible: false}));
+    bedHitBox.position.y = 6;
+    bedHitBox.userData = { type: 'bed' };
+    bedGrp.add(bedHitBox);
+    interactables.push(bedHitBox);
+
+
+    
 
 // ==========================================
     // 📻 建造復古落地音響 (可移動、點擊播放音樂)
@@ -7525,9 +7619,9 @@ const intersects = getValidIntersects();
         while(obj.parent && !obj.userData.type) obj = obj.parent;
         const type = obj.userData.type;
 
-if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella', 'piano', 'bench', 'stereo'].includes(type)) {
+if(['log', 'tasks', 'water', 'plant', 'trash', 'chair', 'cat', 'rack', 'umbrella', 'piano', 'bench', 'stereo', 'bed'].includes(type)) {
             let targetObj = obj;
-           if(['plant', 'trash', 'chair', 'cat', 'rack', 'umbrella', 'piano', 'bench', 'stereo'].includes(type)) {
+ if(['plant', 'trash', 'chair', 'cat', 'rack', 'umbrella', 'piano', 'bench', 'stereo', 'bed'].includes(type)) {
     targetObj = obj.parent; 
 }
 
@@ -7647,14 +7741,14 @@ function onPointerMove(e) {
                 dragTarget.position.z = newZ;
             }
         } 
-else if (['trash', 'chair', 'rack', 'umbrella', 'piano', 'bench', 'stereo'].includes(type)) {
+else if (['trash', 'chair', 'rack', 'umbrella', 'piano', 'bench', 'stereo', 'bed'].includes(type)) {
             raycaster.ray.intersectPlane(floorPlane, intersectPoint);
             if(intersectPoint) {
                 let newX = intersectPoint.x - dragOffset.x;
                 let newZ = intersectPoint.z - dragOffset.z;
 
                 // 👇 1. 靠近牆壁自動轉向 (專為鋼琴與琴椅設計)
-               if (type === 'piano' || type === 'bench' || type === 'stereo') {
+             if (type === 'piano' || type === 'bench' || type === 'stereo' || type === 'bed') {
                     // 計算距離四面牆的距離
                     let dRight = 56 - newX;
                     let dLeft = newX - (-56);
@@ -7685,7 +7779,7 @@ else if (['trash', 'chair', 'rack', 'umbrella', 'piano', 'bench', 'stereo'].incl
                 if (type === 'rack' || type === 'chair') myRadius = 4.5;
                 if (type === 'bench') myRadius = 3.5;
                 if (type === 'piano') myRadius = 7.0; 
-              if (type === 'stereo') myRadius = 2.7; // 縮小三分之一後的碰撞半徑
+             if (type === 'bed') myRadius = 10.0; // 👈 加入這行
  
                 function pushOutRect(cx, cz, radius, rx, rz, rw, rd) {
                     let hw = rw / 2, hd = rd / 2;
@@ -7738,8 +7832,8 @@ else if (['trash', 'chair', 'rack', 'umbrella', 'piano', 'bench', 'stereo'].incl
                     { grp: chairGroup, r: 4.5 },
                     { grp: typeof rackGrp !== 'undefined' ? rackGrp : null, r: 4.5 },
                     { grp: typeof umbGrp !== 'undefined' ? umbGrp : null, r: 2.5 },
-                    { grp: typeof benchGrp !== 'undefined' ? benchGrp : null, r: 3.5 },
-                    { grp: typeof stereoGrp !== 'undefined' ? stereoGrp : null, r: 2.7 } // 這裡也要改成 2.7
+               { grp: typeof stereoGrp !== 'undefined' ? stereoGrp : null, r: 2.7 },
+    { grp: typeof bedGrp !== 'undefined' ? bedGrp : null, r: 10.0 } // 👈 加入這行
 ];
  
                 for (let iter = 0; iter < 2; iter++) {
