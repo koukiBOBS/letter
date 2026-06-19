@@ -4344,24 +4344,24 @@ function createPowderMetalTexture(baseColorHex) {
 
 
 // 👇 新增：專屬「商店街對岸」的高解析度、五光十色窗戶貼圖 (絕對不影響房間的設定)
+// 👇 替換：專屬「商店街對岸」的點彩派微光貼圖 (冷暖色交織)
 function createDistantCityEmissive() {
     const canvas = document.createElement('canvas');
-    canvas.width = 1024; canvas.height = 1024; // 高解析度以應付龐大的天際線
+    canvas.width = 512; canvas.height = 512;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, 1024, 1024);
+    ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, 512, 512);
 
-    // 香港專屬霓虹與萬家燈火色盤 (暖金、冰藍、粉紫、翠綠、純白)
-    const neonColors = ['#ffcc88', '#aaddff', '#ff88cc', '#88ffcc', '#ffffff', '#ffeebb', '#445566'];
+    // 繁星點點的冷暖色調：暖金、橘黃、冰藍、粉紫、純白、青綠
+    const lightColors = ['#ffccaa', '#ff9955', '#aaddff', '#ff88cc', '#ffffff', '#88ffcc'];
 
-    for(let y = 10; y < 1010; y += 18) {
-        for(let x = 10; x < 1010; x += 28) {
-            // 70% 機率亮燈，營造繁華感
-            if (Math.random() > 0.3) { 
-                ctx.fillStyle = neonColors[Math.floor(Math.random() * neonColors.length)];
-                ctx.globalAlpha = 0.4 + Math.random() * 0.6; // 隨機亮度
-                ctx.fillRect(x, y, 14, 10); // 嚴格控制窗戶長寬比
-            }
-        }
+    // 隨機撒上 15000 個微小的發光點 (模擬遠處看不清形狀，只剩光點的燈火)
+    for(let i = 0; i < 15000; i++) {
+        ctx.fillStyle = lightColors[Math.floor(Math.random() * lightColors.length)];
+        ctx.globalAlpha = 0.3 + Math.random() * 0.7; // 亮度隨機，模擬閃爍感
+        
+        // 畫出極微小的 1x1 到 2x2 像素點
+        const size = Math.random() > 0.8 ? 2 : 1; 
+        ctx.fillRect(Math.random() * 512, Math.random() * 512, size, size);
     }
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping; 
@@ -10293,14 +10293,17 @@ function buildShoppingStreet() {
 
         // 🏙️ 5.2 滿版、五光十色、防窗戶變形的大廈群
        const cityEmissiveTex = createDistantCityEmissive();
-        const cityBaseTex = createBuildingTexture();
         
         const skylineMat = new THREE.MeshStandardMaterial({
-            color: 0x11161c, roughness: 0.9, map: cityBaseTex,
-            emissiveMap: cityEmissiveTex, emissive: 0xffffff, emissiveIntensity: 0.0,
+            color: 0x080c11, // 大廈外牆保持深沉的暗藍黑色剪影
+            roughness: 1.0, 
+            emissiveMap: cityEmissiveTex, 
+            emissive: 0xffffff, 
+            emissiveIntensity: 0.0, // 預設關閉，晚上才會在 sync 中打開
             fog: true
         });
 
+        // 確保微光點在不同大小的大廈上都能維持「細小」的視覺比例
         skylineMat.onBeforeCompile = function(shader) {
             shader.vertexShader = `
                 attribute vec3 offset;
@@ -10311,28 +10314,33 @@ function buildShoppingStreet() {
                 #include <uv_vertex>
                 float scaleX = length(vec3(instanceMatrix[0][0], instanceMatrix[0][1], instanceMatrix[0][2]));
                 float scaleY = length(vec3(instanceMatrix[1][0], instanceMatrix[1][1], instanceMatrix[1][2]));
-                vUv = uv * vec2(scaleX * 0.025, scaleY * 0.025); 
+                // 增加重複率，讓光點看起來更密集、更遙遠
+                vUv = uv * vec2(scaleX * 0.06, scaleY * 0.06); 
                 `
             );
         };
 
-        const totalBuildings = 800; // 數量加到 800 棟，因為用了實例化技術(InstancedMesh)，這對手機效能是 0 負擔
+        const totalBuildings = 800; // 維持龐大數量填滿視野
         const skylineIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), skylineMat, totalBuildings);
         skylineIMesh.frustumCulled = false; 
-        skylineIMesh.userData.isDistantCity = true; 
+        skylineIMesh.userData.isDistantCity = true; // 確保晚上燈光會亮起
         
         const dummyCity = new THREE.Object3D();
         for(let i=0; i<totalBuildings; i++) {
-            let w = 40 + Math.random() * 80;
-            let d = 40 + Math.random() * 80;
-            let h = 200 + Math.pow(Math.random(), 3) * 1200; 
+            let w = 20 + Math.random() * 50; // 寬度變窄
+            let d = 20 + Math.random() * 50;
+            // 👇 大幅降低高度！一般大廈 40~100，極少數地標最高 180 (島嶼大約是 100~250高)
+            let h = 40 + Math.random() * 60 + (Math.random() > 0.95 ? Math.random() * 80 : 0); 
 
-            // 👇 完美海灣佈局演算法
-            let zPos = -2000 + Math.random() * 4000; // 橫跨左右各 2000 單位，完全填滿 180 度視野
-            // 利用絕對值(abs)讓兩側的大廈稍微往前彎曲包圍，中央的大廈較遠，形成 U 型海灣
-            let xPos = -600 - Math.random() * 300 + (Math.abs(zPos) * 0.15); 
+            // 180度廣闊分佈
+            let zPos = -3000 + Math.random() * 6000; 
+            // 距離推遠到 -1000 左右，並帶有微小弧度
+            let xPos = -900 - Math.random() * 300 + (Math.abs(zPos) * 0.05); 
 
-            dummyCity.position.set(xPos, h/2 - 20, zPos);
+            // 強制歸零旋轉，防止出現傾斜的怪異方塊
+            dummyCity.rotation.set(0, 0, 0);
+            // 將底部貼齊海平面 (y=0 附近)
+            dummyCity.position.set(xPos, h/2 - 4, zPos);
             dummyCity.scale.set(w, h, d);
             dummyCity.updateMatrix();
 
@@ -10340,6 +10348,7 @@ function buildShoppingStreet() {
         }
         skylineIMesh.instanceMatrix.needsUpdate = true;
         streetScene.add(skylineIMesh);
+       
 
         // ==========================================
         // 🛥️ 6. 點點漁燈 (Sprite 粒子系統)
