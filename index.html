@@ -4343,7 +4343,7 @@ function createPowderMetalTexture(baseColorHex) {
 
 
 
-// 👇 替換：專屬「商店街對岸」的點彩派微光貼圖 (極光星芒版)
+// 👇 替換：專屬「商店街對岸」的點彩派微光貼圖 (極致柔和暈光版)
 function createCityLightsTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 1024; canvas.height = 1024;
@@ -4353,18 +4353,17 @@ function createCityLightsTexture() {
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, 1024, 1024); 
 
-    // 極致高光的色彩設定：核心皆為純白，光暈為冷暖色系
+    // 柔和的燈光色彩：純白核心 + 柔和色調光暈
     const lightDefs = [
-        { core: '#ffffff', halo: 'rgba(255, 200, 100, ' }, // 暖橘黃
-        { core: '#ffffff', halo: 'rgba(255, 100, 100, ' }, // 霓虹紅
-        { core: '#ffffff', halo: 'rgba(100, 200, 255, ' }, // 冰晶藍
-        { core: '#ffffff', halo: 'rgba(150, 255, 150, ' }  // 螢光綠
+        { core: 'rgba(255, 255, 255, 1.0)', halo: 'rgba(255, 210, 120, ' }, // 暖橘黃
+        { core: 'rgba(255, 255, 255, 1.0)', halo: 'rgba(255, 120, 100, ' }, // 柔粉紅
+        { core: 'rgba(255, 255, 255, 1.0)', halo: 'rgba(120, 200, 255, ' }  // 冰晶藍
     ];
 
-    // 🌟 數量大幅減少：整張大貼圖只畫約 70 顆極亮的光點
-    const numLights = 70;
+    // 🌟 數量減半：大約只剩 35 點，營造零星幾點亮光的感覺
+    const numLights = 35;
     
-    // 使用 screen 混合模式，讓光暈交疊時更亮
+    // 使用 screen 混合模式，讓暈光交疊時更自然明亮
     ctx.globalCompositeOperation = 'screen'; 
 
     for (let i = 0; i < numLights; i++) {
@@ -4372,31 +4371,19 @@ function createCityLightsTexture() {
         const y = Math.random() * 1024;
         const color = lightDefs[Math.floor(Math.random() * lightDefs.length)];
         
-        // 1. 繪製大範圍「漸層光暈」(Halo)，這能抵抗遠距離的模糊，保持發光感
-        const radius = 20 + Math.random() * 30; // 光暈半徑大，佔據空間
+        // 繪製超大範圍、極度平滑的「漸層暈光」(Soft Halo)
+        const radius = 30 + Math.random() * 40; 
         const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
-        grad.addColorStop(0, color.halo + '1.0)');     // 內圈極亮
-        grad.addColorStop(0.2, color.halo + '0.6)');   // 中圈柔和
-        grad.addColorStop(1, 'rgba(0,0,0,0)');         // 外圈漸隱
+        
+        // 精調透明度，消除生硬邊界
+        grad.addColorStop(0, color.core);               // 中心亮白
+        grad.addColorStop(0.1, color.halo + '0.7)');    // 內圈主光源
+        grad.addColorStop(0.4, color.halo + '0.2)');    // 中圈柔化擴散
+        grad.addColorStop(1, 'rgba(0,0,0,0)');          // 外圈完美融入黑夜
         
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // 2. 繪製「十字星芒」(Lens Flare)，模擬鏡頭眩光
-        if (Math.random() > 0.4) {
-            ctx.fillStyle = color.halo + '0.5)';
-            const flareLen = radius * 1.5;
-            ctx.fillRect(x - flareLen, y - 1, flareLen * 2, 2); // 橫向光束
-            ctx.fillRect(x - 1, y - flareLen, 2, flareLen * 2); // 縱向光束
-        }
-
-        // 3. 繪製「刺眼的純白核心」
-        ctx.fillStyle = color.core;
-        ctx.beginPath();
-        const coreSize = 2 + Math.random() * 2;
-        ctx.arc(x, y, coreSize, 0, Math.PI * 2);
         ctx.fill();
     }
 
@@ -4407,11 +4394,9 @@ function createCityLightsTexture() {
     tex.wrapS = THREE.RepeatWrapping; 
     tex.wrapT = THREE.RepeatWrapping;
     
-    // ⚠️ 終極關鍵：關閉 Mipmap！
-    // 這會強制引擎無論多遠都渲染原圖像素，確保光點「絕對刺眼」，不會因遠近而糊掉或變暗
-    tex.minFilter = THREE.LinearFilter;
+    // ⚠️ 恢復開啟平滑過濾 (Mipmap)，讓遠處的燈光自然糊成柔美的散景暈光
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
     tex.magFilter = THREE.LinearFilter;
-    tex.generateMipmaps = false; 
     
     return tex;
 }
@@ -10531,17 +10516,21 @@ function syncStreetEnvironment() {
             // 中午：灰綠色，黃昏/夜晚：深黑色剪影
             child.material.color.setHex(p.phaseStr === 'noon' ? 0x4a6b66 : 0x0a1015);
         }
-        if (child.userData.isDistantCity) {
-            // 中午：天青灰色，黃昏：暗紫色，夜晚：漆黑
-            if (p.phaseStr === 'noon') {
+       if (child.userData.isDistantCity) {
+            // 🌅 修正：早晨 (dawn) 與 中午 (noon) 絕對關燈！
+            if (p.phaseStr === 'dawn' || p.phaseStr === 'noon') {
                 child.material.color.setHex(0x7894a8);
-                child.material.emissiveIntensity = 0.0; // 白天關燈
-            } else if (p.phaseStr === 'dusk') {
+                child.material.emissiveIntensity = 0.0; // 關燈
+            } 
+            // 🌇 黃昏微亮
+            else if (p.phaseStr === 'dusk') {
                 child.material.color.setHex(0x3a2c42);
-                child.material.emissiveIntensity = 2.0; // 黃昏微亮
-            } else {
+                child.material.emissiveIntensity = 1.5; // 亮度調柔和
+            } 
+            // 🌙 夜晚亮起
+            else {
                 child.material.color.setHex(0x05080c);
-                child.material.emissiveIntensity = 6.0; // 夜晚璀璨爆亮
+                child.material.emissiveIntensity = 4.0; // 亮度調柔和
             }
         }
         if (child.userData.isSilhouette) {
