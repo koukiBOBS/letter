@@ -2186,7 +2186,7 @@
 <div id="modal-music-player" class="room-modal" style="z-index: 80000;">
     <div class="music-player-content">
         <div class="music-player-header">
-            <button class="close-music-player" onclick="document.getElementById('modal-music-player').style.display='none'">
+            <button class="close-music-player" onclick="closeMusicPlayer()">
                 <svg viewBox="0 0 24 24"><path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" fill="currentColor"/></svg>
             </button>
             <div style="flex-grow: 1; text-align: center; color: #d4af37; font-family: var(--font-serif); letter-spacing: 2px;">我的隨身聽</div>
@@ -3288,6 +3288,23 @@ const loopSingleIcon = `<svg viewBox="0 0 24 24" width="24" height="24" fill="cu
 window.openMusicPlayer = function() {
     initMusicPlayer();
     document.getElementById('modal-music-player').style.display = 'flex';
+};
+
+        // 關閉音樂播放器並停止播放
+window.closeMusicPlayer = function() {
+    // 隱藏播放器視窗
+    document.getElementById('modal-music-player').style.display = 'none';
+    
+    // 停止播放音樂並將進度歸零
+    if (typeof recordAudio !== 'undefined') {
+        recordAudio.pause();
+        recordAudio.currentTime = 0; // 如果你想保留暫停進度，可以刪除這行
+    }
+    
+    // 確保 CD 動畫與播放按鈕恢復到暫停狀態
+    if (typeof updatePlayingVisuals === 'function') {
+        updatePlayingVisuals(false);
+    }
 };
 
 // 初始化播放清單
@@ -5076,6 +5093,8 @@ function saveObjectPositions() {
  // 👇 把原本的 piano 與 bench 存檔替換成這兩行 (加入了 ry)
     if(typeof pianoGrp !== 'undefined') pos.piano = {x: pianoGrp.position.x, z: pianoGrp.position.z, ry: pianoGrp.rotation.y};
     if(typeof benchGrp !== 'undefined') pos.bench = {x: benchGrp.position.x, z: benchGrp.position.z, ry: benchGrp.rotation.y};
+        // 👇 把音響的存檔貼在這裡
+    if(typeof stereoGrp !== 'undefined') pos.stereo = {x: stereoGrp.position.x, z: stereoGrp.position.z, ry: stereoGrp.rotation.y};
 
     if(catGrp) pos.cat = {x: catGrp.position.x, y: catGrp.position.y, z: catGrp.position.z, platform: catPlatform};
     
@@ -5099,10 +5118,7 @@ function restoreObjectPositions() {
         if(pos.chair && chairGroup) chairGroup.position.set(pos.chair.x, chairGroup.position.y, pos.chair.z);
         if(pos.rack && typeof rackGrp !== 'undefined') rackGrp.position.set(pos.rack.x, rackGrp.position.y, pos.rack.z); 
         if(pos.umbrella && typeof umbGrp !== 'undefined') umbGrp.position.set(pos.umbrella.x, umbGrp.position.y, pos.umbrella.z); 
-        if(pos.stereo && typeof stereoGrp !== 'undefined') {
-            stereoGrp.position.set(pos.stereo.x, 0, pos.stereo.z);
-            if (pos.stereo.ry !== undefined) stereoGrp.rotation.y = pos.stereo.ry;
-        }
+       
         
         // 👇 加入鋼琴與琴椅的讀檔復原
        // 👇 把原本的 piano 與 bench 讀檔替換成這段
@@ -5113,6 +5129,11 @@ function restoreObjectPositions() {
         if(pos.bench && typeof benchGrp !== 'undefined') {
             benchGrp.position.set(pos.bench.x, 0, pos.bench.z);
             if (pos.bench.ry !== undefined) benchGrp.rotation.y = pos.bench.ry;
+        }
+
+         if(pos.stereo && typeof stereoGrp !== 'undefined') {
+            stereoGrp.position.set(pos.stereo.x, 0, pos.stereo.z);
+            if (pos.stereo.ry !== undefined) stereoGrp.rotation.y = pos.stereo.ry;
         }
 
         if(pos.cat && catGrp) {
@@ -7308,7 +7329,7 @@ interactables.push(leftDrawer, rightDrawer, book, clipboard, wateringCan, tcHitB
 
     if(typeof chairGroup !== 'undefined') chairGroup.userData.itemId = 'chair';
     if(typeof catGrp !== 'undefined') catGrp.userData.itemId = 'cat';
-    if(typeof stereoGrp !== 'undefined') pos.stereo = {x: stereoGrp.position.x, z: stereoGrp.position.z, ry: stereoGrp.rotation.y};
+
 
     // 👆 【貼到這裡為止】 👆
 
