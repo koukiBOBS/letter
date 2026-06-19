@@ -1478,6 +1478,47 @@
     transform: translateY(-2px);
     box-shadow: 0 6px 12px rgba(139, 115, 85, 0.1);
 }
+
+
+
+/* =====================================================================
+ * 🏬 文具店與信紙系統 CSS
+ * ===================================================================== */
+/* 商店介面 */
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }
+.shop-item { background: #fdfaf6; border: 1px solid #dcd5c9; border-radius: 8px; padding: 20px; text-align: center; transition: 0.3s; position: relative; overflow: hidden; }
+.shop-item:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(139, 115, 85, 0.1); border-color: #b4a08c; }
+.shop-item img { width: 100px; height: 100px; object-fit: contain; margin-bottom: 15px; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+.shop-item h4 { color: #4a4238; font-family: var(--font-serif); font-size: 1.15rem; margin-bottom: 5px; }
+.shop-item p { color: #8b7355; font-size: 0.85rem; margin-bottom: 15px; height: 35px; }
+.shop-price { font-weight: bold; color: #da604f; font-size: 1.1rem; margin-bottom: 15px; }
+.shop-item.owned { filter: grayscale(50%); opacity: 0.8; }
+.shop-item.owned::after { content: '✓ 已擁有'; position: absolute; top: 15px; right: -25px; background: #6b8e73; color: white; font-size: 0.75rem; padding: 4px 30px; transform: rotate(45deg); font-weight: bold; }
+
+/* 寫信時的選擇器 */
+.stationery-selector { display: flex; gap: 15px; margin-bottom: 20px; background: rgba(250, 247, 242, 0.5); padding: 15px; border-radius: 8px; border: 1px dashed #dcd5c9; }
+.stationery-select { padding: 8px 12px; font-family: var(--font-serif); font-size: 1rem; color: #4a4238; border: 1px solid #dcd5c9; border-radius: 4px; background: #fff; cursor: pointer; outline: none; flex: 1; }
+
+/* --- 📝 信紙設計 (背景與線條) --- */
+/* 預設宣紙 (不需加類別) */
+/* 1. 原稿紙 (綠色方格) */
+.paper_grid { background-color: #f0f5f0 !important; background-image: linear-gradient(#b3d4b3 1px, transparent 1px), linear-gradient(90deg, #b3d4b3 1px, transparent 1px) !important; background-size: 40px 40px !important; }
+/* 2. 牛皮紙 */
+.paper_craft { background-color: #dcb897 !important; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.15'/%3E%3C/svg%3E") !important; border-left: 5px solid #8b5a2b !important; }
+/* 3. 落花箋 */
+.paper_flower { background-color: #fff9f9 !important; background-image: radial-gradient(circle at 10% 10%, rgba(255, 182, 193, 0.4) 0%, transparent 20%), radial-gradient(circle at 90% 80%, rgba(255, 182, 193, 0.4) 0%, transparent 20%) !important; border-left: 5px solid #ffb6c1 !important; }
+/* 4. 浪花箋 */
+.paper_ocean { background-color: #f0f8ff !important; background-image: linear-gradient(to top, rgba(135, 206, 250, 0.4) 0%, transparent 40%) !important; border-left: 5px solid #4682b4 !important; }
+/* 5. 星夜箋 (深色底) */
+.paper_night { background-color: #1a2235 !important; background-image: radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px) !important; background-size: 90px 90px !important; background-position: 0 0, 40px 60px, 130px 270px, 70px 100px !important; border-left: 5px solid #d4af37 !important; color: #e6dfd1 !important; }
+.paper_night .letter-header-meta, .paper_night .letter-section-divider { color: #8a9ba8 !important; }
+.paper_night .letter-attached-quote { background-color: rgba(255,255,255,0.05); border-color: #4a5c68; }
+.paper_night .letter-attached-quote .quote-text { color: #dcd5c9; }
+
+
+
+
+
         
         
     </style>
@@ -1769,6 +1810,12 @@
                 <div class="grid" id="task-grid"></div>
                 <div class="editor" id="write-editor" style="display: none; max-width: 900px; margin: 0 auto;">
                     <h3 id="task-title" class="serif-text" style="margin-bottom: 30px; font-size: 1.5rem;">撰寫任務</h3>
+
+  <div class="stationery-selector" id="write-stationery-selector">
+                        <select id="write-paper-select" class="stationery-select"><option value="default">📜 預設宣紙</option></select>
+                        <select id="write-ink-select" class="stationery-select"><option value="default">🖋️ 預設墨褐</option></select>
+                    </div>
+                    
                     <div class="field-group flex-row">
                         <div><label class="field-label">書籍名稱</label><input type="text" id="book-title" class="input-box" placeholder="請輸入書名"></div>
                         <div><label class="field-label">目前閱讀頁數</label><input type="number" id="book-page" class="input-box" placeholder="例如：120" min="1"></div>
@@ -1881,17 +1928,39 @@
         </div>
  
         <!-- 雙分頁按鈕 -->
-        <div class="wallet-tabs">
+           <div class="wallet-tabs">
             <button id="tab-wallet-items" class="wallet-tab-btn active" onclick="switchWalletTab('items')">🛋️ 房間佈置</button>
             <button id="tab-wallet-quotes" class="wallet-tab-btn" onclick="switchWalletTab('quotes')">🖋️ 文學碎片</button>
+            <button id="tab-wallet-stationery" class="wallet-tab-btn" onclick="switchWalletTab('stationery')">📜 筆墨紙硯</button> <!-- 👇新增這行 -->
         </div>
  
         <!-- 兩個獨立的 Grid 容器 -->
         <div class="collection-grid" id="collection-grid-items"></div>
         <div class="collection-grid" id="collection-grid-quotes" style="display: none;"></div>
+        <div class="collection-grid" id="collection-grid-stationery" style="display: none;"></div>
     </div>
 </div>
 
+
+
+<!-- 🏬 文苑文具店 -->
+<div id="modal-stationery-shop" class="room-modal">
+    <div class="room-modal-content" style="background-color: #f4f0e6; background-image: url('data:image/svg+xml,%3Csvg viewBox=\\'0 0 200 200\\' xmlns=\\'http://www.w3.org/2000/svg\\'%3E%3Cfilter id=\\'noiseFilter\\'%3E%3CfeTurbulence type=\\'fractalNoise\\' baseFrequency=\\'0.8\\' numOctaves=\\'3\\' stitchTiles=\\'stitch\\'/%3E%3C/filter%3E%3Crect width=\\'100%25\\' height=\\'100%25\\' filter=\\'url(%23noiseFilter)\\' opacity=\\'0.04\\'/%3E%3C/svg%3E');">
+        <button class="room-modal-close" onclick="closeRoomModal(event, 'modal-stationery-shop')">×</button>
+        <h2 class="modal-title" style="color: #4a789c; text-align: center; border-bottom: 1px dashed #a4b5c4;">文苑文具行</h2>
+        <div style="text-align: center; color: #8b7355; margin-bottom: 20px;">
+            您的積分：<span id="shop-points" style="font-weight: bold; color: #da604f; font-size: 1.2rem;">0</span> 分<br>
+            <span style="font-size: 0.9rem;">購買後，寫信與回信時即可自由切換。</span>
+        </div>
+        
+        <h3 style="font-family: var(--font-serif); color: #6b4423; margin-top: 30px; border-left: 4px solid #6b4423; padding-left: 10px;">📜 特色信箋</h3>
+        <div class="shop-grid" id="shop-papers-grid"></div>
+        
+        <h3 style="font-family: var(--font-serif); color: #6b4423; margin-top: 40px; border-left: 4px solid #6b4423; padding-left: 10px;">🖋️ 墨水顏色</h3>
+        <div class="shop-grid" id="shop-inks-grid"></div>
+    </div>
+</div>
+    
 
     <!-- 🍂 破產懲罰視窗 -->
 <div id="modal-bankruptcy" class="room-modal" style="z-index: 100005;">
@@ -2171,9 +2240,15 @@ function isDevUser(email) {
 window.switchWalletTab = function(tab) {
     document.getElementById('tab-wallet-items').classList.toggle('active', tab === 'items');
     document.getElementById('tab-wallet-quotes').classList.toggle('active', tab === 'quotes');
+    if (document.getElementById('tab-wallet-stationery')) {
+        document.getElementById('tab-wallet-stationery').classList.toggle('active', tab === 'stationery');
+    }
     
     document.getElementById('collection-grid-items').style.display = tab === 'items' ? 'grid' : 'none';
     document.getElementById('collection-grid-quotes').style.display = tab === 'quotes' ? 'grid' : 'none';
+    if (document.getElementById('collection-grid-stationery')) {
+        document.getElementById('collection-grid-stationery').style.display = tab === 'stationery' ? 'grid' : 'none';
+    }
 };
 
 
@@ -2284,6 +2359,157 @@ const ITEM_REGISTRY = {
     'piano_use': { name: '🎵 學習鋼琴', desc: '掌握指法，解鎖彈奏鋼琴的技能', type: 'privilege', minPts: 10000 },
     'door_use': { name: '🚪 修繕趟門', desc: '修好卡住的趟門，解鎖出外看海', type: 'privilege', minPts: 10000 }
 };
+
+
+// =====================================================================
+// 🏬 文具店系統：商品庫與 Canvas 生成器
+// =====================================================================
+
+const PAPER_REGISTRY = {
+    'default': { name: '預設宣紙', desc: '樸實無華的象牙白信紙', price: 0, cssClass: '' },
+    'grid': { name: '原稿紙', desc: '綠色方格，充滿文學氣息', price: 1000, cssClass: 'paper_grid' },
+    'craft': { name: '復古牛皮紙', desc: '帶有粗糙紋理的牛皮紙', price: 1000, cssClass: 'paper_craft' },
+    'flower': { name: '落花箋', desc: '邊緣染上淡粉櫻花的信紙', price: 1500, cssClass: 'paper_flower' },
+    'ocean': { name: '浪花箋', desc: '底部帶有海浪漸層的信紙', price: 1500, cssClass: 'paper_ocean' },
+    'night': { name: '星夜箋', desc: '深藍星空底色，文字會化為白光', price: 2000, cssClass: 'paper_night' }
+};
+
+const INK_REGISTRY = {
+    'default': { name: '墨褐', desc: '經典的深茶色墨水', price: 0, color: '#4a4238' },
+    'blue': { name: '琉璃藍', desc: '冷靜優雅的深藍墨水', price: 500, color: '#1a4568' },
+    'red': { name: '胭脂紅', desc: '情感強烈的暗紅墨水', price: 500, color: '#8b2222' },
+    'green': { name: '松葉綠', desc: '自然清新的深綠墨水', price: 1000, color: '#2d4c1e' },
+    'gold': { name: '流沙金', desc: '閃耀著金屬光澤的墨水', price: 1500, color: '#d4af37' }
+};
+
+// 🎨 零效能 Canvas 繪製商品圖標
+function generateStationeryIcon(type, id) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 150; canvas.height = 150;
+    const ctx = canvas.getContext('2d');
+    
+    if (type === 'paper') {
+        // 畫一張小信紙
+        ctx.fillStyle = '#ffffff';
+        if (id === 'default') ctx.fillStyle = '#fcf4e3';
+        if (id === 'grid') { ctx.fillStyle = '#f0f5f0'; }
+        if (id === 'craft') { ctx.fillStyle = '#dcb897'; }
+        if (id === 'flower') { 
+            const grad = ctx.createRadialGradient(20, 20, 0, 20, 20, 100);
+            grad.addColorStop(0, 'rgba(255, 182, 193, 0.8)'); grad.addColorStop(1, '#fff9f9');
+            ctx.fillStyle = grad;
+        }
+        if (id === 'ocean') { 
+            const grad = ctx.createLinearGradient(0, 150, 0, 0);
+            grad.addColorStop(0, 'rgba(135, 206, 250, 0.8)'); grad.addColorStop(1, '#f0f8ff');
+            ctx.fillStyle = grad;
+        }
+        if (id === 'night') { ctx.fillStyle = '#1a2235'; }
+        
+        ctx.fillRect(20, 20, 110, 110);
+        ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.strokeRect(20, 20, 110, 110);
+        
+        // 畫橫線
+        ctx.strokeStyle = id === 'night' ? 'rgba(255,255,255,0.2)' : 'rgba(160, 140, 120, 0.3)';
+        ctx.lineWidth = 2;
+        for(let y=50; y<=100; y+=20) { ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(110, y); ctx.stroke(); }
+        
+        // 原稿紙畫格子
+        if (id === 'grid') {
+            ctx.strokeStyle = '#b3d4b3'; ctx.lineWidth = 1;
+            for(let x=40; x<=110; x+=10) { ctx.beginPath(); ctx.moveTo(x, 40); ctx.lineTo(x, 110); ctx.stroke(); }
+            for(let y=40; y<=110; y+=10) { ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(110, y); ctx.stroke(); }
+        }
+    } else if (type === 'ink') {
+        const color = INK_REGISTRY[id].color;
+        // 畫一個墨水瓶
+        ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(45, 60, 60, 70); // 瓶身
+        ctx.fillStyle = color; ctx.fillRect(50, 80, 50, 45); // 墨水
+        ctx.fillStyle = '#333'; ctx.fillRect(60, 30, 30, 30); // 瓶蓋
+        ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(55, 65, 10, 60); // 反光
+    }
+    
+    return canvas.toDataURL("image/png");
+}
+
+function renderStationeryShop() {
+    document.getElementById('shop-points').innerText = userPoints;
+    
+    const renderGrid = (registry, type, containerId) => {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+        Object.keys(registry).forEach(id => {
+            if (id === 'default') return; // 預設免費，不顯示在商店
+            const item = registry[id];
+            // 新道具的 ID 格式為 paper_xxx 或 ink_xxx
+            const fullId = `${type}_${id}`; 
+            const isOwned = !!userInventory[fullId];
+            const imgSrc = generateStationeryIcon(type, id);
+            
+            const btnHtml = isOwned ? 
+                `<button class="btn" disabled style="background:#eee; color:#999; border:none; padding:8px 20px;">已擁有</button>` :
+                `<button class="btn" style="background:var(--color-tasks); border:none; padding:8px 20px;" onclick="buyStationery('${type}', '${id}', ${item.price})">購買</button>`;
+            
+            container.innerHTML += `
+                <div class="shop-item ${isOwned ? 'owned' : ''}">
+                    <img src="${imgSrc}">
+                    <h4>${item.name}</h4>
+                    <p>${item.desc}</p>
+                    <div class="shop-price">${item.price} 分</div>
+                    ${btnHtml}
+                </div>
+            `;
+        });
+    };
+    
+    renderGrid(PAPER_REGISTRY, 'paper', 'shop-papers-grid');
+    renderGrid(INK_REGISTRY, 'ink', 'shop-inks-grid');
+    updateStationerySelectors(); // 同步更新寫信介面的下拉選單
+}
+
+window.buyStationery = function(type, id, price) {
+    if (userPoints < price) return alert("積分不足！請多寫信與探索來賺取積分。");
+    const fullId = `${type}_${id}`;
+    if (userInventory[fullId]) return alert("您已經擁有此物品了！");
+    
+    if(confirm(`確認花費 ${price} 積分購買 ${type === 'paper' ? PAPER_REGISTRY[id].name : INK_REGISTRY[id].name} 嗎？`)) {
+        userPoints -= price;
+        userInventory[fullId] = true;
+        
+        db.ref(`users/${currentUser.uid}/points`).set(userPoints);
+        db.ref(`users/${currentUser.uid}/inventory/${fullId}`).set(true).then(() => {
+            showToast("🛒 購買成功！前往寫信時即可套用。");
+            document.getElementById('user-points-text').innerText = userPoints;
+            renderStationeryShop(); // 重新渲染商店
+        });
+    }
+};
+
+// 更新寫信/回信的下拉選單
+function updateStationerySelectors() {
+    const updateSelect = (selectId, registry, prefix) => {
+        const el = document.getElementById(selectId);
+        if (!el) return;
+        // 保留目前的選擇
+        const currentVal = el.value;
+        el.innerHTML = `<option value="default">${registry['default'].name} (預設)</option>`;
+        
+        Object.keys(registry).forEach(id => {
+            if (id !== 'default' && userInventory[`${prefix}_${id}`]) {
+                el.innerHTML += `<option value="${id}">${registry[id].name}</option>`;
+            }
+        });
+        // 如果原本選的還在，就維持選擇
+        if (Array.from(el.options).some(opt => opt.value === currentVal)) {
+            el.value = currentVal;
+        }
+    };
+    
+    updateSelect('write-paper-select', PAPER_REGISTRY, 'paper');
+    updateSelect('write-ink-select', INK_REGISTRY, 'ink');
+    // 回信的 select 會在打開對話框時動態生成，所以在那邊處理
+}
+
 
 
         
@@ -3207,6 +3433,12 @@ window.openFreeReadingEditor = function() {
                         
                         let imgTag = m.imageUrl ? `<a href="${m.imageUrl}" target="_blank" class="letter-img-wrap"><img src="${m.imageUrl}" class="letter-img" loading="lazy"></a>` : '';
                         
+                     // 👇 讀取信件的信紙與墨水資料
+                        const pId = m.paperId || 'default';
+                        const iId = m.inkId || 'default';
+                        const paperCssClass = (typeof PAPER_REGISTRY !== 'undefined' && PAPER_REGISTRY[pId]) ? PAPER_REGISTRY[pId].cssClass : '';
+                        const inkColor = (typeof INK_REGISTRY !== 'undefined' && INK_REGISTRY[iId]) ? INK_REGISTRY[iId].color : '#4a4238';
+
                         let sheetClass = isMe ? 'my-letter' : (l.type === 'random' ? 'partner-random' : 'partner-reading');
                         let headerLabel = isMe ? '✍️ 我的手札' : (l.type === 'random' ? '📸 筆友的探索' : '📬 筆友的心得');
  
@@ -3222,19 +3454,19 @@ window.openFreeReadingEditor = function() {
                             `;
                         }
  
-                        contentHTML += `<div class="letter-sheet ${sheetClass}">
+                        // 👇 在 div 加上 paperCssClass，在內文加上墨水顏色
+                        contentHTML += `<div class="letter-sheet ${sheetClass} ${paperCssClass}">
                             <div class="letter-header-meta">
                                 <span>${headerLabel}</span>
                                 <span>${tStr}</span>
                             </div>
-                            <div class="letter-text">${formattedText}</div>
+                            <div class="letter-text" style="color: ${inkColor} !important;">${formattedText}</div>
                             ${attachedQuoteHtml}
                             ${imgTag}
                         </div>`;
                     });
 
-               if (canReply) {
-                        // 👇 改為使用 isTypingAllowed 判斷是否解除手寫限制
+             if (canReply) {
                         let canType = isTypingAllowed(currentUser.email);
                         let hwClass = canType ? '' : 'handwrite-only';
                         let roAttr = canType ? '' : 'readonly';
@@ -3244,6 +3476,13 @@ window.openFreeReadingEditor = function() {
     <div class="letter-header-meta">
         <span>✍️ 提筆回信</span><span>紙短情長</span>
     </div>
+    
+    <!-- 👇 新增回信時的選紙選墨選單 -->
+    <div class="stationery-selector" style="margin-bottom: 15px;">
+        <select id="reply-paper-select" class="stationery-select"></select>
+        <select id="reply-ink-select" class="stationery-select"></select>
+    </div>
+
     <textarea id="reply-text" class="textarea ${hwClass}" ${roAttr} placeholder="${placeholderText}"></textarea>
     
     <div id="reply-quote-area" style="margin-top: 25px;">
@@ -3264,12 +3503,21 @@ window.openFreeReadingEditor = function() {
                     flow.innerHTML = contentHTML;
 
                     // 確保 HTML 塞入 DOM 之後，才去抓取元素綁定事件
-                    if (canReply) {
+                   if (canReply) {
                         const replyInput = document.getElementById('reply-text');
                         const btnSend = document.getElementById('btn-send-reply');
 
                         // 安全檢查：確保真的有找到輸入框才綁定事件
                         if (replyInput) {
+                            // 👇 動態把玩家擁有的文具塞進選單裡
+                            if (typeof updateStationerySelectors === 'function') updateStationerySelectors();
+                            const rPaper = document.getElementById('reply-paper-select');
+                            const rInk = document.getElementById('reply-ink-select');
+                            const wPaper = document.getElementById('write-paper-select');
+                            const wInk = document.getElementById('write-ink-select');
+                            if(rPaper && wPaper) rPaper.innerHTML = wPaper.innerHTML;
+                            if(rInk && wInk) rInk.innerHTML = wInk.innerHTML;
+
                         if (!isTypingAllowed(currentUser.email)) {
                                 replyInput.addEventListener('click', function() { openHwKeyboard(this); });
                             }
@@ -3292,12 +3540,10 @@ window.openFreeReadingEditor = function() {
                                 const txt = replyInput ? replyInput.value.trim() : ''; 
                                 if (!txt || txt.length < 100) return alert("回覆最少需要 100 字。");
                                 
-                                if (isSubmittingReply) return; 
-                                isSubmittingReply = true; 
-                                btnSend.disabled = true; 
-                                btnSend.innerText = "封裝寄出中...";
+                               const pId = document.getElementById('reply-paper-select') ? document.getElementById('reply-paper-select').value : 'default';
+                                const iId = document.getElementById('reply-ink-select') ? document.getElementById('reply-ink-select').value : 'default';
                                 
-                             playAnim('reply', id, partnerUid, { text: txt, quoteId: currentAttachedQuoteId });
+                             playAnim('reply', id, partnerUid, { text: txt, quoteId: currentAttachedQuoteId, paperId: pId, inkId: iId });
                                 
                                 // 送出後清除這封信的回信草稿
                                 sessionStorage.removeItem('draft_reply_' + id);
@@ -3382,7 +3628,7 @@ else processReply(letterId, partnerUid, ObjectData);
                     if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
                     else db.ref(`unassigned_letters/${ref.key}`).set({ senderUid: currentUser.uid });
                     
-                    db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, attachedQuoteId: data.quoteId || null, timestamp: ts }).then(() => {
+                   db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, attachedQuoteId: data.quoteId || null, paperId: data.paperId || 'default', inkId: data.inkId || 'default', timestamp: ts }).then(() => {
                         removeAttachedQuote();
                         isSubmittingLog = false; 
                         
@@ -3483,10 +3729,12 @@ function processRandomTask(data) {
         const isFirstReply = !snap.val();
         
         // 👇 寫入 text 與 attachedQuoteId
-        db.ref(`conversations/${id}`).push({
+     db.ref(`conversations/${id}`).push({
             senderUid: currentUser.uid,
             text: ObjectData.text,
             attachedQuoteId: ObjectData.quoteId || null,
+            paperId: ObjectData.paperId || 'default',
+            inkId: ObjectData.inkId || 'default',
             timestamp: ts
         }).then(() => {
             if (pUid) db.ref(`user_threads/${pUid}/${id}`).update({ hasUnread: true, lastUpdated: ts, hasBeenRepliedTo: true });
@@ -3525,8 +3773,10 @@ function processRandomTask(data) {
             throw new Error("圖片伺服器回傳格式錯誤，為保護系統已終止傳送。");
         }
 
+  const paperId = document.getElementById('write-paper-select') ? document.getElementById('write-paper-select').value : 'default';
+        const inkId = document.getElementById('write-ink-select') ? document.getElementById('write-ink-select').value : 'default';
         const combinedText = `【目前進度】\n第 ${page} 頁\n\n【思考問題】\n${question}\n\n【閱讀心得】\n${text}`;
-        playAnim('log', null, null, { title: title, text: combinedText, imageUrl: result.url, quoteId: currentAttachedQuoteId });
+        playAnim('log', null, null, { title: title, text: combinedText, imageUrl: result.url, quoteId: currentAttachedQuoteId, paperId: paperId, inkId: inkId });
     } catch (error) { 
         alert("圖片上傳發生異常：" + error.message); 
         isSubmittingLog = false; 
@@ -9376,10 +9626,36 @@ function hijackWalletRender() {
                         closeRoomModal(null, 'modal-wallet');
                         showQuoteUI(id);
                     };
-                }
+               }
                 frag.appendChild(card);
             });
             gridQuotes.appendChild(frag);
+            
+            // 👇 新增渲染文具收藏
+            const gridStationery = document.getElementById('collection-grid-stationery');
+            if (gridStationery && typeof PAPER_REGISTRY !== 'undefined') {
+                gridStationery.innerHTML = '';
+                const renderStatCollection = (registry, type) => {
+                    Object.keys(registry).forEach(id => {
+                        if (id === 'default') return;
+                        const fullId = `${type}_${id}`;
+                        const isOwned = !!userInventory[fullId];
+                        const item = registry[id];
+                        const imgSrc = generateStationeryIcon(type, id);
+                        
+                        gridStationery.innerHTML += `
+                            <div class="item-card ${isOwned ? '' : 'locked'}">
+                                <img src="${imgSrc}" style="background:#fff; padding:5px; border-radius:4px;">
+                                <h4>${item.name}</h4>
+                                <p>${item.desc}</p>
+                            </div>
+                        `;
+                    });
+                };
+                renderStatCollection(PAPER_REGISTRY, 'paper');
+                renderStatCollection(INK_REGISTRY, 'ink');
+            }
+            
         }, 50); 
     };
 }
@@ -11150,10 +11426,13 @@ window.addEventListener('pointerup', (e) => {
             gsap.to(controls.target, {x: newTarget.x, y: newTarget.y, z: newTarget.z, duration: 1.0, ease: "power2.out", onUpdate: () => controls.update()});
         };
  
-        if(obj.userData.type === 'shop_stationery') {
-            showToast("✏️ 這是文苑文具行，老闆正在點貨。\n(未來將在此購買明信片與特殊信紙)");
+      if(obj.userData.type === 'shop_stationery') {
             // 走向文具店，並看向內部
             moveStreetCam(15, 6, 20, 10, 20);
+            setTimeout(() => {
+                document.getElementById('modal-stationery-shop').style.display = 'flex';
+                renderStationeryShop();
+            }, 800); // 走近之後再彈出商店視窗
         } else if(obj.userData.type === 'shop_record') {
             showToast("🎵 這是霓虹黑膠唱片店，傳來陣陣老歌。\n(未來將在此購買背景音樂與黑膠唱片)");
             // 走向唱片店，並看向內部
