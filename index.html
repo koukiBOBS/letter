@@ -10429,7 +10429,7 @@ function buildShoppingStreet() {
 
         
 // =====================================================================
-// 🌆 同步商店街的時間與光影 (包含街燈與招牌發光)
+// 🌆 同步商店街的時間與光影 (包含街燈、招牌、新天際線發光)
 // =====================================================================
 function syncStreetEnvironment() {
     if (typeof streetScene === 'undefined' || !streetScene || !currentEnvParams) return;
@@ -10456,7 +10456,6 @@ function syncStreetEnvironment() {
     const isNightOrDusk = (p.phaseStr === 'night' || p.phaseStr === 'dusk');
     
     // 遍歷商店街所有材質，開關燈效
-  // 遍歷商店街所有材質，開關燈效
     streetScene.traverse(child => {
         // 🛡️ 關鍵修復：加入安全檢查，確保材質具有 emissive (發光) 屬性才執行
         if (child.material && child.material.emissive) {
@@ -10470,12 +10469,15 @@ function syncStreetEnvironment() {
                 child.material.emissive.setHex(isNightOrDusk ? 0xffcc88 : 0x000000);
                 child.material.emissiveIntensity = isNightOrDusk ? 1.0 : 0.0;
             }
-            // 大廈窗戶
+            // 近處大廈窗戶
             if (child.userData.isWindow) {
-    child.material.emissive.setHex(isNightOrDusk && Math.random() > 0.3 ? 0xffea99 : 0x000000);
-    // 🌟 因為退到極遠處，亮度加倍到 3.0 才有璀璨感
-    child.material.emissiveIntensity = isNightOrDusk ? 3.0 : 0.0;
-}
+                child.material.emissive.setHex(isNightOrDusk && Math.random() > 0.3 ? 0xffea99 : 0x000000);
+                child.material.emissiveIntensity = isNightOrDusk ? 3.0 : 0.0;
+            }
+            // 🌟 遠處滿版天際線 (五光十色防變形版)
+            if (child.userData.isDistantCity) {
+                child.material.emissiveIntensity = isNightOrDusk ? 3.5 : 0.0; 
+            }
             // 街燈燈泡表面發光
             if (child.userData.isStreetLight) {
                 child.material.emissiveIntensity = isNightOrDusk ? 2.0 : 0.0;
@@ -10486,13 +10488,6 @@ function syncStreetEnvironment() {
             child.intensity = isNightOrDusk ? 1.2 : 0.0;
         }
     });
-
- // 滿版天際線 (五光十色)
-            if (child.userData.isDistantCity) {
-                child.material.emissiveIntensity = isNightOrDusk ? 3.5 : 0.0; 
-                // 白天關閉，晚上璀璨發光
-            }
-
 }
 
 
