@@ -4343,37 +4343,31 @@ function createPowderMetalTexture(baseColorHex) {
 
 
 // 🎨 零效能生成：印象派油畫風格的行人剪影 (利用色塊欺騙視覺)
+// 🎨 零效能生成：印象派油畫風格的行人剪影
 function createPersonTexture(coatColor) {
     const canvas = document.createElement('canvas');
-    // 使用狹長比例，符合人體
     canvas.width = 64; canvas.height = 128;
     const ctx = canvas.getContext('2d');
 
-    // 輔助函數：畫出柔和的油畫筆觸色塊
     function drawBlob(x, y, rx, ry, color, alpha) {
-        ctx.fillStyle = color;
-        ctx.globalAlpha = alpha;
-        ctx.beginPath();
-        ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillStyle = color; ctx.globalAlpha = alpha;
+        ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
     }
 
-    // 1. 腳底的微弱陰影 (讓人物接地氣，不輕飄飄)
+    // 腳底陰影
     drawBlob(32, 122, 20, 4, '#000000', 0.3);
 
-    // 2. 深灰色的基礎人體輪廓 (頭、軀幹、模糊的雙腿)
-    drawBlob(32, 22, 7, 10, '#1a1f24', 0.95);  // 頭
-    drawBlob(32, 70, 12, 35, '#1a1f24', 0.9);  // 軀幹
-    drawBlob(26, 105, 5, 20, '#111111', 0.7);  // 左腿筆觸
-    drawBlob(38, 105, 5, 20, '#111111', 0.7);  // 右腿筆觸
+    // ⚠️ 基礎輪廓改為「深灰藍色」，避免夜晚變成死黑的鬼影
+    drawBlob(32, 22, 7, 10, '#3a4048', 0.95);  // 頭
+    drawBlob(32, 70, 12, 35, '#2c323a', 0.9);  // 軀幹
+    drawBlob(26, 105, 5, 20, '#22252a', 0.8);  // 左腿
+    drawBlob(38, 105, 5, 20, '#22252a', 0.8);  // 右腿
 
-    // 3. 點睛之筆：一抹鮮豔的衣服色彩 (大衣/圍巾/裙子)
-    // 這是印象派的精髓，讓剪影瞬間活過來
-    drawBlob(32, 60, 14, 25, coatColor, 0.6); // 外層渲染
-    drawBlob(32, 55, 9, 20, coatColor, 0.9);  // 內層核心
+    // 衣服色彩
+    drawBlob(32, 60, 14, 25, coatColor, 0.7); 
+    drawBlob(32, 55, 9, 20, coatColor, 0.95); 
 
-    const tex = new THREE.CanvasTexture(canvas);
-    return tex;
+    return new THREE.CanvasTexture(canvas);
 }
 
 
@@ -7491,21 +7485,27 @@ function animateRoom() {
 
 
 // 🚶‍♀️ 6. 印象派行人漫步
-        if (typeof animScenery.pedestrians !== 'undefined') {
+   if (typeof animScenery.pedestrians !== 'undefined') {
             animScenery.pedestrians.forEach(p => {
-                // 1. 水平移動
-                p.position.x += p.userData.speed;
+                p.position.x += p.userData.speedX;
+                p.position.z += p.userData.speedZ;
                 
-                // 走到底自動從另一邊走出來
-                if (p.position.x > 200) p.position.x = -200;
-                else if (p.position.x < -200) p.position.x = 200;
+                // Z 軸邊界：走到底從另一頭出來
+                if (p.position.z > 200) p.position.z = -200;
+                else if (p.position.z < -200) p.position.z = 200;
 
-                // 2. 💡 步伐的靈魂：利用 x 座標產生絕對同步的上下微小起伏
-                // 這樣不用寫複雜的動畫，他們每前進一步身體就會自然地上下微彈！
-                p.position.y = p.userData.baseY + Math.abs(Math.sin(p.position.x * 3.0)) * 0.15;
+                // X 軸邊界：碰到欄杆或店門口就轉身往回走
+                if (p.position.x > 15) { p.position.x = 15; p.userData.speedX *= -1; }
+                else if (p.position.x < -45) { p.position.x = -45; p.userData.speedX *= -1; }
+
+                // 只有在移動時才會有步伐起伏
+                const speed = Math.hypot(p.userData.speedX, p.userData.speedZ);
+                if (speed > 0.001) {
+                    p.userData.walkDist += speed;
+                    p.position.y = p.userData.baseY + Math.abs(Math.sin(p.userData.walkDist * 3.5)) * 0.2;
+                }
             });
         }
-
         
     }
  
@@ -10359,39 +10359,46 @@ function buildShoppingStreet() {
 // ==========================================
         // 🚶‍♀️ 4.5 印象派動態行人 (Sprite 粒子)
         // ==========================================
-        animScenery.pedestrians = [];
-        // 提供幾種經典的服裝點綴色 (芥末黃、酒紅、海軍藍、卡其色、米白)
-        const coatColors = ['#d4af37', '#8b3a3a', '#3a5f8b', '#c2b280', '#eeeeee'];
+       animScenery.pedestrians = [];
+        const coatColors = ['#d4af37', '#e85d5d', '#5d8aa8', '#d0c3a5', '#ffffff'];
         
-        for(let i=0; i<30; i++) { // 30 個人散佈在整條長廊上
+        for(let i=0; i<45; i++) { // 增加到 45 人，讓街道更熱鬧
             const color = coatColors[Math.floor(Math.random() * coatColors.length)];
             const pMat = new THREE.SpriteMaterial({
-                map: createPersonTexture(color), 
-                transparent: true, 
-                depthWrite: false // 避免透明邊緣互相遮擋產生黑框
+                map: createPersonTexture(color), transparent: true, depthWrite: false
             });
             const person = new THREE.Sprite(pMat);
             
-            // 隨機散佈在長廊的 X 軸，並分配在靠近海或靠近店舖的 Z 軸
-            const isNearSea = Math.random() > 0.5;
-            const xPos = -200 + Math.random() * 400;
-            const zPos = isNearSea ? -18 : -8; // 行人道的位置
+            // ⚠️ 修正座標：海在 X=-50，商店在 X=15。長廊沿著 Z 軸 (-200 到 200)
+            const xPos = -45 + Math.random() * 55; // 散佈在欄杆到店門口之間，絕不會掉進海裡
+            const zPos = -180 + Math.random() * 360; 
             
-            // 稍微有高矮胖瘦的隨機差異
-            const scale = 5.5 + Math.random() * 1.5; 
+            const scale = 5.0 + Math.random() * 1.5; 
             person.scale.set(scale * 0.5, scale, 1);
-            
-            // 記錄初始 Y 軸與行走速度
             const baseY = 0.5 + (scale / 2);
             person.position.set(xPos, baseY, zPos);
             
-            // 有人往左走，有人往右走，速度各有不同
-            const speed = (0.02 + Math.random() * 0.03) * (Math.random() > 0.5 ? 1 : -1);
-            
-            person.userData = { speed: speed, baseY: baseY };
+            let speedX = 0; let speedZ = 0;
+            const behavior = Math.random();
+
+            if (behavior < 0.7) {
+                // 70% 的人：順著街道向左或向右走 (沿 Z 軸)
+                speedZ = (0.03 + Math.random() * 0.03) * (Math.random() > 0.5 ? 1 : -1);
+            } else if (behavior < 0.85) {
+                // 15% 的人：橫過馬路或走向海邊 (沿 X 軸，速度較慢)
+                speedX = (0.015 + Math.random() * 0.015) * (Math.random() > 0.5 ? 1 : -1);
+            }
+            // 剩下的 15% 是 0 速度 (駐足聊天或看風景)
+
+            person.userData = { speedX: speedX, speedZ: speedZ, baseY: baseY, walkDist: Math.random() * 10 };
             streetScene.add(person);
             animScenery.pedestrians.push(person);
         }
+
+        // 🌟 破除鬼屋感：加入「城市光害」環境光，專門照亮路面與行人
+        const streetHemi = new THREE.HemisphereLight(0xffeedd, 0x112233, 0.0); 
+        streetHemi.name = 'streetHemi';
+        streetScene.add(streetHemi);
 
 
         
@@ -10559,10 +10566,16 @@ function syncStreetEnvironment() {
     streetScene.background = createSkyTexture(p.skyTop, p.skyBot);
     streetScene.fog = new THREE.FogExp2(p.fog, 0.015); // 街道近處還是需要微霧
 
-    const ambient = streetScene.getObjectByName('streetAmbient');
+  const ambient = streetScene.getObjectByName('streetAmbient');
     if (ambient) {
         ambient.color.setHex(p.phaseStr === 'night' ? 0x222244 : 0xffffff);
         ambient.intensity = p.phaseStr === 'night' ? 0.3 : (p.phaseStr === 'noon' ? 0.8 : 0.6);
+    }
+    
+    // 👇 新增：控制城市光害，讓夜晚的街道地面與行人不再死黑
+    const hemi = streetScene.getObjectByName('streetHemi');
+    if (hemi) {
+        hemi.intensity = p.phaseStr === 'night' ? 0.45 : (p.phaseStr === 'dusk' ? 0.3 : 0.0);
     }
     
     const dirLight = streetScene.getObjectByName('streetDir');
