@@ -10195,15 +10195,13 @@ function buildShoppingStreet() {
         if (!streetWaterTex) streetWaterTex = createDynamicWaterTexture();
         
     // 手機放棄昂貴的金屬反射，改用 Phong 材質，並大幅降低網格複雜度
-const oceanBaseMat = isTouchDevice ? 
-    new THREE.MeshPhongMaterial({ map: streetWaterTex, color: 0x1a4568, emissive: 0x05101a, shininess: 50 }) :
-    new THREE.MeshStandardMaterial({ map: streetWaterTex, color: 0x1a4568, roughness: 0.1, metalness: 0.8, emissive: 0x05101a, emissiveIntensity: 1.0 });
-
+const oceanBaseMat = new THREE.MeshStandardMaterial({ 
+    map: streetWaterTex, color: 0x1a4568, roughness: 0.1, metalness: 0.8,
+    emissive: 0x05101a, emissiveIntensity: 1.0 
+});
 if(typeof injectWaveShader !== 'undefined') injectWaveShader(oceanBaseMat); 
 
-// 頂點數從 10000 大幅降至 400 (手機) / 1600 (電腦)，視覺上幾乎看不出差異
-const segments = isTouchDevice ? 20 : 40;
-const oceanBase = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000, segments, segments), oceanBaseMat);
+const oceanBase = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000, 100, 100), oceanBaseMat);
 
         // 🏝️ 島嶼：強制無視濃霧(fog:false)，嚴格放在大廈後方解決穿模
         const islandMat = new THREE.MeshBasicMaterial({color: 0x1a252c, fog: false});
