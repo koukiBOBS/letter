@@ -3313,42 +3313,47 @@ function playRecordSong(index) {
     const song = rPlaylist[index];
     
     // 1. 更新 UI 文字與封面
-    document.getElementById('nowPlaying').innerText = `正在播放: ${song.name}`;
-    document.getElementById('cdCoverImage').src = songCovers[song.file] || songCovers["default"];
-    
-    // 2. 更新歌單高亮狀態
-    document.querySelectorAll('#playlist .playlist-item').forEach((li, i) => {
-        li.className = `playlist-item ${i === index ? 'active' : ''}`;
+// 1. 更新 UI 文字與封面
+document.getElementById('nowPlaying').innerText = `正在播放: ${song.name}`;
+
+// 💡 修正1：加入 encodeURI() 與 ./ 前綴，確保瀏覽器正確解析中文圖片路徑
+const coverFileName = songCovers[song.file] || songCovers["default"];
+document.getElementById('cdCoverImage').src = "./" + encodeURI(coverFileName);
+
+// 2. 更新歌單高亮狀態
+document.querySelectorAll('#playlist .playlist-item').forEach((li, i) => {
+    li.className = `playlist-item ${i === index ? 'active' : ''}`;
+});
+
+// 3. 載入並更新歌詞
+rLyrics = songData[song.file]?.lyrics || [];
+const lCont = document.getElementById('lyricsContainer');
+lCont.innerHTML = '';
+if (rLyrics.length === 0) {
+    lCont.innerHTML = '<div class="no-lyrics">純音樂 / 無歌詞</div>';
+} else {
+    rLyrics.forEach(line => {
+        const p = document.createElement('p');
+        p.className = 'lyric-line';
+        p.innerText = line.text;
+        lCont.appendChild(p);
     });
+}
 
-    // 3. 載入並更新歌詞
-    rLyrics = songData[song.file]?.lyrics || [];
-    const lCont = document.getElementById('lyricsContainer');
-    lCont.innerHTML = '';
-    if (rLyrics.length === 0) {
-        lCont.innerHTML = '<div class="no-lyrics">純音樂 / 無歌詞</div>';
-    } else {
-        rLyrics.forEach(line => {
-            const p = document.createElement('p');
-            p.className = 'lyric-line';
-            p.innerText = line.text;
-            lCont.appendChild(p);
-        });
-    }
+// 4. 關閉房間環境音 (收音機)
+if (typeof isRadioPlaying !== 'undefined' && isRadioPlaying) {
+    if(typeof toggleRadio === 'function') toggleRadio();
+}
 
-    // 4. 關閉房間環境音 (收音機)
-    if (typeof isRadioPlaying !== 'undefined' && isRadioPlaying) {
-        if(typeof toggleRadio === 'function') toggleRadio();
-    }
-
-    // 5. 執行播放
-    recordAudio.src = song.file;
-    recordAudio.play().then(() => {
-        updatePlayingVisuals(true);
-    }).catch(e => {
-        console.log('播放器播放失敗 (可能是瀏覽器阻擋):', e);
-        updatePlayingVisuals(false);
-    });
+// 5. 執行播放
+// 💡 修正2：加入 encodeURI() 與 ./ 前綴，確保瀏覽器能正確讀取中文音檔
+recordAudio.src = "./" + encodeURI(song.file);
+recordAudio.play().then(() => {
+    updatePlayingVisuals(true);
+}).catch(e => {
+    console.log('播放器播放失敗 (可能是瀏覽器阻擋):', e);
+    updatePlayingVisuals(false);
+});
 }
 
 // 統一的視覺更新函數 (與詞海拾心邏輯一致)
