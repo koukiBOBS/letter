@@ -10316,6 +10316,123 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     stallRoof.position.set(-1, 6.5, 0); stallRoof.rotation.x = -Math.PI/2; stallRoof.rotation.y = -0.2; stallRoof.castShadow = true; stallGrp.add(stallRoof);
     streetScene.add(stallGrp);
 
+
+// ==========================================
+    // 🌊 4. 左側空白處：海濱長廊與維港對岸 (極致效能 InstancedMesh 版)
+    // ==========================================
+    
+    // A. 海濱長廊步道 (清水模質感)
+    const promenadeMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
+    const promenade = new THREE.Mesh(new THREE.BoxGeometry(40, 0.5, 200), promenadeMat);
+    promenade.position.set(-30, -4.7, 0); // 緊貼馬路左側
+    promenade.receiveShadow = true;
+    streetScene.add(promenade);
+
+    // B. 香港經典海濱金屬欄杆 (實例化，幾百根柱子只要 1 次運算)
+    const railMat = new THREE.MeshStandardMaterial({color: 0x8899a6, metalness: 0.7, roughness: 0.3});
+    // 頂部扶手
+    const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 200), railMat);
+    topRail.position.set(-48, -1.5, 0); // 長廊的最左側邊緣
+    topRail.castShadow = true;
+    streetScene.add(topRail);
+    
+    // 垂直欄杆柱子 (100根)
+    const postCount = 100;
+    const postIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.2, 3.5, 0.2), railMat, postCount);
+    postIMesh.castShadow = true;
+    const dummyTools = new THREE.Object3D();
+    for(let i=0; i<postCount; i++) {
+        dummyTools.position.set(-48, -3.2, -99 + i*2);
+        dummyTools.updateMatrix();
+        postIMesh.setMatrixAt(i, dummyTools.matrix);
+    }
+    streetScene.add(postIMesh);
+
+    // C. 海濱長椅與花槽 (實例化)
+    const planterMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), color: 0xdddddd});
+    const woodSeatMat = new THREE.MeshStandardMaterial({map: createWoodTexture()});
+    const planterCount = 8; // 沿路放 8 個大型花槽座位
+
+    const planterIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(4, 1.5, 10), planterMat, planterCount);
+    const seatIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(4.5, 0.2, 10.5), woodSeatMat, planterCount);
+    planterIMesh.castShadow = true; seatIMesh.castShadow = true;
+
+    // 花槽上的樹木 (極簡 Low-Poly 球體，省效能)
+    const pTreeTrunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.4, 4), new THREE.MeshStandardMaterial({color: 0x4a3728}), planterCount);
+    const pTreeLeaf = new THREE.InstancedMesh(new THREE.SphereGeometry(3, 7, 7), new THREE.MeshStandardMaterial({roughness: 0.9}), planterCount);
+    pTreeTrunk.castShadow = true; pTreeLeaf.castShadow = true;
+
+    for(let i=0; i<planterCount; i++) {
+        let zPos = -85 + i * 24;
+        
+        // 花槽底座
+        dummyTools.position.set(-25, -4.0, zPos);
+        dummyTools.scale.set(1,1,1);
+        dummyTools.updateMatrix();
+        planterIMesh.setMatrixAt(i, dummyTools.matrix);
+        
+        // 木頭座位
+        dummyTools.position.set(-25, -3.15, zPos);
+        dummyTools.updateMatrix();
+        seatIMesh.setMatrixAt(i, dummyTools.matrix);
+
+        // 樹幹
+        dummyTools.position.set(-25, -1.0, zPos);
+        dummyTools.updateMatrix();
+        pTreeTrunk.setMatrixAt(i, dummyTools.matrix);
+
+        // 樹冠
+        dummyTools.position.set(-25, 2.5, zPos);
+        dummyTools.scale.set(1, 1.3, 1); // 拉長一點點
+        dummyTools.updateMatrix();
+        pTreeLeaf.setMatrixAt(i, dummyTools.matrix);
+        // 隨機綠色
+        pTreeLeaf.setColorAt(i, new THREE.Color().setHSL(0.25 + Math.random()*0.1, 0.6, 0.3));
+    }
+    streetScene.add(planterIMesh, seatIMesh, pTreeTrunk, pTreeLeaf);
+
+    // D. 靜態深色海平面 (延伸到對岸)
+    const staticSea = new THREE.Mesh(
+        new THREE.PlaneGeometry(600, 400), 
+        new THREE.MeshStandardMaterial({color: 0x1a3b5c, roughness: 0.1, metalness: 0.8})
+    );
+    staticSea.rotation.x = -Math.PI/2;
+    staticSea.position.set(-300, -8, 0); // 放在海濱長廊下方
+    streetScene.add(staticSea);
+
+    // E. 遠景：對岸的繁華都市天際線 (維港對岸)
+    const skylineMat = new THREE.MeshStandardMaterial({color: 0x2c3a47, roughness: 1.0, fog: true});
+    const skylineLightMat = new THREE.MeshStandardMaterial({color: 0x222233, emissive: 0xffea99, emissiveIntensity: 0.0}); 
+    
+    const buildCount = 80;
+    const skylineIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), skylineMat, buildCount);
+    const skylineLightIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), skylineLightMat, Math.floor(buildCount/3)); // 部分大廈發光
+    
+    let lightIdx = 0;
+    for(let i=0; i<buildCount; i++) {
+        let w = 30 + Math.random() * 50;
+        let h = 100 + Math.random() * 300; // 參差不齊的摩天大樓
+        let d = 30 + Math.random() * 50;
+        
+        // 排列在對岸 X = -400 到 -550 的縱深處
+        dummyTools.position.set(-400 - Math.random()*150, h/2 - 10, -400 + Math.random()*800);
+        dummyTools.scale.set(w, h, d);
+        dummyTools.updateMatrix();
+        
+        skylineIMesh.setMatrixAt(i, dummyTools.matrix);
+
+        // 挑選三分之一的大樓作為夜晚發光大樓 (套用 emissive 屬性)
+        if (i % 3 === 0 && lightIdx < Math.floor(buildCount/3)) {
+            skylineLightIMesh.setMatrixAt(lightIdx, dummyTools.matrix);
+            // 標記為需要受到晝夜系統控制的發光體
+            skylineLightIMesh.userData.isWindow = true; 
+            lightIdx++;
+        }
+    }
+    streetScene.add(skylineIMesh, skylineLightIMesh);
+
+    
+
    // ==========================================
     // 📮 港式綠色郵筒 (極限效能細節版)
     // ==========================================
