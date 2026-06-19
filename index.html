@@ -10433,7 +10433,7 @@ function syncStreetEnvironment() {
     
     const p = currentEnvParams;
     streetScene.background = createSkyTexture(p.skyTop, p.skyBot);
-    streetScene.fog = new THREE.FogExp2(p.fog, 0.01); // 城市空氣感
+    streetScene.fog = new THREE.FogExp2(p.fog, 0.005); // 城市空氣感
 
     // 整體環境光
     const ambient = streetScene.getObjectByName('streetAmbient');
