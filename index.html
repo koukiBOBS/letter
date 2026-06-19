@@ -3284,27 +3284,31 @@ const shufIcon = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentC
 const loopListIcon = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M7 7H17V10L21 6L17 2V5H5V12H7V7M17 17H7V14L3 18L7 22V19H19V12H17V17Z"/></svg>`;
 const loopSingleIcon = `<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M7 7H17V10L21 6L17 2V5H5V12H7V7M17 17H7V14L3 18L7 22V19H19V12H17V17Z M13 15V9H12L10 10V11H11.5V15H13Z"/></svg>`;
 
-// 開啟播放器
-window.openMusicPlayer = function() {
+// 加入一個變數，記錄播放器是從哪裡打開的
+window.musicPlayerContext = 'shop'; 
+
+// 開啟音樂播放器 (加入情境參數)
+window.openMusicPlayer = function(context = 'shop') {
+    window.musicPlayerContext = context; // 記錄開啟來源 ('shop' 或 'stereo')
     initMusicPlayer();
     document.getElementById('modal-music-player').style.display = 'flex';
 };
 
-        // 關閉音樂播放器並停止播放
+// 關閉音樂播放器
 window.closeMusicPlayer = function() {
-    // 隱藏播放器視窗
     document.getElementById('modal-music-player').style.display = 'none';
     
-    // 停止播放音樂並將進度歸零
-    if (typeof recordAudio !== 'undefined') {
-        recordAudio.pause();
-        recordAudio.currentTime = 0; // 如果你想保留暫停進度，可以刪除這行
+    // 🛑 只有從「唱片鋪 (shop)」打開的，才會在返回時停止音樂
+    if (window.musicPlayerContext === 'shop') {
+        if (typeof recordAudio !== 'undefined') {
+            recordAudio.pause();
+            recordAudio.currentTime = 0; 
+        }
+        if (typeof updatePlayingVisuals === 'function') {
+            updatePlayingVisuals(false);
+        }
     }
-    
-    // 確保 CD 動畫與播放按鈕恢復到暫停狀態
-    if (typeof updatePlayingVisuals === 'function') {
-        updatePlayingVisuals(false);
-    }
+    // 🎶 如果是從家裡音響 ('stereo') 打開的，什麼都不做，讓音樂在背景繼續播！
 };
 
 // 初始化播放清單
@@ -6683,10 +6687,11 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
     // 📻 建造復古落地音響 (可移動、點擊播放音樂)
     // ==========================================
     stereoGrp = new THREE.Group();
-    stereoGrp.position.set(-25, 0, 10); // 預設擺放位置 (左側牆邊)
-    stereoGrp.rotation.y = Math.PI / 2;
+    stereoGrp.position.set(-35, 0, -14); // 📍 移到左邊窗簾的左側 (靠近牆壁角落)
+    stereoGrp.rotation.y = 0;            // 讓正面朝向房間內部
+    stereoGrp.scale.set(0.67, 0.67, 0.67); // 📏 縮小三分之一 (比例變為 67%)
     scene.add(stereoGrp);
-    stereoGrp.userData.itemId = 'stereo_system'; // 綁定道具 ID 以便解鎖/隱藏
+    stereoGrp.userData.itemId = 'stereo_system';
 
     const stereoWoodMat = new THREE.MeshStandardMaterial({ map: createWoodTexture(), roughness: 0.8 });
     const speakerMat = new THREE.MeshStandardMaterial({ map: createSpeakerGrillTexture(), roughness: 0.9, metalness: 0.1 });
@@ -7650,7 +7655,7 @@ else if (['trash', 'chair', 'rack', 'umbrella', 'piano', 'bench', 'stereo'].incl
                 if (type === 'rack' || type === 'chair') myRadius = 4.5;
                 if (type === 'bench') myRadius = 3.5;
                 if (type === 'piano') myRadius = 7.0; 
-                if (type === 'stereo') myRadius = 4.0;
+              if (type === 'stereo') myRadius = 2.7; // 縮小三分之一後的碰撞半徑
  
                 function pushOutRect(cx, cz, radius, rx, rz, rw, rd) {
                     let hw = rw / 2, hd = rd / 2;
@@ -7704,9 +7709,8 @@ else if (['trash', 'chair', 'rack', 'umbrella', 'piano', 'bench', 'stereo'].incl
                     { grp: typeof rackGrp !== 'undefined' ? rackGrp : null, r: 4.5 },
                     { grp: typeof umbGrp !== 'undefined' ? umbGrp : null, r: 2.5 },
                     { grp: typeof benchGrp !== 'undefined' ? benchGrp : null, r: 3.5 },
-                     { grp: typeof stereoGrp !== 'undefined' ? stereoGrp : null, r: 4.0 }
-                    
-                ];
+                    { grp: typeof stereoGrp !== 'undefined' ? stereoGrp : null, r: 2.7 } // 這裡也要改成 2.7
+];
  
                 for (let iter = 0; iter < 2; iter++) {
                     floorItems.forEach(item => {
