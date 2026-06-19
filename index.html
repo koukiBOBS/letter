@@ -10243,11 +10243,9 @@ function buildShoppingStreet() {
 function createTangLauUpperFloors(x, z, width, baseColor) {
     const floorGrp = new THREE.Group();
     
-    // 1. 商業大廈高級外牆 (捨棄原本的紅綠色，改為深邃的都市碳灰/鐵灰色)
+    // 1. 高級商業大廈外牆 (保持深邃碳灰底色)
     const wallMat = new THREE.MeshStandardMaterial({
-        color: 0x2b3036,  // 高級碳灰色
-        roughness: 0.6, 
-        metalness: 0.2 
+        color: 0x2b3036, roughness: 0.6, metalness: 0.2 
     });
     
     const building = new THREE.Mesh(new THREE.BoxGeometry(width, 60, 25), wallMat);
@@ -10255,72 +10253,55 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     building.castShadow = true; building.receiveShadow = true;
     floorGrp.add(building);
 
-    // 2. 現代落地玻璃材質 (保留你要求的清澈玻璃與反射)
+    // 2. 玻璃材質 (完全還原你要求的高級反光玻璃)
     const upperGlassMat = new THREE.MeshStandardMaterial({
         color: 0xcceeff, roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.45,         
         envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
         envMapIntensity: 3.0, side: THREE.FrontSide  
     });
     
-    // 橫向金屬窗框
     const frameMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.2 });
 
     const wallX = x - width/2; 
-    const glassWidth = 22; // 大面積橫跨
-    const glassHeight = 8; // 挑高的落地窗
+    
+    // 🚨 關鍵修復 1：玻璃寬度必須小於建築寬度，解決相鄰大廈玻璃互相穿模導致的「直條紋閃爍」
+    const glassWidth = width - 0.2; 
+    const glassHeight = 8; // 每層落地窗高度
 
-    // 3. 建造 5 橫行玻璃幕牆 (補滿最上層，從 22 到 62 剛好 5 層)
-    // 移除了所有的垂直分割線，保持絕對的橫向連貫
+    // 3. 建造 5 橫行無縫玻璃幕牆 (補滿最頂層，無垂直切割)
     for(let fy = 22; fy <= 62; fy += 10) { 
         const winGrp = new THREE.Group();
         winGrp.position.set(wallX, fy, z);
         winGrp.rotation.y = -Math.PI/2; 
         floorGrp.add(winGrp);
 
-        // 高達 85% 的機率會開燈，確保整棟大廈夜晚非常溫暖熱鬧
+        // 85% 高機率亮起暖光，讓整棟樓非常熱鬧
         const isLit = Math.random() > 0.15; 
 
-        // 【整塊窗戶發光的秘密】
-        // 將一整塊背板貼在玻璃正後方。白天顯示淡米色，夜晚自動變身為發光體！
+        // 🚨 關鍵修復 2：加入 fog: false，讓暖黃光「無視距離衰減」，遠看近看一樣光亮！
         const backingMat = new THREE.MeshStandardMaterial({
-            color: isLit ? 0xffeebb : 0x1a1a1a, // 白天顏色
-            emissive: 0xffaa00,                 // 準備好的溫暖橘黃光 (後續由日夜系統激活)
-            emissiveIntensity: 0.0              // 預設關閉
+            color: isLit ? 0xffddaa : 0x1a1a1a, // 白天也是溫暖的米色
+            emissive: 0xffaa00,                 // 極度溫暖的橘黃光
+            emissiveIntensity: 0.0,             // 預設關閉，由系統日夜控制
+            fog: false                          // 免疫濃霧與距離衰減！
         });
 
+        // 乾淨的一整塊發光背板 (已移除所有暗色遮陽簾剪影)
         const backing = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, glassHeight), backingMat);
-        backing.position.z = 0.05; // 緊貼玻璃後方
-        
-        if (isLit) {
-            // 💡 日夜系統會在黃昏與夜晚自動把這個 backing 點亮，讓整塊玻璃發出暖黃光！
-            backing.userData.isShopInside = true; 
-
-            // 【零效能的層次感魔法】
-            // 在發光背板前面、玻璃的後面，隨機加一塊純黑色的「半截遮陽簾/剪影」
-            // 這樣整面窗戶發光時，就不會是一塊死板的光塊，而是有深有淺的高級商業感。
-            if (Math.random() > 0.4) {
-                const blindH = glassHeight * (0.2 + Math.random() * 0.6); // 隨機長度
-                const blind = new THREE.Mesh(
-                    new THREE.PlaneGeometry(glassWidth, blindH), 
-                    new THREE.MeshStandardMaterial({color: 0x111214, roughness: 0.9})
-                );
-                // 讓遮陽簾從窗戶最頂部往下垂
-                blind.position.set(0, glassHeight/2 - blindH/2, 0.1); 
-                winGrp.add(blind);
-            }
-        }
+        backing.position.z = 0.05; 
+        if (isLit) backing.userData.isShopInside = true; 
         winGrp.add(backing);
 
-        // 最外層：一整塊連續的大玻璃，覆蓋在發光板與剪影之上
+        // 覆蓋在外層的連貫大玻璃
         const glass = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, glassHeight), upperGlassMat);
         glass.position.z = 0.2;
         winGrp.add(glass);
 
-        // 只有極細的上下橫邊框
+        // 上下極細橫向邊框收邊 (無直框)
         const fThick = 0.15; 
-        const fTop = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.2, fThick, 0.25), frameMat);
+        const fTop = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.1, fThick, 0.25), frameMat);
         fTop.position.set(0, glassHeight/2, 0.15);
-        const fBot = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.2, fThick, 0.25), frameMat);
+        const fBot = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.1, fThick, 0.25), frameMat);
         fBot.position.set(0, -glassHeight/2, 0.15);
         winGrp.add(fTop, fBot);
     }
@@ -10336,7 +10317,6 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
 
         const screenColors = ['#ff8800', '#ff00aa', '#00ccff', '#ffffff', '#ffbb33'];
         const screenColor = screenColors[Math.floor(Math.random() * screenColors.length)];
-        
         const brandNames = ['CHI', 'CHIS'];
         const brand = brandNames[Math.floor(Math.random() * brandNames.length)];
         const tex = createNeonSign(brand, '#050505', screenColor, false);
@@ -10352,7 +10332,7 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         floorGrp.add(screen);
     }
 
-    // 5. 💡 環境氣氛暖光：照亮街道與行人
+    // 5. 環境氣氛暖光
     const streetWarmingLight = new THREE.PointLight(0xffaa55, 0.0, 70);
     streetWarmingLight.position.set(wallX - 10.0, 25, z);
     streetWarmingLight.name = 'realLight'; 
