@@ -6734,63 +6734,68 @@ const bc3 = createBookcase(25, 59); if(bc3) bc3.userData.itemId = 'bookcase_3';
 
 
 // ==========================================
-    // 🛏️ 建造單人木床 (可移動、自動靠牆)
+    // 🛏️ 建造加大木床 (可移動、自動靠牆防穿模)
     // ==========================================
     bedGrp = new THREE.Group();
-    // 預設放在右後方角落 (鋼琴與書櫃之間)
-    bedGrp.position.set(51, 0, 45); 
+    // 預設放在右後方角落 (座標微調以容納新尺寸)
+    bedGrp.position.set(40, 0, 40); 
     bedGrp.rotation.y = -Math.PI / 2; // 床頭靠著右牆
     scene.add(bedGrp);
     bedGrp.userData.itemId = 'bed';
 
     const bedWoodMat = new THREE.MeshStandardMaterial({ map: createWoodTexture(), roughness: 0.8 });
-    const mattressMat = new THREE.MeshStandardMaterial({ color: 0xeeece0, roughness: 0.9 }); // 暖白色床墊
+    const mattressMat = new THREE.MeshStandardMaterial({ color: 0xeeece0, roughness: 0.9 }); 
     const blanketMat = new THREE.MeshStandardMaterial({ map: createBlanketTexture(), roughness: 0.95 });
 
-    // 1. 床架主體
-    const bedFrame = new THREE.Mesh(new THREE.BoxGeometry(14, 3, 26), bedWoodMat);
-    bedFrame.position.y = 1.5; 
+    // 1. 床架主體 (加寬加長)
+    const bedFrame = new THREE.Mesh(new THREE.BoxGeometry(19, 4, 34), bedWoodMat);
+    bedFrame.position.y = 2; 
     bedFrame.castShadow = true; 
     bedGrp.add(bedFrame);
     
-    // 2. 床頭板
-    const headboard = new THREE.Mesh(new THREE.BoxGeometry(14, 10, 1.5), bedWoodMat);
-    headboard.position.set(0, 5, -12.25); 
+    // 2. 床頭板 (加寬加高)
+    const headboard = new THREE.Mesh(new THREE.BoxGeometry(19, 13, 2), bedWoodMat);
+    headboard.position.set(0, 6.5, -16); 
     headboard.castShadow = true; 
     bedGrp.add(headboard);
     
     // 3. 床尾板
-    const footboard = new THREE.Mesh(new THREE.BoxGeometry(14, 5, 1), bedWoodMat);
-    footboard.position.set(0, 2.5, 12.5); 
+    const footboard = new THREE.Mesh(new THREE.BoxGeometry(19, 6.5, 1.5), bedWoodMat);
+    footboard.position.set(0, 3.25, 16.25); 
     footboard.castShadow = true; 
     bedGrp.add(footboard);
     
     // 4. 柔軟床墊
-    const mattress = new THREE.Mesh(new THREE.BoxGeometry(13.2, 2.5, 24.5), mattressMat);
-    mattress.position.set(0, 4.25, 0); 
+    const mattress = new THREE.Mesh(new THREE.BoxGeometry(18, 3.5, 32), mattressMat);
+    mattress.position.set(0, 5.5, 0); 
     mattress.castShadow = true; 
     bedGrp.add(mattress);
     
-    // 5. 格紋被子 (蓋在床墊下半部)
-    const blanket = new THREE.Mesh(new THREE.BoxGeometry(13.5, 2.6, 16), blanketMat);
-    blanket.position.set(0, 4.3, 4); 
+    // 5. 格紋被子 (覆蓋下半部)
+    const blanket = new THREE.Mesh(new THREE.BoxGeometry(18.5, 3.7, 21), blanketMat);
+    blanket.position.set(0, 5.5, 5.5); 
     blanket.castShadow = true; 
     bedGrp.add(blanket);
 
-    // 6. 枕頭
-    const pillow = new THREE.Mesh(new THREE.BoxGeometry(8, 1.5, 4), mattressMat);
-    pillow.position.set(0, 5.8, -9);
-    pillow.rotation.x = 0.15; // 稍微傾斜靠在床頭板
-    pillow.castShadow = true; 
-    bedGrp.add(pillow);
+    // 6. 雙人枕頭
+    const pillow1 = new THREE.Mesh(new THREE.BoxGeometry(7.5, 2, 5), mattressMat);
+    pillow1.position.set(-4.2, 7.5, -12);
+    pillow1.rotation.x = 0.15; 
+    pillow1.castShadow = true; 
+    bedGrp.add(pillow1);
+    
+    const pillow2 = new THREE.Mesh(new THREE.BoxGeometry(7.5, 2, 5), mattressMat);
+    pillow2.position.set(4.2, 7.5, -12);
+    pillow2.rotation.x = 0.15; 
+    pillow2.castShadow = true; 
+    bedGrp.add(pillow2);
 
-    // 7. 隱形點擊/碰撞判定框
-    const bedHitBox = new THREE.Mesh(new THREE.BoxGeometry(16, 12, 28), new THREE.MeshBasicMaterial({visible: false}));
-    bedHitBox.position.y = 6;
+    // 7. 隱形碰撞判定框 (符合新尺寸)
+    const bedHitBox = new THREE.Mesh(new THREE.BoxGeometry(22, 15, 36), new THREE.MeshBasicMaterial({visible: false}));
+    bedHitBox.position.y = 7.5;
     bedHitBox.userData = { type: 'bed' };
     bedGrp.add(bedHitBox);
     interactables.push(bedHitBox);
-
 
     
 
@@ -7765,21 +7770,36 @@ else if (['trash', 'chair', 'rack', 'umbrella', 'piano', 'bench', 'stereo', 'bed
                     else if (minD === dFront) targetRot = 0;      // 👈 修正：背靠窗戶，琴鍵朝內
 
                     // 若角度發生變化，使用 GSAP 平滑轉向
-                    if (dragTarget.userData.lastSnapRot !== targetRot) {
+                  if (dragTarget.userData.lastSnapRot !== targetRot) {
                         gsap.to(dragTarget.rotation, {y: targetRot, duration: 0.2});
                         dragTarget.userData.lastSnapRot = targetRot;
                     }
                 }
 
-                newX = Math.max(-56, Math.min(56, newX));
-                newZ = Math.max(-14, Math.min(56, newZ));
+               // 🛑 動態牆壁邊界：解決大型長條家具(床)旋轉時邊緣穿模問題
+                let bMinX = -56, bMaxX = 56, bMinZ = -14, bMaxZ = 56;
+                if (type === 'bed') {
+                    let rot = dragTarget.userData.lastSnapRot !== undefined ? dragTarget.userData.lastSnapRot : dragTarget.rotation.y;
+                    let isXWall = Math.abs(Math.cos(rot)) < 0.5; // 判斷床頭是朝向左右牆(X)還是前後牆(Z)
+                    if (isXWall) {
+                        bMinX = -39; bMaxX = 39; // 床打橫時，左右邊界縮小
+                        bMinZ = -4; bMaxZ = 46;  
+                    } else {
+                        bMinX = -46; bMaxX = 46; 
+                        bMinZ = 3; bMaxZ = 39;   // 床打直時，前後邊界縮小
+                    }
+                }
+
+                newX = Math.max(bMinX, Math.min(bMaxX, newX));
+                newZ = Math.max(bMinZ, Math.min(bMaxZ, newZ));
  
                 // 定義各自的碰撞半徑
                 let myRadius = 2.5;
                 if (type === 'rack' || type === 'chair') myRadius = 4.5;
                 if (type === 'bench') myRadius = 3.5;
                 if (type === 'piano') myRadius = 7.0; 
-             if (type === 'bed') myRadius = 10.0; // 👈 加入這行
+                if (type === 'stereo') myRadius = 2.7;
+        if (type === 'bed') myRadius = 13.0; // 👈 更新為 13.0
  
                 function pushOutRect(cx, cz, radius, rx, rz, rw, rd) {
                     let hw = rw / 2, hd = rd / 2;
@@ -7833,7 +7853,7 @@ else if (['trash', 'chair', 'rack', 'umbrella', 'piano', 'bench', 'stereo', 'bed
                     { grp: typeof rackGrp !== 'undefined' ? rackGrp : null, r: 4.5 },
                     { grp: typeof umbGrp !== 'undefined' ? umbGrp : null, r: 2.5 },
                { grp: typeof stereoGrp !== 'undefined' ? stereoGrp : null, r: 2.7 },
-    { grp: typeof bedGrp !== 'undefined' ? bedGrp : null, r: 10.0 } // 👈 加入這行
+   { grp: typeof bedGrp !== 'undefined' ? bedGrp : null, r: 13.0 } // 👈 這裡也要更新為 13.0
 ];
  
                 for (let iter = 0; iter < 2; iter++) {
@@ -7856,8 +7876,15 @@ else if (['trash', 'chair', 'rack', 'umbrella', 'piano', 'bench', 'stereo', 'bed
                     });
                 }
  
-                newX = Math.max(-56, Math.min(56, newX));
-                newZ = Math.max(-14, Math.min(56, newZ));
+               let bMinX_2 = -56, bMaxX_2 = 56, bMinZ_2 = -14, bMaxZ_2 = 56;
+                if (type === 'bed') {
+                    let rot = dragTarget.userData.lastSnapRot !== undefined ? dragTarget.userData.lastSnapRot : dragTarget.rotation.y;
+                    let isXWall = Math.abs(Math.cos(rot)) < 0.5;
+                    if (isXWall) { bMinX_2 = -39; bMaxX_2 = 39; bMinZ_2 = -4; bMaxZ_2 = 46; } 
+                    else { bMinX_2 = -46; bMaxX_2 = 46; bMinZ_2 = 3; bMaxZ_2 = 39; }
+                }
+                newX = Math.max(bMinX_2, Math.min(bMaxX_2, newX));
+                newZ = Math.max(bMinZ_2, Math.min(bMaxZ_2, newZ));
  
                 dragTarget.position.x = newX;
                 dragTarget.position.z = newZ;
