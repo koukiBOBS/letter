@@ -10243,69 +10243,120 @@ function buildShoppingStreet() {
 function createTangLauUpperFloors(x, z, width, baseColor) {
     const floorGrp = new THREE.Group();
     
+    // 1. 建築主體結構
     const brightColor = new THREE.Color(baseColor).lerp(new THREE.Color(0xffffff), 0.4);
     const wallMat = new THREE.MeshStandardMaterial({
         color: brightColor, roughness: 0.2, metalness: 0.2 
     });
-    
-    // 建築主體
     const building = new THREE.Mesh(new THREE.BoxGeometry(width, 60, 25), wallMat);
     building.position.set(x, 45, z);
     building.castShadow = true; building.receiveShadow = true;
     floorGrp.add(building);
 
-    // 1. 取得我們剛剛寫好的「窗戶與發光貼圖」
-    const texData = getFacadeTextures();
-    
-    // 讓貼圖根據大廈寬度重複延伸，確保窗戶比例正確不變形
-    const repeatX = width / 10;
-    const repeatY = 2;
-    const winMap = texData.map.clone();
-    winMap.repeat.set(repeatX, repeatY);
-    const winEmissiveMap = texData.emissiveMap.clone();
-    winEmissiveMap.repeat.set(repeatX, repeatY);
-
-    // 2. 帶有窗格與暖黃燈光的內部背板
-    const neatInteriorMat = new THREE.MeshStandardMaterial({
-        map: winMap,
-        emissiveMap: winEmissiveMap,
-        emissive: 0xffffff,       // 保持白色，讓貼圖的暖色透出來
-        emissiveIntensity: 0.0,   // 預設關閉，由日夜系統控制
-        roughness: 0.8
-    }); 
-
-    // 3. 高反光的清澈外層玻璃
-    const upperGlassMat = new THREE.MeshStandardMaterial({
-        color: 0xaaddff, roughness: 0.0, metalness: 1.0, transparent: true, opacity: 0.35,         
+    // ==========================================
+    // 🌟 共用材質 (提升效能)
+    // ==========================================
+    // 外層：連貫的高反光大玻璃
+    const glassMat = new THREE.MeshStandardMaterial({
+        color: 0x99ccff, roughness: 0.0, metalness: 1.0, transparent: true, opacity: 0.35,         
         envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
         envMapIntensity: 4.0, side: THREE.FrontSide  
     });
+    
+    // 內部：深色金屬樓層板與窗框
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.2 });
+    
+    // 內部：沒開燈的暗色房間
+    const darkRoomMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a });
+    
+    // 內部：開燈的暖光房間 (預設不發光，由日夜系統控制)
+    const litRoomMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffddaa, emissive: 0x000000, emissiveIntensity: 0.0 
+    });
 
     const wallX = x - width/2; 
-    const glassWidth = width - 1; // 稍微比牆面小一點，留邊
-    const glassHeight = 44;       // 涵蓋多層樓
+    const glassWidth = width - 1.5; // 玻璃寬度
+    const glassHeight = 44;         // 玻璃高度
 
     const winGrp = new THREE.Group();
     winGrp.position.set(wallX, 42, z); 
     winGrp.rotation.y = -Math.PI/2; 
     floorGrp.add(winGrp);
 
-    // 【內層：發光的窗格】(利用 isNeon 標籤，讓它在夜晚自動亮起)
-    const backing = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, glassHeight), neatInteriorMat);
-    backing.position.z = 0.05;
-    backing.userData.isNeon = true; // 巧妙借用霓虹燈標籤，確保手機版絕對會發光！
-    winGrp.add(backing);
-
-    // 【外層：高反光的玻璃】(蓋在窗格外面，增加真實的反射質感)
-    const glass = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, glassHeight), upperGlassMat);
-    glass.position.z = 0.25; 
+    // ==========================================
+    // 🌟 建造高級玻璃幕牆系統
+    // ==========================================
+    // A. 最外層：一整片連貫無縫的大玻璃
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, glassHeight), glassMat);
+    glass.position.z = 0.2;
     winGrp.add(glass);
 
-    // 巨型外牆電子廣告屏幕 (保持不變)
+    // B. 外圍收邊金屬框
+    const fTop = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.4, 0.4, 0.4), frameMat);
+    fTop.position.set(0, glassHeight/2, 0.1);
+    const fBot = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.4, 0.4, 0.4), frameMat);
+    fBot.position.set(0, -glassHeight/2, 0.1);
+    const fLeft = new THREE.Mesh(new THREE.BoxGeometry(0.4, glassHeight, 0.4), frameMat);
+    fLeft.position.set(-glassWidth/2, 0, 0.1);
+    const fRight = new THREE.Mesh(new THREE.BoxGeometry(0.4, glassHeight, 0.4), frameMat);
+    fRight.position.set(glassWidth/2, 0, 0.1);
+    winGrp.add(fTop, fBot, fLeft, fRight);
+
+    // C. 玻璃後方的 3D 室內結構 (創造真實深度)
+    const floorsCount = 4; // 劃分 4 層樓
+    const roomsCount = Math.floor(glassWidth / 4); // 每層分隔房間
+    const roomW = glassWidth / roomsCount;
+    const roomH = glassHeight / floorsCount;
+
+    for (let fy = 0; fy < floorsCount; fy++) {
+        // 橫向樓層板 (在玻璃後方)
+        if (fy > 0) {
+            const slab = new THREE.Mesh(new THREE.BoxGeometry(glassWidth, 0.6, 1.0), frameMat);
+            slab.position.set(0, -glassHeight/2 + fy * roomH, -0.3);
+            winGrp.add(slab);
+        }
+
+        for (let rx = 0; rx < roomsCount; rx++) {
+            // 直向隔間牆 (在玻璃後方)
+            if (rx > 0 && fy === 0) {
+                const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.4, glassHeight, 1.0), frameMat);
+                pillar.position.set(-glassWidth/2 + rx * roomW, 0, -0.3);
+                winGrp.add(pillar);
+            }
+
+            // 房間發光背板 (在玻璃最後方)
+            const isLit = Math.random() > 0.4;
+            const roomPlane = new THREE.Mesh(
+                new THREE.PlaneGeometry(roomW - 0.4, roomH - 0.6),
+                isLit ? litRoomMat.clone() : darkRoomMat
+            );
+            
+            const px = -glassWidth/2 + (rx + 0.5) * roomW;
+            const py = -glassHeight/2 + (fy + 0.5) * roomH;
+            roomPlane.position.set(px, py, -0.8); // 退到深處
+            
+            if (isLit) {
+                // 💡 關鍵魔法：綁定 isShopInside，日夜系統會在夜晚自動把它變成暖黃發光板！
+                roomPlane.userData.isShopInside = true; 
+                
+                // 加上真實的 3D 百葉窗/遮陽簾細節
+                if (Math.random() > 0.5) {
+                    const blindH = (roomH - 0.6) * (0.3 + Math.random() * 0.5);
+                    const blind = new THREE.Mesh(new THREE.PlaneGeometry(roomW - 0.4, blindH), frameMat);
+                    blind.position.set(px, py + (roomH - 0.6)/2 - blindH/2, -0.7); // 貼在發光板前方
+                    winGrp.add(blind);
+                }
+            }
+            winGrp.add(roomPlane);
+        }
+    }
+
+    // ==========================================
+    // 巨型外牆電子廣告屏幕
+    // ==========================================
     if (Math.random() > 0.4) {
         const boardWidth = 12 + Math.random() * 6;
         const boardHeight = 15 + Math.random() * 20; 
-        const frameMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.2 });
         
         const boardBase = new THREE.Mesh(new THREE.BoxGeometry(0.4, boardHeight, boardWidth), frameMat);
         boardBase.position.set(wallX - 0.4, 40, z + (Math.random() > 0.5 ? 1 : -1));
