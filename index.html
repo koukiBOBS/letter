@@ -10218,54 +10218,53 @@ function buildShoppingStreet() {
 
 // --- 1. 地面：清水模廣場與城市基底 ---
     const streetMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
-    // 將道路延伸至濃霧極限 (長度 800，覆蓋 Z: 250 到 -550)
-    const streetGeo = new THREE.PlaneGeometry(69, 800);
-    streetGeo.computeBoundingSphere(); 
-    streetGeo.boundingSphere.radius = 1000; // 🎯 魔法：擴大邊界球，解決視角邊緣突然消失的 BUG，無需關閉效能優化
-    const street = new THREE.Mesh(streetGeo, streetMat);
-    street.position.set(-19.5, 0, -150); 
+    // 將道路向左 (-Z) 大幅延伸至 2500 單位
+    const street = new THREE.Mesh(new THREE.PlaneGeometry(69, 2500), streetMat);
+    street.position.set(-19.5, 0, -1000); // 覆蓋範圍 Z: 250 到 -2250
     street.rotation.x = -Math.PI/2;
     street.receiveShadow = true;
+    street.frustumCulled = false; // 🚫 防止消失 BUG
     streetScene.add(street);
 
+    // 城市基底向遠方延伸
     const cityGroundMat = new THREE.MeshStandardMaterial({color: 0x1a1a1a, roughness: 1.0});
-    const cityGroundGeo = new THREE.BoxGeometry(400, 20, 800);
-    cityGroundGeo.computeBoundingSphere(); cityGroundGeo.boundingSphere.radius = 1000;
-    const cityGround = new THREE.Mesh(cityGroundGeo, cityGroundMat);
-    cityGround.position.set(215, -10, -150); 
+    const cityGround = new THREE.Mesh(new THREE.BoxGeometry(400, 20, 2500), cityGroundMat);
+    cityGround.position.set(215, -10, -1000); 
+    cityGround.frustumCulled = false; // 🚫 防止消失 BUG
     streetScene.add(cityGround);
 
-    // 垂直防波堤 (延伸至濃霧極限)
+    // 垂直防波堤 (向左無盡延伸)
     const seaWallMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), color: 0x555555});
-    const mainWallGeo = new THREE.BoxGeometry(1, 15, 800);
-    mainWallGeo.computeBoundingSphere(); mainWallGeo.boundingSphere.radius = 1000;
-    const mainWall = new THREE.Mesh(mainWallGeo, seaWallMat);
-    mainWall.position.set(-54.5, -7.5, -150);
+    // 正面主防波堤
+    const mainWall = new THREE.Mesh(new THREE.BoxGeometry(1, 15, 2500), seaWallMat);
+    mainWall.position.set(-54.5, -7.5, -1000);
+    mainWall.frustumCulled = false; // 🚫 防止消失 BUG
     streetScene.add(mainWall);
     
-    // 右端 (Z=250) 封口防波堤，左端開放通往城市
+    // 只有右端 (Z=250) 有封口防波堤，左端取消以連通城市
     const endWall1 = new THREE.Mesh(new THREE.BoxGeometry(70, 15, 1), seaWallMat);
     endWall1.position.set(-19.5, -7.5, 250);
     streetScene.add(endWall1);
 
-    // 👇 海濱防浪堤 (消波塊群) 數量從 2500 砍到 600，大幅減少載入時間與渲染壓力
+    // 👇 海濱防浪堤 (消波塊群) 向左延伸
     const tetrapodGeo = new THREE.TetrahedronGeometry(2.0, 0); 
     const tetrapodMat = new THREE.MeshStandardMaterial({color: 0x888888, roughness: 0.9});
-    const tetrapodCount = 600; 
+    const tetrapodCount = 2500; // 增加數量覆蓋延伸路段
     const tetrapodIMesh = new THREE.InstancedMesh(tetrapodGeo, tetrapodMat, tetrapodCount);
     tetrapodIMesh.castShadow = true; tetrapodIMesh.receiveShadow = true;
+    tetrapodIMesh.frustumCulled = false; // 🚫 防止消失 BUG
     
     const dummyTetra = new THREE.Object3D();
     for(let i=0; i<tetrapodCount; i++) {
         let xPos, zPos, yPos;
         const edge = Math.random();
-        if (edge < 0.85) {
-            // 正面海岸線，只延伸至 Z=-400 (濃霧覆蓋區)，不浪費算力
-            zPos = 250 - Math.random() * 650; 
+        if (edge < 0.9) {
+            // 正面海岸線，延伸至 -2000 深入濃霧
+            zPos = 250 - Math.random() * 2250; 
             xPos = -54 - Math.random() * 15;   
             yPos = -3.5 - Math.abs(xPos + 54) * 0.5 + (Math.random()-0.5)*1.5; 
         } else {
-            // 右側過渡 (封口處堆疊)
+            // 右側過渡 (只有一邊有轉角)
             xPos = -58 + Math.random() * 50; 
             zPos = 250 + Math.random() * 15;
             yPos = -3.5 - Math.abs(zPos - 250) * 0.5 + (Math.random()-0.5)*1.5;
@@ -10560,6 +10559,8 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
     promenade.position.set(-33.5, -4.7, 0);
 
 
+       // B. 香港經典海濱金屬欄杆 (實例化，幾百根柱子只要 1 次運算)
+    // 💡 加上 fakeGlassEnv 虛擬環境光，金屬度拉滿，產生極度逼真的不鏽鋼反光，且零效能負擔！
 // B. 香港經典海濱金屬欄杆 (實例化)
     const railMat = new THREE.MeshStandardMaterial({
         color: 0xaabbcc, metalness: 1.0, roughness: 0.15,
@@ -10567,12 +10568,11 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         envMapIntensity: 2.0
     });
     
-    // 1. 正面長欄杆延伸到濃霧區 (長度 800)
-    const topRailGeo = new THREE.BoxGeometry(0.5, 0.3, 800);
-    topRailGeo.computeBoundingSphere(); topRailGeo.boundingSphere.radius = 1000; // 🎯 防止邊緣消失
-    const topRail = new THREE.Mesh(topRailGeo, railMat);
-    topRail.position.set(-54, 3.5, -150); 
+    // 1. 正面長欄杆延伸到遠方
+    const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 2500), railMat);
+    topRail.position.set(-54, 3.5, -1000); 
     topRail.castShadow = true;
+    topRail.frustumCulled = false; // 🚫 防止消失 BUG
     streetScene.add(topRail);
     
     // 2. 只有右端 (Z=250) 有欄杆封口，左端開放
@@ -10582,10 +10582,11 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         
     const dummyTools = new THREE.Object3D();
     
-    // 3. 正面立柱數量從 1250 砍回 350 (足以涵蓋視線範圍)
-    const postCount = 350;
+    // 3. 正面立柱延伸
+    const postCount = 1250;
     const postIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.2, 3.5, 0.2), railMat, postCount);
     postIMesh.castShadow = true;
+    postIMesh.frustumCulled = false; // 🚫 防止消失 BUG
     for(let i=0; i<postCount; i++) {
         dummyTools.position.set(-54, 1.75, 250 - i*2);
         dummyTools.updateMatrix();
@@ -10796,9 +10797,7 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         const hyOutR = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.6, 12), hyMat); hyOutR.rotation.z = Math.PI/2; hyOutR.position.set(0.6, 1.4, 0); hydrantGrp.add(hyOutR);
         const hyCapR = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.1, 12), hySilver); hyCapR.rotation.z = Math.PI/2; hyCapR.position.set(0.95, 1.4, 0); hydrantGrp.add(hyCapR);
 
-     const poleMat = new THREE.MeshStandardMaterial({color: 0x333333, metalness: 0.6});
-        // 刪除被濃霧完全遮蔽的路燈，減少高耗能的 PointLight 計算
-        for (let z of [30, -5, -45, -120, -220, -350]) {
+       const poleMat = new THREE.MeshStandardMaterial({color: 0x333333, metalness: 0.6});
         // 加入遠方的 Z 座標，產生無限延伸的高速公路感
         for (let z of [30, -5, -45, -150, -320, -550, -850, -1250, -1800]) {
             const lampGrp = new THREE.Group(); lampGrp.position.set(4, 0, z);
