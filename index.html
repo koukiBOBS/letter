@@ -10169,38 +10169,10 @@ function buildShoppingStreet() {
         const shutterMat = new THREE.MeshStandardMaterial({map: createRollerShutterTexture(), metalness: 0.6, roughness: 0.5});
         const darkInteriorMat = new THREE.MeshStandardMaterial({color: 0x110a05});
 
-   function createTangLauUpperFloors(x, z, width, baseColor) {
+ function createTangLauUpperFloors(x, z, width, baseColor) {
             const floorGrp = new THREE.Group();
             
-            // --- 內部輔助函數：生成暖黃色的商場透光貼圖 ---
-            function createWarmInteriorTexture() {
-                const canvas = document.createElement('canvas');
-                canvas.width = 256; canvas.height = 128;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#1a0d00'; // 極暗的暖棕色底
-                ctx.fillRect(0, 0, 256, 128);
-                
-                // 畫出透出暖光的櫥窗/辦公室
-                for(let ix = 0; ix < 256; ix += 32) {
-                    if(Math.random() > 0.15) { // 85% 的房間會亮燈
-                        const gradient = ctx.createLinearGradient(0, 0, 0, 128);
-                        gradient.addColorStop(0, '#ffea99'); // 明亮的暖黃色
-                        gradient.addColorStop(1, '#ff9933'); // 溫暖的橘色
-                        ctx.fillStyle = gradient;
-                        ctx.fillRect(ix + 2, 4, 28, 120);
-                        
-                        // 隨機畫一些貨架/辦公桌的剪影增加真實感
-                        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-                        ctx.fillRect(ix + 2 + Math.random()*10, 70 + Math.random()*20, 10, 50);
-                    }
-                }
-                const tex = new THREE.CanvasTexture(canvas);
-                tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
-                tex.repeat.set(4, 1); // 橫向延伸
-                return tex;
-            }
-
-            // 1. 提亮大廈底色，去除陰沉感
+            // 1. 提亮大廈牆體底色，去除陰沉感
             const brightColor = new THREE.Color(baseColor).lerp(new THREE.Color(0xffffff), 0.4);
             const wallMat = new THREE.MeshStandardMaterial({
                 color: brightColor, roughness: 0.2, metalness: 0.2 
@@ -10211,85 +10183,74 @@ function buildShoppingStreet() {
             building.castShadow = true; building.receiveShadow = true;
             floorGrp.add(building);
 
-            // 2. 更通透的玻璃幕牆材質 (降低不透明度，讓內部的暖光透出來)
+            // 2. 極致乾淨的現代落地玻璃材質
             const upperGlassMat = new THREE.MeshStandardMaterial({
-                color: 0xaaddff, roughness: 0.0, metalness: 0.8, transparent: true, opacity: 0.35,         
+                color: 0x99ccff, roughness: 0.0, metalness: 1.0, transparent: true, opacity: 0.4,         
                 envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
                 envMapIntensity: 5.0, side: THREE.FrontSide  
             });
             
+            // 極細金屬窗框
             const frameMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.2 });
             
-            // 帶有暖光貼圖的室內材質
-            const interiorTex = createWarmInteriorTexture();
-            const mallInteriorMat = new THREE.MeshStandardMaterial({
-                map: interiorTex, 
-                emissiveMap: interiorTex, 
-                emissive: 0xffffff, 
-                emissiveIntensity: 0.0 // 預設白天不發光，晚上由日夜系統接管
+            // 3. 乾淨整齊的商場內部 (白天是深色，夜晚會均勻發出高級的暖黃光)
+            const neatInteriorMat = new THREE.MeshStandardMaterial({
+                color: 0x1a1108, // 白天深暖棕色
+                emissive: 0xffddaa, // 夜晚溫暖的黃光
+                emissiveIntensity: 0.0 // 預設關閉，由日夜系統控制
             }); 
-            
-            // 暖光 LED 洗牆飾條
-            const warmLedMat = new THREE.MeshStandardMaterial({color: 0xffcc88, emissive: 0xffaa33, emissiveIntensity: 0.0});
 
             const wallX = x - width/2; 
-            const glassWidth = 22; 
-            const glassHeight = 8; 
+            const glassWidth = 22; // 大面積橫跨
+            const glassHeight = 8; // 挑高的落地窗
 
-            // 3. 建造無縫玻璃幕牆 (Glass Curtain Wall)
+            // 4. 建造整齊無縫的玻璃幕牆 (Glass Curtain Wall)
             for(let fy = 22; fy <= 62; fy += 10) {
                 const winGrp = new THREE.Group();
                 winGrp.position.set(wallX, fy, z);
                 winGrp.rotation.y = -Math.PI/2; 
                 floorGrp.add(winGrp);
 
-                // 商場內部 (使用 isNeon 標籤，讓它在夜晚強制發出高強度的光)
-                const backing = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, glassHeight), mallInteriorMat);
+                // 整潔的發光內部 (標記 isShopInside，夜晚自動均勻亮起暖黃光)
+                const backing = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, glassHeight), neatInteriorMat);
                 backing.position.z = 0.05;
-                backing.userData.isNeon = true; 
+                backing.userData.isShopInside = true; 
                 winGrp.add(backing);
 
-                // 大面積連續玻璃
+                // 一整塊連續的大玻璃
                 const glass = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, glassHeight), upperGlassMat);
                 glass.position.z = 0.2;
                 winGrp.add(glass);
 
-                // 橫向金屬窗框
-                const fThick = 0.25;
-                const fTop = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.2, fThick, 0.3), frameMat);
-                fTop.position.set(0, glassHeight/2, 0.2);
-                const fBot = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.2, fThick, 0.3), frameMat);
-                fBot.position.set(0, -glassHeight/2, 0.2);
+                // 只有極細的上下邊框與垂直分割線 (Mullions)，去除視覺雜亂感
+                const fThick = 0.15; // 窗框變得非常細
+                const fTop = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.2, fThick, 0.25), frameMat);
+                fTop.position.set(0, glassHeight/2, 0.15);
+                const fBot = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.2, fThick, 0.25), frameMat);
+                fBot.position.set(0, -glassHeight/2, 0.15);
                 winGrp.add(fTop, fBot);
 
-                // 🌟 加入暖光 LED 洗牆燈條 (isShopInside 在晚上會變成暖黃光)
-                const ledStrip = new THREE.Mesh(new THREE.BoxGeometry(glassWidth, 0.1, 0.32), warmLedMat);
-                ledStrip.position.set(0, -glassHeight/2 + 0.2, 0.2);
-                ledStrip.userData = { isShopInside: true }; 
-                winGrp.add(ledStrip);
-
-                // 垂直窗框 (大間距，減少切割感)
-                for(let sx = -glassWidth/2; sx <= glassWidth/2 + 0.1; sx += 5.5) {
-                    const fVert = new THREE.Mesh(new THREE.BoxGeometry(0.12, glassHeight, 0.25), frameMat);
-                    fVert.position.set(sx, 0, 0.25);
+                // 規律且細緻的垂直分割線
+                for(let sx = -glassWidth/2; sx <= glassWidth/2 + 0.1; sx += 2.75) {
+                    const fVert = new THREE.Mesh(new THREE.BoxGeometry(0.08, glassHeight, 0.22), frameMat);
+                    fVert.position.set(sx, 0, 0.15);
                     winGrp.add(fVert);
                 }
             }
 
-            // 4. 巨型外牆電子廣告屏幕 (LED Billboard)
+            // 5. 巨型外牆電子廣告屏幕 (LED Billboard)
             if (Math.random() > 0.4) {
                 const boardWidth = 12 + Math.random() * 6;
                 const boardHeight = 15 + Math.random() * 20; 
                 
-                const boardBase = new THREE.Mesh(new THREE.BoxGeometry(0.6, boardHeight, boardWidth), frameMat);
+                const boardBase = new THREE.Mesh(new THREE.BoxGeometry(0.4, boardHeight, boardWidth), frameMat);
                 boardBase.position.set(wallX - 0.2, 40, z + (Math.random() > 0.5 ? 1 : -1));
                 floorGrp.add(boardBase);
 
-                // 屏幕顏色
                 const screenColors = ['#ff8800', '#ff00aa', '#00ccff', '#ffffff', '#ffbb33'];
                 const screenColor = screenColors[Math.floor(Math.random() * screenColors.length)];
                 
-                // 指定品牌 CHI 或 CHIS
+                // 專屬品牌 CHI 或 CHIS
                 const brandNames = ['CHI', 'CHIS'];
                 const brand = brandNames[Math.floor(Math.random() * brandNames.length)];
                 const tex = createNeonSign(brand, '#050505', screenColor, false);
@@ -10298,22 +10259,23 @@ function buildShoppingStreet() {
                     map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.0, roughness: 0.1
                 });
                 
-                const screen = new THREE.Mesh(new THREE.PlaneGeometry(boardWidth - 0.4, boardHeight - 0.4), screenMat);
+                const screen = new THREE.Mesh(new THREE.PlaneGeometry(boardWidth - 0.2, boardHeight - 0.2), screenMat);
                 screen.rotation.y = -Math.PI/2;
-                screen.position.set(wallX - 0.51, 40, boardBase.position.z);
+                screen.position.set(wallX - 0.41, 40, boardBase.position.z);
                 screen.userData = { isNeon: true }; 
                 floorGrp.add(screen);
             }
 
-            // 🌟 5. 環境氣氛暖光：照亮街道與行人
-            // 在大樓前方加入一盞隱形的暖黃色燈光，晚上自動亮起，徹底消除陰沉感
+            // 6. 環境氣氛暖光：照亮街道與行人，確保街道溫暖不陰沉
             const streetWarmingLight = new THREE.PointLight(0xffaa55, 0.0, 70);
             streetWarmingLight.position.set(wallX - 10.0, 25, z);
-            streetWarmingLight.name = 'realLight'; // 綁定日夜系統
+            streetWarmingLight.name = 'realLight'; // 綁定日夜系統，夜晚自動發光
             floorGrp.add(streetWarmingLight);
 
             return floorGrp;
         }
+
+     
         
         // 🏬 店舖 A：文苑文具 
         const statGrp = new THREE.Group();
