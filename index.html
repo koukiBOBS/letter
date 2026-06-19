@@ -9825,6 +9825,7 @@ let isAtStreet = false;
 let roomVisibilityBackup = [];
 // 👇 新增全域變數與動態海浪紋理生成
 let streetWaterTex = null;
+        let fireworksPoints;
 
 
 
@@ -10680,6 +10681,140 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         const stopSign = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.1, 32), new THREE.MeshStandardMaterial({map: createBusStopTexture(), roughness: 0.8})); stopSign.rotation.set(0, 0, Math.PI / 2); stopSign.position.set(-0.15, 6.5, 0); stopGrp.add(stopSign);
         streetScene.add(stopGrp);
 
+
+// ==========================================
+        // 🎆 零效能負擔 GPU 煙火系統 (專為商店街夜空設計)
+        // ==========================================
+        const particleCount = 2000; // 安全不卡頓的數量
+        const fGeo = new THREE.BufferGeometry();
+        
+        const fPos = new Float32Array(particleCount * 3);
+        const fCenters = new Float32Array(particleCount * 3);
+        const fVels = new Float32Array(particleCount * 3);
+        const fColors = new Float32Array(particleCount * 3);
+        const fStartTimes = new Float32Array(particleCount);
+        
+        // 經典煙火色系：金、紅、紫、藍、青、綠
+        const fPalette = [
+            new THREE.Color(0xffd700), new THREE.Color(0xff4444),
+            new THREE.Color(0xdd44ff), new THREE.Color(0x4488ff),
+            new THREE.Color(0x44ffff), new THREE.Color(0x44ff66)
+        ];
+
+        let pIdx = 0;
+        const fireworkCount = 20; // 同時存在的煙火朵數
+        const particlesPerFirework = particleCount / fireworkCount;
+        
+        for(let f = 0; f < fireworkCount; f++) {
+            // 煙火精準落在對岸大廈的上空 (-X 方向)
+            const cx = -1200 + Math.random() * 400;  // 遠方大廈的深度
+            const cy = 250 + Math.random() * 200;    // 懸浮於大廈高度 (150~400) 之上
+            const cz = -2500 + Math.random() * 5000; // 橫跨整個海平面的寬度
+            
+            const fColor = fPalette[Math.floor(Math.random() * fPalette.length)];
+            const startTime = Math.random() * 8.0; // 隨機爆炸起始時間 (交錯爆發)
+            
+            for(let p = 0; p < particlesPerFirework; p++) {
+                fCenters[pIdx*3] = cx; fCenters[pIdx*3+1] = cy; fCenters[pIdx*3+2] = cz;
+                
+                // 數學魔法：建立完美球形爆炸散佈
+                const phi = Math.acos(-1 + (2 * p) / particlesPerFirework);
+                const theta = Math.sqrt(particlesPerFirework * Math.PI) * phi;
+                
+                const speed = 40 + Math.random() * 80; // 爆炸擴散速度
+                fVels[pIdx*3] = speed * Math.cos(theta) * Math.sin(phi);
+                fVels[pIdx*3+1] = speed * Math.sin(theta) * Math.sin(phi);
+                fVels[pIdx*3+2] = speed * Math.cos(phi);
+                
+                // 微微的顏色亂數，讓同一朵煙火更有層次
+                fColors[pIdx*3] = fColor.r + (Math.random()-0.5)*0.2;
+                fColors[pIdx*3+1] = fColor.g + (Math.random()-0.5)*0.2;
+                fColors[pIdx*3+2] = fColor.b + (Math.random()-0.5)*0.2;
+                
+                fStartTimes[pIdx] = startTime;
+                pIdx++;
+            }
+        }
+        
+        fGeo.setAttribute('position', new THREE.BufferAttribute(fPos, 3));
+        fGeo.setAttribute('center', new THREE.BufferAttribute(fCenters, 3));
+        fGeo.setAttribute('velocity', new THREE.BufferAttribute(fVels, 3));
+        fGeo.setAttribute('color', new THREE.BufferAttribute(fColors, 3));
+        fGeo.setAttribute('startTime', new THREE.BufferAttribute(fStartTimes, 1));
+        
+        // 畫一個柔和的發光圓點作為粒子貼圖
+        const fCanvas = document.createElement('canvas');
+        fCanvas.width = 16; fCanvas.height = 16;
+        const fCtx = fCanvas.getContext('2d');
+        const fGrad = fCtx.createRadialGradient(8,8,0,8,8,8);
+        fGrad.addColorStop(0, 'rgba(255,255,255,1)');
+        fGrad.addColorStop(0.3, 'rgba(255,255,255,0.8)');
+        fGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        fCtx.fillStyle = fGrad; fCtx.fillRect(0,0,16,16);
+        
+        const fMat = new THREE.ShaderMaterial({
+            uniforms: {
+                uTime: window.oceanTime, // 完美借用現有的海洋時間變數！
+                uMap: { value: new THREE.CanvasTexture(fCanvas) },
+                uCycle: { value: 6.0 } // 煙火輪迴週期
+            },
+            vertexShader: `
+                uniform float uTime;
+                uniform float uCycle;
+                attribute vec3 center;
+                attribute vec3 velocity;
+                attribute float startTime;
+                attribute vec3 color;
+                varying vec3 vColor;
+                varying float vAlpha;
+                
+                void main() {
+                    vColor = color;
+                    float t = mod(uTime - startTime, uCycle);
+                    float lifeTime = 2.0; // 煙火壽命
+                    
+                    if (t > lifeTime || t < 0.0) {
+                        vAlpha = 0.0;
+                        gl_Position = vec4(0.0);
+                        return;
+                    }
+                    
+                    // 物理運算：球形擴散 + 重力下墜
+                    vec3 pos = center + velocity * t;
+                    pos.y -= 45.0 * t * t; 
+                    
+                    // 閃爍特效與結尾淡出
+                    float sparkle = 0.7 + 0.3 * sin(uTime * 40.0 + startTime * 15.0);
+                    vAlpha = (1.0 - smoothstep(1.2, lifeTime, t)) * sparkle;
+                    
+                    vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
+                    gl_PointSize = 15.0 * vAlpha; // 固定大小，節省手機效能且遠方一樣清晰
+                    gl_Position = projectionMatrix * mvPos;
+                }
+            `,
+            fragmentShader: `
+                uniform sampler2D uMap;
+                varying vec3 vColor;
+                varying float vAlpha;
+                void main() {
+                    if(vAlpha <= 0.01) discard;
+                    vec4 texColor = texture2D(uMap, gl_PointCoord);
+                    gl_FragColor = vec4(vColor * texColor.rgb, texColor.a * vAlpha);
+                }
+            `,
+            transparent: true,
+            blending: THREE.AdditiveBlending, // 疊加發光模式
+            depthWrite: false, // 防 z-fighting 黑邊
+            fog: false // 無視濃霧，確保煙火在極遠處依然明亮
+        });
+        
+        fireworksPoints = new THREE.Points(fGeo, fMat);
+        fireworksPoints.frustumCulled = false; // 避免轉鏡頭時突然消失
+        fireworksPoints.visible = false; // 預設關閉，由日夜系統控制
+        streetScene.add(fireworksPoints);
+
+
+        
     } catch (error) {
         console.error("商店街渲染崩潰：", error);
         alert("載入商店街時發生錯誤：" + error.message);
@@ -10779,6 +10914,13 @@ function syncStreetEnvironment() {
             else child.material.opacity = 1.0;
         }
     });
+
+
+// 👇 確保只有在「夜晚」時，天上才會綻放燦爛煙火
+    if (typeof fireworksPoints !== 'undefined' && fireworksPoints) {
+        fireworksPoints.visible = (p.phaseStr === 'night');
+    }
+    
 }
 
 
