@@ -1501,19 +1501,42 @@
 
 /* --- 📝 信紙設計 (背景與線條) --- */
 /* 預設宣紙 (不需加類別) */
+
 /* 1. 原稿紙 (綠色方格) */
 .paper_grid { background-color: #f0f5f0 !important; background-image: linear-gradient(#b3d4b3 1px, transparent 1px), linear-gradient(90deg, #b3d4b3 1px, transparent 1px) !important; background-size: 40px 40px !important; }
+/* 移除原稿紙的內文橫線，以免與方格重疊 */
+.paper_grid .letter-text, 
+.paper_grid #reply-text { background-image: none !important; }
+
 /* 2. 牛皮紙 */
 .paper_craft { background-color: #dcb897 !important; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.15'/%3E%3C/svg%3E") !important; border-left: 5px solid #8b5a2b !important; }
+
 /* 3. 落花箋 */
 .paper_flower { background-color: #fff9f9 !important; background-image: radial-gradient(circle at 10% 10%, rgba(255, 182, 193, 0.4) 0%, transparent 20%), radial-gradient(circle at 90% 80%, rgba(255, 182, 193, 0.4) 0%, transparent 20%) !important; border-left: 5px solid #ffb6c1 !important; }
+
 /* 4. 浪花箋 */
 .paper_ocean { background-color: #f0f8ff !important; background-image: linear-gradient(to top, rgba(135, 206, 250, 0.4) 0%, transparent 40%) !important; border-left: 5px solid #4682b4 !important; }
-/* 5. 星夜箋 (深色底) */
-.paper_night { background-color: #1a2235 !important; background-image: radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px) !important; background-size: 90px 90px !important; background-position: 0 0, 40px 60px, 130px 270px, 70px 100px !important; border-left: 5px solid #d4af37 !important; color: #e6dfd1 !important; }
-.paper_night .letter-header-meta, .paper_night .letter-section-divider { color: #8a9ba8 !important; }
-.paper_night .letter-attached-quote { background-color: rgba(255,255,255,0.05); border-color: #4a5c68; }
-.paper_night .letter-attached-quote .quote-text { color: #dcd5c9; }
+
+/* 5. 星夜箋 (改為淺灰藍底色，銀河星光點綴) */
+.paper_night { 
+    background-color: #f4f6fa !important; 
+    background-image: 
+        radial-gradient(circle at 15% 15%, rgba(135, 145, 180, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(150, 160, 190, 0.15) 0%, transparent 40%),
+        radial-gradient(1px 1px at 20px 30px, #9eb0c6, rgba(0,0,0,0)),
+        radial-gradient(1.5px 1.5px at 60px 80px, #a8b9d0, rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 120px 50px, #9eb0c6, rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 160px 140px, #cbd6e5, rgba(0,0,0,0)) !important;
+    background-size: 100% 100%, 100% 100%, 200px 200px, 250px 250px, 150px 150px, 300px 300px !important;
+    border-left: 5px solid #8e9cb3 !important; 
+    color: #3b4255 !important; 
+}
+.paper_night .letter-header-meta, .paper_night .letter-section-divider { color: #768199 !important; }
+.paper_night .letter-attached-quote { background-color: rgba(255,255,255,0.6) !important; border-color: #8e9cb3 !important; }
+.paper_night .letter-attached-quote .quote-text { color: #3b4255 !important; }
+/* 配合星夜箋，將橫線顏色改為淡淡的灰藍色 */
+.paper_night .letter-text, 
+.paper_night #reply-text { background-image: repeating-linear-gradient(to bottom, transparent, transparent 39px, rgba(142, 156, 179, 0.4) 39px, rgba(142, 156, 179, 0.4) 40px) !important; }
 
 
 
@@ -2408,7 +2431,7 @@ const PAPER_REGISTRY = {
     'craft': { name: '復古牛皮紙', desc: '帶有粗糙紋理的牛皮紙', price: 1000, cssClass: 'paper_craft' },
     'flower': { name: '落花箋', desc: '邊緣染上淡粉櫻花的信紙', price: 1500, cssClass: 'paper_flower' },
     'ocean': { name: '浪花箋', desc: '底部帶有海浪漸層的信紙', price: 1500, cssClass: 'paper_ocean' },
-    'night': { name: '星夜箋', desc: '深藍星空底色，文字會化為白光', price: 2000, cssClass: 'paper_night' }
+    'night': { name: '星夜箋', desc: '淺銀河點綴的柔和星空信紙', price: 2000, cssClass: 'paper_night' }
 };
 
 const INK_REGISTRY = {
@@ -2419,6 +2442,7 @@ const INK_REGISTRY = {
     'gold': { name: '流沙金', desc: '閃耀著金屬光澤的墨水', price: 1500, color: '#d4af37' }
 };
 
+// 🎨 零效能 Canvas 繪製商品圖標
 // 🎨 零效能 Canvas 繪製商品圖標
 function generateStationeryIcon(type, id) {
     const canvas = document.createElement('canvas');
@@ -2441,15 +2465,23 @@ function generateStationeryIcon(type, id) {
             grad.addColorStop(0, 'rgba(135, 206, 250, 0.8)'); grad.addColorStop(1, '#f0f8ff');
             ctx.fillStyle = grad;
         }
-        if (id === 'night') { ctx.fillStyle = '#1a2235'; }
+        if (id === 'night') { 
+            // 星夜箋淺底漸層
+            const grad = ctx.createLinearGradient(0, 0, 150, 150);
+            grad.addColorStop(0, '#eef2f8'); 
+            grad.addColorStop(1, '#e4eaf3');
+            ctx.fillStyle = grad;
+        }
         
         ctx.fillRect(20, 20, 110, 110);
         ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.strokeRect(20, 20, 110, 110);
         
-        // 畫橫線
-        ctx.strokeStyle = id === 'night' ? 'rgba(255,255,255,0.2)' : 'rgba(160, 140, 120, 0.3)';
-        ctx.lineWidth = 2;
-        for(let y=50; y<=100; y+=20) { ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(110, y); ctx.stroke(); }
+        // 畫橫線 (原稿紙不畫橫線，避免重疊變亂)
+        if (id !== 'grid') {
+            ctx.strokeStyle = id === 'night' ? 'rgba(142, 156, 179, 0.4)' : 'rgba(160, 140, 120, 0.3)';
+            ctx.lineWidth = 2;
+            for(let y=50; y<=100; y+=20) { ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(110, y); ctx.stroke(); }
+        }
         
         // 原稿紙畫格子
         if (id === 'grid') {
