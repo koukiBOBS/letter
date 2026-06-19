@@ -10217,7 +10217,7 @@ function buildShoppingStreet() {
         }
 
 // --- 1. 地面：清水模廣場與城市基底 ---
-    const streetMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
+    const streetMat = new THREE.MeshLambertMaterial({map: createConcreteTexture()});
     const street = new THREE.Mesh(new THREE.PlaneGeometry(69, 500), streetMat);
     street.position.set(-19.5, 0, 0); 
     street.rotation.x = -Math.PI/2;
@@ -10225,13 +10225,13 @@ function buildShoppingStreet() {
     streetScene.add(street);
 
     // 城市基底 (讓建築物建在堅實的土地上，而不是懸空在海面上)
-    const cityGroundMat = new THREE.MeshStandardMaterial({color: 0x1a1a1a, roughness: 1.0});
+   const cityGroundMat = new THREE.MeshLambertMaterial({color: 0x1a1a1a});
     const cityGround = new THREE.Mesh(new THREE.BoxGeometry(400, 20, 510), cityGroundMat);
     cityGround.position.set(215, -10, 0); // X 從 15 延伸到 415，完美涵蓋所有建築物
     streetScene.add(cityGround);
 
     // 垂直防波堤 (覆蓋長廊下方與前後兩端的邊緣)
-    const seaWallMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), color: 0x555555});
+   const seaWallMat = new THREE.MeshLambertMaterial({map: createConcreteTexture(), color: 0x555555});
     // 正面防波堤
     const mainWall = new THREE.Mesh(new THREE.BoxGeometry(1, 15, 500), seaWallMat);
     mainWall.position.set(-54.5, -7.5, 0);
@@ -10246,7 +10246,7 @@ function buildShoppingStreet() {
 
     // 👇 極低效能負擔的海濱防浪堤 (消波塊群) + 兩側邊緣自然過渡
     const tetrapodGeo = new THREE.TetrahedronGeometry(2.0, 0); 
-    const tetrapodMat = new THREE.MeshStandardMaterial({color: 0x888888, roughness: 0.9});
+      const tetrapodMat = new THREE.MeshLambertMaterial({color: 0x888888});
     const tetrapodCount = 1200; 
     const tetrapodIMesh = new THREE.InstancedMesh(tetrapodGeo, tetrapodMat, tetrapodCount);
     tetrapodIMesh.castShadow = true; tetrapodIMesh.receiveShadow = true;
@@ -10720,9 +10720,13 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         };
 
         const totalBuildings = 800;
-        const skylineIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), skylineMat, totalBuildings);
+       const skylineIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), skylineMat, totalBuildings);
         skylineIMesh.userData.isDistantCity = true;
-        skylineIMesh.frustumCulled = false; 
+        // 💡 效能優化：不要關閉剔除！我們手動給它一個極大的邊界球，
+        // 讓相機轉開時，這 800 棟大廈會自動停止渲染！
+        skylineIMesh.geometry.computeBoundingSphere();
+        skylineIMesh.geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 6000);
+        skylineIMesh.frustumCulled = true;
 
         const dummyCity = new THREE.Object3D();
         const cityColor = new THREE.Color(); // 👈 新增：用來設定每棟樓的深淺
