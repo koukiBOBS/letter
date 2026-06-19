@@ -7491,12 +7491,13 @@ function animateRoom() {
                 p.position.z += p.userData.speedZ;
                 
                 // Z 軸邊界：走到底從另一頭出來
-                if (p.position.z > 200) p.position.z = -200;
-                else if (p.position.z < -200) p.position.z = 200;
+              // Z 軸邊界：走到底碰到兩側新蓋的欄杆就轉身 (Z: 240)
+                if (p.position.z > 240) { p.position.z = 240; p.userData.speedZ *= -1; }
+                else if (p.position.z < -240) { p.position.z = -240; p.userData.speedZ *= -1; }
 
-                // X 軸邊界：碰到欄杆或店門口就轉身往回走
-                if (p.position.x > 15) { p.position.x = 15; p.userData.speedX *= -1; }
-                else if (p.position.x < -45) { p.position.x = -45; p.userData.speedX *= -1; }
+                // X 軸邊界：碰到正面欄杆或店門口就轉身往回走
+                if (p.position.x > 14) { p.position.x = 14; p.userData.speedX *= -1; }
+                else if (p.position.x < -52) { p.position.x = -52; p.userData.speedX *= -1; }
 
                 // 只有在移動時才會有步伐起伏
                 const speed = Math.hypot(p.userData.speedX, p.userData.speedZ);
@@ -10215,30 +10216,61 @@ function buildShoppingStreet() {
             streetScene.add(island);
         }
 
-// --- 1. 地面：清水模廣場與盲人磚 ---
+// --- 1. 地面：清水模廣場與城市基底 ---
     const streetMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
-    // 將寬度縮小為 69，並設定位置，這樣地面的左側邊界就會精準停在欄杆(-54)，外面直接是海！
     const street = new THREE.Mesh(new THREE.PlaneGeometry(69, 500), streetMat);
     street.position.set(-19.5, 0, 0); 
     street.rotation.x = -Math.PI/2;
     street.receiveShadow = true;
     streetScene.add(street);
 
+    // 城市基底 (讓建築物建在堅實的土地上，而不是懸空在海面上)
+    const cityGroundMat = new THREE.MeshStandardMaterial({color: 0x1a1a1a, roughness: 1.0});
+    const cityGround = new THREE.Mesh(new THREE.BoxGeometry(400, 20, 510), cityGroundMat);
+    cityGround.position.set(215, -10, 0); // X 從 15 延伸到 415，完美涵蓋所有建築物
+    streetScene.add(cityGround);
 
-    // 👇 新增：極低效能負擔的海濱防浪堤 (消波塊群)
-    // 利用簡單的四面體(Tetrahedron)模擬消波塊，並用 InstancedMesh 讓 400 顆石頭只算 1 次繪圖指令！
+    // 垂直防波堤 (覆蓋長廊下方與前後兩端的邊緣)
+    const seaWallMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), color: 0x555555});
+    // 正面防波堤
+    const mainWall = new THREE.Mesh(new THREE.BoxGeometry(1, 15, 500), seaWallMat);
+    mainWall.position.set(-54.5, -7.5, 0);
+    streetScene.add(mainWall);
+    // 兩端防波堤 (封口過渡)
+    const endWall1 = new THREE.Mesh(new THREE.BoxGeometry(70, 15, 1), seaWallMat);
+    endWall1.position.set(-19.5, -7.5, 250);
+    streetScene.add(endWall1);
+    const endWall2 = new THREE.Mesh(new THREE.BoxGeometry(70, 15, 1), seaWallMat);
+    endWall2.position.set(-19.5, -7.5, -250);
+    streetScene.add(endWall2);
+
+    // 👇 極低效能負擔的海濱防浪堤 (消波塊群) + 兩側邊緣自然過渡
     const tetrapodGeo = new THREE.TetrahedronGeometry(2.0, 0); 
     const tetrapodMat = new THREE.MeshStandardMaterial({color: 0x888888, roughness: 0.9});
-    const tetrapodCount = 400; 
+    const tetrapodCount = 1200; 
     const tetrapodIMesh = new THREE.InstancedMesh(tetrapodGeo, tetrapodMat, tetrapodCount);
     tetrapodIMesh.castShadow = true; tetrapodIMesh.receiveShadow = true;
     
     const dummyTetra = new THREE.Object3D();
     for(let i=0; i<tetrapodCount; i++) {
-        const zPos = -100 + Math.random() * 200; // 沿著海岸線分佈
-        const xPos = -49 - Math.random() * 15;   // 從欄杆邊緣(-48)向海裡延伸
-        // 計算斜坡：越往海裡延伸，高度越深
-        const yPos = -3.5 - Math.abs(xPos + 48) * 0.5 + (Math.random()-0.5)*1.5; 
+        let xPos, zPos, yPos;
+        const edge = Math.random();
+        if (edge < 0.7) {
+            // 正面海岸線 (70%)
+            zPos = -260 + Math.random() * 520; 
+            xPos = -54 - Math.random() * 15;   
+            yPos = -3.5 - Math.abs(xPos + 54) * 0.5 + (Math.random()-0.5)*1.5; 
+        } else if (edge < 0.85) {
+            // 右側過渡 (15%) - 在 Z=250 轉角處堆疊
+            xPos = -58 + Math.random() * 50; 
+            zPos = 250 + Math.random() * 15;
+            yPos = -3.5 - Math.abs(zPos - 250) * 0.5 + (Math.random()-0.5)*1.5;
+        } else {
+            // 左側過渡 (15%) - 在 Z=-250 轉角處堆疊
+            xPos = -58 + Math.random() * 50; 
+            zPos = -250 - Math.random() * 15;
+            yPos = -3.5 - Math.abs(zPos + 250) * 0.5 + (Math.random()-0.5)*1.5;
+        }
         
         dummyTetra.position.set(xPos, yPos, zPos);
         dummyTetra.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
@@ -10532,27 +10564,55 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
 
        // B. 香港經典海濱金屬欄杆 (實例化，幾百根柱子只要 1 次運算)
     // 💡 加上 fakeGlassEnv 虛擬環境光，金屬度拉滿，產生極度逼真的不鏽鋼反光，且零效能負擔！
-    const railMat = new THREE.MeshStandardMaterial({
-        color: 0xaabbcc, 
-        metalness: 1.0, 
-        roughness: 0.15,
+ const railMat = new THREE.MeshStandardMaterial({
+        color: 0xaabbcc, metalness: 1.0, roughness: 0.15,
         envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
         envMapIntensity: 2.0
     });
-      const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 500), railMat);
-        topRail.position.set(-54, 3.5, 0); topRail.castShadow = true;
-        streetScene.add(topRail);
+    
+    // 1. 正面長欄杆
+    const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 500), railMat);
+    topRail.position.set(-54, 3.5, 0); topRail.castShadow = true;
+    streetScene.add(topRail);
+    
+    // 2. 前後兩端欄杆 (封閉街道)
+    const endRailTop1 = new THREE.Mesh(new THREE.BoxGeometry(69, 0.3, 0.5), railMat);
+    endRailTop1.position.set(-19.5, 3.5, 250); endRailTop1.castShadow = true;
+    streetScene.add(endRailTop1);
+    
+    const endRailTop2 = new THREE.Mesh(new THREE.BoxGeometry(69, 0.3, 0.5), railMat);
+    endRailTop2.position.set(-19.5, 3.5, -250); endRailTop2.castShadow = true;
+    streetScene.add(endRailTop2);
         
-        const postCount = 250;
-        const postIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.2, 3.5, 0.2), railMat, postCount);
-        postIMesh.castShadow = true;
-        const dummyTools = new THREE.Object3D();
-        for(let i=0; i<postCount; i++) {
-            dummyTools.position.set(-54, 1.75, -250 + i*2);
-            dummyTools.updateMatrix();
-            postIMesh.setMatrixAt(i, dummyTools.matrix);
-        }
-        streetScene.add(postIMesh);
+    const dummyTools = new THREE.Object3D();
+    
+    // 3. 正面立柱
+    const postCount = 251;
+    const postIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.2, 3.5, 0.2), railMat, postCount);
+    postIMesh.castShadow = true;
+    for(let i=0; i<postCount; i++) {
+        dummyTools.position.set(-54, 1.75, -250 + i*2);
+        dummyTools.updateMatrix();
+        postIMesh.setMatrixAt(i, dummyTools.matrix);
+    }
+    streetScene.add(postIMesh);
+
+    // 4. 前後兩端立柱
+    const endPostCount = 35;
+    const endPostIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.2, 3.5, 0.2), railMat, endPostCount * 2);
+    endPostIMesh.castShadow = true;
+    for(let i=0; i<endPostCount; i++) {
+        let xPos = -54 + i * 2;
+        // Z = 250
+        dummyTools.position.set(xPos, 1.75, 250);
+        dummyTools.updateMatrix();
+        endPostIMesh.setMatrixAt(i, dummyTools.matrix);
+        // Z = -250
+        dummyTools.position.set(xPos, 1.75, -250);
+        dummyTools.updateMatrix();
+        endPostIMesh.setMatrixAt(endPostCount + i, dummyTools.matrix);
+    }
+    streetScene.add(endPostIMesh);
 
         const planterMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), color: 0xcccccc});
         const woodSeatMat = new THREE.MeshStandardMaterial({map: createWoodTexture()});
