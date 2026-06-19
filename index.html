@@ -10315,15 +10315,15 @@ function buildShoppingStreet() {
         const cityLightsTex = createCityLightsTexture();
         
         const skylineMat = new THREE.MeshStandardMaterial({ 
-            color: 0x05080c,         // 預設外牆顏色
+            color: 0xffffff,         // 初始設為純白，因為最終顏色交給 syncStreetEnvironment 決定
             emissiveMap: cityLightsTex, 
             emissive: 0xffffff,      
-            emissiveIntensity: 0.0,  // 預設白天關燈
+            emissiveIntensity: 0.0,  
             roughness: 1.0,
             fog: false               // 強制無視濃霧，永保清晰
         });
 
-        // 動態調整 UV 防止窗戶變形拉伸，強制完美拼貼
+        // 動態調整 UV 防止窗戶變形拉伸
         skylineMat.onBeforeCompile = function(shader) {
             shader.vertexShader = `
                 attribute vec3 offset;
@@ -10334,28 +10334,26 @@ function buildShoppingStreet() {
                 #include <uv_vertex>
                 float scaleX = length(vec3(instanceMatrix[0][0], instanceMatrix[0][1], instanceMatrix[0][2]));
                 float scaleY = length(vec3(instanceMatrix[1][0], instanceMatrix[1][1], instanceMatrix[1][2]));
-                
-                // ⚠️ 調整為 0.015：將貼圖拉大，讓光點顯得更大且稀疏
-                // 這樣每棟大廈上就只會有幾點如油畫筆觸般的象徵性光芒
+                // 0.015 讓貼圖放大，維持油畫般的稀疏光芒
                 vUv = uv * vec2(scaleX * 0.015, scaleY * 0.015); 
                 `
             );
         };
 
         const totalBuildings = 800;
-        // 只用一個 Mesh，徹底根除互相穿透閃爍的可能！
         const skylineIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), skylineMat, totalBuildings);
         skylineIMesh.userData.isDistantCity = true;
         skylineIMesh.frustumCulled = false; 
 
         const dummyCity = new THREE.Object3D();
+        const cityColor = new THREE.Color(); // 👈 新增：用來設定每棟樓的深淺
+
         for(let i=0; i<totalBuildings; i++) {
             let w = 20 + Math.random() * 50;
             let d = 20 + Math.random() * 50;
             let h = 40 + Math.random() * 60 + (Math.random() > 0.95 ? Math.random() * 80 : 0); 
             
             let zPos = -3000 + Math.random() * 6000; 
-            // 嚴格控制 X 軸在 -1000 以後，確保位在島嶼 (-2000) 的前方，永不穿模！
             let xPos = -1000 - Math.random() * 300 + (Math.abs(zPos) * 0.05); 
 
             dummyCity.rotation.set(0, 0, 0); 
@@ -10363,8 +10361,16 @@ function buildShoppingStreet() {
             dummyCity.scale.set(w, h, d);
             dummyCity.updateMatrix();
             skylineIMesh.setMatrixAt(i, dummyCity.matrix);
+
+            // ⚠️ 關鍵立體感魔法：給予每棟大廈隨機的明暗倍率 (0.25 到 1.0 之間)
+            // 這樣在夜晚時，就會有極深黑、暗灰、深藍灰等多種層次交疊！
+            const shade = 0.25 + Math.random() * 0.75; 
+            cityColor.setRGB(shade, shade, shade);
+            skylineIMesh.setColorAt(i, cityColor);
         }
+        
         skylineIMesh.instanceMatrix.needsUpdate = true;
+        skylineIMesh.instanceColor.needsUpdate = true; // 👈 記得更新顏色緩衝
         streetScene.add(skylineIMesh);
        
 
@@ -10503,21 +10509,24 @@ function syncStreetEnvironment() {
             // 中午：灰綠色，黃昏/夜晚：深黑色剪影
             child.material.color.setHex(p.phaseStr === 'noon' ? 0x4a6b66 : 0x0a1015);
         }
-       if (child.userData.isDistantCity) {
-            // 🌅 修正：早晨 (dawn) 與 中午 (noon) 絕對關燈！
+      if (child.userData.isDistantCity) {
+            // 🌅 早晨與中午
             if (p.phaseStr === 'dawn' || p.phaseStr === 'noon') {
                 child.material.color.setHex(0x7894a8);
                 child.material.emissiveIntensity = 0.0; // 關燈
             } 
             // 🌇 黃昏微亮
             else if (p.phaseStr === 'dusk') {
-                child.material.color.setHex(0x3a2c42);
-                child.material.emissiveIntensity = 1.5; // 亮度調柔和
+                // 基底色調為稍微偏亮的暗紫色，配合明暗倍率會呈現豐富層次
+                child.material.color.setHex(0x4a3854); 
+                child.material.emissiveIntensity = 1.5; 
             } 
             // 🌙 夜晚亮起
             else {
-                child.material.color.setHex(0x05080c);
-                child.material.emissiveIntensity = 4.0; // 亮度調柔和
+                // ⚠️ 關鍵：基底色改為較明顯的「深灰藍色」(0x0c1420)
+                // 這樣最亮的大廈會呈現深灰藍，而最暗的大廈會接近純黑，營造出完美的前後空間距！
+                child.material.color.setHex(0x0c1420); 
+                child.material.emissiveIntensity = 4.0; 
             }
         }
         if (child.userData.isSilhouette) {
