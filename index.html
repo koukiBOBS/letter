@@ -10796,11 +10796,9 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         const hyOutR = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.6, 12), hyMat); hyOutR.rotation.z = Math.PI/2; hyOutR.position.set(0.6, 1.4, 0); hydrantGrp.add(hyOutR);
         const hyCapR = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.1, 12), hySilver); hyCapR.rotation.z = Math.PI/2; hyCapR.position.set(0.95, 1.4, 0); hydrantGrp.add(hyCapR);
 
-     const poleMat = new THREE.MeshStandardMaterial({color: 0x333333, metalness: 0.6});
+    const poleMat = new THREE.MeshStandardMaterial({color: 0x333333, metalness: 0.6});
         // 刪除被濃霧完全遮蔽的路燈，減少高耗能的 PointLight 計算
         for (let z of [30, -5, -45, -120, -220, -350]) {
-        // 加入遠方的 Z 座標，產生無限延伸的高速公路感
-        for (let z of [30, -5, -45, -150, -320, -550, -850, -1250, -1800]) {
             const lampGrp = new THREE.Group(); lampGrp.position.set(4, 0, z);
             const base = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 2, 16), poleMat); base.position.y = 1; base.castShadow = true; lampGrp.add(base);
             const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.4, 20, 16), poleMat); pole.position.y = 12; pole.castShadow = true; lampGrp.add(pole);
