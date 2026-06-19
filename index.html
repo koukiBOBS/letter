@@ -4555,9 +4555,13 @@ function processRandomTask(data) {
     });
 }
 
-        function selectPlant(type) { 
-            let initialData = { type: type, growth: 0, wilt: 0, lastWatered: Date.now(), plantedAt: Date.now(), daysAccompanied: 0, isDead: false }; 
-            db.ref(`users/${currentUser.uid}/plant`).set(initialData).then(() => { document.getElementById('modal-plant-selector').style.display = 'none'; showToast(`🌱 已成功種下 ${plantNames[type]}！記得每天澆水喔。`); });
+      function selectPlant(type) { 
+            // 💡 將 lastWatered 往前推 24 小時 (86400000 毫秒)，讓玩家剛種下植物就能立刻享受第一次澆水的樂趣
+            let initialData = { type: type, growth: 0, wilt: 0, lastWatered: Date.now() - 86400000, plantedAt: Date.now(), daysAccompanied: 0, isDead: false }; 
+            db.ref(`users/${currentUser.uid}/plant`).set(initialData).then(() => { 
+                document.getElementById('modal-plant-selector').style.display = 'none'; 
+                showToast(`🌱 已成功種下 ${plantNames[type]}！記得每天澆水喔。`); 
+            });
         }
 
         function updatePlantStateLogic(p) { 
@@ -8316,10 +8320,24 @@ function toggleRadio() {
         
 
      function performWateringAnimation() {
-    if (!userPlantData) { document.getElementById('modal-plant-selector').style.display = 'flex'; return; }
+  if (!userPlantData) { document.getElementById('modal-plant-selector').style.display = 'flex'; return; }
     if (userPlantData.isDead) return showToast("🥀 植物已經枯萎，無法再澆水了...");
-    let today = new Date().toDateString(); let lastW = new Date(userPlantData.lastWatered).toDateString();
-    if (today === lastW) return showToast("💧 已經澆過水了，明天再來吧！");
+    
+    // 💡 取得精準的本地年、月、日，不受瀏覽器語系字串影響
+    const now = new Date();
+    const lastWateredTime = userPlantData.lastWatered || 0;
+    const last = new Date(lastWateredTime);
+    
+    const isSameDay = now.getFullYear() === last.getFullYear() &&
+                      now.getMonth() === last.getMonth() &&
+                      now.getDate() === last.getDate();
+                      
+    // 💡 防時間錯亂保護：如果玩家裝置時間調過，導致紀錄跑到「未來」，自動放行並重置
+    const isTimeTravelBug = now.getTime() < lastWateredTime;
+
+    if (isSameDay && !isTimeTravelBug) {
+        return showToast("💧 已經澆過水了，明天再來吧！");
+    }
 
     // 1. 動態抓取水壺「現在」的位置
     const startPos = { 
