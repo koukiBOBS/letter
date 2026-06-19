@@ -9727,6 +9727,49 @@ let streetWaterTex = null;
 
 
 
+
+        // 👇 專為遠景設計的高精度防變形大廈紋理
+function createDenseCityTexture(isEmissive) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = isEmissive ? '#000000' : '#0c1218'; // 極暗的深藍灰色底
+    ctx.fillRect(0, 0, 512, 512);
+
+    if (isEmissive) {
+        // 畫出極度密集、細小的窗戶光點 (解決拉伸變形問題)
+        for (let y = 0; y < 512; y += 8) {
+            for (let x = 0; x < 512; x += 6) {
+                if (Math.random() > 0.4) { // 60% 的窗戶是亮著的
+                    ctx.fillStyle = Math.random() > 0.8 ? '#ffffff' : '#dddddd'; // 隨機冷暖白光
+                    ctx.fillRect(x, y, 3, 4); // 扁長形的微小窗戶
+                }
+            }
+        }
+        // 偶爾加入大面積的廣告發光帶或頂樓光冠
+        for(let i=0; i<5; i++) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.fillRect(0, Math.random() * 500, 512, 6 + Math.random() * 10);
+        }
+    } else {
+        // 大廈的建築結構線條
+        ctx.strokeStyle = '#05080c';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 512; i += 32) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 512); ctx.stroke();
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(3, 8); // 強制重複拼貼，讓大廈被拉高時窗戶依然密集細緻
+    return tex;
+}
+
+
+
         
 
 // 1. 舊式唐樓「紙皮石」馬賽克外牆 (加入光影倒角與歲月水痕)
@@ -10224,38 +10267,60 @@ function buildShoppingStreet() {
         }
         streetScene.add(planterIMesh, seatIMesh, pTreeTrunk, pTreeLeaf);
 
+      // ==========================================
+        // 🌃 5. 對岸維港：無死角、超密集、色彩斑斕的夜景
         // ==========================================
-        // 🌃 5. 對岸維港：完整顯示與豐富色彩
-        // ==========================================
-        const bTex = createBuildingTexture();
-        const bEmissiveTex = createBuildingEmissiveTexture();
-        const buildCountPerColor = 40; 
-        const cityColors = [0xffea99, 0xffffff, 0xaaddff, 0xffbbee];
+        const bTexDense = createDenseCityTexture(false);
+        const bEmissiveTexDense = createDenseCityTexture(true);
         
-        const skylineMat = new THREE.MeshStandardMaterial({ color: 0x121a22, roughness: 0.9, fog: true });
-        const skylineBaseIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), skylineMat, buildCountPerColor * 4);
-        skylineBaseIMesh.frustumCulled = false; // 🚫 防止消失
+        // 模擬維多利亞港的璀璨燈光色彩陣列 (10種不同氛圍的發光色)
+        const cityColors = [
+            0xffeebb, // 暖白
+            0xffdd88, // 金黃
+            0xffcc66, // 橘黃
+            0x88ccff, // 科技藍
+            0x66ffcc, // 霓虹青
+            0xff88bb, // 霓虹粉
+            0xddff88, // 淺檸檬黃
+            0xffffff, // 純白
+            0xaa88ff, // 紫藍
+            0xffaa88  // 珊瑚橘
+        ];
+        
+        const buildCountPerColor = 50; // 每一種顏色 50 棟，總共 500 棟，構成滿滿的建築牆
+        
+        // 暗色主體 (所有大廈共用的不發光基底，確保白天也能看到輪廓)
+        const skylineMat = new THREE.MeshStandardMaterial({ color: 0x0a1015, roughness: 0.9, fog: true });
+        const skylineBaseIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), skylineMat, buildCountPerColor * cityColors.length);
+        skylineBaseIMesh.frustumCulled = false; // 🚫 絕對防消失：無視攝影機裁切
         streetScene.add(skylineBaseIMesh);
 
         let globalBIndex = 0;
+
         cityColors.forEach((colorHex) => {
             const lightMat = new THREE.MeshStandardMaterial({
-                color: 0x121a22, roughness: 0.9, map: bTex, 
-                emissiveMap: bEmissiveTex, emissive: colorHex, emissiveIntensity: 0.0,
-                fog: false 
+                color: 0x0a1015, roughness: 0.9, 
+                map: bTexDense, emissiveMap: bEmissiveTexDense, 
+                emissive: colorHex, emissiveIntensity: 0.0, // 初始不發光，交由 sync 函數開啟
+                fog: false // 發光層不受霧氣遮擋，保持遠處的璀璨
             }); 
             
             const lightIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), lightMat, buildCountPerColor);
-            lightIMesh.frustumCulled = false; 
+            lightIMesh.frustumCulled = false; // 🚫 絕對防消失
             lightIMesh.userData.isWindow = true; 
             
             for(let i=0; i<buildCountPerColor; i++) {
-                let w = 40 + Math.random() * 60;
-                let h = 200 + Math.random() * 500; 
-                let d = 40 + Math.random() * 60;
+                // 寬度較窄，高度極大，模擬香港特有的「牙籤樓」與摩天大樓
+                let w = 25 + Math.random() * 50;
+                let h = 150 + Math.random() * 700; // 高低錯落，最高可達 850
+                let d = 25 + Math.random() * 50;
                 
-                // 控制 Z 軸距離，確保不被相機裁切
-                dummyTools.position.set(-600 - Math.random()*800, h/2 - 20, -300 - Math.random()*400);
+                // 將大廈以極廣的範圍散佈在左右兩側 (-3000 到 3000)，確保轉頭一定看得到
+                let xPos = -3000 + Math.random() * 6000;
+                // 將大廈推得很遠，營造隔海相望的距離感
+                let zPos = -400 - Math.random() * 800;
+                
+                dummyTools.position.set(xPos, h/2 - 20, zPos);
                 dummyTools.scale.set(w, h, d);
                 dummyTools.updateMatrix();
                 
@@ -10392,11 +10457,11 @@ function syncStreetEnvironment() {
                 child.material.emissiveIntensity = isNightOrDusk ? 1.0 : 0.0;
             }
             // 大廈窗戶
-            if (child.userData.isWindow) {
-    child.material.emissive.setHex(isNightOrDusk && Math.random() > 0.3 ? 0xffea99 : 0x000000);
-    // 🌟 因為退到極遠處，亮度加倍到 3.0 才有璀璨感
-    child.material.emissiveIntensity = isNightOrDusk ? 3.0 : 0.0;
-}
+           if (child.userData.isWindow) {
+                // 因為我們用的是純色光，不需要再隨機判定，全部讓它們亮起來
+                // 提高發光強度到 4.0，讓霓虹與冷暖色對比更強烈
+                child.material.emissiveIntensity = isNightOrDusk ? 4.0 : 0.0;
+            }
             // 街燈燈泡表面發光
             if (child.userData.isStreetLight) {
                 child.material.emissiveIntensity = isNightOrDusk ? 2.0 : 0.0;
