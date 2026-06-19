@@ -10243,110 +10243,98 @@ function buildShoppingStreet() {
 function createTangLauUpperFloors(x, z, width, baseColor) {
     const floorGrp = new THREE.Group();
     
-    // 1. 建築主體結構 (將底色稍微調暖調亮)
-    const brightColor = new THREE.Color(baseColor).lerp(new THREE.Color(0xffeedd), 0.5);
-    const wallMat = new THREE.MeshStandardMaterial({
-        color: brightColor, roughness: 0.2, metalness: 0.2 
-    });
+    // 1. 大廈主體
+    const wallMat = new THREE.MeshStandardMaterial({map: getSafeAgedPlaster(baseColor), roughness: 0.95});
     const building = new THREE.Mesh(new THREE.BoxGeometry(width, 60, 25), wallMat);
     building.position.set(x, 45, z);
     building.castShadow = true; building.receiveShadow = true;
     floorGrp.add(building);
 
     // ==========================================
-    // 🌟 材質設定 (強調溫暖與清澈)
+    // 🌟 完全使用你指定的高級玻璃材質
     // ==========================================
-    // 外層：連貫的高反光大玻璃 (改為極淡的暖色，去除原本的冷藍色)
-    const glassMat = new THREE.MeshStandardMaterial({
-        color: 0xffffff, roughness: 0.0, metalness: 1.0, transparent: true, opacity: 0.3,         
+    const upperGlassMat = new THREE.MeshStandardMaterial({
+        color: 0xcceeff, roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.45,         
         envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
-        envMapIntensity: 4.0, side: THREE.FrontSide  
+        envMapIntensity: 3.0, side: THREE.FrontSide  
     });
+ 
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.6, roughness: 0.4 });
     
-    // 橫向樓層板金屬框
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.2 });
-    
-    // 內部：沒開燈的暗色房間 (改為帶有生活感的暖深棕色，不要死黑)
-    const darkRoomMat = new THREE.MeshStandardMaterial({ color: 0x2a1e12 });
-    
-    // 內部：開燈的暖光房間 (極度溫暖的橘黃光)
-    const litRoomMat = new THREE.MeshStandardMaterial({ 
-        color: 0xffcc88, emissive: 0xffaa33, emissiveIntensity: 0.0 
-    });
-
     const wallX = x - width/2; 
-    const glassWidth = width - 1.5; // 玻璃寬度
-    const glassHeight = 44;         // 玻璃高度
+    const glassWidth = width - 1.5; // 玻璃總寬度
+    const glassHeight = 40;         // 玻璃總高度 (y=25 到 y=65)
 
     const winGrp = new THREE.Group();
-    winGrp.position.set(wallX, 42, z); 
-    winGrp.rotation.y = -Math.PI/2; 
+    winGrp.position.set(wallX, 45, z); 
+    winGrp.rotation.y = -Math.PI/2;
     floorGrp.add(winGrp);
 
     // ==========================================
-    // 🌟 建造純橫向連貫玻璃幕牆
+    // 🌟 一整塊連貫大玻璃 (無任何直條紋)
     // ==========================================
-    // A. 最外層：一整片連貫無縫的大玻璃
-    const glass = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, glassHeight), glassMat);
-    glass.position.z = 0.2;
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, glassHeight), upperGlassMat);
+    glass.position.z = 0.1;
     winGrp.add(glass);
 
-    // B. 外圍收邊金屬框
-    const fTop = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.4, 0.4, 0.4), frameMat);
-    fTop.position.set(0, glassHeight/2, 0.1);
-    const fBot = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.4, 0.4, 0.4), frameMat);
-    fBot.position.set(0, -glassHeight/2, 0.1);
-    const fLeft = new THREE.Mesh(new THREE.BoxGeometry(0.4, glassHeight, 0.4), frameMat);
-    fLeft.position.set(-glassWidth/2, 0, 0.1);
-    const fRight = new THREE.Mesh(new THREE.BoxGeometry(0.4, glassHeight, 0.4), frameMat);
-    fRight.position.set(glassWidth/2, 0, 0.1);
-    winGrp.add(fTop, fBot, fLeft, fRight);
+    // ==========================================
+    // 🌟 只有橫向的金屬窗框 (劃分出 4 行)
+    // ==========================================
+    const fThick = 0.3; 
+    const fDepth = 0.3;
+    
+    // 頂部與底部邊框
+    const fTop = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.2, fThick, fDepth), frameMat);
+    fTop.position.set(0, glassHeight/2, 0.15);
+    const fBot = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.2, fThick, fDepth), frameMat);
+    fBot.position.set(0, -glassHeight/2, 0.15);
+    winGrp.add(fTop, fBot);
 
-    // C. 玻璃後方的 3D 室內結構 (完全沒有直條紋！)
-    const floorsCount = 4; // 嚴格劃分 4 橫行
-    const roomsCount = Math.floor(glassWidth / 4); // 內部切分區塊(僅為了讓燈光錯落有致，不會產生實體柱子)
-    const roomW = glassWidth / roomsCount;
-    const roomH = glassHeight / floorsCount;
-
-    for (let fy = 0; fy < floorsCount; fy++) {
-        // 橫向樓層板 (在玻璃後方)
-        if (fy > 0) {
-            const slab = new THREE.Mesh(new THREE.BoxGeometry(glassWidth, 0.6, 1.0), frameMat);
-            slab.position.set(0, -glassHeight/2 + fy * roomH, -0.3); // 退在玻璃後面
-            winGrp.add(slab);
-        }
-
-        for (let rx = 0; rx < roomsCount; rx++) {
-            // 房間發光背板 (無縫拼接，沒有垂直柱子)
-            // 提高亮燈機率到 70%，讓整棟大廈看起來非常溫暖熱鬧
-            const isLit = Math.random() > 0.3; 
-            const roomPlane = new THREE.Mesh(
-                new THREE.PlaneGeometry(roomW, roomH), 
-                isLit ? litRoomMat.clone() : darkRoomMat
-            );
-            
-            const px = -glassWidth/2 + (rx + 0.5) * roomW;
-            const py = -glassHeight/2 + (fy + 0.5) * roomH;
-            roomPlane.position.set(px, py, -0.8); // 退到深處
-            
-            if (isLit) {
-                // 綁定 isShopInside，日夜系統會在黃昏與夜晚自動點亮它
-                roomPlane.userData.isShopInside = true; 
-                
-                // 加入一點百葉窗細節 (純橫線，增加真實感但不破壞結構)
-                if (Math.random() > 0.4) {
-                    const blindH = roomH * (0.2 + Math.random() * 0.6);
-                    const blind = new THREE.Mesh(new THREE.PlaneGeometry(roomW, blindH), new THREE.MeshStandardMaterial({color: 0x111111}));
-                    blind.position.set(px, py + roomH/2 - blindH/2, -0.7); 
-                    winGrp.add(blind);
-                }
-            }
-            winGrp.add(roomPlane);
-        }
+    // 中間的 3 條橫向金屬框 (切割出 4 個橫行)
+    const rowHeight = glassHeight / 4;
+    for(let i = 1; i <= 3; i++) {
+        const fMidH = new THREE.Mesh(new THREE.BoxGeometry(glassWidth, fThick, fDepth), frameMat);
+        fMidH.position.set(0, -glassHeight/2 + i * rowHeight, 0.15);
+        winGrp.add(fMidH);
     }
 
     // ==========================================
-    // 巨型外牆電子廣告屏幕
+    // 🌟 具有 3D 深度的室內發光背板 (解決手機發光問題)
+    // ==========================================
+    const darkInteriorMat = new THREE.MeshStandardMaterial({color: 0x1a1108}); // 白天是溫暖的深棕色，不陰沉
+
+    // 針對 4 層樓，每層放一塊橫向的背板
+    for(let i = 0; i < 4; i++) {
+        // 高達 80% 的機率會開燈，確保夜晚大廈非常明亮溫暖
+        const isLit = Math.random() > 0.2; 
+        
+        const backingMat = isLit ? 
+            new THREE.MeshStandardMaterial({ color: 0x2a1a0a, emissive: 0x000000, emissiveIntensity: 0.0 }) : 
+            darkInteriorMat;
+
+        const backing = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, rowHeight - fThick), backingMat);
+        
+        const rowY = -glassHeight/2 + (i + 0.5) * rowHeight;
+        backing.position.set(0, rowY, -0.6); // 往後退，產生真實的 3D 窗戶深度
+
+        if (isLit) {
+            // 💡 關鍵魔法：這會觸發你的 syncStreetEnvironment
+            // 在黃昏與夜晚時，這塊背板會自動發出強烈的暖黃色光芒 (0xffcc88)
+            backing.userData.isShopInside = true; 
+            
+            // 隨機加一點橫向拉簾，增加細節層次 (一樣沒有直條紋)
+            if (Math.random() > 0.5) {
+                const curtainH = (rowHeight - fThick) * (0.2 + Math.random() * 0.6);
+                const curtain = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, curtainH), new THREE.MeshStandardMaterial({color: 0xddddaa, roughness: 0.9}));
+                curtain.position.set(0, rowY + (rowHeight - fThick)/2 - curtainH/2, -0.4);
+                winGrp.add(curtain);
+            }
+        }
+        winGrp.add(backing);
+    }
+
+    // ==========================================
+    // 巨型外牆電子廣告屏幕 (保持不變，略調防穿模)
     // ==========================================
     if (Math.random() > 0.4) {
         const boardWidth = 12 + Math.random() * 6;
