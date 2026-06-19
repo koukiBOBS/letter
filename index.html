@@ -8948,8 +8948,10 @@ const crystalGlassMat = new THREE.MeshStandardMaterial({
             localMouseDown.y = e.clientY;
         });
  
-        window.addEventListener('pointerup', (e) => {
-            if (e.target.tagName !== 'CANVAS') return; // 👈 新增這行防穿透
+      window.addEventListener('pointerup', (e) => {
+            if (e.target.tagName !== 'CANVAS') return; 
+            // 👇 關鍵修復：如果人在商店街，直接忽略扭蛋機的點擊判定！
+            if (typeof isAtStreet !== 'undefined' && isAtStreet) return;
             if (isGachaPlaying || isRoomPaused()) return;
             if (Math.abs(e.clientX - localMouseDown.x) > 10 || Math.abs(e.clientY - localMouseDown.y) > 10) return;
             
@@ -10214,12 +10216,46 @@ function buildShoppingStreet() {
 
         // ==========================================
         // 2. 地面：紅色拼花磚與盲人磚
-        // ==========================================
-        const streetMat = new THREE.MeshStandardMaterial({map: createRedBrickPaving(), roughness: 1.0});
-        const street = new THREE.Mesh(new THREE.PlaneGeometry(150, 400), streetMat);
-        street.rotation.x = -Math.PI/2;
-        street.receiveShadow = true;
-        streetScene.add(street);
+        // ============================濱長廊步道 (清水模質==============
+      // --- 1. 地面：清水模廣場與盲人磚 ---
+    // 💡 將原本突兀的紅磚改為冷色調的清水模，更符合海濱防浪堤的氛圍
+    const streetMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
+    const street = new THREE.Mesh(new THREE.PlaneGeometry(150, 200), streetMat);
+    street.rotation.x = -Math.PI/2;
+    street.receiveShadow = true;
+    streetScene.add(street);
+
+// A. 海濱長廊步道 (清水模質感)
+    const promenadeMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
+    const promenade = new THREE.Mesh(new THREE.BoxGeometry(40, 0.5, 200), promenadeMat);
+    promenade.position.set(-30, -4.7, 0); // 緊貼馬路左側
+    promenade.receiveShadow = true;
+    streetScene.add(promenade);
+
+    // 👇 新增：極低效能負擔的海濱防浪堤 (消波塊群)
+    // 利用簡單的四面體(Tetrahedron)模擬消波塊，並用 InstancedMesh 讓 400 顆石頭只算 1 次繪圖指令！
+    const tetrapodGeo = new THREE.TetrahedronGeometry(2.0, 0); 
+    const tetrapodMat = new THREE.MeshStandardMaterial({color: 0x888888, roughness: 0.9});
+    const tetrapodCount = 400; 
+    const tetrapodIMesh = new THREE.InstancedMesh(tetrapodGeo, tetrapodMat, tetrapodCount);
+    tetrapodIMesh.castShadow = true; tetrapodIMesh.receiveShadow = true;
+    
+    const dummyTetra = new THREE.Object3D();
+    for(let i=0; i<tetrapodCount; i++) {
+        const zPos = -100 + Math.random() * 200; // 沿著海岸線分佈
+        const xPos = -49 - Math.random() * 15;   // 從欄杆邊緣(-48)向海裡延伸
+        // 計算斜坡：越往海裡延伸，高度越深
+        const yPos = -3.5 - Math.abs(xPos + 48) * 0.5 + (Math.random()-0.5)*1.5; 
+        
+        dummyTetra.position.set(xPos, yPos, zPos);
+        dummyTetra.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+        dummyTetra.scale.setScalar(0.8 + Math.random()*0.6);
+        dummyTetra.updateMatrix();
+        tetrapodIMesh.setMatrixAt(i, dummyTetra.matrix);
+    }
+    streetScene.add(tetrapodIMesh);
+
+        
 
         const tactileMat = new THREE.MeshStandardMaterial({color: 0xddaa00, roughness: 0.9});
         const tactileLine = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 400), tactileMat);
@@ -10503,7 +10539,15 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         promenade.receiveShadow = true;
         streetScene.add(promenade);
 
-        const railMat = new THREE.MeshStandardMaterial({color: 0x8899a6, metalness: 0.7, roughness: 0.3});
+       // B. 香港經典海濱金屬欄杆 (實例化，幾百根柱子只要 1 次運算)
+    // 💡 加上 fakeGlassEnv 虛擬環境光，金屬度拉滿，產生極度逼真的不鏽鋼反光，且零效能負擔！
+    const railMat = new THREE.MeshStandardMaterial({
+        color: 0xaabbcc, 
+        metalness: 1.0, 
+        roughness: 0.15,
+        envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
+        envMapIntensity: 2.0
+    });
         const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 400), railMat);
         topRail.position.set(-54, 3.5, 0); topRail.castShadow = true;
         streetScene.add(topRail);
