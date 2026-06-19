@@ -10169,40 +10169,72 @@ function buildShoppingStreet() {
         const shutterMat = new THREE.MeshStandardMaterial({map: createRollerShutterTexture(), metalness: 0.6, roughness: 0.5});
         const darkInteriorMat = new THREE.MeshStandardMaterial({color: 0x110a05});
 
-     function createTangLauUpperFloors(x, z, width, baseColor) {
+   function createTangLauUpperFloors(x, z, width, baseColor) {
             const floorGrp = new THREE.Group();
             
-            // 1. 提亮大廈底色，去除陰沉感 (將傳入的顏色與純白混合，提亮 35%)
-            const brightColor = new THREE.Color(baseColor).lerp(new THREE.Color(0xffffff), 0.35);
+            // --- 內部輔助函數：生成暖黃色的商場透光貼圖 ---
+            function createWarmInteriorTexture() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 256; canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#1a0d00'; // 極暗的暖棕色底
+                ctx.fillRect(0, 0, 256, 128);
+                
+                // 畫出透出暖光的櫥窗/辦公室
+                for(let ix = 0; ix < 256; ix += 32) {
+                    if(Math.random() > 0.15) { // 85% 的房間會亮燈
+                        const gradient = ctx.createLinearGradient(0, 0, 0, 128);
+                        gradient.addColorStop(0, '#ffea99'); // 明亮的暖黃色
+                        gradient.addColorStop(1, '#ff9933'); // 溫暖的橘色
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(ix + 2, 4, 28, 120);
+                        
+                        // 隨機畫一些貨架/辦公桌的剪影增加真實感
+                        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                        ctx.fillRect(ix + 2 + Math.random()*10, 70 + Math.random()*20, 10, 50);
+                    }
+                }
+                const tex = new THREE.CanvasTexture(canvas);
+                tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+                tex.repeat.set(4, 1); // 橫向延伸
+                return tex;
+            }
+
+            // 1. 提亮大廈底色，去除陰沉感
+            const brightColor = new THREE.Color(baseColor).lerp(new THREE.Color(0xffffff), 0.4);
             const wallMat = new THREE.MeshStandardMaterial({
-                color: brightColor, 
-                roughness: 0.2, // 更光滑的現代材質
-                metalness: 0.3  // 增加微弱的金屬反光，更有商業大廈質感
+                color: brightColor, roughness: 0.2, metalness: 0.2 
             });
             
-            // 主建築體
             const building = new THREE.Mesh(new THREE.BoxGeometry(width, 60, 25), wallMat);
             building.position.set(x, 45, z);
             building.castShadow = true; building.receiveShadow = true;
             floorGrp.add(building);
 
-            // 2. 高質感、高連續性的玻璃幕牆材質
+            // 2. 更通透的玻璃幕牆材質 (降低不透明度，讓內部的暖光透出來)
             const upperGlassMat = new THREE.MeshStandardMaterial({
-                color: 0x99ddff, roughness: 0.0, metalness: 1.0, transparent: true, opacity: 0.5,         
+                color: 0xaaddff, roughness: 0.0, metalness: 0.8, transparent: true, opacity: 0.35,         
                 envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
                 envMapIntensity: 5.0, side: THREE.FrontSide  
             });
             
             const frameMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.2 });
             
-            // 內部商場透出的暖色調底色 (取代原本的死黑)
-            const mallInteriorMat = new THREE.MeshStandardMaterial({color: 0x332211}); 
-            // 暖光 LED 飾條材質
-            const warmLedMat = new THREE.MeshStandardMaterial({color: 0xffcc88, emissive: 0xffcc88, emissiveIntensity: 0.0});
+            // 帶有暖光貼圖的室內材質
+            const interiorTex = createWarmInteriorTexture();
+            const mallInteriorMat = new THREE.MeshStandardMaterial({
+                map: interiorTex, 
+                emissiveMap: interiorTex, 
+                emissive: 0xffffff, 
+                emissiveIntensity: 0.0 // 預設白天不發光，晚上由日夜系統接管
+            }); 
+            
+            // 暖光 LED 洗牆飾條
+            const warmLedMat = new THREE.MeshStandardMaterial({color: 0xffcc88, emissive: 0xffaa33, emissiveIntensity: 0.0});
 
             const wallX = x - width/2; 
-            const glassWidth = 22; // 橫跨大部分寬度
-            const glassHeight = 8; // 每層的玻璃高度
+            const glassWidth = 22; 
+            const glassHeight = 8; 
 
             // 3. 建造無縫玻璃幕牆 (Glass Curtain Wall)
             for(let fy = 22; fy <= 62; fy += 10) {
@@ -10211,10 +10243,10 @@ function buildShoppingStreet() {
                 winGrp.rotation.y = -Math.PI/2; 
                 floorGrp.add(winGrp);
 
-                // 商場內部 (標記 isShopInside，夜晚會自動亮起暖黃光)
+                // 商場內部 (使用 isNeon 標籤，讓它在夜晚強制發出高強度的光)
                 const backing = new THREE.Mesh(new THREE.PlaneGeometry(glassWidth, glassHeight), mallInteriorMat);
                 backing.position.z = 0.05;
-                backing.userData.isShopInside = true; 
+                backing.userData.isNeon = true; 
                 winGrp.add(backing);
 
                 // 大面積連續玻璃
@@ -10222,7 +10254,7 @@ function buildShoppingStreet() {
                 glass.position.z = 0.2;
                 winGrp.add(glass);
 
-                // 橫向金屬窗框 (幕牆上下框架)
+                // 橫向金屬窗框
                 const fThick = 0.25;
                 const fTop = new THREE.Mesh(new THREE.BoxGeometry(glassWidth + 0.2, fThick, 0.3), frameMat);
                 fTop.position.set(0, glassHeight/2, 0.2);
@@ -10230,13 +10262,13 @@ function buildShoppingStreet() {
                 fBot.position.set(0, -glassHeight/2, 0.2);
                 winGrp.add(fTop, fBot);
 
-                // 🌟 加入暖光 LED 洗牆燈條 (標記 isNeon，夜晚自動發光)
+                // 🌟 加入暖光 LED 洗牆燈條 (isShopInside 在晚上會變成暖黃光)
                 const ledStrip = new THREE.Mesh(new THREE.BoxGeometry(glassWidth, 0.1, 0.32), warmLedMat);
                 ledStrip.position.set(0, -glassHeight/2 + 0.2, 0.2);
-                ledStrip.userData = { isNeon: true }; 
+                ledStrip.userData = { isShopInside: true }; 
                 winGrp.add(ledStrip);
 
-                // 大幅拉開垂直窗框的間距 (從 2.2 改為 5.5)，讓窗戶看起來又大又連貫
+                // 垂直窗框 (大間距，減少切割感)
                 for(let sx = -glassWidth/2; sx <= glassWidth/2 + 0.1; sx += 5.5) {
                     const fVert = new THREE.Mesh(new THREE.BoxGeometry(0.12, glassHeight, 0.25), frameMat);
                     fVert.position.set(sx, 0, 0.25);
@@ -10253,12 +10285,12 @@ function buildShoppingStreet() {
                 boardBase.position.set(wallX - 0.2, 40, z + (Math.random() > 0.5 ? 1 : -1));
                 floorGrp.add(boardBase);
 
-                // 使用暖色與商業色彩
+                // 屏幕顏色
                 const screenColors = ['#ff8800', '#ff00aa', '#00ccff', '#ffffff', '#ffbb33'];
                 const screenColor = screenColors[Math.floor(Math.random() * screenColors.length)];
                 
-                // 替換為指定的 CHI、CHIS 等品牌
-                const brandNames = ['CHI', 'CHIS', 'LUXURY', 'STYLE', 'VISION', 'GALAXY'];
+                // 指定品牌 CHI 或 CHIS
+                const brandNames = ['CHI', 'CHIS'];
                 const brand = brandNames[Math.floor(Math.random() * brandNames.length)];
                 const tex = createNeonSign(brand, '#050505', screenColor, false);
                 
@@ -10271,17 +10303,17 @@ function buildShoppingStreet() {
                 screen.position.set(wallX - 0.51, 40, boardBase.position.z);
                 screen.userData = { isNeon: true }; 
                 floorGrp.add(screen);
-
-                // 🌟 在廣告屏幕前加上一顆真實的暖色光源，照亮周圍的牆面與地面
-                const boardLight = new THREE.PointLight(screenColor, 0.0, 50);
-                boardLight.position.set(wallX - 5.0, 40, boardBase.position.z);
-                boardLight.name = 'realLight'; // 綁定日夜系統，晚上自動亮起
-                floorGrp.add(boardLight);
             }
+
+            // 🌟 5. 環境氣氛暖光：照亮街道與行人
+            // 在大樓前方加入一盞隱形的暖黃色燈光，晚上自動亮起，徹底消除陰沉感
+            const streetWarmingLight = new THREE.PointLight(0xffaa55, 0.0, 70);
+            streetWarmingLight.position.set(wallX - 10.0, 25, z);
+            streetWarmingLight.name = 'realLight'; // 綁定日夜系統
+            floorGrp.add(streetWarmingLight);
 
             return floorGrp;
         }
-
         
         // 🏬 店舖 A：文苑文具 
         const statGrp = new THREE.Group();
