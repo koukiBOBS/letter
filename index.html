@@ -10218,58 +10218,56 @@ function buildShoppingStreet() {
 
 // --- 1. 地面：清水模廣場與城市基底 ---
     const streetMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), roughness: 1.0});
-    const street = new THREE.Mesh(new THREE.PlaneGeometry(69, 500), streetMat);
-    street.position.set(-19.5, 0, 0); 
+    // 將道路向左 (-Z) 大幅延伸至 2500 單位
+    const street = new THREE.Mesh(new THREE.PlaneGeometry(69, 2500), streetMat);
+    street.position.set(-19.5, 0, -1000); // 覆蓋範圍 Z: 250 到 -2250
     street.rotation.x = -Math.PI/2;
     street.receiveShadow = true;
+    street.frustumCulled = false; // 🚫 防止消失 BUG
     streetScene.add(street);
 
-    // 城市基底 (讓建築物建在堅實的土地上，而不是懸空在海面上)
+    // 城市基底向遠方延伸
     const cityGroundMat = new THREE.MeshStandardMaterial({color: 0x1a1a1a, roughness: 1.0});
-    const cityGround = new THREE.Mesh(new THREE.BoxGeometry(400, 20, 510), cityGroundMat);
-    cityGround.position.set(215, -10, 0); // X 從 15 延伸到 415，完美涵蓋所有建築物
+    const cityGround = new THREE.Mesh(new THREE.BoxGeometry(400, 20, 2500), cityGroundMat);
+    cityGround.position.set(215, -10, -1000); 
+    cityGround.frustumCulled = false; // 🚫 防止消失 BUG
     streetScene.add(cityGround);
 
-    // 垂直防波堤 (覆蓋長廊下方與前後兩端的邊緣)
+    // 垂直防波堤 (向左無盡延伸)
     const seaWallMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), color: 0x555555});
-    // 正面防波堤
-    const mainWall = new THREE.Mesh(new THREE.BoxGeometry(1, 15, 500), seaWallMat);
-    mainWall.position.set(-54.5, -7.5, 0);
+    // 正面主防波堤
+    const mainWall = new THREE.Mesh(new THREE.BoxGeometry(1, 15, 2500), seaWallMat);
+    mainWall.position.set(-54.5, -7.5, -1000);
+    mainWall.frustumCulled = false; // 🚫 防止消失 BUG
     streetScene.add(mainWall);
-    // 兩端防波堤 (封口過渡)
+    
+    // 只有右端 (Z=250) 有封口防波堤，左端取消以連通城市
     const endWall1 = new THREE.Mesh(new THREE.BoxGeometry(70, 15, 1), seaWallMat);
     endWall1.position.set(-19.5, -7.5, 250);
     streetScene.add(endWall1);
-    const endWall2 = new THREE.Mesh(new THREE.BoxGeometry(70, 15, 1), seaWallMat);
-    endWall2.position.set(-19.5, -7.5, -250);
-    streetScene.add(endWall2);
 
-    // 👇 極低效能負擔的海濱防浪堤 (消波塊群) + 兩側邊緣自然過渡
+    // 👇 海濱防浪堤 (消波塊群) 向左延伸
     const tetrapodGeo = new THREE.TetrahedronGeometry(2.0, 0); 
     const tetrapodMat = new THREE.MeshStandardMaterial({color: 0x888888, roughness: 0.9});
-    const tetrapodCount = 1200; 
+    const tetrapodCount = 2500; // 增加數量覆蓋延伸路段
     const tetrapodIMesh = new THREE.InstancedMesh(tetrapodGeo, tetrapodMat, tetrapodCount);
     tetrapodIMesh.castShadow = true; tetrapodIMesh.receiveShadow = true;
+    tetrapodIMesh.frustumCulled = false; // 🚫 防止消失 BUG
     
     const dummyTetra = new THREE.Object3D();
     for(let i=0; i<tetrapodCount; i++) {
         let xPos, zPos, yPos;
         const edge = Math.random();
-        if (edge < 0.7) {
-            // 正面海岸線 (70%)
-            zPos = -260 + Math.random() * 520; 
+        if (edge < 0.9) {
+            // 正面海岸線，延伸至 -2000 深入濃霧
+            zPos = 250 - Math.random() * 2250; 
             xPos = -54 - Math.random() * 15;   
             yPos = -3.5 - Math.abs(xPos + 54) * 0.5 + (Math.random()-0.5)*1.5; 
-        } else if (edge < 0.85) {
-            // 右側過渡 (15%) - 在 Z=250 轉角處堆疊
+        } else {
+            // 右側過渡 (只有一邊有轉角)
             xPos = -58 + Math.random() * 50; 
             zPos = 250 + Math.random() * 15;
             yPos = -3.5 - Math.abs(zPos - 250) * 0.5 + (Math.random()-0.5)*1.5;
-        } else {
-            // 左側過渡 (15%) - 在 Z=-250 轉角處堆疊
-            xPos = -58 + Math.random() * 50; 
-            zPos = -250 - Math.random() * 15;
-            yPos = -3.5 - Math.abs(zPos + 250) * 0.5 + (Math.random()-0.5)*1.5;
         }
         
         dummyTetra.position.set(xPos, yPos, zPos);
@@ -10279,7 +10277,6 @@ function buildShoppingStreet() {
         tetrapodIMesh.setMatrixAt(i, dummyTetra.matrix);
     }
     streetScene.add(tetrapodIMesh);
-
         
 
         const tactileMat = new THREE.MeshStandardMaterial({color: 0xddaa00, roughness: 0.9});
@@ -10564,55 +10561,51 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
 
        // B. 香港經典海濱金屬欄杆 (實例化，幾百根柱子只要 1 次運算)
     // 💡 加上 fakeGlassEnv 虛擬環境光，金屬度拉滿，產生極度逼真的不鏽鋼反光，且零效能負擔！
- const railMat = new THREE.MeshStandardMaterial({
+// B. 香港經典海濱金屬欄杆 (實例化)
+    const railMat = new THREE.MeshStandardMaterial({
         color: 0xaabbcc, metalness: 1.0, roughness: 0.15,
         envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
         envMapIntensity: 2.0
     });
     
-    // 1. 正面長欄杆
-    const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 500), railMat);
-    topRail.position.set(-54, 3.5, 0); topRail.castShadow = true;
+    // 1. 正面長欄杆延伸到遠方
+    const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 2500), railMat);
+    topRail.position.set(-54, 3.5, -1000); 
+    topRail.castShadow = true;
+    topRail.frustumCulled = false; // 🚫 防止消失 BUG
     streetScene.add(topRail);
     
-    // 2. 前後兩端欄杆 (封閉街道)
+    // 2. 只有右端 (Z=250) 有欄杆封口，左端開放
     const endRailTop1 = new THREE.Mesh(new THREE.BoxGeometry(69, 0.3, 0.5), railMat);
     endRailTop1.position.set(-19.5, 3.5, 250); endRailTop1.castShadow = true;
     streetScene.add(endRailTop1);
-    
-    const endRailTop2 = new THREE.Mesh(new THREE.BoxGeometry(69, 0.3, 0.5), railMat);
-    endRailTop2.position.set(-19.5, 3.5, -250); endRailTop2.castShadow = true;
-    streetScene.add(endRailTop2);
         
     const dummyTools = new THREE.Object3D();
     
-    // 3. 正面立柱
-    const postCount = 251;
+    // 3. 正面立柱延伸
+    const postCount = 1250;
     const postIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.2, 3.5, 0.2), railMat, postCount);
     postIMesh.castShadow = true;
+    postIMesh.frustumCulled = false; // 🚫 防止消失 BUG
     for(let i=0; i<postCount; i++) {
-        dummyTools.position.set(-54, 1.75, -250 + i*2);
+        dummyTools.position.set(-54, 1.75, 250 - i*2);
         dummyTools.updateMatrix();
         postIMesh.setMatrixAt(i, dummyTools.matrix);
     }
     streetScene.add(postIMesh);
 
-    // 4. 前後兩端立柱
+    // 4. 右端封口立柱
     const endPostCount = 35;
-    const endPostIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.2, 3.5, 0.2), railMat, endPostCount * 2);
+    const endPostIMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.2, 3.5, 0.2), railMat, endPostCount);
     endPostIMesh.castShadow = true;
     for(let i=0; i<endPostCount; i++) {
         let xPos = -54 + i * 2;
-        // Z = 250
         dummyTools.position.set(xPos, 1.75, 250);
         dummyTools.updateMatrix();
         endPostIMesh.setMatrixAt(i, dummyTools.matrix);
-        // Z = -250
-        dummyTools.position.set(xPos, 1.75, -250);
-        dummyTools.updateMatrix();
-        endPostIMesh.setMatrixAt(endPostCount + i, dummyTools.matrix);
     }
     streetScene.add(endPostIMesh);
+ 
 
         const planterMat = new THREE.MeshStandardMaterial({map: createConcreteTexture(), color: 0xcccccc});
         const woodSeatMat = new THREE.MeshStandardMaterial({map: createWoodTexture()});
@@ -10804,8 +10797,9 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         const hyOutR = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.6, 12), hyMat); hyOutR.rotation.z = Math.PI/2; hyOutR.position.set(0.6, 1.4, 0); hydrantGrp.add(hyOutR);
         const hyCapR = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.1, 12), hySilver); hyCapR.rotation.z = Math.PI/2; hyCapR.position.set(0.95, 1.4, 0); hydrantGrp.add(hyCapR);
 
-        const poleMat = new THREE.MeshStandardMaterial({color: 0x333333, metalness: 0.6});
-        for (let z of [30, -5, -45]) {
+       const poleMat = new THREE.MeshStandardMaterial({color: 0x333333, metalness: 0.6});
+        // 加入遠方的 Z 座標，產生無限延伸的高速公路感
+        for (let z of [30, -5, -45, -150, -320, -550, -850, -1250, -1800]) {
             const lampGrp = new THREE.Group(); lampGrp.position.set(4, 0, z);
             const base = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 2, 16), poleMat); base.position.y = 1; base.castShadow = true; lampGrp.add(base);
             const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.4, 20, 16), poleMat); pole.position.y = 12; pole.castShadow = true; lampGrp.add(pole);
