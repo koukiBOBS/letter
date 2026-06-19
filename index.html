@@ -10046,13 +10046,18 @@ function buildShoppingStreet() {
         streetDir.shadow.camera.top = 80; streetDir.shadow.camera.bottom = -80;
         streetScene.add(streetDir);
 
-        // ==========================================
-        // 1. 動態海面與島嶼 (紋理滾動版)
+      // ==========================================
+        // 1. 動態海面與島嶼 (GPU 頂點波浪版)
         // ==========================================
         if (!streetWaterTex) streetWaterTex = createDynamicWaterTexture();
         
-        const oceanBaseMat = new THREE.MeshBasicMaterial({ map: streetWaterTex });
-        const oceanBase = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000), oceanBaseMat);
+        const oceanBaseMat = new THREE.MeshStandardMaterial({ 
+            map: streetWaterTex, color: 0x0a1a2a, roughness: 0.1, metalness: 0.8 
+        });
+        injectWaveShader(oceanBaseMat); // 🌊 注入 GPU 波浪魔法
+        
+        // 增加分段數(100,100)讓波浪有頂點可以起伏
+        const oceanBase = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000, 100, 100), oceanBaseMat);
         oceanBase.rotation.x = -Math.PI/2;
         oceanBase.position.set(0, -6.5, 0); 
         streetScene.add(oceanBase);
@@ -10284,16 +10289,7 @@ function buildShoppingStreet() {
         // ==========================================
         
         // 🌊 5.1 升級商店街海面為 3D GPU 波浪
-        if (!streetWaterTex) streetWaterTex = createDynamicWaterTexture();
-        const oceanBaseMat = new THREE.MeshStandardMaterial({ 
-            map: streetWaterTex, color: 0x0a1a2a, roughness: 0.1, metalness: 0.8 
-        });
-        injectWaveShader(oceanBaseMat); // 注入波浪魔法
-        // 增加分段數(100,100)讓波浪有頂點可以起伏
-        const oceanBase = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000, 100, 100), oceanBaseMat);
-        oceanBase.rotation.x = -Math.PI/2;
-        oceanBase.position.set(0, -6.5, 0); 
-        streetScene.add(oceanBase);
+    
 
         // 🏙️ 5.2 滿版、五光十色、防窗戶變形的大廈群
         const cityEmissiveTex = createDistantCityEmissive();
