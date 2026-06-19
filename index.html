@@ -4344,36 +4344,29 @@ function createPowderMetalTexture(baseColorHex) {
 
 
 // 👇 替換：專屬「商店街對岸」的天際線光點 (稀疏油畫/印象派風格，防閃爍)
-function createCityLightsTexture() {
+// 👇 替換：專屬「商店街對岸」的天際線光點 (極度稀疏的油畫/印象派風格)
+// 👇 替換 1：讓貼圖生成器可以接收「燈光數量」參數
+function createCityLightsTexture(dotCount) {
     const canvas = document.createElement('canvas');
     canvas.width = 512; canvas.height = 512;
     const ctx = canvas.getContext('2d');
     
-    // 底色純黑 (不發光區域)
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, 512, 512); 
 
-    // 指定的色彩：白、微藍、暖黃、橙、紅
     const colors = ['#ffffff', '#dcf0ff', '#ffddaa', '#ff9955', '#ff4444'];
-
-    // 🌟 極少量：整張貼圖只畫約 18 筆光點，達到象徵性點綴
-    const dotCount = 18;
 
     for (let i = 0; i < dotCount; i++) { 
         const x = Math.random() * 512;
         const y = Math.random() * 512;
         ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
         
-        // 像油畫筆觸一樣，稍微不規則、大一點的色塊 (8 到 14 px)
-        // 放大尺寸可以抵抗遠距離的模糊，並且徹底消除閃爍
         const size = 8 + Math.random() * 6; 
-        
-        ctx.globalAlpha = 0.8 + Math.random() * 0.2;
+        ctx.globalAlpha = 0.7 + Math.random() * 0.3;
         ctx.fillRect(x, y, size, size + (Math.random() * 4 - 2)); 
         
-        // 偶爾在旁邊補一筆稍微淡一點的顏色，營造厚塗手繪感
         if (Math.random() > 0.5) {
-            ctx.globalAlpha = 0.4;
+            ctx.globalAlpha = 0.3;
             ctx.fillRect(x - 4, y + 3, size, size);
         }
     }
@@ -4381,12 +4374,8 @@ function createCityLightsTexture() {
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping; 
     tex.wrapT = THREE.RepeatWrapping;
-    
-    // ⚠️ 關鍵防閃爍：恢復開啟 Mipmap 平滑過濾！
-    // 這樣在鏡頭移動時，光點邊緣會平滑過渡，絕對不會再有一閃一閃的劣質感
     tex.minFilter = THREE.LinearMipmapLinearFilter;
     tex.magFilter = THREE.LinearFilter;
-    
     return tex;
 }
         
@@ -10312,16 +10301,22 @@ function buildShoppingStreet() {
 
 // 🏙️ 5. 單層繪製法：無 Z-fighting 閃爍的絕對清晰天際線
         // ==========================================
-        const cityLightsTex = createCityLightsTexture();
+        // 🌟 關鍵：直接生成兩張貼圖，一張黃昏用(密集18點)，一張夜晚用(稀疏6點)
+        const cityTexDusk = createCityLightsTexture(18);
+        const cityTexNight = createCityLightsTexture(6);
         
         const skylineMat = new THREE.MeshStandardMaterial({ 
-            color: 0xffffff,         // 初始設為純白，因為最終顏色交給 syncStreetEnvironment 決定
-            emissiveMap: cityLightsTex, 
+            color: 0xffffff,
+            emissiveMap: cityTexDusk, // 預設先放黃昏版
             emissive: 0xffffff,      
             emissiveIntensity: 0.0,  
             roughness: 1.0,
-            fog: false               // 強制無視濃霧，永保清晰
+            fog: false               
         });
+
+        // 🌟 將兩張貼圖存在材質的 userData 中，方便日夜交替時隨時取用
+        skylineMat.userData.texDusk = cityTexDusk;
+        skylineMat.userData.texNight = cityTexNight;
 
         // 動態調整 UV 防止窗戶變形拉伸
         skylineMat.onBeforeCompile = function(shader) {
@@ -10334,7 +10329,6 @@ function buildShoppingStreet() {
                 #include <uv_vertex>
                 float scaleX = length(vec3(instanceMatrix[0][0], instanceMatrix[0][1], instanceMatrix[0][2]));
                 float scaleY = length(vec3(instanceMatrix[1][0], instanceMatrix[1][1], instanceMatrix[1][2]));
-                // 0.015 讓貼圖放大，維持油畫般的稀疏光芒
                 vUv = uv * vec2(scaleX * 0.015, scaleY * 0.015); 
                 `
             );
@@ -10509,24 +10503,25 @@ function syncStreetEnvironment() {
             // 中午：灰綠色，黃昏/夜晚：深黑色剪影
             child.material.color.setHex(p.phaseStr === 'noon' ? 0x4a6b66 : 0x0a1015);
         }
-      if (child.userData.isDistantCity) {
+     if (child.userData.isDistantCity) {
             // 🌅 早晨與中午
             if (p.phaseStr === 'dawn' || p.phaseStr === 'noon') {
                 child.material.color.setHex(0x7894a8);
                 child.material.emissiveIntensity = 0.0; // 關燈
             } 
-            // 🌇 黃昏微亮
+            // 🌇 黃昏微亮 (使用密集貼圖)
             else if (p.phaseStr === 'dusk') {
-                // 基底色調為稍微偏亮的暗紫色，配合明暗倍率會呈現豐富層次
                 child.material.color.setHex(0x4a3854); 
+                child.material.emissiveMap = child.material.userData.texDusk; // 👈 換上 18 點的密集貼圖
                 child.material.emissiveIntensity = 1.5; 
+                child.material.needsUpdate = true;
             } 
-            // 🌙 夜晚亮起
+            // 🌙 夜晚亮起 (使用稀疏貼圖)
             else {
-                // ⚠️ 關鍵：基底色改為較明顯的「深灰藍色」(0x0c1420)
-                // 這樣最亮的大廈會呈現深灰藍，而最暗的大廈會接近純黑，營造出完美的前後空間距！
                 child.material.color.setHex(0x0c1420); 
+                child.material.emissiveMap = child.material.userData.texNight; // 👈 換上 6 點的稀疏貼圖
                 child.material.emissiveIntensity = 4.0; 
+                child.material.needsUpdate = true;
             }
         }
         if (child.userData.isSilhouette) {
