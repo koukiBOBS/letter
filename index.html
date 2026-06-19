@@ -10996,27 +10996,41 @@ streetScene.fog = new THREE.Fog(p.fog, 400, 3000);
 
   const ambient = streetScene.getObjectByName('streetAmbient');
     if (ambient) {
-        ambient.color.setHex(p.phaseStr === 'night' ? 0x222244 : 0xffffff);
-        ambient.intensity = p.phaseStr === 'night' ? 0.3 : (p.phaseStr === 'noon' ? 0.8 : 0.6);
+        // 🌟 改變基礎環境光：夜晚改為「暖棕色(0x4a3b32)」取代原本的冷藍色，並大幅提升亮度
+        ambient.color.setHex(p.phaseStr === 'night' ? 0x4a3b32 : 0xfffaed);
+        ambient.intensity = p.phaseStr === 'night' ? 0.65 : (p.phaseStr === 'noon' ? 1.0 : 0.8);
     }
     
-    // 👇 新增：控制城市光害，讓夜晚的街道地面與行人不再死黑
-   const hemi = streetScene.getObjectByName('streetHemi');
+    const hemi = streetScene.getObjectByName('streetHemi');
     if (hemi) {
-        // 晨曦給予溫暖補光，消除黑白死灰感
-        if (p.phaseStr === 'night') hemi.intensity = 0.45;
-        else if (p.phaseStr === 'dusk') hemi.intensity = 0.3;
-        else if (p.phaseStr === 'dawn') {
-            hemi.color.setHex(0xffe4cc); // 晨曦暖橘光
-            hemi.intensity = 0.25;
+        // 🌟 注入香港不夜城的「暖黃色路燈氛圍」
+        if (p.phaseStr === 'night') {
+            hemi.color.setHex(0xffcca8);       // 天空漫射光：強烈的暖橘黃色
+            hemi.groundColor.setHex(0x553311); // 地面反光：深暖棕色 (徹底消除地面的死黑與冷感)
+            hemi.intensity = 0.9;              // 大幅提亮，讓整個街道染上暖光
         }
-        else hemi.intensity = 0.0;
+        else if (p.phaseStr === 'dusk') {
+            hemi.color.setHex(0xffaa77);
+            hemi.groundColor.setHex(0x442211);
+            hemi.intensity = 0.8;
+        }
+        else if (p.phaseStr === 'dawn') {
+            hemi.color.setHex(0xffe4cc);
+            hemi.groundColor.setHex(0x332222);
+            hemi.intensity = 0.7;
+        }
+        else { // noon
+            hemi.color.setHex(0xffffff);
+            hemi.groundColor.setHex(0x777777);
+            hemi.intensity = 0.5;
+        }
     }
     
     const dirLight = streetScene.getObjectByName('streetDir');
     if (dirLight) {
-        dirLight.color.setHex(p.dir);
-        dirLight.intensity = (p.phaseStr === 'night') ? 0.05 : p.int;
+        // 🌟 夜晚保留帶有方向性的暖光，模擬遠方大型霓虹燈的漫射，整體亮度加成
+        dirLight.color.setHex(p.phaseStr === 'night' ? 0xffbb88 : p.dir);
+        dirLight.intensity = (p.phaseStr === 'night') ? 0.3 : p.int * 1.2; 
         dirLight.castShadow = p.shadow;
     }
 
