@@ -24,6 +24,46 @@
             font-family: 'Microsoft JhengHei', sans-serif; color: white;
             background: rgba(0,0,0,0.6); padding: 10px 15px; border-radius: 8px; pointer-events: none;
         }
+
+
+/* 👇 新增：旋鈕與開發面板專屬樣式 👇 */
+#dev-panel-wrapper { position: fixed; bottom: 20px; right: 20px; z-index: 999999; font-family: 'Microsoft JhengHei', sans-serif; display: none; }
+#dev-toggle-btn { background: #2c3e50; color: white; border: 2px solid #e2e8f0; border-radius: 30px; padding: 10px 20px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: 0.3s; }
+#dev-toggle-btn:hover { background: #34495e; transform: translateY(-2px); }
+#dev-test-panel { background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(10px); border: 1px solid #475569; width: 300px; border-radius: 16px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); transition: all 0.3s; transform-origin: bottom right; position: absolute; bottom: 0; right: 0; }
+#dev-test-panel.collapsed { transform: scale(0.8); opacity: 0; pointer-events: none; }
+.dev-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #475569; padding-bottom: 10px; color: #f8fafc; font-size: 1.1rem; margin-top: 0;}
+.dev-close-btn { background: transparent; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer; }
+.dev-close-btn:hover { color: #ef4444; }
+.dev-section { margin-bottom: 15px; }
+.dev-sec-title { color: #94a3b8; font-size: 0.85rem; margin-bottom: 8px; font-weight: 600; }
+.dev-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.dev-btn { background: #334155; color: #e2e8f0; border: 1px solid #475569; padding: 8px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; text-align: center; }
+.dev-btn:hover { background: #475569; }
+.dev-btn.span-2 { grid-column: span 2; }
+.dev-btn.highlight { background: #ca8a04; color: white; border-color: #eab308; font-weight: bold; }
+
+/* 虛擬搖桿/旋鈕 UI */
+#mobile-cam-knob {
+    position: fixed; bottom: 30px; left: 20px; z-index: 3000;
+    width: 70px; height: 70px; background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%; backdrop-filter: blur(8px); border: 2px solid rgba(255,255,255,0.4);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; touch-action: none; pointer-events: auto;
+}
+.knob-center {
+    width: 44px; height: 44px; background: #fff; border-radius: 50%;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.1);
+    position: relative; transition: background 0.4s ease;
+}
+.knob-indicator {
+    position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+    width: 6px; height: 14px; background: #548ca8; border-radius: 4px;
+}
+/* 👆 新增結束 👆 */
+
+
+        
     </style>
     <!-- 引入 Three.js 與 OrbitControls -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -32,26 +72,40 @@
 <body>
 
 
-<!-- 開發與測試面板 (預設隱藏) -->
+<!-- 👇 新增：移動端與電腦版通用的控制旋鈕 👇 -->
+<div id="mobile-cam-knob">
+    <div class="knob-center" id="knob-dial">
+        <div class="knob-indicator"></div>
+    </div>
+</div>
+
+<!-- 開發與測試面板 (加入了縮放功能) -->
 <div id="dev-panel-wrapper">
     <button id="dev-toggle-btn" onclick="toggleDevPanel()">
         <span style="font-size: 1.2rem;">⚙️</span> 學校測試面板
     </button>
     <div id="dev-test-panel" class="collapsed">
         <div class="dev-header">
-            <div style="margin:0; font-weight:bold;">🛠️ 環境與光影測試</div>
+            <div style="margin:0; font-weight:bold;">🛠️ 校園測試工具</div>
             <button class="dev-close-btn" onclick="toggleDevPanel()">×</button>
         </div>
         
         <div class="dev-section">
-            <div class="dev-sec-title">⏳ 強制切換時間</div>
+            <div class="dev-sec-title">⏳ 環境與光影</div>
             <div class="dev-grid">
                 <button class="dev-btn" onclick="devSetSchoolTime('dawn')">🌅 晨</button>
                 <button class="dev-btn" onclick="devSetSchoolTime('noon')">☀️ 午</button>
                 <button class="dev-btn" onclick="devSetSchoolTime('dusk')">🌇 暮</button>
                 <button class="dev-btn" onclick="devSetSchoolTime('night')">🌙 夜</button>
-                <button class="dev-btn span-2 highlight" onclick="devResetSchoolTime()">🔄 恢復真實時間同步</button>
-                <button class="dev-btn span-2" style="background:#78350f;" onclick="window.location.href='index.html'">🚪 返回房間</button>
+                <button class="dev-btn span-2 highlight" onclick="devResetSchoolTime()">🔄 恢復真實時間</button>
+            </div>
+        </div>
+
+        <div class="dev-section">
+            <div class="dev-sec-title">🚶‍♂️ 視角切換</div>
+            <div class="dev-grid">
+                <button class="dev-btn span-2 highlight" style="background:#16a34a; border-color:#15803d;" onclick="toggleWalkMode()">👀 切換 鳥瞰/第一人稱</button>
+                <button class="dev-btn span-2" style="background:#78350f;" onclick="window.location.href='index.html'">🚪 搭車返回房間</button>
             </div>
         </div>
     </div>
@@ -1482,13 +1536,190 @@ syncSchoolEnvironmentTime();
 setInterval(syncSchoolEnvironmentTime, 60000);
 
 
+
+// =====================================================================
+// 🚶‍♂️ 虛擬搖桿與第一人稱行走系統 (附帶物理防穿模檢測)
+// =====================================================================
+window.isWalkMode = false;
+window.isKnobDragging = false;
+window.walkVel = 0;
+window.strafeVel = 0;
+let startX = 0, startY = 0;
+
+// 切換開發面板
+window.toggleDevPanel = function() {
+    document.getElementById('dev-test-panel').classList.toggle('collapsed');
+};
+
+// 切換 鳥瞰 / 第一人稱
+window.toggleWalkMode = function() {
+    window.isWalkMode = !window.isWalkMode;
+    const knobCenter = document.querySelector('.knob-center');
+    const indicator = document.querySelector('.knob-indicator');
+    
+    if (window.isWalkMode) {
+        // 進入第一人稱 (FPS)
+        controls.minAzimuthAngle = -Infinity;
+        controls.maxAzimuthAngle = Infinity;
+        controls.minPolarAngle = Math.PI / 3;
+        controls.maxPolarAngle = Math.PI / 1.5;
+        controls.minDistance = 0.1; 
+        controls.maxDistance = 0.1; // 鎖定距離強制轉頭
+        controls.enablePan = false;
+
+        knobCenter.style.background = '#6b8e73'; // 綠色代表行走模式
+        indicator.style.background = '#fff';
+
+        // 將相機降至地面高度 (學生視角約 3.5 單位高)
+        camera.position.set(-6, 3.5, 0); // 預設放在綠色球場中心
+        controls.target.set(-5.9, 3.5, 0);
+        camera.lookAt(-5.9, 3.5, 0);
+        controls.update();
+
+    } else {
+        // 退回鳥瞰模式
+        controls.minAzimuthAngle = -Infinity;
+        controls.maxAzimuthAngle = Infinity;
+        controls.minPolarAngle = 0;
+        controls.maxPolarAngle = Math.PI / 2 - 0.02;
+        controls.minDistance = 10;
+        controls.maxDistance = 200;
+        controls.enablePan = true;
+
+        knobCenter.style.background = '#fff';
+        indicator.style.background = '#548ca8';
+        knobCenter.style.transform = `translate(0px, 0px)`;
+
+        // 升空
+        camera.position.set(-55, 45, 105);
+        controls.target.set(5, 10, 0);
+        controls.update();
+    }
+};
+
+// 🛡️ 物理邊界檢測：判斷玩家下一步是否會撞牆
+function isCollision(x, z) {
+    const r = 1.0; // 玩家碰撞半徑
+    
+    // 1. 世界邊界 (防掉出地圖)
+    if (x < -45 || x > 45 || z < -35 || z > 55) return true;
+
+    // 2. 主教學樓 (左側大樓)
+    if (x > -37.5 - r && x < -2.0 + r && 
+        z > -33.0 - r && z < -9.0 + r) return true;
+
+    // 3. 特色大樓與淺綠色區域 (右側大樓)
+    if (x > 17.0 - r && x < 36.0 + r && 
+        z > -33.0 - r && z < 14.5 + r) return true;
+
+    // 4. 白色小屋 (綠色球場下方)
+    if (x > -24.0 - r && x < -9.0 + r && 
+        z > 20.0 - r && z < 32.0 + r) return true;
+
+    // 通過所有檢測，代表可以走！
+    return false; 
+}
+
+// 搖桿事件綁定
+const knob = document.getElementById('mobile-cam-knob');
+function handleDown(e) {
+    if (!window.isWalkMode) return;
+    window.isKnobDragging = true;
+    startX = e.touches ? e.touches[0].clientX : e.clientX; 
+    startY = e.touches ? e.touches[0].clientY : e.clientY;
+}
+function handleMove(e) {
+    if (!window.isKnobDragging || !window.isWalkMode) return;
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    
+    const rect = knob.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    let dx = cx - centerX;
+    let dy = cy - centerY;
+
+    const maxRadius = rect.width / 2;
+    const dist = Math.hypot(dx, dy);
+    if (dist > maxRadius) { dx = (dx / dist) * maxRadius; dy = (dy / dist) * maxRadius; }
+    
+    document.querySelector('.knob-center').style.transform = `translate(${dx}px, ${dy}px)`;
+    
+    // 設定前後與平移速度
+    window.walkVel = -(dy / maxRadius) * 0.4; // 前後
+    window.strafeVel = (dx / maxRadius) * 0.4; // 左右平移
+}
+function handleUp() {
+    window.isKnobDragging = false;
+    window.walkVel = 0; window.strafeVel = 0;
+    if (window.isWalkMode) {
+        document.querySelector('.knob-center').style.transform = `translate(0px, 0px)`;
+    }
+}
+knob.addEventListener('mousedown', handleDown);
+knob.addEventListener('touchstart', handleDown, {passive: false});
+window.addEventListener('mousemove', handleMove);
+window.addEventListener('touchmove', (e) => { if(window.isKnobDragging) { e.preventDefault(); handleMove(e); }}, {passive: false});
+window.addEventListener('mouseup', handleUp);
+window.addEventListener('touchend', handleUp);
+
+// 🏃‍♂️ 更新玩家位置 (放置在 animate 迴圈內呼叫)
+function updatePlayerMovement() {
+    if (!window.isWalkMode) return;
+    
+    if (Math.abs(window.walkVel) > 0.01 || Math.abs(window.strafeVel) > 0.01) {
+        let fwd = new THREE.Vector3();
+        camera.getWorldDirection(fwd);
+        fwd.y = 0; fwd.normalize();
+        
+        let right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0,1,0)).normalize();
+        
+        // 預測下一步的座標
+        let moveVec = new THREE.Vector3()
+            .add(fwd.multiplyScalar(window.walkVel))
+            .add(right.multiplyScalar(window.strafeVel));
+
+        let nextX = camera.position.x + moveVec.x;
+        let nextZ = camera.position.z + moveVec.z;
+
+        // 🛡️ 啟動物理檢測
+        if (!isCollision(nextX, nextZ)) {
+            // 安全，允許移動 (連同 target 一起移動才能保持第一人稱視角)
+            camera.position.x = nextX;
+            camera.position.z = nextZ;
+            controls.target.x += moveVec.x;
+            controls.target.z += moveVec.z;
+        } else {
+            // 撞牆了！我們嘗試「滑步 (Sliding)」
+            // 檢查只移動 X 是否會撞牆
+            if (!isCollision(nextX, camera.position.z)) {
+                camera.position.x = nextX;
+                controls.target.x += moveVec.x;
+            } 
+            // 否則檢查只移動 Z 是否會撞牆
+            else if (!isCollision(camera.position.x, nextZ)) {
+                camera.position.z = nextZ;
+                controls.target.z += moveVec.z;
+            }
+        }
+    }
+}
+// =====================================================================
+
+
+
+        
+
         // ==========================================
         // 5. 渲染與動畫迴圈
         // ==========================================
         document.getElementById('loading').style.display = 'none';
 
-        function animate() {
-            requestAnimationFrame(animate);
+function animate() {
+    requestAnimationFrame(animate);
+    
+    // 👇 新增這行：處理第一人稱走路與防撞
+    updatePlayerMovement();
             controls.update(); 
             renderer.render(scene, camera);
         }
