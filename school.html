@@ -30,6 +30,34 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
+
+
+<!-- 開發與測試面板 (預設隱藏) -->
+<div id="dev-panel-wrapper">
+    <button id="dev-toggle-btn" onclick="toggleDevPanel()">
+        <span style="font-size: 1.2rem;">⚙️</span> 學校測試面板
+    </button>
+    <div id="dev-test-panel" class="collapsed">
+        <div class="dev-header">
+            <div style="margin:0; font-weight:bold;">🛠️ 環境與光影測試</div>
+            <button class="dev-close-btn" onclick="toggleDevPanel()">×</button>
+        </div>
+        
+        <div class="dev-section">
+            <div class="dev-sec-title">⏳ 強制切換時間</div>
+            <div class="dev-grid">
+                <button class="dev-btn" onclick="devSetSchoolTime('dawn')">🌅 晨</button>
+                <button class="dev-btn" onclick="devSetSchoolTime('noon')">☀️ 午</button>
+                <button class="dev-btn" onclick="devSetSchoolTime('dusk')">🌇 暮</button>
+                <button class="dev-btn" onclick="devSetSchoolTime('night')">🌙 夜</button>
+                <button class="dev-btn span-2 highlight" onclick="devResetSchoolTime()">🔄 恢復真實時間同步</button>
+                <button class="dev-btn span-2" style="background:#78350f;" onclick="window.location.href='index.html'">🚪 返回房間</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
     <div id="loading">正在建構精細立面與材質光影...</div>
     <div id="instructions">🖱️ 左鍵拖曳：旋轉視角 | 🖱️ 右鍵拖曳：平移 | ⚙️ 滾輪：縮放</div>
 
@@ -48,27 +76,49 @@ const auth = firebase.auth();
 const db = firebase.database();
 
 let currentUser = null;
-let userPoints = 0;
-let userInventory = {};
+let timeForced = false; // 紀錄開發者是否鎖定了時間
 
-// 檢查登入狀態，未登入則踢回房間
+// 判斷是否為老師 Email
+function isTeacherEmail(email) {
+    if (!email) return false;
+    return /^[^\d@]+@ccckyc\.edu\.hk$/.test(email.toLowerCase());
+}
+
+// 開關開發面板
+window.toggleDevPanel = function() {
+    document.getElementById('dev-test-panel').classList.toggle('collapsed');
+};
+
+// 強制切換學校時間
+window.devSetSchoolTime = function(phase) {
+    timeForced = true; // 鎖定時間，讓 setInterval 不會蓋過它
+    setSchoolPhase(phase);
+    console.log("🛠️ 測試：已強制切換時間至 " + phase);
+};
+
+// 恢復真實時間
+window.devResetSchoolTime = function() {
+    timeForced = false; // 解除鎖定
+    syncSchoolEnvironmentTime();
+    console.log("🔄 測試：已恢復真實時間同步");
+};
+
+// 檢查登入狀態與權限
 auth.onAuthStateChanged(user => {
     if (user) {
         currentUser = user;
-        // 實時監聽該玩家的積分與資產
-        db.ref(`users/${user.uid}`).on('value', snap => {
-            const data = snap.val() || {};
-            userPoints = data.points || 0;
-            userInventory = data.inventory || {};
-            console.log("🏫 成功載入學校！當前積分：", userPoints);
-            // 日後你可以在這裡加入更新學校 UI 的程式碼 (例如顯示積分)
-        });
+        
+        // 🔑 權限檢查：如果是老師，就顯示開發者面板
+        if (isTeacherEmail(user.email)) {
+            document.getElementById('dev-panel-wrapper').style.display = 'block';
+        }
+
+        console.log("🏫 成功載入學校！");
     } else {
         alert("請先登入紙短情長系統！");
-        window.location.href = 'index.html'; // 踢回首頁
+        window.location.href = 'index.html'; 
     }
 });
-// ======================================
 
 
         
@@ -134,7 +184,8 @@ function createSkyTexture(topColorHex, bottomColorHex) {
 }
 
 function syncSchoolEnvironmentTime() {
-    const h = (new Date().getUTCHours() + 8) % 24; // 香港時間
+    if (timeForced) return; // 💡 如果開發者鎖定了時間，就不執行自動同步
+    const h = (new Date().getUTCHours() + 8) % 24; 
     if (h >= 5 && h < 9) setSchoolPhase('dawn'); 
     else if (h >= 9 && h < 16) setSchoolPhase('noon'); 
     else if (h >= 16 && h < 19) setSchoolPhase('dusk'); 
