@@ -63,6 +63,34 @@
 /* 👆 新增結束 👆 */
 
 
+/* 實時視角旋鈕樣式 (右下角) */
+#school-cam-knob {
+    position: fixed; bottom: 30px; right: 20px; z-index: 3000;
+    width: 75px; height: 75px; background: rgba(255, 255, 255, 0.25);
+    border-radius: 50%; backdrop-filter: blur(8px); border: 2px solid rgba(255,255,255,0.4);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; touch-action: none; pointer-events: auto;
+    transition: background 0.3s;
+}
+.knob-center {
+    width: 45px; height: 45px; background: #fff; border-radius: 50%;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.2);
+    position: relative; transition: transform 0.1s;
+}
+.knob-indicator {
+    position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+    width: 6px; height: 14px; background: #3182CE; border-radius: 4px;
+}
+/* 模式提示浮窗 */
+#mode-toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7); color: white; padding: 10px 20px;
+    border-radius: 30px; font-family: 'Microsoft JhengHei', sans-serif; font-size: 1rem;
+    z-index: 4000; pointer-events: none; opacity: 0; transition: opacity 0.3s;
+}
+
+        
+
         
     </style>
     <!-- 引入 Three.js 與 OrbitControls -->
@@ -113,8 +141,21 @@
 
     
     <div id="loading">正在建構精細立面與材質光影...</div>
-    <div id="instructions">🖱️ 左鍵拖曳：旋轉視角 | 🖱️ 右鍵拖曳：平移 | ⚙️ 滾輪：縮放</div>
 
+
+
+<!-- 視角模式提示 -->
+<div id="mode-toast">切換模式</div>
+    
+
+<!-- 右下角虛擬搖桿 -->
+<div id="school-cam-knob">
+    <div class="knob-center" id="s-knob-dial">
+        <div class="knob-indicator" id="s-knob-color"></div>
+    </div>
+</div>
+
+    
     <script>
 
 
@@ -246,45 +287,70 @@ function syncSchoolEnvironmentTime() {
     else setSchoolPhase('night');
 }
 
+// 替換原本的 setSchoolPhase 函數
 function setSchoolPhase(phaseStr) {
+    // 精細調校的光影與霧氣參數
     const phases = {
-        dawn: { skyTop: 0x7a8b98, skyBot: 0xd0b8a8, fog: 0xd0b8a8, light: 0xffe4cc, int: 0.8, windowLight: false },
-        noon: { skyTop: 0x40a0d0, skyBot: 0xbae0ff, fog: 0xbae0ff, light: 0xffffff, int: 1.3, windowLight: false },
-        dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, light: 0xffaa66, int: 1.0, windowLight: true },
-        night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x1a2235, light: 0x404055, int: 0.2, windowLight: true }
+        dawn: { skyTop: 0x8ea2b5, skyBot: 0xe0c6b8, fog: 0xe0c6b8, light: 0xffe4cc, int: 0.7, hemi: 0xfff0e0, ground: 0x554444, win: false },
+        noon: { skyTop: 0x40a0d0, skyBot: 0xcceaff, fog: 0xcceaff, light: 0xffffff, int: 1.15, hemi: 0xffffff, ground: 0x777777, win: false },
+        dusk: { skyTop: 0x4a4356, skyBot: 0xdf9b82, fog: 0xd2907a, light: 0xffaa66, int: 0.9, hemi: 0xffccaa, ground: 0x442211, win: true },
+        night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x1a2235, light: 0x404055, int: 0.2, hemi: 0x223344, ground: 0x111111, win: true }
     };
     const p = phases[phaseStr];
 
-    // 1. 變白天/黑夜的背景與濃霧
     scene.background = createSkyTexture(p.skyTop, p.skyBot);
-    scene.fog.color.setHex(p.fog);
+    
+    // 改用線性霧，近處清晰，遠處完美融合天空 (解決 FogExp2 白茫茫的問題)
+    scene.fog = new THREE.Fog(p.fog, 60, 250);
 
-    // 2. 調整太陽光與環境光
     sunLight.color.setHex(p.light);
     sunLight.intensity = p.int;
     
-    if(phaseStr === 'night') {
-        hemiLight.color.setHex(0x223344);
-        hemiLight.groundColor.setHex(0x111111);
-        hemiLight.intensity = 0.5;
-    } else {
-        hemiLight.color.setHex(0xffffff);
-        hemiLight.groundColor.setHex(0x777777);
-        hemiLight.intensity = 0.85;
-    }
+    hemiLight.color.setHex(p.hemi);
+    hemiLight.groundColor.setHex(p.ground);
+    hemiLight.intensity = (phaseStr === 'night') ? 0.6 : 0.85;
 
-    // 3. 晚上學校課室窗戶自動發光！
-    // 假設 matWindow 與 matDoor 等材質有保留
-    if (matWindow) {
-        matWindow.emissive.setHex(p.windowLight ? 0xffcc88 : 0x000000);
-        matWindow.emissiveIntensity = p.windowLight ? 0.6 : 0.0;
+    if (typeof matWindow !== 'undefined') {
+        matWindow.emissive.setHex(p.win ? 0xffea88 : 0x000000);
+        matWindow.emissiveIntensity = p.win ? 1.0 : 0.0;
         matWindow.needsUpdate = true;
     }
-    if (matCorridorWhite) { // 走廊晚上會稍微被燈光染黃
-        matCorridorWhite.emissive.setHex(p.windowLight ? 0x221a10 : 0x000000);
+    if (typeof matCorridorWhite !== 'undefined') {
+        matCorridorWhite.emissive.setHex(p.win ? 0x2a2010 : 0x000000);
     }
 }
 // ======================================
+
+        // 零效能數學碰撞檢測 (AABB)
+function isCollidingWithSchool(x, z) {
+    const playerRadius = 1.5; // 玩家碰撞體積
+    
+    // 1. 整個校園外圍邊界 (圍牆與鐵絲網)
+    if (z > 52 || z < -33 || x < -38 || x > 40) return true;
+    
+    // 2. 右側車閘 (X=37.5, Z=18.5 ~ 21.5 附近)
+    if (x > 34 && z > 16) return true;
+
+    // 定義建築物不可穿越的區塊 [minX, maxX, minZ, maxZ]
+    const obstacles = [
+        // A. 主教學樓
+        [-38.5, -1.0, -34.0, -8.0],
+        // B. 中間連接走廊 (包含平台)
+        [-2.0, 18.5, -34.0, -23.0],
+        // C. 右側特色大樓 (Hall) -> 包含底層鏤空柱子區，全部封鎖
+        [17.0, 36.0, -34.0, 15.0],
+        // D. 綠色球場下方的小白屋
+        [-25.0, -8.0, 19.0, 33.0]
+    ];
+
+    for (let obs of obstacles) {
+        if (x + playerRadius > obs[0] && x - playerRadius < obs[1] &&
+            z + playerRadius > obs[2] && z - playerRadius < obs[3]) {
+            return true;
+        }
+    }
+    return false;
+}
 
         // ==========================================
         // 3. 程式化材質生成
@@ -1707,7 +1773,171 @@ function updatePlayerMovement() {
 // =====================================================================
 
 
+// 學校場景雙模視角搖桿系統
+(function initSchoolKnob() {
+    const knob = document.getElementById('school-cam-knob');
+    if (!knob) return;
 
+    // 讀取用家上次的設定，預設為鳥瞰模式 (bird)
+    window.schoolCamMode = localStorage.getItem('schoolCamMode') || 'bird';
+    window.walkSpeed = 0;
+    window.turnSpeed = 0;
+    window.strafeSpeed = 0;
+    
+    let lastTapTime = 0;
+    let longPressTimer = null;
+    let isKnobDragging = false;
+    let startX = 0, startY = 0;
+    
+    function showModeToast(msg) {
+        const toast = document.getElementById('mode-toast');
+        toast.innerText = msg;
+        toast.style.opacity = 1;
+        setTimeout(() => toast.style.opacity = 0, 2000);
+    }
+
+    function applyCameraMode() {
+        const knobBg = document.getElementById('school-cam-knob');
+        const indicator = document.getElementById('s-knob-color');
+        
+        if (window.schoolCamMode === 'walk') {
+            // 第一人稱走路模式
+            controls.enabled = false;
+            knobBg.style.background = 'rgba(49, 130, 206, 0.4)'; // 藍色底代表走路
+            indicator.style.background = '#fff';
+            
+            // 降下鏡頭到人眼高度
+            gsap.to(camera.position, { y: 1.7, duration: 1.0, ease: "power2.inOut" });
+            let dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+            dir.y = 0; dir.normalize();
+            gsap.to(controls.target, { 
+                y: 1.7, 
+                x: camera.position.x + dir.x * 20, 
+                z: camera.position.z + dir.z * 20, 
+                duration: 1.0 
+            });
+            showModeToast("🚶 第一人稱漫遊模式 (拖曳左/右轉，上/下前進)");
+        } else {
+            // 鳥瞰模式
+            controls.enabled = true;
+            controls.minPolarAngle = 0.1;
+            controls.maxPolarAngle = Math.PI / 2 - 0.05;
+            
+            knobBg.style.background = 'rgba(255, 255, 255, 0.25)';
+            indicator.style.background = '#3182CE';
+            
+            // 升起鏡頭
+            gsap.to(camera.position, { y: 35, duration: 1.0, ease: "power2.inOut" });
+            gsap.to(controls.target, { y: 10, duration: 1.0, ease: "power2.inOut" });
+            showModeToast("🦅 鳥瞰模式 (滑動螢幕旋轉縮放)");
+        }
+    }
+
+    // 初始套用模式
+    setTimeout(applyCameraMode, 500);
+
+    function handleDown(e) {
+        const now = Date.now();
+        // 雙擊檢測 (小於 300 毫秒)
+        if (now - lastTapTime < 300) {
+            window.schoolCamMode = (window.schoolCamMode === 'bird') ? 'walk' : 'bird';
+            localStorage.setItem('schoolCamMode', window.schoolCamMode);
+            applyCameraMode();
+            lastTapTime = 0;
+            return;
+        }
+        lastTapTime = now;
+        isKnobDragging = true;
+        startX = e.touches ? e.touches[0].clientX : e.clientX;
+        startY = e.touches ? e.touches[0].clientY : e.clientY;
+        handleMove(e);
+    }
+
+    function handleMove(e) {
+        if (!isKnobDragging) return;
+        e.preventDefault();
+        const cx = e.touches ? e.touches[0].clientX : e.clientX;
+        const cy = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        const rect = knob.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        let dx = cx - centerX;
+        let dy = cy - centerY;
+        
+        const maxRadius = rect.width / 2;
+        const dist = Math.hypot(dx, dy);
+        if (dist > maxRadius) { dx = (dx/dist)*maxRadius; dy = (dy/dist)*maxRadius; }
+        
+        document.getElementById('s-knob-dial').style.transform = `translate(${dx}px, ${dy}px)`;
+        
+        if (window.schoolCamMode === 'walk') {
+            window.walkSpeed = (dy / maxRadius) * 0.5; // 前進後退速度
+            window.turnSpeed = -(dx / maxRadius) * 0.04; // 左右轉向速度
+        } else {
+            // 在鳥瞰模式下，搖桿可以控制環繞視角
+            controls.setAzimuthalAngle(controls.getAzimuthalAngle() - (dx / maxRadius) * 0.05);
+            controls.setPolarAngle(controls.getPolarAngle() + (dy / maxRadius) * 0.02);
+        }
+    }
+
+    function handleUp() {
+        isKnobDragging = false;
+        window.walkSpeed = 0;
+        window.turnSpeed = 0;
+        document.getElementById('s-knob-dial').style.transform = `translate(0px, 0px)`;
+    }
+
+    knob.addEventListener('mousedown', handleDown);
+    knob.addEventListener('touchstart', handleDown, {passive: false});
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('touchmove', handleMove, {passive: false});
+    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('touchend', handleUp);
+
+    // 遊戲物理循環更新
+    function gameLoop() {
+        requestAnimationFrame(gameLoop);
+        
+        // 實時指南針轉動
+        if (window.schoolCamMode === 'walk') {
+            const dx = controls.target.x - camera.position.x;
+            const dz = controls.target.z - camera.position.z;
+            const angleDeg = Math.atan2(dx, -dz) * (180 / Math.PI);
+            document.getElementById('s-knob-dial').style.transform += ` rotate(${angleDeg}deg)`;
+        }
+
+        // 行走與碰撞邏輯
+        if (window.schoolCamMode === 'walk' && (Math.abs(window.walkSpeed) > 0.01 || Math.abs(window.turnSpeed) > 0.01)) {
+            let dir = new THREE.Vector3();
+            camera.getWorldDirection(dir);
+            dir.y = 0; dir.normalize();
+
+            // 轉向
+            if (Math.abs(window.turnSpeed) > 0.01) {
+                dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), window.turnSpeed);
+            }
+
+            // 計算下一步的座標
+            let nextX = camera.position.x + dir.x * -window.walkSpeed;
+            let nextZ = camera.position.z + dir.z * -window.walkSpeed;
+
+            // 碰撞判定！如果撞到了，就不更新座標
+            if (!isCollidingWithSchool(nextX, nextZ)) {
+                camera.position.x = nextX;
+                camera.position.z = nextZ;
+            }
+
+            // 永遠保持看向前方
+            controls.target.copy(camera.position).add(dir.multiplyScalar(20));
+        }
+    }
+    gameLoop();
+})();
+
+
+        
         
 
         // ==========================================
