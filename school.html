@@ -43,9 +43,10 @@
 .dev-btn.span-2 { grid-column: span 2; }
 .dev-btn.highlight { background: #ca8a04; color: white; border-color: #eab308; font-weight: bold; }
 
-/* 虛擬搖桿/旋鈕 UI */
+/* 虛擬搖桿/旋鈕 UI (移至右下角並加入平滑過渡) */
 #mobile-cam-knob {
-    position: fixed; bottom: 30px; left: 20px; z-index: 3000;
+    position: fixed; bottom: 30px; right: 20px; /* 👈 改為 right */
+    z-index: 3000;
     width: 70px; height: 70px; background: rgba(255, 255, 255, 0.2);
     border-radius: 50%; backdrop-filter: blur(8px); border: 2px solid rgba(255,255,255,0.4);
     box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column;
@@ -54,13 +55,21 @@
 .knob-center {
     width: 44px; height: 44px; background: #fff; border-radius: 50%;
     box-shadow: inset 0 2px 5px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.1);
-    position: relative; transition: background 0.4s ease;
+    position: relative; 
+    /* 👈 加入過渡動畫，讓雙擊切換顏色時更平滑 */
+    transition: transform 0.1s ease-out, background 0.4s ease; 
 }
 .knob-indicator {
     position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
     width: 6px; height: 14px; background: #548ca8; border-radius: 4px;
 }
-/* 👆 新增結束 👆 */
+
+/* 👈 新增：避免手機版時搖桿與開發面板重疊 */
+@media (max-width: 900px) {
+    #mobile-cam-knob { display: flex !important; }
+    #dev-panel-wrapper { right: 100px !important; }
+}
+
 
 
         
@@ -181,7 +190,7 @@ auth.onAuthStateChanged(user => {
         // ==========================================
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x90C3D4); 
-        scene.fog = new THREE.FogExp2(0x90C3D4, 0.003); 
+    scene.fog = new THREE.Fog(0x90C3D4, 20, 160); 
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(-55, 45, 105); 
@@ -247,26 +256,36 @@ function syncSchoolEnvironmentTime() {
 }
 
 function setSchoolPhase(phaseStr) {
+    // 參照「閱讀人生」的光影質感設定
     const phases = {
-        dawn: { skyTop: 0x7a8b98, skyBot: 0xd0b8a8, fog: 0xd0b8a8, light: 0xffe4cc, int: 0.8, windowLight: false },
-        noon: { skyTop: 0x40a0d0, skyBot: 0xbae0ff, fog: 0xbae0ff, light: 0xffffff, int: 1.3, windowLight: false },
-        dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, light: 0xffaa66, int: 1.0, windowLight: true },
-        night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x1a2235, light: 0x404055, int: 0.2, windowLight: true }
+        // 晨：帶點日出的暖粉橘灰色霧氣，溫和的陽光
+        dawn: { skyTop: 0x7a8b98, skyBot: 0xd0b8a8, fog: 0xc4b7b2, light: 0xffe4cc, int: 0.7, windowLight: false, shadow: true },
+        // 午：清爽的偏藍灰色，微暖白的強烈陽光
+        noon: { skyTop: 0x40a0d0, skyBot: 0xbae0ff, fog: 0xbae0ff, light: 0xfff6ea, int: 1.1, windowLight: false, shadow: true },
+        // 暮：暗紫配橘紅的黃昏，光線變橘
+        dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, light: 0xffaa66, int: 0.85, windowLight: true, shadow: true },
+        // 夜：深黑色剪影與藍灰月光
+        night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x151b29, light: 0x667799, int: 0.2, windowLight: true, shadow: false }
     };
     const p = phases[phaseStr];
 
-    // 1. 變白天/黑夜的背景與濃霧
+    // 1. 天空背景與霧氣
     scene.background = createSkyTexture(p.skyTop, p.skyBot);
     scene.fog.color.setHex(p.fog);
 
-    // 2. 調整太陽光與環境光
+    // 2. 太陽光與環境光
     sunLight.color.setHex(p.light);
     sunLight.intensity = p.int;
+    sunLight.castShadow = p.shadow; // 晚上關閉太陽陰影，省效能
     
     if(phaseStr === 'night') {
-        hemiLight.color.setHex(0x223344);
+        hemiLight.color.setHex(0x334466);
         hemiLight.groundColor.setHex(0x111111);
-        hemiLight.intensity = 0.5;
+        hemiLight.intensity = 0.6;
+    } else if (phaseStr === 'dusk') {
+        hemiLight.color.setHex(0xffccaa);
+        hemiLight.groundColor.setHex(0x442211);
+        hemiLight.intensity = 0.7;
     } else {
         hemiLight.color.setHex(0xffffff);
         hemiLight.groundColor.setHex(0x777777);
@@ -274,13 +293,13 @@ function setSchoolPhase(phaseStr) {
     }
 
     // 3. 晚上學校課室窗戶自動發光！
-    // 假設 matWindow 與 matDoor 等材質有保留
-    if (matWindow) {
+    if (typeof matWindow !== 'undefined') {
         matWindow.emissive.setHex(p.windowLight ? 0xffcc88 : 0x000000);
-        matWindow.emissiveIntensity = p.windowLight ? 0.6 : 0.0;
+        matWindow.emissiveIntensity = p.windowLight ? 0.7 : 0.0;
         matWindow.needsUpdate = true;
     }
-    if (matCorridorWhite) { // 走廊晚上會稍微被燈光染黃
+    if (typeof matCorridorWhite !== 'undefined') { 
+        // 走廊晚上會稍微被燈光染暖黃
         matCorridorWhite.emissive.setHex(p.windowLight ? 0x221a10 : 0x000000);
     }
 }
@@ -1538,96 +1557,79 @@ setInterval(syncSchoolEnvironmentTime, 60000);
 
 
 // =====================================================================
-// 🚶‍♂️ 虛擬搖桿與第一人稱行走系統 (附帶物理防穿模檢測)
+// 🚶‍♂️ 虛擬搖桿與第一人稱行走系統 (雙擊切換、記憶狀態、物理防穿模)
 // =====================================================================
-window.isWalkMode = false;
+// 1. 讀取上次的模式 (預設為 false = 鳥瞰模式)
+window.isWalkMode = localStorage.getItem('schoolCamMode') === 'walk';
 window.isKnobDragging = false;
 window.walkVel = 0;
 window.strafeVel = 0;
 let startX = 0, startY = 0;
+let lastTapTime = 0; // 👈 用來紀錄雙擊的時間
 
-// 切換開發面板
-window.toggleDevPanel = function() {
-    document.getElementById('dev-test-panel').classList.toggle('collapsed');
-};
-
-// 切換 鳥瞰 / 第一人稱
+// 2. 切換 鳥瞰 / 第一人稱 邏輯
 window.toggleWalkMode = function() {
     window.isWalkMode = !window.isWalkMode;
+    localStorage.setItem('schoolCamMode', window.isWalkMode ? 'walk' : 'bird'); // 記憶選擇
+    applyCameraMode();
+};
+
+// 3. 套用相機模式設定
+function applyCameraMode() {
     const knobCenter = document.querySelector('.knob-center');
     const indicator = document.querySelector('.knob-indicator');
     
     if (window.isWalkMode) {
         // 進入第一人稱 (FPS)
-        controls.minAzimuthAngle = -Infinity;
-        controls.maxAzimuthAngle = Infinity;
-        controls.minPolarAngle = Math.PI / 3;
-        controls.maxPolarAngle = Math.PI / 1.5;
-        controls.minDistance = 0.1; 
-        controls.maxDistance = 0.1; // 鎖定距離強制轉頭
+        controls.minAzimuthAngle = -Infinity; controls.maxAzimuthAngle = Infinity;
+        controls.minPolarAngle = Math.PI / 3; controls.maxPolarAngle = Math.PI / 1.5;
+        controls.minDistance = 0.1; controls.maxDistance = 0.1; // 鎖定距離強制轉頭
         controls.enablePan = false;
 
-        knobCenter.style.background = '#6b8e73'; // 綠色代表行走模式
+        knobCenter.style.background = '#6b8e73'; 
         indicator.style.background = '#fff';
 
-        // 將相機降至地面高度 (學生視角約 3.5 單位高)
-        camera.position.set(-6, 3.5, 0); // 預設放在綠色球場中心
+        // 降至地面高度
+        camera.position.set(-6, 3.5, 0); 
         controls.target.set(-5.9, 3.5, 0);
         camera.lookAt(-5.9, 3.5, 0);
-        controls.update();
-
+        
     } else {
         // 退回鳥瞰模式
-        controls.minAzimuthAngle = -Infinity;
-        controls.maxAzimuthAngle = Infinity;
-        controls.minPolarAngle = 0;
-        controls.maxPolarAngle = Math.PI / 2 - 0.02;
-        controls.minDistance = 10;
-        controls.maxDistance = 200;
+        controls.minAzimuthAngle = -Infinity; controls.maxAzimuthAngle = Infinity;
+        controls.minPolarAngle = 0; controls.maxPolarAngle = Math.PI / 2 - 0.02;
+        controls.minDistance = 10; controls.maxDistance = 200;
         controls.enablePan = true;
 
         knobCenter.style.background = '#fff';
         indicator.style.background = '#548ca8';
-        knobCenter.style.transform = `translate(0px, 0px)`;
 
-        // 升空
+        // 升空一覽全貌
         camera.position.set(-55, 45, 105);
         controls.target.set(5, 10, 0);
-        controls.update();
     }
-};
-
-// 🛡️ 物理邊界檢測：判斷玩家下一步是否會撞牆
-function isCollision(x, z) {
-    const r = 1.0; // 玩家碰撞半徑
-    
-    // 1. 世界邊界 (防掉出地圖)
-    if (x < -45 || x > 45 || z < -35 || z > 55) return true;
-
-    // 2. 主教學樓 (左側大樓)
-    if (x > -37.5 - r && x < -2.0 + r && 
-        z > -33.0 - r && z < -9.0 + r) return true;
-
-    // 3. 特色大樓與淺綠色區域 (右側大樓)
-    if (x > 17.0 - r && x < 36.0 + r && 
-        z > -33.0 - r && z < 14.5 + r) return true;
-
-    // 4. 白色小屋 (綠色球場下方)
-    if (x > -24.0 - r && x < -9.0 + r && 
-        z > 20.0 - r && z < 32.0 + r) return true;
-
-    // 通過所有檢測，代表可以走！
-    return false; 
+    controls.update();
 }
 
-// 搖桿事件綁定
+// 4. 搖桿事件綁定 (加入雙擊判定)
 const knob = document.getElementById('mobile-cam-knob');
+
 function handleDown(e) {
-    if (!window.isWalkMode) return;
+    const now = Date.now();
+    // 👈 判斷雙擊 (350毫秒內連點兩次)
+    if (now - lastTapTime < 350) {
+        toggleWalkMode();
+        lastTapTime = 0;
+        return;
+    }
+    lastTapTime = now;
+
+    if (!window.isWalkMode) return; // 鳥瞰模式下搖桿無效
     window.isKnobDragging = true;
     startX = e.touches ? e.touches[0].clientX : e.clientX; 
     startY = e.touches ? e.touches[0].clientY : e.clientY;
 }
+
 function handleMove(e) {
     if (!window.isKnobDragging || !window.isWalkMode) return;
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
@@ -1636,8 +1638,7 @@ function handleMove(e) {
     const rect = knob.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
-    let dx = cx - centerX;
-    let dy = cy - centerY;
+    let dx = cx - centerX; let dy = cy - centerY;
 
     const maxRadius = rect.width / 2;
     const dist = Math.hypot(dx, dy);
@@ -1645,10 +1646,10 @@ function handleMove(e) {
     
     document.querySelector('.knob-center').style.transform = `translate(${dx}px, ${dy}px)`;
     
-    // 設定前後與平移速度
     window.walkVel = -(dy / maxRadius) * 0.4; // 前後
-    window.strafeVel = (dx / maxRadius) * 0.4; // 左右平移
+    window.strafeVel = (dx / maxRadius) * 0.4; // 左右
 }
+
 function handleUp() {
     window.isKnobDragging = false;
     window.walkVel = 0; window.strafeVel = 0;
@@ -1656,12 +1657,22 @@ function handleUp() {
         document.querySelector('.knob-center').style.transform = `translate(0px, 0px)`;
     }
 }
+
 knob.addEventListener('mousedown', handleDown);
 knob.addEventListener('touchstart', handleDown, {passive: false});
 window.addEventListener('mousemove', handleMove);
 window.addEventListener('touchmove', (e) => { if(window.isKnobDragging) { e.preventDefault(); handleMove(e); }}, {passive: false});
 window.addEventListener('mouseup', handleUp);
 window.addEventListener('touchend', handleUp);
+
+// 網頁載入時立刻套用記憶的相機模式
+applyCameraMode();
+
+
+
+
+
+        
 
 // 🏃‍♂️ 更新玩家位置 (放置在 animate 迴圈內呼叫)
 function updatePlayerMovement() {
@@ -1674,7 +1685,45 @@ function updatePlayerMovement() {
         
         let right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0,1,0)).normalize();
         
-        // 預測下一步的座標
+        // 預測下一步的座// 🛡️ 物理邊界檢測：嚴格防穿模 (純數學計算，零效能負擔)
+function isCollision(x, z) {
+    const r = 1.2; // 玩家碰撞半徑 (稍微加大，防止相機穿過牆壁看到內部)
+    
+    // 1. 世界地圖極限邊界 (鐵絲網與大門防護)
+    if (x < -50 || x > 39) return true; // 左右極限 (右側鐵絲網 x=41.5)
+    if (z < -38 || z > 52) return true; // 前後極限 (前大門鐵絲網 z=54)
+
+    // 2. 定義校園內所有不可進入的實體區塊 [minX, maxX, minZ, maxZ]
+    const hitBoxes = [
+        // A. 左側主教學樓與連廊 (包含樓梯底與牆壁)
+        [-38.0, -1.0, -35.0, -8.0],
+        
+        // B. 中央白色走廊連接口與平台
+        [-2.0, 18.5, -31.0, -16.0],
+
+        // C. 右側特色大樓 (十字架樓)
+        // ❗ 要求：連柱子底層的鏤空區域也不能進入，所以我們封鎖整個建築的投影面積
+        [17.0, 36.0, -34.0, 15.0],
+
+        // D. 停車場與藍色球場中間的紫牆
+        [8.0, 36.0, 26.0, 28.0],
+
+        // E. 綠色球場下方的白色小屋
+        [-25.0, -8.0, 19.0, 33.0],
+
+        // F. 正門右側的雙開車閘 (半開狀態，建立一個斜向或較寬的阻擋區)
+        [35.0, 42.0, 17.0, 24.0]
+    ];
+
+    // 迴圈檢查是否踏入任何一個禁區
+    for (let box of hitBoxes) {
+        if (x + r > box[0] && x - r < box[1] && z + r > box[2] && z - r < box[3]) {
+            return true; // 撞到了！
+        }
+    }
+
+    return false; // 安全
+}標
         let moveVec = new THREE.Vector3()
             .add(fwd.multiplyScalar(window.walkVel))
             .add(right.multiplyScalar(window.strafeVel));
