@@ -2179,14 +2179,28 @@ function renderCopyText() {
 }
 
 // 4. Google 辨識與校對
+// 4. Google 辨識與校對
 function recognizeCopyHandwriting() {
     if (copyStrokes.length === 0) return;
     const targetChar = copyCurrentExcerpt.text[copyCurrentIndex];
 
-    const data = { "options": "enable_pre_space", "requests": [{ "writing_guide": { "width": copyCanvas.width, "height": copyCanvas.height }, "ink": copyStrokes, "language": "zh-TW" }] };
+    const data = { 
+        "options": "enable_pre_space", 
+        "requests": [{ 
+            "writing_guide": { 
+                "width": copyCanvas.width, 
+                "height": copyCanvas.height 
+            }, 
+            "ink": copyStrokes, 
+            "language": "zh-TW" 
+        }] 
+    };
     
-    fetch("https://inputinput.google.com/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8", { 
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) 
+    // 💡 已修正：將 inputinput 改為 inputtools
+    fetch("https://inputtools.google.com/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify(data) 
     })
     .then(res => res.json())
     .then(res => {
@@ -2214,6 +2228,8 @@ function recognizeCopyHandwriting() {
         clearCopyCanvas();
     });
 }
+
+        
 
 // 5. 完成任務與給予獎勵
 function completeCopyTask() {
