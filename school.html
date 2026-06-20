@@ -2085,6 +2085,15 @@ let writerInstance = null; // 用來存放 Hanzi Writer 實例
 // 標點符號正則表達式 (遇到這些自動跳過不需抄寫)
 const puncRegex = /[，。！？、：；「」『』（）《》〈〉\n\r\s]/;
 
+
+
+window.closeCopyTask = function() {
+    document.getElementById('copy-task-overlay').style.display = 'none';
+    if (writerInstance) {
+        writerInstance.hideCharacter();
+    }
+};
+
 // 2. 啟動抄寫任務
 window.startCopyTask = function() {
     document.getElementById('copy-task-overlay').style.display = 'flex';
@@ -2103,15 +2112,6 @@ window.closeCopyTask = function() {
     }
 };
 
-// 重新開始當前字的測驗
-window.clearCopyCanvas = function() {
-    if (writerInstance) {
-        writerInstance.cancelQuiz(); // 取消當前狀態
-        writerInstance.quiz({
-            onComplete: handleCharComplete
-        });
-    }
-};
 
 // 處理單字抄寫完成的邏輯
 function handleCharComplete() {
