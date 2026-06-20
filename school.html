@@ -2,8 +2,6 @@
 <html lang="zh-TW">
 <head>
 
-    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
-
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
@@ -107,39 +105,23 @@
 .char-done { color: #4a4238; } /* 已抄寫：深茶色 */
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-/* 讓文字顯示區在小螢幕時高度自適應，且不佔太多空間 */
-.copy-text-display {
-    background: #fcfbf8; padding: 20px; border-radius: 8px;
-    font-size: 1.2rem; line-height: 2; color: #a48c76;
-    box-shadow: inset 0 0 20px rgba(180, 160, 130, 0.1);
-    max-height: 35vh; overflow-y: auto; text-align: justify;
-}
-
-/* 將畫布容器固定為正方形並置中 */
 .copy-canvas-container {
-    position: relative; 
-    height: 250px; width: 250px; margin: 0 auto; 
-    background: #fdfaf6; border: 2px dashed #c4b8aa; border-radius: 8px;
+    position: relative; height: 35vh; background: #fdfaf6;
+    border: 2px dashed #c4b8aa; border-radius: 8px;
     display: flex; justify-content: center; align-items: center;
 }
-
-#character-target {
-    width: 100%; height: 100%; touch-action: none;
-}
-
+#copy-canvas { width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
 .copy-canvas-hint {
-    position: absolute; top: 10px; left: 0; width: 100%; text-align: center;
-    color: #b4a08c; font-size: 1rem; pointer-events: none; letter-spacing: 1px; opacity: 0.8;
+    position: absolute; color: #b4a08c; font-size: 1.5rem; pointer-events: none;
+    letter-spacing: 2px; opacity: 0.5;
 }
-
-/* 👇 新增：手機版響應式優化 (RWD) */
-@media (max-width: 600px) {
-    .copy-header { font-size: 1.2rem; padding: 15px; }
-    .copy-content-area { padding: 10px; gap: 10px; }
-    .copy-text-display { font-size: 1.1rem; max-height: 30vh; padding: 15px; }
-    .copy-canvas-container { width: 200px; height: 200px; } /* 手機版畫布縮小 */
-    .copy-btn { padding: 8px 20px; font-size: 1rem; }
+.copy-tools { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; }
+.copy-btn {
+    background: #3e2418; color: #e6dfd1; border: 1px solid #7d5a40;
+    padding: 10px 30px; font-size: 1.1rem; border-radius: 30px;
+    cursor: pointer; transition: 0.3s;
 }
+.copy-btn:hover { background: #5c3926; }
 
 
 
@@ -163,15 +145,13 @@
         <div class="copy-text-display" id="copy-text-display">
             <!-- 文章內容由 JS 生成 -->
         </div>
-       <div class="copy-canvas-container">
-    <div class="copy-canvas-hint" id="copy-canvas-hint">請在此寫下高亮的字...</div>
-    <!-- 替換掉原本的 <canvas>，改為給 HanziWriter 用的 div -->
-    <div id="character-target"></div>
-</div>
-<div class="copy-tools">
-    <button class="copy-btn" onclick="playStrokeDemo()">筆順示範</button>
-    <button class="copy-btn" onclick="clearCopyCanvas()">重新書寫</button>
-</div>
+        <div class="copy-canvas-container">
+            <div class="copy-canvas-hint" id="copy-canvas-hint">請在此寫下高亮的字...</div>
+            <canvas id="copy-canvas"></canvas>
+        </div>
+        <div class="copy-tools">
+            <button class="copy-btn" onclick="clearCopyCanvas()">重寫一筆</button>
+        </div>
     </div>
 </div>
 
@@ -2084,6 +2064,59 @@ let copyCanvas, copyCtx;
 // 標點符號正則表達式 (遇到這些自動跳過不需抄寫)
 const puncRegex = /[，。！？、：；「」『』（）《》〈〉]/;
 
+// 1. 初始化畫布與事件
+function initCopyCanvas() {
+    copyCanvas = document.getElementById('copy-canvas');
+    copyCtx = copyCanvas.getContext('2d');
+    
+    function resize() {
+        const rect = copyCanvas.parentElement.getBoundingClientRect();
+        copyCanvas.width = rect.width; copyCanvas.height = rect.height;
+        copyCtx.lineCap = "round"; copyCtx.lineJoin = "round"; copyCtx.lineWidth = 6;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const getPos = (e) => {
+        const rect = copyCanvas.getBoundingClientRect();
+        const touch = e.touches ? e.touches[0] : e;
+        return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    };
+
+    const startDraw = (e) => {
+        e.preventDefault();
+        copyIsDrawing = true;
+        const pos = getPos(e);
+        copyCurrentStroke = [[pos.x], [pos.y], [Date.now()]];
+        copyCtx.beginPath(); copyCtx.moveTo(pos.x, pos.y);
+        document.getElementById('copy-canvas-hint').style.display = 'none';
+        clearTimeout(copyHwTimeout);
+    };
+
+    const draw = (e) => {
+        e.preventDefault();
+        if (!copyIsDrawing) return;
+        const pos = getPos(e);
+        copyCurrentStroke[0].push(pos.x); copyCurrentStroke[1].push(pos.y); copyCurrentStroke[2].push(Date.now());
+        copyCtx.lineTo(pos.x, pos.y);
+        copyCtx.strokeStyle = "#4a4238"; copyCtx.stroke();
+    };
+
+    const stopDraw = () => {
+        if (!copyIsDrawing) return;
+        copyIsDrawing = false;
+        if (copyCurrentStroke[0].length > 0) copyStrokes.push(copyCurrentStroke);
+        copyHwTimeout = setTimeout(recognizeCopyHandwriting, 600); // 停筆 0.6 秒後自動辨識
+    };
+
+    copyCanvas.addEventListener('mousedown', startDraw);
+    copyCanvas.addEventListener('mousemove', draw);
+    window.addEventListener('mouseup', stopDraw);
+    
+    copyCanvas.addEventListener('touchstart', startDraw, {passive: false});
+    copyCanvas.addEventListener('touchmove', draw, {passive: false});
+    copyCanvas.addEventListener('touchend', stopDraw);
+}
 
 // 2. 啟動抄寫任務
 window.startCopyTask = function() {
@@ -2145,164 +2178,42 @@ function renderCopyText() {
     document.getElementById('copy-canvas-hint').innerText = `請寫「${chars[copyCurrentIndex]}」`;
 }
 
+// 4. Google 辨識與校對
+function recognizeCopyHandwriting() {
+    if (copyStrokes.length === 0) return;
+    const targetChar = copyCurrentExcerpt.text[copyCurrentIndex];
 
-// 🖋️ 靜心抄寫系統 (HanziWriter 版)
-const COPY_EXCERPTS = [
-    { author: "測試", source: "測試用", text: "見字如面。" },
-    { author: "朱自清", source: "背影", text: "我看見他戴著黑布小帽，穿著黑布大馬褂，深青布棉袍，蹣跚地走到鐵道邊，慢慢探身下去，尚不大難。可是他穿過鐵道，要爬上那邊月臺，就不容易了。他用兩手攀著上面，兩腳再向上縮；他肥胖的身子向左微傾，顯出努力的樣子。" },
-    { author: "余光中", source: "聽聽那冷雨", text: "雨氣空濛而迷幻，細細嗅嗅，清清爽爽新新，有一點點薄荷的香味，濃的時候，竟發出草和樹沐發後特有的淡淡土腥氣，也許那竟是蚯蚓和蝸牛的腥氣吧，畢竟是驚蟄了啊。也許地上的生命更期盼這陣雨。" },
-    { author: "張愛玲", source: "愛", text: "於千萬人之中遇見你所遇見的人，於千萬年之中，時間的無涯的荒野裏，沒有早一步，也沒有晚一步，剛巧趕上了，那也沒有別的話可說，惟有輕輕地問一聲：「噢，你也在這裡嗎？」" },
-    { author: "魯迅", source: "秋夜", text: "在我的後園，可以看見牆外有兩株樹，一株是棗樹，還有一株也是棗樹。這上面的夜的天空，奇怪而高，我生平沒有見過這樣奇怪而高的天空。他彷彿要離開人間而去，使人們仰面不再看見。" },
-    { author: "冰心", source: "笑", text: "這時心下光明澄靜，如登仙界，如歸故鄉。眼前浮現的三個笑容，一時融化在愛的調和裏看不分明了。只管過去，只管向前，讓這微笑永遠伴著我，走過這充滿了荊棘的世間。" }
-];
-
-let copyCurrentExcerpt = null;
-let copyCurrentIndex = 0;
-let writer = null; // 存放 HanziWriter 實例
-
-// 標點符號與空白正則表達式 (遇到這些自動跳過不需抄寫)
-const skipRegex = /[，。！？、：；「」『』（）《》〈〉\s]/;
-
-// 1. 初始化 HanziWriter
-function initHanziWriter(character) {
-    const container = document.getElementById('character-target');
-    const size = container.clientWidth || 250; // 動態抓取 RWD 寬度
+    const data = { "options": "enable_pre_space", "requests": [{ "writing_guide": { "width": copyCanvas.width, "height": copyCanvas.height }, "ink": copyStrokes, "language": "zh-TW" }] };
     
-    document.getElementById('copy-canvas-hint').innerText = `請跟著筆順寫「${character}」`;
-
-    if (writer) {
-        writer.setCharacter(character);
-    } else {
-        writer = HanziWriter.create('character-target', character, {
-            width: size,
-            height: size,
-            padding: 15,
-            showCharacter: false, // 隱藏原字，讓學生自己寫
-            showOutline: true,    // 顯示筆畫提示輪廓
-            strokeAnimationSpeed: 1,
-            delayBetweenStrokes: 50,
-            outlineColor: '#e0d8cc',
-            strokeColor: '#4a4238',
-            // 防呆：如果字庫找不到該字，直接跳過
-            onLoadCharDataError: function() {
-                console.warn('無法載入筆畫資料，跳過此字:', character);
+    fetch("https://inputinput.google.com/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8", { 
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) 
+    })
+    .then(res => res.json())
+    .then(res => {
+        if (res[0] === "SUCCESS" && res[1][0] && res[1][0][1]) {
+            const guesses = res[1][0][1]; // 回傳的候選字陣列
+            // 檢查候選字中是否包含我們要的字
+            if (guesses.includes(targetChar)) {
+                // ✅ 寫對了！
+                clearCopyCanvas();
                 copyCurrentIndex++;
                 renderCopyText();
+            } else {
+                // ❌ 寫錯了
+                clearCopyCanvas();
+                document.getElementById('copy-canvas-hint').style.display = 'block';
+                document.getElementById('copy-canvas-hint').innerText = `辨識不到，請重寫「${targetChar}」`;
+                document.getElementById('copy-canvas-hint').style.color = '#ef4444';
+                setTimeout(()=> { document.getElementById('copy-canvas-hint').style.color = '#b4a08c'; }, 1000);
             }
-        });
-    }
-    
-    // 啟動筆順測驗模式
-    writer.quiz({
-        onComplete: function() {
-            // 寫完該字後，稍微停頓 0.6 秒讓學生看清楚，再跳下一個字
-            setTimeout(() => {
-                copyCurrentIndex++;
-                renderCopyText();
-            }, 600);
-        }
-    });
-}
-
-// 2. 啟動抄寫任務
-window.startCopyTask = function() {
-    document.getElementById('copy-task-overlay').style.display = 'flex';
-    copyCurrentExcerpt = COPY_EXCERPTS[Math.floor(Math.random() * COPY_EXCERPTS.length)];
-    copyCurrentIndex = 0;
-    
-    if (writer) writer.hideCharacter(); // 清空舊畫布
-    renderCopyText();
-};
-
-window.closeCopyTask = function() {
-    document.getElementById('copy-task-overlay').style.display = 'none';
-};
-
-// 3. 渲染文章狀態與啟動當前字的寫字版
-function renderCopyText() {
-    const display = document.getElementById('copy-text-display');
-    let html = `<div style="text-align:right; font-size:1rem; margin-bottom:15px; color:#8b7355;">— ${copyCurrentExcerpt.author}《${copyCurrentExcerpt.source}》</div>`;
-    
-    const chars = copyCurrentExcerpt.text.split('');
-    
-    // 自動跳過標點符號與空格
-    while(copyCurrentIndex < chars.length && skipRegex.test(chars[copyCurrentIndex])) {
-        copyCurrentIndex++;
-    }
-
-    if (copyCurrentIndex >= chars.length) {
-        completeCopyTask();
-        return;
-    }
-
-    chars.forEach((char, index) => {
-        if (index < copyCurrentIndex) {
-            html += `<span class="char-done">${char}</span>`;
-        } else if (index === copyCurrentIndex) {
-            html += `<span class="char-active" id="current-char-span">${char}</span>`;
         } else {
-            html += `<span class="char-pending">${char}</span>`;
+            clearCopyCanvas();
         }
+    }).catch(e => {
+        console.error("辨識失敗", e);
+        clearCopyCanvas();
     });
-    
-    display.innerHTML = html;
-    
-    // 讓滾動條自動跟隨進度
-    const activeSpan = document.getElementById('current-char-span');
-    if(activeSpan) activeSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    
-    // 載入當前文字的筆畫測驗
-    initHanziWriter(chars[copyCurrentIndex]);
 }
-
-// 4. 按鈕輔助功能
-window.clearCopyCanvas = function() {
-    if (writer) writer.quiz(); // 重新啟動 quiz 就會清空畫布
-};
-
-window.playStrokeDemo = function() {
-    if (writer) {
-        writer.cancelQuiz(); // 暫停測驗
-        document.getElementById('copy-canvas-hint').innerText = '筆順示範中...';
-        writer.animateCharacter({
-            onComplete: function() {
-                document.getElementById('copy-canvas-hint').innerText = `請跟著筆順寫「${copyCurrentExcerpt.text[copyCurrentIndex]}」`;
-                writer.quiz(); // 播完後恢復測驗模式
-            }
-        });
-    }
-};
-
-// 5. 完成任務邏輯 (保持原樣即可)
-function completeCopyTask() {
-    const display = document.getElementById('copy-text-display');
-    display.innerHTML = `<div style="text-align:center; padding: 40px 0;">
-        <div style="font-size: 3rem; margin-bottom: 20px;">✨</div>
-        <h2 style="color:#d4af37; margin-bottom: 10px;">功德圓滿</h2>
-        <p style="color:#8b7355; font-size:1.1rem;">靜心抄寫完成，感悟文字的力量。</p>
-    </div>`;
-    
-    document.querySelector('.copy-canvas-container').style.display = 'none';
-    document.querySelector('.copy-tools').style.display = 'none';
-
-    if (currentUser) {
-        db.ref(`users/${currentUser.uid}/points`).once('value').then(snap => {
-            let pts = snap.val() || 0;
-            db.ref(`users/${currentUser.uid}/points`).set(pts + 500);
-            alert("🎉 恭喜完成抄寫！獲得 500 積分！");
-            setTimeout(() => {
-                closeCopyTask();
-                document.querySelector('.copy-canvas-container').style.display = 'flex';
-                document.querySelector('.copy-tools').style.display = 'flex';
-            }, 1500);
-        });
-    } else {
-        alert("訪客模式，無法獲得積分。");
-        setTimeout(closeCopyTask, 1500);
-    }
-}
-
-        
 
 // 5. 完成任務與給予獎勵
 function completeCopyTask() {
