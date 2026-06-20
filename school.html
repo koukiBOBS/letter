@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中華基督教會基元中學 - 精細立面還原 (最新修訂版)</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #87CEEB; }
+        canvas { display: block; }
+        #loading {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-family: 'Microsoft JhengHei', sans-serif; font-size: 24px; color: white;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.8); z-index: 10;
+        }
+        #instructions {
+            position: absolute; bottom: 20px; left: 20px;
+            font-family: 'Microsoft JhengHei', sans-serif; color: white;
+            background: rgba(0,0,0,0.6); padding: 10px 15px; border-radius: 8px; pointer-events: none;
+        }
+    </style>
+    <!-- 引入 Three.js 與 OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <div id="loading">正在建構精細立面與材質光影...</div>
+    <div id="instructions">🖱️ 左鍵拖曳：旋轉視角 | 🖱️ 右鍵拖曳：平移 | ⚙️ 滾輪：縮放</div>
+
+    <script>
+        // ==========================================
+        // 1. 場景與渲染器設置
+        // ==========================================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x90C3D4); 
+        scene.fog = new THREE.FogExp2(0x90C3D4, 0.003); 
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(-55, 45, 105); 
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+        renderer.toneMapping = THREE.ACESFilmicToneMapping; 
+        renderer.toneMappingExposure = 1.15;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.target.set(5, 10, 0);
+        controls.maxPolarAngle = Math.PI / 2 - 0.02; 
+
+        // ==========================================
+        // 2. 燈光系統
+        // ==========================================
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x777777, 0.85);
+        hemiLight.position.set(0, 60, 0);
+        scene.add(hemiLight);
+
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1.3);
+        sunLight.position.set(-40, 70, 30); 
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048; 
+        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.camera.near = 0.5;
+        sunLight.shadow.camera.far = 200;
+        const d = 75;
+        sunLight.shadow.camera.left = -d; sunLight.shadow.camera.right = d;
+        sunLight.shadow.camera.top = d; sunLight.shadow.camera.bottom = -d;
+        sunLight.shadow.bias = -0.0005; 
+        scene.add(sunLight);
+
+        // ==========================================
+        // 3. 程式化材質生成
+        // ==========================================
+        function generateNoiseTexture(baseColor, noiseOpacity, scale = 1) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = baseColor;
+            ctx.fillRect(0, 0, 512, 512);
+            for (let i = 0; i < 40000; i++) {
+                ctx.fillStyle = Math.random() > 0.5 ? `rgba(255,255,255,${noiseOpacity})` : `rgba(0,0,0,${noiseOpacity})`;
+                ctx.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
+            }
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping; texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(scale, scale);
+            return texture;
+        }
+
+        function generateTileTexture(baseColor, lineHex, noiseOpacity, scale = 1) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024; canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = baseColor;
+            ctx.fillRect(0, 0, 1024, 1024);
+            
+            ctx.strokeStyle = lineHex;
+            ctx.lineWidth = 1.5;
+            const tileSize = 64;
+            for (let x = 0; x <= 1024; x += tileSize) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 1024); ctx.stroke();
+            }
+            for (let y = 0; y <= 1024; y += tileSize) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1024, y); ctx.stroke();
+            }
+
+            for (let i = 0; i < 80000; i++) {
+                ctx.fillStyle = Math.random() > 0.5 ? `rgba(255,255,255,${noiseOpacity})` : `rgba(0,0,0,0.08)`;
+                ctx.fillRect(Math.random() * 1024, Math.random() * 1024, 1, 1);
+            }
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping; texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(scale, scale);
+            return texture;
+        }
+
+        function createGlassMaterial() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            
+            const grad = ctx.createLinearGradient(0, 0, 256, 256);
+            grad.addColorStop(0, '#0d1a2d');    
+            grad.addColorStop(0.35, '#19335c');  
+            grad.addColorStop(0.7, '#4c73a5');   
+            grad.addColorStop(0.9, '#8bb4e2');   
+            grad.addColorStop(1, '#ffffff');     
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 256, 256);
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, 60); ctx.lineTo(256, 110);
+            ctx.moveTo(0, 160); ctx.lineTo(256, 210);
+            ctx.stroke();
+
+            const tex = new THREE.CanvasTexture(canvas);
+            return new THREE.MeshStandardMaterial({
+                map: tex,
+                roughness: 0.08,
+                metalness: 0.7,
+                roughnessMap: tex
+            });
+        }
+
+        function createRailingTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 512, 128); 
+            
+            ctx.fillStyle = '#F7F9F9'; 
+            ctx.fillRect(0, 0, 512, 12);     
+            ctx.fillRect(0, 116, 512, 12);   
+            
+            ctx.fillStyle = '#FBFCFC'; 
+            const numBalusters = 50;
+            const step = 512 / numBalusters;
+            for (let i = 0; i < numBalusters; i++) {
+                ctx.fillRect(i * step + 3, 12, 4, 104); 
+            }
+            
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.ClampToEdgeWrapping;
+            return tex;
+        }
+
+       function createTextTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2048; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#E8F0F6';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // 調整三：更換為繁體書法體（標楷體與 CJK 襯線體堆疊），重現校門大字書法的優雅筆觸
+            ctx.font = 'bold 130px "DFKai-SB", "BiauKai", "標楷體", "KaiTi", "Kaiti TC", "Noto Serif CJK TC", serif';
+            ctx.fillStyle = '#3A2010'; 
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('中 華 基 督 教 會 基 元 中 學', canvas.width / 2, canvas.height / 2);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function getCourtMaterial(baseColorHex, keyColorHex) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2048; canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = baseColorHex;
+            ctx.fillRect(0, 0, 2048, 1024);
+            
+            ctx.fillStyle = 'rgba(255,255,255,0.03)';
+            for(let i=0; i<30000; i++) ctx.fillRect(Math.random()*2048, Math.random()*1024, 3, 3);
+
+            ctx.strokeStyle = '#ffffff'; 
+            ctx.lineWidth = 12; 
+            
+            ctx.strokeRect(40, 40, 1968, 944);
+            ctx.beginPath(); ctx.moveTo(1024, 40); ctx.lineTo(1024, 984); ctx.stroke();
+            ctx.beginPath(); ctx.arc(1024, 512, 120, 0, Math.PI*2); ctx.stroke();
+            
+            ctx.fillStyle = keyColorHex;
+            ctx.fillRect(40, 312, 380, 400); ctx.strokeRect(40, 312, 380, 400);
+            ctx.fillRect(1628, 312, 380, 400); ctx.strokeRect(1628, 312, 380, 400);
+            
+            ctx.beginPath(); ctx.arc(420, 512, 100, -Math.PI/2, Math.PI/2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(1628, 512, 100, Math.PI/2, -Math.PI/2); ctx.stroke();
+
+            ctx.beginPath(); ctx.arc(40, 512, 450, -Math.PI*0.38, Math.PI*0.38); ctx.stroke();
+            ctx.beginPath(); ctx.arc(2008, 512, 450, Math.PI-Math.PI*0.38, Math.PI+Math.PI*0.38); ctx.stroke();
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.anisotropy = 16; 
+            return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 });
+        }
+
+       // 停車場紋理 (已修改為五排車位)
+        function getParkingLotMaterial() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 320;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = '#3E4246';
+            ctx.fillRect(0, 0, 512, 320);
+            
+            ctx.fillStyle = 'rgba(255,255,255,0.03)';
+            for(let i=0; i<4000; i++) ctx.fillRect(Math.random()*512, Math.random()*320, 2, 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.12)';
+            for(let i=0; i<4000; i++) ctx.fillRect(Math.random()*512, Math.random()*320, 2, 2);
+
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(10, 10, 492, 300);
+
+            // 修改：車位數量由 4 改為 5
+            const numBays = 5;
+            const bayWidth = 492 / numBays;
+            for (let i = 1; i < numBays; i++) {
+                const x = 10 + i * bayWidth;
+                ctx.beginPath();
+                ctx.moveTo(x, 10);
+                ctx.lineTo(x, 110);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(x, 210);
+                ctx.lineTo(x, 310);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = '#FFC107';
+            ctx.font = 'bold 22px "Microsoft JhengHei", sans-serif';
+            ctx.textAlign = 'center';
+            for (let i = 0; i < numBays; i++) {
+                const x = 10 + (i + 0.5) * bayWidth;
+                ctx.fillText('P', x, 65);
+                ctx.fillText('P', x, 265);
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.anisotropy = 16;
+            return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 });
+        }
+
+        // 新增：精確交叉網狀鐵絲網貼圖生成器
+        function createWireFenceTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 64, 64);
+            
+            ctx.strokeStyle = '#B2BABB';
+            ctx.lineWidth = 2.0;
+            
+            // 交叉雙向網線
+            ctx.beginPath();
+            ctx.moveTo(0, 0); ctx.lineTo(64, 64);
+            ctx.moveTo(32, 0); ctx.lineTo(64, 32);
+            ctx.moveTo(0, 32); ctx.lineTo(32, 64);
+            
+            ctx.moveTo(64, 0); ctx.lineTo(0, 64);
+            ctx.moveTo(32, 0); ctx.lineTo(0, 32);
+            ctx.moveTo(64, 32); ctx.lineTo(32, 64);
+            ctx.stroke();
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        // 材質定義
+        const matWall = new THREE.MeshStandardMaterial({ map: generateTileTexture('#E8F0F6', '#D5DFE6', 0.04, 4), roughness: 0.85 });
+        const matPurple = new THREE.MeshStandardMaterial({ map: generateNoiseTexture('#A890C0', 0.05, 2), roughness: 0.8 });
+        const matPalePurple = new THREE.MeshStandardMaterial({ color: 0xCCA9DD, roughness: 0.85 }); 
+        const matAwning = new THREE.MeshStandardMaterial({ color: 0x1A365D, roughness: 0.4 }); 
+        const matWindow = createGlassMaterial();
+        const matGrass = new THREE.MeshStandardMaterial({ map: generateNoiseTexture('#558B2F', 0.1, 8), roughness: 1.0 });
+        const matConcrete = new THREE.MeshStandardMaterial({ map: generateNoiseTexture('#AAAAAA', 0.1, 5), roughness: 0.9 });
+        const matCorridorWhite = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, roughness: 0.85 });
+        const matDoor = new THREE.MeshStandardMaterial({ color: 0x3182CE, roughness: 0.6 }); 
+        const matDoorFrame = new THREE.MeshStandardMaterial({ color: 0x4A5568, roughness: 0.8 });
+        const matPinkPurpleFin = new THREE.MeshStandardMaterial({ color: 0xCCA9DD, roughness: 0.9, metalness: 0.0 });
+
+
+// ==========================================
+// 1. 百葉小窗專用橫紋材質
+// ==========================================
+function createLouverTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128; canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#D5DFE6';
+    ctx.fillRect(0, 0, 128, 128);
+
+    const numSlats = 8;
+    const slatHeight = 128 / numSlats;
+    for (let i = 0; i < numSlats; i++) {
+        const y = i * slatHeight;
+        ctx.fillStyle = '#546E7A';
+        ctx.fillRect(0, y, 128, 3);
+
+        const grad = ctx.createLinearGradient(0, y + 3, 0, y + slatHeight);
+        grad.addColorStop(0, '#CFD8DC');
+        grad.addColorStop(0.4, '#ECEFF1');
+        grad.addColorStop(1, '#90A4AE');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, y + 3, 128, slatHeight - 3);
+
+        ctx.fillStyle = '#37474F';
+        ctx.fillRect(0, y + slatHeight - 1, 128, 1);
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+const matLouver = new THREE.MeshStandardMaterial({
+    map: createLouverTexture(),
+    roughness: 0.5,
+    metalness: 0.4
+});
+
+// ==========================================
+// 2. 高效能複用幾何體（區分最底層與標準層）
+// ==========================================
+const geoLouverWin = new THREE.BoxGeometry(0.05, 0.8, 4.3);         // 最底層百葉矮窗
+const geoLedge = new THREE.BoxGeometry(0.26, 0.25, 4.4);            // 最底層凸出橫樑
+const geoLargeWinBottom = new THREE.BoxGeometry(0.05, 1.4, 4.3);    // 最底層縮短版大窗 (配合下方矮窗)
+const geoLargeWinStandard = new THREE.BoxGeometry(0.05, 1.95, 4.3);  // 上方各層標準大窗 (1.95 高度)
+const geoSpandrelStandard = new THREE.BoxGeometry(0.12, 1.05, 4.4);  // 上方樓層之間的標準實心牆板
+
+
+        
+
+        const matRailingTexture = new THREE.MeshStandardMaterial({
+            map: createRailingTexture(),
+            transparent: true,
+            alphaTest: 0.5,
+            side: THREE.DoubleSide,
+            metalness: 0.95,
+            roughness: 0.1,
+            color: 0xFFFFFF
+        });
+
+        // 雙球場、紅色地墊與停車場
+        const matInnerCourt = getCourtMaterial('#2E7D32', '#C62828'); 
+        const matOuterCourt = getCourtMaterial('#1565C0', '#E65100'); 
+        const matRedGround = new THREE.MeshStandardMaterial({ map: generateNoiseTexture('#C62828', 0.04, 4), roughness: 0.85 });
+        const matParking = getParkingLotMaterial();
+
+        // -------------------------------------------------------------
+        // 全域複用幾何體（降低 GC 開銷、大幅優化 60FPS）
+        // -------------------------------------------------------------
+        const geoWinMain = new THREE.BoxGeometry(4, 2, 0.2);
+        const geoAwningMain = new THREE.BoxGeometry(4.2, 0.4, 1.2);
+        const geoAcBody = new THREE.BoxGeometry(1.2, 0.8, 1.0);
+        const geoAcGrille = new THREE.BoxGeometry(1.0, 0.6, 0.1);
+        const geoSideWin = new THREE.BoxGeometry(0.15, 2.0, 3.0);
+        const geoSideAwning = new THREE.BoxGeometry(0.3, 0.3, 3.2);
+
+        // ==========================================
+        // 4. 建構 L 形校園模型
+        // ==========================================
+        const campusGroup = new THREE.Group();
+
+        // ----------------------------------------
+        // A. 主教學樓 (高度 25.5)
+        // ----------------------------------------
+        const mainBWidth = 35.5; const mainBHeight = 25.5; const mainBDepth = 24; 
+        const mainBuilding = new THREE.Mesh(new THREE.BoxGeometry(mainBWidth, mainBHeight, mainBDepth), matWall);
+        mainBuilding.position.set(-19.75, mainBHeight/2, -21);
+        mainBuilding.castShadow = true; mainBuilding.receiveShadow = true;
+        campusGroup.add(mainBuilding);
+
+        // 主樓側牆
+        const sideWallPurple = new THREE.Mesh(new THREE.BoxGeometry(0.1, mainBHeight, mainBDepth), matPalePurple);
+        sideWallPurple.position.set(-2.01, mainBHeight/2, -21);
+        sideWallPurple.receiveShadow = true; sideWallPurple.castShadow = true;
+        campusGroup.add(sideWallPurple);
+
+        // 新增：消光黑通道口材質，象徵通往校內其他地方的入口
+        const matPassageway = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+
+        // 主樓側窗位置 (已改為走廊盡頭黑色通道口，並移除雨棚)
+        for (let floor = 1; floor <= 6; floor++) {
+            let yPos = floor * 3.5;
+            
+            const sideWin = new THREE.Mesh(geoSideWin, matPassageway); // 替換為黑色通道口
+            sideWin.position.set(-1.95, yPos, -14.5); 
+            campusGroup.add(sideWin);
+            
+            // 已移除 sideAwning (遮陽雨棚)，使其呈現室內走廊通口的寫實外觀
+        }
+
+        // 學校主招牌
+        const nameBoard = new THREE.Mesh(new THREE.PlaneGeometry(30, 4.5), new THREE.MeshStandardMaterial({ map: createTextTexture(), roughness: 0.9 }));
+        nameBoard.position.set(-19.75, 24.0, -8.9);
+        campusGroup.add(nameBoard);
+
+        // 主樓正面窗口
+        for (let floor = 1; floor <= 6; floor++) {
+            let yPos = floor * 3.5;
+            for (let col = 0; col < 7; col++) {
+                let xPos = -34.5 + col * 4.9; 
+                
+                const win = new THREE.Mesh(geoWinMain, matWindow);
+                win.position.set(xPos, yPos, -8.9);
+                campusGroup.add(win);
+                
+                const awning = new THREE.Mesh(geoAwningMain, matAwning);
+                awning.position.set(xPos, yPos + 1, -8.4);
+                awning.castShadow = true;
+                campusGroup.add(awning);
+
+                const acUnit = new THREE.Group();
+                const acBody = new THREE.Mesh(geoAcBody, matWall);
+                acBody.position.set(0, 0, 0);
+                acBody.castShadow = true;
+                
+                const acGrilleMesh = new THREE.Mesh(geoAcGrille, new THREE.MeshStandardMaterial({color: 0x333333, roughness: 0.8}));
+                acGrilleMesh.position.set(0, 0, 0.51);
+                acUnit.add(acBody, acGrilleMesh);
+                
+                acUnit.position.set(xPos, yPos - 1.3, -8.4);
+                campusGroup.add(acUnit);
+            }
+        }
+
+        // ----------------------------------------
+        // B. 中間連接白色走廊 (寬度 9.0)
+        // ----------------------------------------
+       const connectorGroup = new THREE.Group();
+        connectorGroup.position.set(8.15, 0, -29); // 調整：中心點由 7.85 右移至 8.15
+        
+        const backWall = new THREE.Mesh(new THREE.BoxGeometry(20.3, 25.6, 2), matCorridorWhite); // 調整：寬度由 19.7 增至 20.3
+        backWall.position.set(0, 12.8, -3);
+        backWall.castShadow = true; backWall.receiveShadow = true;
+        connectorGroup.add(backWall);
+
+        const floorH = 25.6 / 7.0;
+
+        for (let floor = 1; floor <= 6; floor++) {
+            let yPos = floor * floorH;
+            
+          for (let floor = 1; floor <= 6; floor++) {
+            let yPos = floor * floorH;
+            
+            const slab = new THREE.Mesh(new THREE.BoxGeometry(20.3, 0.4, 9.0), matCorridorWhite); // 調整：寬度由 19.7 增至 20.3
+            slab.position.set(0, yPos - 0.2, 2.5); 
+            slab.receiveShadow = true;
+            connectorGroup.add(slab);
+
+            const solidBarrier = new THREE.Mesh(new THREE.BoxGeometry(20.3, 1.2, 0.4), matCorridorWhite); // 調整：寬度由 19.7 增至 20.3
+            solidBarrier.position.set(0, yPos + 0.6, 6.8); 
+            solidBarrier.castShadow = true;
+            connectorGroup.add(solidBarrier);
+        }
+        }
+
+        for (let floor = 1; floor <= 7; floor++) {
+            const yFloorCenter = (floor - 0.5) * floorH;
+            
+            if (floor === 1) {
+                const mainEntranceFrame = new THREE.Mesh(new THREE.BoxGeometry(4.2, 2.5, 0.15), matDoorFrame);
+                mainEntranceFrame.position.set(0, yFloorCenter, -1.9);
+                const mainEntranceGlass = new THREE.Mesh(new THREE.BoxGeometry(4.0, 2.4, 0.1), matWindow);
+                mainEntranceGlass.position.set(0, yFloorCenter, -1.9);
+                connectorGroup.add(mainEntranceFrame, mainEntranceGlass);
+
+                const sideWindowL = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.2, 0.1), matWindow);
+                sideWindowL.position.set(-6.0, yFloorCenter + 0.3, -1.9);
+                const sideWindowR = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.2, 0.1), matWindow);
+                sideWindowR.position.set(6.0, yFloorCenter + 0.3, -1.9);
+                connectorGroup.add(sideWindowL, sideWindowR);
+            } else {
+                const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.1, 0.1), matDoorFrame);
+                doorFrame.position.set(-6.0, yFloorCenter - 0.3, -1.9);
+                const doorInner = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.0, 0.11), matDoor);
+                doorInner.position.set(-6.0, yFloorCenter - 0.35, -1.9);
+                connectorGroup.add(doorFrame, doorInner);
+
+                for (let winX of [-1.0, 4.5]) {
+                    const classroomWin = new THREE.Mesh(new THREE.BoxGeometry(3.0, 1.5, 0.1), matWindow);
+                    classroomWin.position.set(winX, yFloorCenter + 0.2, -1.9);
+                    const frame = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.7, 0.05), matDoorFrame);
+                    frame.position.set(winX, yFloorCenter + 0.2, -1.92);
+                    connectorGroup.add(classroomWin, frame);
+                }
+            }
+        }
+
+      const roofSlab = new THREE.Mesh(new THREE.BoxGeometry(20.3, 0.4, 9.0), matCorridorWhite); // 調整：寬度由 19.7 增至 20.3
+        roofSlab.position.set(0, 25.6 - 0.2, 2.5);
+        roofSlab.receiveShadow = true;
+        connectorGroup.add(roofSlab);
+
+       // ----------------------------------------
+        // 天台走廊 - 四面安全欄杆系統
+        // ----------------------------------------
+        const railingHeight = 25.6 + 0.6; // 欄杆中心高度 (Y = 26.2)
+
+        // 1. 前側欄杆 (正 Z 邊緣)
+        const roofRailingFront = new THREE.Mesh(new THREE.BoxGeometry(20.3, 1.2, 0.1), matRailingTexture);
+        roofRailingFront.position.set(0, railingHeight, 6.95);
+        roofRailingFront.castShadow = false;
+        connectorGroup.add(roofRailingFront);
+
+        // 2. 後側欄杆 (負 Z 邊緣)
+        const roofRailingBack = new THREE.Mesh(new THREE.BoxGeometry(20.3, 1.2, 0.1), matRailingTexture);
+        roofRailingBack.position.set(0, railingHeight, -1.95);
+        roofRailingBack.castShadow = false;
+        connectorGroup.add(roofRailingBack);
+
+        // 3. 左側欄杆 (負 X 邊緣，長度 8.8 配合深度並旋轉 90 度)
+        const roofRailingLeft = new THREE.Mesh(new THREE.BoxGeometry(8.8, 1.2, 0.1), matRailingTexture);
+        roofRailingLeft.position.set(-10.1, railingHeight, 2.5);
+        roofRailingLeft.rotation.y = Math.PI / 2;
+        roofRailingLeft.castShadow = false;
+        connectorGroup.add(roofRailingLeft);
+
+        // 4. 右側欄杆 (正 X 邊緣，長度 8.8 配合深度並旋轉 90 度)
+        const roofRailingRight = new THREE.Mesh(new THREE.BoxGeometry(8.8, 1.2, 0.1), matRailingTexture);
+        roofRailingRight.position.set(10.1, railingHeight, 2.5);
+        roofRailingRight.rotation.y = Math.PI / 2;
+        roofRailingRight.castShadow = false;
+        connectorGroup.add(roofRailingRight);
+
+        campusGroup.add(connectorGroup);
+
+      // 走廊第一層延伸平台
+        const platformWidth = 20.3; // 調整：寬度由 19.7 增至 20.3
+        const platformDepth = 5.7;   
+        const platformH = floorH;    
+        
+        const extPlatform = new THREE.Mesh(new THREE.BoxGeometry(platformWidth, 0.4, platformDepth), matCorridorWhite);
+        extPlatform.position.set(8.15, platformH - 0.2, -19.35); // 調整：中心點由 7.85 右移至 8.15
+        extPlatform.receiveShadow = true; extPlatform.castShadow = true;
+        campusGroup.add(extPlatform);
+
+        const platRailingFront = new THREE.Mesh(new THREE.BoxGeometry(platformWidth, 1.2, 0.1), matRailingTexture);
+        platRailingFront.position.set(8.15, platformH + 0.6, -16.5); // 調整：中心點由 7.85 右移至 8.15
+        platRailingFront.castShadow = false;
+        campusGroup.add(platRailingFront);
+     
+
+        // ----------------------------------------
+        // C. 右側特色大樓 (Hall Building - 高度 23.5)
+        // ----------------------------------------
+        const hallWidth = 17.6; const hallHeight = 23.5; const hallDepth = 47.5; 
+        const hallBuilding = new THREE.Mesh(new THREE.BoxGeometry(hallWidth, hallHeight, hallDepth), matWall);
+        hallBuilding.position.set(26.5, hallHeight/2 + 4, -9.25); 
+        hallBuilding.castShadow = true; hallBuilding.receiveShadow = true;
+        campusGroup.add(hallBuilding);
+
+        // 底層柱子支撐
+        const hallColumnsGroup = new THREE.Group();
+        const pillarPositions = [
+            { x: 18.6, z: -29 }, { x: 18.6, z: -19 }, { x: 18.6, z: -9 }, { x: 18.6, z: 1 }, { x: 18.6, z: 11 },
+            { x: 34.4, z: -29 }, { x: 34.4, z: -19 }, { x: 34.4, z: -9 }, { x: 34.4, z: 1 }, { x: 34.4, z: 11 }
+        ];
+        pillarPositions.forEach(pos => {
+            const pillar = new THREE.Mesh(new THREE.BoxGeometry(2.0, 4.0, 2.0), matWall);
+            pillar.position.set(pos.x, 2.0, pos.z);
+            pillar.castShadow = true; pillar.receiveShadow = true;
+            hallColumnsGroup.add(pillar);
+        });
+        campusGroup.add(hallColumnsGroup);
+
+        // 前側斜裝飾面牆
+        const frontWallShape = new THREE.Shape();
+        frontWallShape.moveTo(-8.8, 0);          
+        frontWallShape.lineTo(-8.8, 21.0);        
+        frontWallShape.lineTo(-11.5, 24.0);      
+        frontWallShape.lineTo(-11.5, 28.0);      
+        frontWallShape.lineTo(11.5, 28.0);       
+        frontWallShape.lineTo(11.5, 24.0);       
+        frontWallShape.lineTo(8.8, 21.0);        
+        frontWallShape.lineTo(8.8, 0);           
+        frontWallShape.closePath();
+
+        const frontWallExtrude = {
+            depth: 0.5, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.03, bevelSegments: 2, steps: 1
+        };
+        const frontWallGeom = new THREE.ExtrudeGeometry(frontWallShape, frontWallExtrude);
+        frontWallGeom.translate(0, 0, -0.5); 
+        
+        const frontWall = new THREE.Mesh(frontWallGeom, matWall);
+        frontWall.position.set(26.5, 0, 14.5); 
+        frontWall.castShadow = true; frontWall.receiveShadow = true;
+        campusGroup.add(frontWall);
+
+        const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.8, 4, 0.2), new THREE.MeshStandardMaterial({color: 0x332211}));
+        crossV.position.set(20.0, 24.0, 14.6); crossV.castShadow = true;
+        const crossH = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.8, 0.2), new THREE.MeshStandardMaterial({color: 0x332211}));
+        crossH.position.set(20.0, 24.5, 14.6); crossH.castShadow = true;
+        campusGroup.add(crossV, crossH);
+
+        // 立體風琴牆面及窗體
+        const overhangGroup = new THREE.Group();
+        overhangGroup.position.set(17.65, 0, 0); 
+        
+        const zPos = [-32.5, -27.0, -21.5, -16.0, -10.5, -5.0, 0.5, 6.0, 11.5]; 
+        const numPillars = zPos.length;
+
+        function createSeamlessColumnGeometry() {
+            const geom = new THREE.BufferGeometry();
+            const positions = [];
+            const uvs = [];
+
+            function addQuad(p0, p1, p2, p3, u0, v0, u1, v1) {
+                positions.push(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+                uvs.push(u0, v0, u1, v0, u1, v1);
+                positions.push(p0.x, p0.y, p0.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z);
+                uvs.push(u0, v0, u1, v1, u0, v1);
+            }
+
+            const leftBack = (y) => new THREE.Vector3(0, y, -0.45);
+            const rightBack = (y) => new THREE.Vector3(0, y, 0.45);
+            
+            const rightFront = (y) => {
+                let x = (y <= 19.5) ? -1.3 : (y >= 22.5 ? -2.3 : -1.3 - (y - 19.5) / 3.0 * 1.0);
+                return new THREE.Vector3(x, y, 0.45); 
+            };
+            const leftFront = (y) => {
+                let x = (y <= 19.5) ? -1.3 : (y >= 22.5 ? -2.3 : -1.3 - (y - 19.5) / 3.0 * 1.0);
+                return new THREE.Vector3(x, y, -0.45); 
+            };
+
+            const heights = [0, 19.5, 22.5, 28.0];
+
+            for (let i = 0; i < heights.length - 1; i++) {
+                const y0 = heights[i];
+                const y1 = heights[i+1];
+                const v0 = y0 / 28.0;
+                const v1 = y1 / 28.0;
+
+                addQuad(leftBack(y0), rightBack(y0), rightBack(y1), leftBack(y1), 0, v0, 1, v1);
+                addQuad(rightBack(y0), rightFront(y0), rightFront(y1), rightBack(y1), 0, v0, 1.5, v1);
+                addQuad(rightFront(y0), leftFront(y0), leftFront(y1), rightFront(y1), 0, v0, 1, v1);
+                addQuad(leftFront(y0), leftBack(y0), leftBack(y1), leftFront(y1), 0, v0, 1.5, v1);
+            }
+
+            addQuad(leftBack(0), leftFront(0), rightFront(0), rightBack(0), 0, 0, 1, 1);
+            addQuad(leftBack(28.0), rightBack(28.0), rightFront(28.0), leftFront(28.0), 0, 0, 1, 1);
+
+            geom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+            geom.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uvs), 2));
+            geom.computeVertexNormals();
+            return geom;
+        }
+
+        const seamlessFinGeom = createSeamlessColumnGeometry();
+
+     zPos.forEach((z, index) => {
+            // 調整：略過前兩個位置（index 0 與 1），不在走廊盡頭處生成直向風琴構件與其陰影
+            if (index < 2) return;
+
+            const finMesh = new THREE.Mesh(seamlessFinGeom, matPinkPurpleFin);
+            finMesh.position.set(0, 0, z);
+            overhangGroup.add(finMesh);
+        });
+
+        // 窗體細化五等份佈局與螺旋樓梯
+      // 窗體細化五等份佈局與螺旋樓梯
+        for (let i = 0; i < numPillars - 1; i++) {
+            const z0 = zPos[i];
+            const z1 = zPos[i+1];
+            const zBay = (z0 + z1) / 2;
+
+            // 調整 1：若為前兩個間距 (i < 2)，此處為走廊通道盡頭，不繪製窗戶，改為實心白色牆面
+            if (i < 2) {
+                const solidWallPanel = new THREE.Mesh(new THREE.BoxGeometry(0.12, 21.0, 5.6), matCorridorWhite);
+                solidWallPanel.position.set(-0.02, 10.5, zBay);
+                solidWallPanel.castShadow = true; solidWallPanel.receiveShadow = true;
+                overhangGroup.add(solidWallPanel);
+            } else {
+                // 調整 2：上方小窗高度調降 1/4 (1.2 -> 0.9)，中心位置上調至 22.225
+                const topSmallWin = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.9, 4.3), matWindow);
+                topSmallWin.position.set(0.02, 22.225, zBay);
+                overhangGroup.add(topSmallWin);
+
+                const topSmallFrame = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 4.3), matWall);
+                topSmallFrame.position.set(0.05, 22.675, zBay);
+                const topSmallFrameB = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 4.3), matWall);
+                topSmallFrameB.position.set(0.05, 21.775, zBay);
+                overhangGroup.add(topSmallFrame, topSmallFrameB);
+
+                const topDividerPositions = [-1.29, -0.43, 0.43, 1.29];
+                topDividerPositions.forEach(d => {
+                    const mull = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.9, 0.12), matDoorFrame);
+                    mull.position.set(-0.04, 22.225, zBay + d);
+                    overhangGroup.add(mull);
+                });
+
+             if (i < 5) {
+                    // 1. 白色基座牆身（高度從 4.0 延伸至最底層百葉矮窗底部 8.525，高度為 4.525）
+                    const bottomWall = new THREE.Mesh(new THREE.BoxGeometry(0.12, 4.525, 4.4), matCorridorWhite);
+                    bottomWall.position.set(-0.02, 6.2625, zBay);
+                    bottomWall.castShadow = true; bottomWall.receiveShadow = true;
+                    overhangGroup.add(bottomWall);
+
+                    // 4個樓層窗體排布
+                    const rowY = [10.0, 13.0, 16.0, 19.0];
+                    rowY.forEach((yWin, idx) => {
+                        
+                        if (idx === 0) {
+                            // ==========================================
+                            // 僅最底層（一樓）：開設百葉矮窗 + 凸出橫樑 + 縮短版大窗
+                            // ==========================================
+                            
+                            // A. 縮短版大窗 (高度 1.4，頂部剛好對齊 Y = 10.975)
+                            const winG = new THREE.Mesh(geoLargeWinBottom, matWindow);
+                            winG.position.set(0.02, 10.275, zBay);
+                            overhangGroup.add(winG);
+
+                            // 大窗頂底細窗框
+                            const fTop = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 4.3), matWall);
+                            fTop.position.set(-0.02, 10.975, zBay);
+                            const fBot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 4.3), matWall);
+                            fBot.position.set(-0.02, 9.575, zBay);
+                            overhangGroup.add(fTop, fBot);
+
+                            // 大窗直向分格立柱
+                            const dividerPositions = [-1.29, -0.43, 0.43, 1.29];
+                            dividerPositions.forEach(d => {
+                                const mull = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.4, 0.08), matDoorFrame);
+                                mull.position.set(-0.02, 10.275, zBay + d);
+                                overhangGroup.add(mull);
+                            });
+
+                            // B. 凸出白色分隔橫樑板 (高度 0.25，位於 9.325 ~ 9.575)
+                            const ledge = new THREE.Mesh(geoLedge, matCorridorWhite);
+                            ledge.position.set(0.05, 9.45, zBay);
+                            ledge.castShadow = true; ledge.receiveShadow = true;
+                            overhangGroup.add(ledge);
+
+                            // C. 橫紋通風百葉矮窗 (高度 0.8，位於 8.525 ~ 9.325)
+                            const louver = new THREE.Mesh(geoLouverWin, matLouver);
+                            louver.position.set(0.02, 8.925, zBay);
+                            louver.castShadow = true;
+                            overhangGroup.add(louver);
+
+                            // 百葉矮窗垂直立柱
+                            const lDividerPositions = [-1.43, 0, 1.43];
+                            lDividerPositions.forEach(d => {
+                                const mull = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.8, 0.06), matDoorFrame);
+                                mull.position.set(-0.01, 8.925, zBay + d);
+                                overhangGroup.add(mull);
+                            });
+
+                        } else {
+                            // ==========================================
+                            // 二、三、四層（標準層）：保留原有標準大玻璃窗 (1.95 高度)
+                            // ==========================================
+                            
+                            // A. 標準大窗
+                            const winG = new THREE.Mesh(geoLargeWinStandard, matWindow);
+                            winG.position.set(0.02, yWin, zBay);
+                            overhangGroup.add(winG);
+
+                            // 標準大窗頂底細窗框
+                            const fTop = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 4.3), matWall);
+                            fTop.position.set(-0.02, yWin + 0.975, zBay);
+                            const fBot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 4.3), matWall);
+                            fBot.position.set(-0.02, yWin - 0.975, zBay);
+                            overhangGroup.add(fTop, fBot);
+
+                            // 標準窗垂直立柱
+                            const dividerPositions = [-1.29, -0.43, 0.43, 1.29];
+                            dividerPositions.forEach(d => {
+                                const mull = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.95, 0.08), matDoorFrame);
+                                mull.position.set(-0.02, yWin, zBay + d);
+                                overhangGroup.add(mull);
+                            });
+
+                            // B. 樓層之間的標準白色實心牆板 (1.05 高度，完美的實體樓板過渡)
+                            const spandrel = new THREE.Mesh(geoSpandrelStandard, matCorridorWhite);
+                            spandrel.position.set(-0.02, yWin - 1.5, zBay);
+                            spandrel.castShadow = true; spandrel.receiveShadow = true;
+                            overhangGroup.add(spandrel);
+                        }
+                    });
+
+                    // 頂部與女兒牆過渡樑板 (Y = 20.875)
+                    const topSpandrel = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.8, 4.4), matCorridorWhite);
+                    topSpandrel.position.set(-0.02, 20.875, zBay);
+                    topSpandrel.castShadow = true; topSpandrel.receiveShadow = true;
+                    overhangGroup.add(topSpandrel);
+
+                } else {
+                    const solidWallPanel = new THREE.Mesh(new THREE.BoxGeometry(0.12, 17.0, 5.6), matCorridorWhite);
+                    solidWallPanel.position.set(-0.02, 12.5, zBay);
+                    solidWallPanel.castShadow = true; solidWallPanel.receiveShadow = true;
+                    overhangGroup.add(solidWallPanel);
+
+                    if (i === 5) {
+                        const stairGroup = new THREE.Group();
+                        stairGroup.position.set(0, 0, zBay); 
+
+                        const centerShaft = new THREE.Mesh(new THREE.BoxGeometry(1.2, 8.5, 1.2), matCorridorWhite);
+                        centerShaft.position.set(-2.2, 4.25, -0.5);
+                        centerShaft.castShadow = true; centerShaft.receiveShadow = true;
+                        stairGroup.add(centerShaft);
+
+                        const lightPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.0), new THREE.MeshStandardMaterial({color: 0xEEEEEE, metalness: 0.9}));
+                        lightPole.position.set(-2.2, 9.0, -0.5);
+                        const lightHead = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.4), new THREE.MeshStandardMaterial({color: 0xDDDDDD, metalness: 0.9}));
+                        lightHead.position.set(-2.2, 9.5, -0.4);
+                        lightHead.rotation.x = 0.4; 
+                        stairGroup.add(lightPole, lightHead);
+
+                      const doorHeight = 2.2;
+                    const doorWidth = 1.1;
+                    // 調整四：將大門移至牆體外側（X = -0.1），並與樓梯平台 Z 軸對齊（Z = -1.75），使其在樓梯盡頭清晰可見
+                    const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.15, doorHeight + 0.1, doorWidth + 0.1), matDoorFrame);
+                    doorFrame.position.set(-0.1, 5.2 + doorHeight/2, -1.75);
+                    const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(0.1, doorHeight, doorWidth), matDoor);
+                    doorPanel.position.set(-0.09, 5.2 + doorHeight/2, -1.75);
+                    stairGroup.add(doorFrame, doorPanel);
+
+                        const numStepsUpper = 9;
+                        for (let j = 0; j < numStepsUpper; j++) {
+                            const t = j / (numStepsUpper - 1);
+                            const stepX = 0.0 - t * 2.0; 
+                            const stepY = 5.2 - t * 2.6; 
+                            const stepMesh = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.15, 1.3), matPalePurple);
+                            stepMesh.position.set(stepX, stepY + 0.075, -1.75);
+                            stepMesh.castShadow = true; stepMesh.receiveShadow = true;
+                            stairGroup.add(stepMesh);
+                        }
+
+                        const railUpperInnerShape = new THREE.Shape();
+                        railUpperInnerShape.moveTo(-2.0, 2.6);    
+                        railUpperInnerShape.lineTo(0.0, 2.6);     
+                        railUpperInnerShape.lineTo(0.0, 6.2);     
+                        railUpperInnerShape.lineTo(-2.0, 3.6);    
+                        railUpperInnerShape.closePath();
+
+                        const railUpperInnerGeom = new THREE.ExtrudeGeometry(railUpperInnerShape, { depth: 0.08, bevelEnabled: false });
+                        const railUpperInner = new THREE.Mesh(railUpperInnerGeom, matPalePurple);
+                        railUpperInner.position.set(0, 0, -1.1);
+                        railUpperInner.castShadow = true; 
+                        railUpperInner.receiveShadow = true;
+                        stairGroup.add(railUpperInner);
+
+                        const wallUpperShape = new THREE.Shape();
+                        wallUpperShape.moveTo(-3.55, 2.6);      
+                        wallUpperShape.lineTo(0.0, 2.6);        
+                        wallUpperShape.lineTo(0.0, 6.2);        
+                        wallUpperShape.lineTo(-2.0, 3.6);       
+                        wallUpperShape.lineTo(-3.55, 3.6);      
+                        wallUpperShape.closePath();
+                        const wallUpper = new THREE.Mesh(new THREE.ExtrudeGeometry(wallUpperShape, { depth: 0.12, bevelEnabled: false }), matPalePurple);
+                        wallUpper.position.set(0, 0, -2.4); 
+                        wallUpper.castShadow = true; wallUpper.receiveShadow = true;
+                        stairGroup.add(wallUpper);
+
+                        const midLeft = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.15, 2.6), matPalePurple);
+                        midLeft.position.set(-2.9, 2.6, -0.8);
+                        const midFront = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.15, 0.8), matPalePurple); 
+                        midFront.position.set(-1.8, 2.6, 0.5);
+                        const midRight = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 1.4), matPalePurple);
+                        midRight.position.set(-0.6, 2.6, -0.6);
+                        stairGroup.add(midLeft, midFront, midRight);
+
+                        const railMidLeft = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.0, 3.3), matPalePurple);
+                        railMidLeft.position.set(-3.55, 2.6 + 0.5, -0.75);
+                        const railMidFront = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1.0, 0.1), matPalePurple);
+                        railMidFront.position.set(-1.8, 2.6 + 0.5, 0.85); 
+                        const railMidRight = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.0, 2.9), matPalePurple);
+                        railMidRight.position.set(-0.05, 2.6 + 0.5, -0.55);
+                        stairGroup.add(railMidLeft, railMidFront, railMidRight);
+
+                        const numStepsLower = 9;
+                        for (let j = 0; j < numStepsLower; j++) {
+                            const t = j / (numStepsLower - 1);
+                            const stepX = -1.2 - t * 2.0; 
+                            const stepY = 2.6 - t * 2.6; 
+                            const stepMesh = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.15, 0.9), matPalePurple);
+                            stepMesh.position.set(stepX, stepY + 0.075, -1.55);
+                            stepMesh.castShadow = true; stepMesh.receiveShadow = true;
+                            stairGroup.add(stepMesh);
+                        }
+
+                        const wallLowerShape = new THREE.Shape();
+                        wallLowerShape.moveTo(-3.2, 0);       
+                        wallLowerShape.lineTo(-1.2, 0);       
+                        wallLowerShape.lineTo(-1.2, 3.6);     
+                        wallLowerShape.lineTo(-3.2, 1.0);     
+                        wallLowerShape.closePath();
+                        
+                        const wallLower = new THREE.Mesh(new THREE.ExtrudeGeometry(wallLowerShape, { depth: 0.12, bevelEnabled: false }), matPalePurple);
+                        wallLower.position.set(0, 0, -2.0);
+                        wallLower.castShadow = true; wallLower.receiveShadow = true;
+                        stairGroup.add(wallLower);
+
+                        const railLowerInner = new THREE.Mesh(new THREE.ExtrudeGeometry(wallLowerShape, { depth: 0.08, bevelEnabled: false }), matPalePurple);
+                        railLowerInner.position.set(0, 0, -1.1);
+                        railLowerInner.castShadow = true; railLowerInner.receiveShadow = true;
+                        stairGroup.add(railLowerInner);
+
+                        overhangGroup.add(stairGroup);
+
+                  } else {
+                    // 調整一、二：僅在右側 (i === 7) 放置兩部並列冷氣，且樣式與教學大樓完全統一
+                    if (i === 7) {
+                        // 建立與教學大樓材質、尺寸與結構一致的冷氣組件（出風口面朝左外側 negative X）
+                        const createUnifiedAc = (x, y, z) => {
+                            const acGroup = new THREE.Group();
+                            // 冷氣主體
+                            const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.8, 1.2), matWall);
+                            body.position.set(0, 0, 0);
+                            body.castShadow = true;
+                            // 黑色出風口網格
+                            const grille = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.6, 1.0), new THREE.MeshStandardMaterial({color: 0x333333, roughness: 0.8}));
+                            grille.position.set(-0.51, 0, 0); 
+                            acGroup.add(body, grille);
+                            acGroup.position.set(x, y, z);
+                            return acGroup;
+                        };
+
+                        // 放置兩部並列冷氣（高度設定在 y = 7.0）
+                        const ac1 = createUnifiedAc(-0.5, 7.0, zBay - 1.0);
+                        const ac2 = createUnifiedAc(-0.5, 7.0, zBay + 1.0);
+                        overhangGroup.add(ac1, ac2);
+
+                        // 調整三：在兩部冷氣上方保留一排小窗（高度 y = 11.5）
+                     const createSmallWindowRow = (yCenter) => {
+                            // 玻璃窗面（向外推至 -0.082，使其在實心牆表面顯露）
+                            const winG = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.0, 4.3), matWindow);
+                            winG.position.set(-0.082, yCenter, zBay);
+                            overhangGroup.add(winG);
+
+                            // 窗框直立分隔柱（向外推至 -0.08，與牆面邊緣貼合）
+                            const rDividerPositions = [-1.29, -0.43, 0.43, 1.29];
+                            rDividerPositions.forEach(d => {
+                                const mull = new THREE.Mesh(new THREE.BoxGeometry(0.09, 1.0, 0.08), matDoorFrame);
+                                mull.position.set(-0.08, yCenter, zBay + d);
+                                overhangGroup.add(mull);
+                            });
+                        };
+
+                        // 同時生成兩排平行小窗
+                        createSmallWindowRow(9.0);   // 靠近冷氣機的下排小窗（高度 9.0）
+                   
+                    } else {
+                        // 左側（i === 6）不放置任何冷氣機，僅保留高處小窗
+                        const rightSmallWins = [12.5, 16.5];
+                        rightSmallWins.forEach(ySmall => {
+                            const rSmallWin = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.0, 2.5), matWindow);
+                            rSmallWin.position.set(0.02, ySmall, zBay);
+                            overhangGroup.add(rSmallWin);
+
+                            const rSmallFrame = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 2.7), matWall);
+                            rSmallFrame.position.set(0.0, ySmall, zBay);
+                            overhangGroup.add(rSmallFrame);
+                        });
+                    }
+                }
+                }
+            }
+
+            const topConcrete = new THREE.Mesh(new THREE.BoxGeometry(0.15, 2.0, 4.4), matWall);
+            topConcrete.position.set(-0.02, 25.25, zBay);
+            overhangGroup.add(topConcrete);
+        
+        }
+
+        campusGroup.add(overhangGroup);
+
+        // ----------------------------------------
+        // D. 地面鋪面、球場、停車場與中庭區域重組
+        // ----------------------------------------
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(160, 120), matGrass);
+        ground.rotation.x = -Math.PI / 2; ground.position.y = 0; ground.receiveShadow = true;
+        campusGroup.add(ground);
+
+        // 擴大硬地基底底盤
+        const courtBase = new THREE.Mesh(new THREE.PlaneGeometry(80, 60), matConcrete);
+        courtBase.rotation.x = -Math.PI / 2; courtBase.position.set(4, 0.01, 21.5); courtBase.receiveShadow = true;
+        campusGroup.add(courtBase);
+
+        // 1. 綠色球場 (規格 42 x 22, Z 軸範圍: -7.5 至 14.5)
+    // 1. 綠色球場 (規格 42 x 22, Z 軸範圍: -7.5 至 14.5)
+        const innerCourt = new THREE.Mesh(new THREE.PlaneGeometry(42, 22), matInnerCourt);
+        innerCourt.rotation.x = -Math.PI / 2;
+        innerCourt.position.set(-6, 0.02, 3.5); 
+        innerCourt.receiveShadow = true;
+        campusGroup.add(innerCourt);
+
+        // 調整一：在大樓下方架空柱子區域，增設長方形的淺綠色有蓋操場地面（高度 0.02 防止閃爍）
+        const matCoveredPlayground = new THREE.MeshStandardMaterial({ color: 0xA5D6A7, roughness: 0.9 });
+        const coveredPlaygroundFloor = new THREE.Mesh(new THREE.PlaneGeometry(17.6, 42.0), matCoveredPlayground);
+        coveredPlaygroundFloor.rotation.x = -Math.PI / 2;
+        coveredPlaygroundFloor.position.set(26.5, 0.02, -9.0); // 完美對齊柱體中心與範圍
+        coveredPlaygroundFloor.receiveShadow = true;
+        campusGroup.add(coveredPlaygroundFloor);
+
+        // 停車場等寬於十字架大樓 (17.6)，Z 軸範圍: 14.5 至 25.5
+        const parkingLot = new THREE.Mesh(new THREE.PlaneGeometry(17.6, 11), matParking);
+        parkingLot.rotation.x = -Math.PI / 2;
+        parkingLot.position.set(26.5, 0.02, 20.0); 
+        parkingLot.receiveShadow = true;
+        campusGroup.add(parkingLot);
+
+        // 停車場與藍色球場之間的分隔牆長度 27.0，向紅色地面方向延伸，置於 Z = 27.0
+        const midWall = new THREE.Mesh(new THREE.BoxGeometry(27.0, 1.5, 0.5), matPurple);
+        midWall.position.set(22.0, 0.75, 27.0); 
+        midWall.castShadow = true; midWall.receiveShadow = true;
+        campusGroup.add(midWall);
+
+        // 3. 藍色球場 (Z 軸向外移動至 Z = 39.5，Z 軸範圍: 28.5 至 50.5，規格 44 x 22)
+        const outerCourtWidth = 44; 
+        const outerCourtCenterX = 16.0; 
+        const outerCourt = new THREE.Mesh(new THREE.PlaneGeometry(outerCourtWidth, 22), matOuterCourt);
+        outerCourt.rotation.x = -Math.PI / 2;
+        outerCourt.position.set(outerCourtCenterX, 0.02, 39.5); 
+        outerCourt.receiveShadow = true;
+        campusGroup.add(outerCourt);
+
+        // 紅色地面 - 橫向底段
+      const redGroundHoriz = new THREE.Mesh(new THREE.PlaneGeometry(53.7, 11.0), matRedGround);
+redGroundHoriz.rotation.x = -Math.PI / 2;
+redGroundHoriz.position.set(-9.15, 0.025, 20.0);
+redGroundHoriz.receiveShadow = true;
+campusGroup.add(redGroundHoriz);
+
+        // 紅色地面 - 左側延伸段
+        const redGroundLeftExt = new THREE.Mesh(new THREE.PlaneGeometry(9.0, 23.0), matRedGround);
+        redGroundLeftExt.rotation.x = -Math.PI / 2;
+        redGroundLeftExt.position.set(-31.5, 0.025, 3.0);
+        redGroundLeftExt.receiveShadow = true;
+        campusGroup.add(redGroundLeftExt);
+
+        // 紅色地面 - 後方中庭與白邊鋪滿段：填滿整片草皮空地、教學樓前白邊及樓梯下灰色區域
+      // 紅色地面 - 後方中庭與白邊鋪滿段：填滿整片草皮空地、教學樓前白邊及樓梯下灰色區域
+        const redGroundBack = new THREE.Mesh(new THREE.PlaneGeometry(53.7, 24.5), matRedGround);
+        redGroundBack.rotation.x = -Math.PI / 2;
+        redGroundBack.position.set(-9.15, 0.025, -19.75); 
+        redGroundBack.receiveShadow = true;
+        campusGroup.add(redGroundBack);
+
+        // 調整：在綠色球場右側與大樓之間，增設一條紅色地面，覆蓋原本裸露的白色水泥地
+        const redGroundStrip = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 22.0), matRedGround);
+        redGroundStrip.rotation.x = -Math.PI / 2;
+        redGroundStrip.position.set(16.2, 0.025, 3.5); // 完美填補 X = 14.7 至 17.7，Z = -7.5 至 14.5 的縫隙
+        redGroundStrip.receiveShadow = true;
+        campusGroup.add(redGroundStrip);
+
+        // -------------------------------------------------------------
+        // 新增：鐵絲網圍欄系統（代替舊圍牆，留空 3.5 單位並排布綠化小樹）
+        // -------------------------------------------------------------
+        // 生成重複網狀的 Fence Plane 幾何體與材質
+        function createFenceMesh(width, height, scaleX, scaleY) {
+            const tex = createWireFenceTexture();
+            tex.repeat.set(scaleX, scaleY);
+            const mat = new THREE.MeshStandardMaterial({
+                map: tex,
+                transparent: true,
+                alphaTest: 0.35,
+                side: THREE.DoubleSide,
+                metalness: 0.85,
+                roughness: 0.15,
+                color: 0x90A4AE
+            });
+            const fence = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
+            return fence;
+        }
+
+        // 組裝鐵絲網與金屬立柱
+     function createFenceWithPosts(width, height) {
+            const group = new THREE.Group();
+            
+            // 鐵絲網面
+            const panel = createFenceMesh(width, height, width / 2, height / 2);
+            panel.position.y = height / 2;
+            group.add(panel);
+
+            // 金屬立柱
+            const poleGeo = new THREE.CylinderGeometry(0.12, 0.12, height);
+            const poleMat = new THREE.MeshStandardMaterial({color: 0x546E7A, metalness: 0.9, roughness: 0.2});
+            const numPoles = Math.ceil(width / 5.5) + 1; // 約每 5.5 單位立一根柱
+            const step = width / (numPoles - 1);
+            for (let i = 0; i < numPoles; i++) {
+                const pole = new THREE.Mesh(poleGeo, poleMat);
+                pole.castShadow = true;
+                pole.position.y = height / 2;
+                pole.position.x = -width / 2 + i * step; // 永遠沿著 X 軸排布，與網面方向保持一致
+                group.add(pole);
+            }
+            return group;
+        }
+
+      // -------------------------------------------------------------
+        // 鐵絲網圍欄系統（修改版：前方改為連貫鐵絲網）
+        // -------------------------------------------------------------
+        // 1. 設置連貫的前方鐵絲網 (Z = 54.0, X 範圍: -6.0 到 41.5，總寬度 47.5)
+        const frontFence = createFenceWithPosts(47.5, 4.0);
+        frontFence.position.set(17.75, 0, 54.0);
+        campusGroup.add(frontFence);
+
+        // 高效能雙開車閘生成器 (使用最簡化的 Box 構造)
+        function createGateLeaf(width, height) {
+            const leaf = new THREE.Group();
+            const frameMat = new THREE.MeshStandardMaterial({color: 0x37474F, metalness: 0.8, roughness: 0.2});
+            
+            const t = 0.12; // 門框厚度
+            const top = new THREE.Mesh(new THREE.BoxGeometry(width, t, t), frameMat);
+            top.position.y = height - t/2;
+            const bottom = new THREE.Mesh(new THREE.BoxGeometry(width, t, t), frameMat);
+            bottom.position.y = t/2;
+            const left = new THREE.Mesh(new THREE.BoxGeometry(t, height, t), frameMat);
+            left.position.x = -width/2 + t/2; left.position.y = height/2;
+            const right = new THREE.Mesh(new THREE.BoxGeometry(t, height, t), frameMat);
+            right.position.x = width/2 - t/2; right.position.y = height/2;
+            
+            leaf.add(top, bottom, left, right);
+            
+            // 直立格柵
+            const barGeo = new THREE.BoxGeometry(0.06, height - t*2, 0.06);
+            for (let i = 1; i <= 3; i++) {
+                const bar = new THREE.Mesh(barGeo, frameMat);
+                bar.position.set(-width/2 + (width/4)*i, height/2, 0);
+                leaf.add(bar);
+            }
+            
+            // 斜向交叉加固條
+            const brace = new THREE.Mesh(new THREE.BoxGeometry(0.06, height * 1.2, 0.04), frameMat);
+            brace.rotation.z = -Math.atan2(height, width);
+            brace.position.set(0, height/2, 0);
+            leaf.add(brace);
+            
+            return leaf;
+        }
+
+        // 2. 將原本的雙開車閘移至停車場右側 (X = 35.3, Z 軸範圍: 17.0 至 23.0，旋轉 90 度呈半開狀態)
+   // 修改後的程式碼範例（將 X 軸從 35.3 調整至 37.5）
+const gateLeafLeft = createGateLeaf(3.0, 3.2);
+gateLeafLeft.position.set(37.5, 0, 18.5); // 修改此處的第一個參數
+gateLeafLeft.rotation.y = Math.PI / 2 + 0.6; 
+
+const gateLeafRight = createGateLeaf(3.0, 3.2);
+gateLeafRight.position.set(37.5, 0, 21.5); // 修改此處的第一個參數（保持與左閘門相同數值）
+gateLeafRight.rotation.y = Math.PI / 2 - 0.6;
+        
+        campusGroup.add(gateLeafLeft, gateLeafRight);
+
+        // 2. 設置右方鐵絲網 (X = 41.5, Z 範圍: 28.5 到 54.0，寬度 25.5)
+        const rightFence = createFenceWithPosts(25.5, 4.0, false);
+        rightFence.rotation.y = Math.PI / 2;
+        rightFence.position.set(41.5, 0, 41.25);
+        campusGroup.add(rightFence);
+
+        // 白色小屋平移至綠色球場下方
+        const whiteHutGroup = new THREE.Group();
+        whiteHutGroup.position.set(-16.5, 0, 26.0); 
+        
+        const hutBody = new THREE.Mesh(new THREE.BoxGeometry(15, 5, 12), new THREE.MeshStandardMaterial({color: 0xFFFFFF, roughness: 0.8}));
+        hutBody.position.y = 2.5;
+        hutBody.castShadow = true; hutBody.receiveShadow = true;
+        whiteHutGroup.add(hutBody);
+
+        const hutRoof = new THREE.Mesh(new THREE.BoxGeometry(15.4, 0.3, 12.4), new THREE.MeshStandardMaterial({color: 0xCCCCCC, roughness: 0.9}));
+        hutRoof.position.y = 5.15;
+        hutRoof.castShadow = true;
+        whiteHutGroup.add(hutRoof);
+
+        const smallWinGeom = new THREE.BoxGeometry(1.5, 1.0, 0.1);
+        const smallWinMat = new THREE.MeshStandardMaterial({color: 0x333333, roughness: 0.3});
+        const windowPositionsX = [-4.0, 0.0, 4.0];
+        windowPositionsX.forEach(wx => {
+            const smallWin = new THREE.Mesh(smallWinGeom, smallWinMat);
+            smallWin.position.set(wx, 2.8, 6.01);
+            whiteHutGroup.add(smallWin);
+        });
+
+        const smallDoor = new THREE.Mesh(new THREE.BoxGeometry(1.6, 3.2, 0.1), new THREE.MeshStandardMaterial({color: 0x666666, roughness: 0.7}));
+        smallDoor.position.set(-6.0, 1.6, 6.01);
+        whiteHutGroup.add(smallDoor);
+
+        const acUnitOnHut = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.0, 1.2), new THREE.MeshStandardMaterial({color: 0xDDDDDD, roughness: 0.7}));
+        acUnitOnHut.position.set(2, 5.7, -1);
+        acUnitOnHut.castShadow = true;
+        whiteHutGroup.add(acUnitOnHut);
+
+        campusGroup.add(whiteHutGroup);
+
+        // ----------------------------------------
+        // E. 附屬設施：籃球架、樹木與綠化小樹
+        // ----------------------------------------
+        function createHoop(x, z, rotY) {
+            const hoopGroup = new THREE.Group();
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 3.5), new THREE.MeshStandardMaterial({color: 0x888888, metalness:0.8}));
+            pole.position.set(0, 1.75, 0); pole.castShadow = true;
+            const board = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.5, 2.2), new THREE.MeshStandardMaterial({color: 0xffffff, roughness:0.2}));
+            board.position.set(0.5, 3, 0); board.castShadow = true;
+            const rim = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.05, 8, 20), new THREE.MeshStandardMaterial({color: 0xff3300}));
+            rim.rotation.x = Math.PI / 2; rim.position.set(0.9, 2.5, 0); rim.castShadow = true;
+            
+            hoopGroup.add(pole, board, rim);
+            hoopGroup.position.set(x, 0, z);
+            hoopGroup.rotation.y = rotY;
+            return hoopGroup;
+        }
+        
+        campusGroup.add(createHoop(-25, 3.5, 0));
+        campusGroup.add(createHoop(13, 3.5, Math.PI));
+        
+        // 移動藍色球場籃球架至新的中心點 Z = 39.5
+        campusGroup.add(createHoop(-5, 39.5, 0));
+        campusGroup.add(createHoop(37, 39.5, Math.PI));
+
+        // 綠化樹木 (大樹)
+        const matTrunk = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 1.0 });
+        const matLeaves = new THREE.MeshStandardMaterial({ color: 0x2E7D32, roughness: 0.9 });
+
+        const geoTrunk = new THREE.CylinderGeometry(0.3, 0.5, 4);
+        const geoLeaves = new THREE.IcosahedronGeometry(2.5, 1);
+
+        for(let i=0; i<6; i++) {
+            const tree = new THREE.Group();
+            const trunk = new THREE.Mesh(geoTrunk, matTrunk);
+            trunk.position.y = 2; trunk.castShadow = true;
+            const leaves = new THREE.Mesh(geoLeaves, matLeaves);
+            leaves.position.y = 5; leaves.castShadow = true;
+            tree.add(trunk, leaves);
+            tree.position.set(-38 + Math.random()*8, 0, 10 + Math.random()*25);
+            campusGroup.add(tree);
+        }
+
+        // 環繞小屋防護大樹綠帶
+        const hutTreePositions = [
+            { x: -28, z: 22 }, { x: -32, z: 25 }, { x: -30, z: 28 }, { x: -33, z: 31 }, { x: -29, z: 34 }, { x: -31, z: 37 },
+            { x: -22, z: 35 }, { x: -17, z: 36 }, { x: -12, z: 35 }
+        ];
+
+        const geoHutTrunk = new THREE.CylinderGeometry(0.25, 0.4, 3.5);
+        const geoHutLeaves = new THREE.IcosahedronGeometry(2.2, 1);
+
+        hutTreePositions.forEach(pos => {
+            const tree = new THREE.Group();
+            const trunk = new THREE.Mesh(geoHutTrunk, matTrunk);
+            trunk.position.y = 1.75; trunk.castShadow = true;
+            const leaves = new THREE.Mesh(geoHutLeaves, matLeaves);
+            leaves.position.y = 4.5; leaves.castShadow = true;
+            tree.add(trunk, leaves);
+            tree.position.set(pos.x, 0, pos.z);
+            campusGroup.add(tree);
+        });
+
+        // -------------------------------------------------------------
+        // 新增：鐵絲網內側小樹綠化帶（與球場外緣平行佈局）
+        // -------------------------------------------------------------
+        const geoSmallTrunk = new THREE.CylinderGeometry(0.12, 0.2, 2.0);
+        const geoSmallLeaves = new THREE.SphereGeometry(1.1, 5, 5); 
+        const matSmallLeaves = new THREE.MeshStandardMaterial({ color: 0x4CAF50, roughness: 0.9 });
+
+        function createSmallTree(x, z) {
+            const tree = new THREE.Group();
+            const trunk = new THREE.Mesh(geoSmallTrunk, matTrunk);
+            trunk.position.y = 1.0; trunk.castShadow = true;
+            const leaves = new THREE.Mesh(geoSmallLeaves, matSmallLeaves);
+            leaves.position.y = 2.4; leaves.castShadow = true;
+            tree.add(trunk, leaves);
+            tree.position.set(x, 0, z);
+            return tree;
+        }
+
+        // 1. 前外緣小樹群 (Z = 52.25 處，間隔排布 10 棵小樹)
+        const frontTreeCount = 10;
+        const frontStartX = -5.0;
+        const frontEndX = 37.0;
+        const frontStepX = (frontEndX - frontStartX) / (frontTreeCount - 1);
+        for (let i = 0; i < frontTreeCount; i++) {
+            const xPos = frontStartX + i * frontStepX;
+            campusGroup.add(createSmallTree(xPos, 52.25));
+        }
+
+        // 2. 右側外緣小樹群 (X = 39.75 處，間隔排布 5 棵小樹)
+        const rightTreeCount = 5;
+        const rightStartZ = 30.0;
+        const rightEndZ = 49.0;
+        const rightStepZ = (rightEndZ - rightStartZ) / (rightTreeCount - 1);
+        for (let i = 0; i < rightTreeCount; i++) {
+            const zPos = rightStartZ + i * rightStepZ;
+            campusGroup.add(createSmallTree(39.75, zPos));
+        }
+
+        scene.add(campusGroup);
+
+        // ==========================================
+        // 5. 渲染與動畫迴圈
+        // ==========================================
+        document.getElementById('loading').style.display = 'none';
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); 
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
