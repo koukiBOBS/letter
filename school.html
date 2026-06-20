@@ -1565,7 +1565,7 @@ window.isKnobDragging = false;
 window.walkVel = 0;
 window.strafeVel = 0;
 let startX = 0, startY = 0;
-let lastTapTime = 0; // 👈 用來紀錄雙擊的時間
+let lastTapTime = 0; // 用來紀錄雙擊的時間
 
 // 2. 切換 鳥瞰 / 第一人稱 邏輯
 window.toggleWalkMode = function() {
@@ -1586,8 +1586,8 @@ function applyCameraMode() {
         controls.minDistance = 0.1; controls.maxDistance = 0.1; // 鎖定距離強制轉頭
         controls.enablePan = false;
 
-        knobCenter.style.background = '#6b8e73'; 
-        indicator.style.background = '#fff';
+        if (knobCenter) knobCenter.style.background = '#6b8e73'; 
+        if (indicator) indicator.style.background = '#fff';
 
         // 降至地面高度
         camera.position.set(-6, 3.5, 0); 
@@ -1601,8 +1601,8 @@ function applyCameraMode() {
         controls.minDistance = 10; controls.maxDistance = 200;
         controls.enablePan = true;
 
-        knobCenter.style.background = '#fff';
-        indicator.style.background = '#548ca8';
+        if (knobCenter) knobCenter.style.background = '#fff';
+        if (indicator) indicator.style.background = '#548ca8';
 
         // 升空一覽全貌
         camera.position.set(-55, 45, 105);
@@ -1611,12 +1611,12 @@ function applyCameraMode() {
     controls.update();
 }
 
-// 4. 搖桿事件綁定 (加入雙擊判定)
+// 4. 搖桿事件綁定
 const knob = document.getElementById('mobile-cam-knob');
 
 function handleDown(e) {
     const now = Date.now();
-    // 👈 判斷雙擊 (350毫秒內連點兩次)
+    // 判斷雙擊 (350毫秒內連點兩次)
     if (now - lastTapTime < 350) {
         toggleWalkMode();
         lastTapTime = 0;
@@ -1646,6 +1646,7 @@ function handleMove(e) {
     
     document.querySelector('.knob-center').style.transform = `translate(${dx}px, ${dy}px)`;
     
+    // 根據搖桿位置設定前進與平移速度
     window.walkVel = -(dy / maxRadius) * 0.4; // 前後
     window.strafeVel = (dx / maxRadius) * 0.4; // 左右
 }
@@ -1658,16 +1659,58 @@ function handleUp() {
     }
 }
 
-knob.addEventListener('mousedown', handleDown);
-knob.addEventListener('touchstart', handleDown, {passive: false});
-window.addEventListener('mousemove', handleMove);
-window.addEventListener('touchmove', (e) => { if(window.isKnobDragging) { e.preventDefault(); handleMove(e); }}, {passive: false});
-window.addEventListener('mouseup', handleUp);
-window.addEventListener('touchend', handleUp);
+if (knob) {
+    knob.addEventListener('mousedown', handleDown);
+    knob.addEventListener('touchstart', handleDown, {passive: false});
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('touchmove', (e) => { if(window.isKnobDragging) { e.preventDefault(); handleMove(e); }}, {passive: false});
+    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('touchend', handleUp);
+}
 
-// 網頁載入時立刻套用記憶的相機模式
+// 5. 負責實際移動相機的函數 (會被 animate 迴圈持續呼叫)
+function updatePlayerMovement() {
+    if (!window.isWalkMode) return;
+    
+    if (Math.abs(window.walkVel) > 0.01 || Math.abs(window.strafeVel) > 0.01) {
+        let fwd = new THREE.Vector3();
+        camera.getWorldDirection(fwd);
+        fwd.y = 0; fwd.normalize(); // 保持在水平面移動
+        
+        let right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0,1,0)).normalize();
+        
+        // 預測下一步的座標
+        let moveVec = new THREE.Vector3()
+            .add(fwd.multiplyScalar(window.walkVel))
+            .add(right.multiplyScalar(window.strafeVel));
+
+        let nextX = camera.position.x + moveVec.x;
+        let nextZ = camera.position.z + moveVec.z;
+
+        // 🛡️ 啟動物理檢測 (呼叫我們先前寫好的 isCollision)
+        if (!isCollision(nextX, nextZ)) {
+            // 安全，允許移動 (連同 target 一起移動才能保持第一人稱視角)
+            camera.position.x = nextX;
+            camera.position.z = nextZ;
+            controls.target.x += moveVec.x;
+            controls.target.z += moveVec.z;
+        } else {
+            // 撞牆了！啟動「滑步 (Sliding)」機制，讓玩家貼著牆走而不是卡死
+            if (!isCollision(nextX, camera.position.z)) {
+                camera.position.x = nextX;
+                controls.target.x += moveVec.x;
+            } 
+            else if (!isCollision(camera.position.x, nextZ)) {
+                camera.position.z = nextZ;
+                controls.target.z += moveVec.z;
+            }
+        }
+    }
+}
+
+// 6. 網頁載入時立刻套用記憶的相機模式
 applyCameraMode();
-
+// =====================================================================
 
 
 
