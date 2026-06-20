@@ -1719,6 +1719,36 @@
     .volume-control-player { margin-bottom: 5px; }
     .playlist { min-height: 80px; }
 }
+
+
+
+        /* ==========================================
+   🚀 手機與平板專用：收藏冊/錢包 滾動效能優化
+   ========================================== */
+@media (max-width: 900px) {
+    /* 1. 移除極度消耗 GPU 的 SVG 噪點濾鏡，改為純漸層底色，並啟動原生順滑滾動 */
+    .wallet-content {
+        background-image: radial-gradient(circle at center, #5c3926 0%, #2a160e 100%) !important;
+        box-shadow: 
+            inset 0 0 0 4px #4a2e1d, 
+            inset 0 0 0 5px #1a0d08, 
+            0 10px 20px rgba(0,0,0,0.6) !important;
+        -webkit-overflow-scrolling: touch !important; /* 啟用 iOS 順滑滾動 */
+    }
+
+    /* 2. 關閉彈窗背景的毛玻璃模糊 (backdrop-filter 在手機上與內部滾動衝突會大卡頓) */
+    #modal-wallet {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background: rgba(10, 8, 5, 0.98) !important; /* 加深底色彌補失去的模糊感 */
+    }
+
+    /* 3. 將卡片強制推入 GPU 獨立圖層渲染，避免滾動時不斷重繪 (Repaint) */
+    .item-card {
+        transform: translateZ(0) !important;
+        will-change: transform, opacity;
+    }
+}
         
         
     </style>
