@@ -2439,14 +2439,19 @@ function pressBusBell() {
     // 由於點擊是「使用者主動行為」，這裡播放聲音是安全且合法的
     try { playSynthTone(1200); } catch(e) {}
 
-    if (isBellActiveWindow) {
+   if (isBellActiveWindow) {
         // 🎉 挑戰成功
         clearInterval(busTimerInterval);
         document.getElementById('btn-press-bell').classList.remove('active-window');
         showToast("🔔 叮！成功按下落車鐘！準備下車...");
         
         setTimeout(() => {
-            enterShoppingStreet();
+            // 👈 依據搭乘的車輛方向，決定去商店街還是中學
+            if (activeBusDirection > 0) {
+                enterShoppingStreet();
+            } else {
+                enterSchool(); 
+            }
         }, 1500);
     } else {
         // ❌ 挑戰失敗 (按錯時機)
@@ -2455,6 +2460,28 @@ function pressBusBell() {
         failBusJourney("按錯時機了！司機沒有理會你，巴士直接開回總站...");
     }
 }
+
+
+// 成功進入中學邏輯
+function enterSchool() {
+    const bellBox = document.getElementById('bus-bell-box');
+    if (bellBox) bellBox.style.display = 'none';
+    const timerDisp = document.getElementById('bus-timer-display');
+    if (timerDisp) timerDisp.style.display = 'none';
+    
+    const fadeOverlay = document.createElement('div');
+    fadeOverlay.style.cssText = "position:fixed; inset:0; background:#000; z-index:999999; opacity:0; transition: opacity 1.5s;";
+    document.body.appendChild(fadeOverlay);
+    
+    setTimeout(() => { fadeOverlay.style.opacity = 1; }, 10);
+    
+    setTimeout(() => {
+        window.location.href = 'school.html';
+    }, 1500);
+}
+
+
+        
 
 // 更新計時器介面 (加入發光警告)
 function updateBusTimerUI() {
@@ -4726,8 +4753,9 @@ window.oceanTime = { value: 0 };
 
 // --- 雙層巴士乘坐系統 ---
 let isRidingBus = false;
+let activeBusDirection = 1; // 👈 新增這行：用來記錄目前搭的車是往哪開
 let activeBus = null;
-let busInteriorGrp = null; 
+let busInteriorGrp = null;
 let preRideCameraState = { pos: new THREE.Vector3(), target: new THREE.Vector3(), fov: 50 };
 let busBumpAnim = null;
 
@@ -4806,15 +4834,17 @@ function createNylonTexture() {
 }
 
 // 🎨 零效能生成：LED 點陣報站螢幕
-function createLEDSign() {
+// 🎨 零效能生成：LED 點陣報站螢幕 (支援動態修改目的地)
+function createLEDSign(destText = '1A  尖沙咀碼頭') {
     const canvas = document.createElement('canvas');
     canvas.width = 512; canvas.height = 128;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, 512, 128);
     ctx.fillStyle = '#ff9900'; 
-    ctx.font = 'bold 65px "Courier New", monospace';
+    // 加入微軟正黑體確保中文字能正確顯示
+    ctx.font = 'bold 65px "Courier New", "Microsoft JhengHei", monospace'; 
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('1A  尖沙咀碼頭', 256, 64);
+    ctx.fillText(destText, 256, 64);
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     for(let i=0; i<512; i+=4) ctx.fillRect(i, 0, 1, 128);
     for(let i=0; i<128; i+=4) ctx.fillRect(0, i, 512, 1);
@@ -4870,8 +4900,14 @@ function createBusInterior() {
     const dash = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.8, 1.0), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 }));
     dash.position.set(0, -0.8, -4.2); grp.add(dash);
 
-    const ledPanel = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.25), createLEDSign());
-    ledPanel.position.set(0, 1.4, -4.4); ledPanel.rotation.x = 0.05; grp.add(ledPanel);
+// 4. 儀表板與報站屏
+    const dash = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.8, 1.0), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 }));
+    dash.position.set(0, -0.8, -4.2); grp.add(dash);
+
+    const ledPanel = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.25), createLEDSign("載入中..."));
+    ledPanel.position.set(0, 1.4, -4.4); ledPanel.rotation.x = 0.05; 
+    ledPanel.name = 'ledPanel'; // 👈 加上名字，讓我們上車時能找到它來換字
+    grp.add(ledPanel);
 
     // 5. 💺 高質感多排座椅 (移除金屬環，套用尼龍布紋理)
     const sMat = new THREE.MeshStandardMaterial({ map: createSeatTexture(), roughness: 0.9 });
@@ -10930,8 +10966,11 @@ function rideBus(busHitBox) {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
 
-    activeBus = busHitBox.userData.vehicleObj;
+  activeBus = busHitBox.userData.vehicleObj;
     const direction = busHitBox.userData.direction;
+
+    // 👇👇👇 從這裡開始替換 👇👇👇
+    activeBusDirection = direction; // 記錄這台車的方向
 
     preRideCameraState.pos.copy(camera.position);
     preRideCameraState.target.copy(controls.target);
@@ -10952,6 +10991,16 @@ function rideBus(busHitBox) {
     });
 
     if (!busInteriorGrp) busInteriorGrp = createBusInterior();
+    
+    // ✨ 在這裡動態更新 LED 報站螢幕 (direction > 0 往摩天輪，direction < 0 往大橋)
+    const destText = direction > 0 ? "268B 海濱商店街" : "68X  基元中學";
+    const ledMesh = busInteriorGrp.getObjectByName('ledPanel');
+    if (ledMesh) {
+        if (ledMesh.material.map) ledMesh.material.map.dispose();
+        ledMesh.material.dispose();
+        ledMesh.material = createLEDSign(destText);
+    }
+
     activeBus.add(busInteriorGrp);
 
     const camZPos = direction > 0 ? 3.5 : -3.5;
