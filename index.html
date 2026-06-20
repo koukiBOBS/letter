@@ -12572,8 +12572,11 @@ window.addEventListener('pointerup', (e) => {
     }, 800); // 走近之後再彈出商店視窗
 }
     }
+    
+});
 
 
+        
 // 開發者測試：一鍵瞬間前往學校
 window.devGoToSchool = function() {
     showToast("🌉 開發者捷徑：正在前往 中華基督教會基元中學...");
@@ -12584,8 +12587,6 @@ window.devGoToSchool = function() {
     setTimeout(() => { fadeOverlay.style.opacity = 1; }, 10);
     setTimeout(() => { window.location.href = 'school.html'; }, 1000);
 };
-    
-});
         
         
     </script>
