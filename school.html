@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
+
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>學校模型</title>
@@ -27,6 +34,44 @@
     <div id="instructions">🖱️ 左鍵拖曳：旋轉視角 | 🖱️ 右鍵拖曳：平移 | ⚙️ 滾輪：縮放</div>
 
     <script>
+
+
+// ====== Firebase 初始化與共用資料 ======
+const firebaseConfig = { 
+    apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms", 
+    authDomain: "letter-a74d1.firebaseapp.com", 
+    databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com", 
+    projectId: "letter-a74d1" 
+};
+if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+const auth = firebase.auth(); 
+const db = firebase.database();
+
+let currentUser = null;
+let userPoints = 0;
+let userInventory = {};
+
+// 檢查登入狀態，未登入則踢回房間
+auth.onAuthStateChanged(user => {
+    if (user) {
+        currentUser = user;
+        // 實時監聽該玩家的積分與資產
+        db.ref(`users/${user.uid}`).on('value', snap => {
+            const data = snap.val() || {};
+            userPoints = data.points || 0;
+            userInventory = data.inventory || {};
+            console.log("🏫 成功載入學校！當前積分：", userPoints);
+            // 日後你可以在這裡加入更新學校 UI 的程式碼 (例如顯示積分)
+        });
+    } else {
+        alert("請先登入紙短情長系統！");
+        window.location.href = 'index.html'; // 踢回首頁
+    }
+});
+// ======================================
+
+
+        
         // ==========================================
         // 1. 場景與渲染器設置
         // ==========================================
@@ -73,6 +118,68 @@
         sunLight.shadow.camera.top = d; sunLight.shadow.camera.bottom = -d;
         sunLight.shadow.bias = -0.0005; 
         scene.add(sunLight);
+
+
+        // ====== 學校版日夜流轉系統 ======
+function createSkyTexture(topColorHex, bottomColorHex) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 2; canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, new THREE.Color(topColorHex).getStyle());
+    grad.addColorStop(1, new THREE.Color(bottomColorHex).getStyle());
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 2, 512);
+    return new THREE.CanvasTexture(canvas);
+}
+
+function syncSchoolEnvironmentTime() {
+    const h = (new Date().getUTCHours() + 8) % 24; // 香港時間
+    if (h >= 5 && h < 9) setSchoolPhase('dawn'); 
+    else if (h >= 9 && h < 16) setSchoolPhase('noon'); 
+    else if (h >= 16 && h < 19) setSchoolPhase('dusk'); 
+    else setSchoolPhase('night');
+}
+
+function setSchoolPhase(phaseStr) {
+    const phases = {
+        dawn: { skyTop: 0x7a8b98, skyBot: 0xd0b8a8, fog: 0xd0b8a8, light: 0xffe4cc, int: 0.8, windowLight: false },
+        noon: { skyTop: 0x40a0d0, skyBot: 0xbae0ff, fog: 0xbae0ff, light: 0xffffff, int: 1.3, windowLight: false },
+        dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, light: 0xffaa66, int: 1.0, windowLight: true },
+        night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x1a2235, light: 0x404055, int: 0.2, windowLight: true }
+    };
+    const p = phases[phaseStr];
+
+    // 1. 變白天/黑夜的背景與濃霧
+    scene.background = createSkyTexture(p.skyTop, p.skyBot);
+    scene.fog.color.setHex(p.fog);
+
+    // 2. 調整太陽光與環境光
+    sunLight.color.setHex(p.light);
+    sunLight.intensity = p.int;
+    
+    if(phaseStr === 'night') {
+        hemiLight.color.setHex(0x223344);
+        hemiLight.groundColor.setHex(0x111111);
+        hemiLight.intensity = 0.5;
+    } else {
+        hemiLight.color.setHex(0xffffff);
+        hemiLight.groundColor.setHex(0x777777);
+        hemiLight.intensity = 0.85;
+    }
+
+    // 3. 晚上學校課室窗戶自動發光！
+    // 假設 matWindow 與 matDoor 等材質有保留
+    if (matWindow) {
+        matWindow.emissive.setHex(p.windowLight ? 0xffcc88 : 0x000000);
+        matWindow.emissiveIntensity = p.windowLight ? 0.6 : 0.0;
+        matWindow.needsUpdate = true;
+    }
+    if (matCorridorWhite) { // 走廊晚上會稍微被燈光染黃
+        matCorridorWhite.emissive.setHex(p.windowLight ? 0x221a10 : 0x000000);
+    }
+}
+// ======================================
 
         // ==========================================
         // 3. 程式化材質生成
@@ -1317,6 +1424,12 @@ gateLeafRight.rotation.y = Math.PI / 2 - 0.6;
         }
 
         scene.add(campusGroup);
+
+
+        // 啟動日夜同步，並每 60 秒檢查一次時間變化
+syncSchoolEnvironmentTime();
+setInterval(syncSchoolEnvironmentTime, 60000);
+
 
         // ==========================================
         // 5. 渲染與動畫迴圈
