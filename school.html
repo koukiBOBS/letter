@@ -2088,30 +2088,8 @@ const puncRegex = /[，。！？、：；「」『』（）《》〈〉\n\r\s]/;
 
 
 
-window.closeCopyTask = function() {
-    document.getElementById('copy-task-overlay').style.display = 'none';
-    if (writerInstance) {
-        writerInstance.hideCharacter();
-    }
-};
 
-// 2. 啟動抄寫任務
-window.startCopyTask = function() {
-    document.getElementById('copy-task-overlay').style.display = 'flex';
-    
-    // 隨機抽選一篇佳段
-    copyCurrentExcerpt = COPY_EXCERPTS[Math.floor(Math.random() * COPY_EXCERPTS.length)];
-    copyCurrentIndex = 0;
-    
-    renderCopyText();
-};
-
-window.closeCopyTask = function() {
-    document.getElementById('copy-task-overlay').style.display = 'none';
-    if (writerInstance) {
-        writerInstance.hideCharacter();
-    }
-};
+        
 
 
 // 處理單字抄寫完成的邏輯
