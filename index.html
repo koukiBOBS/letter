@@ -1773,6 +1773,11 @@
                 <div class="dev-sec-title">🚌 巴士系統測試</div>
                 <div class="dev-grid">
                     <button class="dev-btn span-2 highlight" style="background:#0284c7; border-color:#0369a1;" onclick="devSimulateShoppingStreet()">🛍️ 一鍵成功落車進入商店街</button>
+
+  <!-- 👇 新增這行：一鍵去中學按鈕 👇 -->
+        <button class="dev-btn span-2 highlight" style="background:#8b5cf6; border-color:#7c3aed; margin-top: 6px;" onclick="devGoToSchool()">🏫 一鍵成功落車去中學</button>
+
+                    
                 </div>
             </div>
 
@@ -12520,6 +12525,19 @@ window.addEventListener('pointerup', (e) => {
     }, 800); // 走近之後再彈出商店視窗
 }
     }
+
+
+// 開發者測試：一鍵瞬間前往學校
+window.devGoToSchool = function() {
+    showToast("🌉 開發者捷徑：正在前往 中華基督教會基元中學...");
+    const fadeOverlay = document.createElement('div');
+    fadeOverlay.style.cssText = "position:fixed; inset:0; background:#000; z-index:999999; opacity:0; transition: opacity 1.0s;";
+    document.body.appendChild(fadeOverlay);
+    
+    setTimeout(() => { fadeOverlay.style.opacity = 1; }, 10);
+    setTimeout(() => { window.location.href = 'school.html'; }, 1000);
+};
+    
 });
         
         
