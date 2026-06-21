@@ -13003,12 +13003,14 @@ function startElevatorSequence(destination) {
 }
 
 
-  function setupBusStopWaiting() {
+     function setupBusStopWaiting() {
     isWaitingAtBusStop = true;
-    isAtBalcony = false; 
+    isAtBalcony = false; // 確保退出露台模式，避免視角衝突
     
+    // 確保強制顯示戶外風景群組
     if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = true;
 
+    // ⛔ 關閉並隱藏房間內的視角搖桿，防止它把鏡頭拉回房間
     const knob = document.getElementById('mobile-cam-knob');
     if (knob) knob.style.display = 'none';
     if (typeof applyModeState === 'function') {
@@ -13021,32 +13023,30 @@ function startElevatorSequence(destination) {
     controls.minPolarAngle = Math.PI / 2.5; 
     controls.maxPolarAngle = Math.PI / 1.8;
     
-    controls.minAzimuthAngle = -Infinity;
-    controls.maxAzimuthAngle = Infinity;
+    // 💡 停在 X = -100 的位置，剛好介於房間大樓(-60)與大橋(-140)中間的開闊地帶
+    const waitX = -100;
 
     if (pendingDestination === 'street') {
-        // 🚌 去商店街：搭乘往摩天輪方向的車 (+X)
-        // 📍 位置：靠近大橋 (X: -40)，站在近側行人路 (Z: 23) 往馬路 (Z: 8) 看
-        const waitX = -40;
-        camera.position.set(waitX + 0.01, -2.5, 23);
+        // 🚌 去商店街：站在近側行人路 (z: 23) 往馬路 (z: 8) 看
+        camera.position.set(waitX, -2.5, 23);
         controls.target.set(waitX, -3.5, 8);
     } else {
-        // 🚌 去學校：搭乘往大橋方向的車 (-X)
-        // 📍 位置：靠近摩天輪 (X: 60)，玩家已過馬路，站在靠海側的行人路 (Z: -15) 往馬路 (Z: 0) 看
-        const waitX = 60;
-        camera.position.set(waitX + 0.01, -2.5, -15);
+        // 🚌 去學校：站在遠側行人路 (z: -15) 往馬路 (z: 0) 看
+        camera.position.set(waitX, -2.5, -15);
         controls.target.set(waitX, -3.5, 0);
     }
 
-    // 強制套用相機方向，再更新控制器
-    camera.lookAt(controls.target);
+    // 💡 終極視角防呆鎖定法：先解除限制，讓它看向目標後取得當前的方位角
+    controls.minAzimuthAngle = -Infinity;
+    controls.maxAzimuthAngle = Infinity;
     controls.update();
 
-    // 取得當前真實的方位角，並以此為中心限制 80 度，防止轉頭過度看到不該看的東西
+    // 然後以此方位角為中心，嚴格限制只能左右轉頭 80 度 (避免轉頭太過去看到不該看的大樓底座)
     const currentAzimuth = controls.getAzimuthalAngle();
     controls.minAzimuthAngle = currentAzimuth - Math.PI * 0.45;
     controls.maxAzimuthAngle = currentAzimuth + Math.PI * 0.45;
 
+    // 顯示「返回室內」的按鈕，允許玩家反悔不搭了
     const returnBtn = document.getElementById('btn-return-room');
     if (returnBtn) {
         returnBtn.style.display = 'flex';
