@@ -2517,7 +2517,8 @@ function enterSchool() {
     
     setTimeout(() => { fadeOverlay.style.opacity = 1; }, 10);
     
-    // 👇 記錄最後位置為學校，並跳轉
+  // 👇 記錄最後位置為學校，並跳轉
+    localStorage.setItem('cachedLocation', 'school'); // 寫入本地記憶，下次直接攔截
     db.ref(`users/${currentUser.uid}/lastLocation`).set('school').then(() => {
         setTimeout(() => {
             window.location.href = 'school.html';
@@ -2686,6 +2687,17 @@ window.devUnlockAllAssets = function() {
 // 👆👆👆 貼到這裡結束 👆👆👆
         
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzcangpOrf05ZRhxzoMUN-C9T57CS3_G80to1lLWv4opXuHbYMMMuKXzap7kkcou3BPsQ/exec"; 
+
+
+
+// ⚡ 極速攔截網：如果在學校，直接跳轉，連 Firebase 都不用啟動
+const cachedLoc = localStorage.getItem('cachedLocation');
+const isReturn = new URLSearchParams(window.location.search).get('returnTrip') === 'true';
+if (cachedLoc === 'school' && !isReturn) {
+    window.location.href = 'school.html';
+}
+
+        
         const firebaseConfig = { apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms", authDomain: "letter-a74d1.firebaseapp.com", databaseURL: "https://letter-a74d1-default-rtdb.firebaseio.com", projectId: "letter-a74d1" };
         firebase.initializeApp(firebaseConfig); const auth = firebase.auth(); const db = firebase.database();
 
@@ -3129,8 +3141,12 @@ auth.onAuthStateChanged(user => {
             }
 
            currentUser = user;
-            db.ref(`users/${user.uid}`).once('value').then(userSnap => {
+           db.ref(`users/${user.uid}`).once('value').then(userSnap => {
                 let data = userSnap.val();
+                
+                // 👇 新增這行：同步伺服器的真實位置到本地快取
+                if(data && data.lastLocation) localStorage.setItem('cachedLocation', data.lastLocation);
+                
                 if (data && data.name) { 
                     // 👇 檢查位置記憶：如果上次在學校，且這次不是「搭車回程(?returnTrip=true)」，強制將他送回學校
                     if (data.lastLocation === 'school' && !isReturnTrip) {
