@@ -2221,7 +2221,7 @@ window.addEventListener('pointerup', (e) => {
         localStorage.setItem('cachedLocation', 'home'); // 寫入本地記憶，下次直接攔截
         db.ref(`users/${currentUser.uid}/lastLocation`).set('home').then(() => {
             setTimeout(() => {
-                window.location.href = 'index.html?returnTrip=true';
+              window.location.href = 'index.html?returnTrip=true&from=school';
             }, 1000);
         });
     }
