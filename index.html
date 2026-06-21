@@ -1756,7 +1756,12 @@
 </head>
 <body>
 
-
+<!-- 👇 新增：如果是從學校回程，在網頁渲染第一時間直接蓋上黑幕，防止看到登入或房間畫面 -->
+<script>
+    if (new URLSearchParams(window.location.search).get('returnTrip') === 'true') {
+        document.write('<div id="return-trip-blackout" style="position:fixed; inset:0; background:#000000; z-index:9999999; transition: opacity 1.5s ease;"></div>');
+    }
+</script>
 
 <!-- 進入頁面時的任務備忘通知 -->
 <div id="welcome-memo-overlay">
@@ -3074,14 +3079,9 @@ auth.onAuthStateChanged(user => {
         document.getElementById('login-container').style.display = 'none';
         document.getElementById('name-setup-container').style.display = 'none';
         
-        if (isReturnTrip) {
-            // 🚀 回程模式：瞬間將畫面塗黑，完全隱藏信封與字體，作為電影黑幕
-            const authOverlay = document.getElementById('auth-overlay');
-            authOverlay.style.background = '#000000';
-            authOverlay.style.opacity = '1';
-            const letterContainer = document.querySelector('.auth-letter-container');
-            if(letterContainer) letterContainer.style.display = 'none';
-            document.getElementById('auth-loading-container').style.display = 'none';
+       if (isReturnTrip) {
+            // 🚀 回程模式：因為最外層已經有 return-trip-blackout 擋住，這裡只要把登入畫面直接隱藏即可
+            document.getElementById('auth-overlay').style.display = 'none';
         } else {
             // 正常登入：顯示唯美 Loading 畫面
             document.getElementById('auth-loading-container').style.display = 'flex';
@@ -3318,7 +3318,7 @@ function initApp() {
             camera.updateProjectionMatrix();
             controls.update();
 
-            // 2. 抓取反方向的巴士
+           // 2. 抓取反方向的巴士
             const busHitBox = interactables.find(i => i.userData && i.userData.type === 'bus' && i.userData.direction === 1);
             if (busHitBox) {
                 // 🚀 關鍵魔法：將動畫速度調到極快 (100倍速)，讓鏡頭飛向車內的 1.2 秒動畫在 0.01 秒內瞬間完成！
@@ -3327,15 +3327,22 @@ function initApp() {
                 
                 rideBus(busHitBox);
                 
-                // 3. 鏡頭確定坐在車內後，恢復正常速度，並淡出黑幕，此時第一眼就會是車內風景！
+                // 3. 鏡頭確定坐在車內後，恢復正常速度，並將最外層的黑幕淡出！
                 setTimeout(() => {
                     gsap.globalTimeline.timeScale(orgTimeScale); 
                     hideAuthOverlay(); 
+                    const blackout = document.getElementById('return-trip-blackout');
+                    if(blackout) {
+                        blackout.style.opacity = '0';
+                        setTimeout(() => blackout.remove(), 1500); // 動畫播完後移除 DOM
+                    }
                 }, 50); 
             } else {
                 hideAuthOverlay(); // 防錯備案
+                const blackout = document.getElementById('return-trip-blackout');
+                if(blackout) blackout.remove();
             }
-        }, 100); 
+        }, 300); // 稍微加長一點延遲，確保 3D 場景都已建構完成，防止畫面閃爍
     }
 }
 
