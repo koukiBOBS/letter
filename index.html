@@ -2523,10 +2523,10 @@ function startBusJourney() {
 }
 
 // 點擊落車鐘按鈕
+// 點擊落車鐘按鈕
 function pressBusBell() {
     if (!isRidingBus) return;
     
-    // 由於點擊是「使用者主動行為」，這裡播放聲音是安全且合法的
     try { playSynthTone(1200); } catch(e) {}
 
    if (isBellActiveWindow) {
@@ -2538,7 +2538,11 @@ function pressBusBell() {
       setTimeout(() => {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('returnTrip') === 'true') {
-                // 如果是從學校回程，直接落車回到露台，並清除網址列參數防重新整理無限迴圈
+                // 👇 修復：成功落車的這一刻，才真正把位置存為「房間」
+                localStorage.setItem('cachedLocation', 'home');
+                if (currentUser) db.ref(`users/${currentUser.uid}/lastLocation`).set('home');
+
+                // 清除網址列參數防重新整理無限迴圈
                 window.history.replaceState({}, document.title, window.location.pathname);
                 getOffBus();
             } 
@@ -11607,9 +11611,11 @@ function leaveShoppingStreet() {
     
     setTimeout(() => {
         isAtStreet = false;
-        
-        // 💡 確保系統知道我們是回到露台，這樣 getOffBus 才會精準降落
         isAtBalcony = true; 
+        
+        // 👇 修復：瞬間回家模式中，也是要在黑幕遮蔽後、真正回家時才存檔
+        localStorage.setItem('cachedLocation', 'home');
+        if (currentUser) db.ref(`users/${currentUser.uid}/lastLocation`).set('home');
         
         if (typeof ferrisWheelGrp !== 'undefined' && typeof balconyOnlyGroup !== 'undefined') {
             balconyOnlyGroup.add(ferrisWheelGrp.parent);
@@ -13017,23 +13023,17 @@ window.addEventListener('pointerup', (e) => {
 }
 
 
-else if (obj.userData.type === 'street_return') {
+} else if (obj.userData.type === 'street_return') {
             // 加入過場黑畫面
             document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed; inset:0; background:#000; z-index:999999; opacity:0; transition:opacity 1s;" id="bus-fade"></div>');
             setTimeout(() => document.getElementById('bus-fade').style.opacity = 1, 10);
             
-            // 記錄最後位置為房間，並帶 returnTrip=true 參數重新整理
-            localStorage.setItem('cachedLocation', 'home');
-            db.ref(`users/${currentUser.uid}/lastLocation`).set('home').then(() => {
-                setTimeout(() => {
-                    // 重新載入頁面，觸發與學校完全相同的搭車動畫
-                   window.location.href = '?returnTrip=true&from=street';
-                }, 1000);
-            });
+            // 👇 修復：絕對不能在這裡提早把位置改為房間！保持原位置，只跳轉網址載入動畫
+            setTimeout(() => {
+                const fromLoc = localStorage.getItem('cachedLocation') || 'street';
+                window.location.href = `?returnTrip=true&from=${fromLoc}`;
+            }, 1000);
         }
-
-        
-    }
     
 });
 
