@@ -8508,14 +8508,34 @@ if (type === 'painting' || type === 'bookcase') {
             openMusicPlayer('stereo'); // 👈 告訴系統：這是從家裡音響打開的！
         }
         
-        else if (type === 'bus') {
-    // 必須人在露台 (或看著窗外) 時才能上車
-    if (isAtBalcony) {
-        rideBus(obj);
-    } else {
-        showToast("💡 請先走到露台，才能搭乘巴士。");
-    }
-}
+      } else if (type === 'bus') {
+            // 必須人在露台 (或看著窗外) 時才能上車
+            if (isAtBalcony) {
+                // 👇 新增車費扣除邏輯 👇
+                if (userPoints < 200) {
+                    alert("您的積分不足 200 分，無法支付車資！\n請多寫信與探索來賺取積分。");
+                    return;
+                }
+                
+                // 加入確認視窗，避免誤觸扣分
+                if (confirm("乘搭巴士出門將扣除 200 積分作為車資，確定要出發嗎？")) {
+                    userPoints -= 200; // 扣除積分
+                    db.ref(`users/${currentUser.uid}/points`).set(userPoints); // 同步至資料庫
+                    
+                    // 更新畫面的積分顯示
+                    const pointsEl = document.getElementById('user-points-text');
+                    if (pointsEl) pointsEl.innerText = userPoints;
+                    
+                    showToast("🎫 已扣除 200 積分購買車票。");
+                    
+                    // 扣款成功後，執行上車動畫
+                    rideBus(obj);
+                }
+                // 👆 新增邏輯結束 👆
+            } else {
+                showToast("💡 請先走到露台，才能搭乘巴士。");
+            }
+        }
         
     }
 }
