@@ -2476,9 +2476,14 @@ function pressBusBell() {
         document.getElementById('btn-press-bell').classList.remove('active-window');
         showToast("🔔 叮！成功按下落車鐘！準備下車...");
         
-        setTimeout(() => {
-            // 👈 依據搭乘的車輛方向，決定去商店街還是中學
-            if (activeBusDirection > 0) {
+      setTimeout(() => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('returnTrip') === 'true') {
+                // 如果是從學校回程，直接落車回到露台，並清除網址列參數防重新整理無限迴圈
+                window.history.replaceState({}, document.title, window.location.pathname);
+                getOffBus();
+            } 
+            else if (activeBusDirection > 0) {
                 enterShoppingStreet();
             } else {
                 enterSchool(); 
@@ -2548,6 +2553,11 @@ function failBusJourney(msg) {
     
     // 延遲 2 秒後，呼叫原本的 getOffBus 鏡頭函數，把玩家送回房間
     setTimeout(() => {
+        // 清除網址列參數，防止重新整理後又自動搭車
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('returnTrip') === 'true') {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
         getOffBus(); 
     }, 2000);
 }
@@ -3274,6 +3284,27 @@ db.ref(`classes/${currentUser.classId || 'default'}`).on('value', snap => {
     if (document.getElementById('dev-panel-wrapper')) {
         document.getElementById('dev-panel-wrapper').style.display = isDevUser(currentUser.email) ? 'block' : 'none';
     }
+
+
+// 👇 自動檢查是否從學校搭車回來
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('returnTrip') === 'true') {
+        setTimeout(() => {
+            // 1. 強制讓玩家走到露台
+            goToBalcony();
+            
+            // 2. 等露台動畫走完，自動抓一輛反方向的巴士讓他上車！
+            setTimeout(() => {
+                // 尋找方向為 1 的巴士 (與去程方向相反)
+                const busHitBox = interactables.find(i => i.userData && i.userData.type === 'bus' && i.userData.direction === 1);
+                if (busHitBox) {
+                    rideBus(busHitBox);
+                }
+            }, 1800); 
+        }, 800); // 稍微等待房間初始渲染完畢
+    }
+
+    
 }
 
 
@@ -11022,7 +11053,13 @@ function rideBus(busHitBox) {
     if (!busInteriorGrp) busInteriorGrp = createBusInterior();
     
     // ✨ 在這裡動態更新 LED 報站螢幕 (direction > 0 往摩天輪，direction < 0 往大橋)
-    const destText = direction > 0 ? "268B 海濱商店街" : "68X  基元中學";
+   let destText = direction > 0 ? "275B 海濱商店街" : "KYC 基元中學";
+    // 如果是回程，覆寫顯示文字為「溫暖的家」
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('returnTrip') === 'true') {
+        destText = "K72  溫暖的家";
+    }
+    
     const ledMesh = busInteriorGrp.getObjectByName('ledPanel');
     if (ledMesh) {
         if (ledMesh.material.map) ledMesh.material.map.dispose();
