@@ -2,29 +2,31 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-
-    <!-- 引入 Hanzi Writer 筆畫測驗套件 -->
+    <!-- 1. 引入 Hanzi Writer 筆畫測驗套件 -->
     <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
 
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-
-
-<!-- 💡 修正：更換為不含 export 語法的全域 UMD 版物理引擎 CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-
-    <!-- 💡 新增：引入全域版物理引擎 (確保全域變數 CANNON 可被讀取) -->
-<script src="https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"></script>
-
-
+    <!-- 2. 引入 Firebase 相關套件 -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>學校模型</title>
+
+    <!-- 3. 引入 3D 核心庫 (必須最先載入，防止出現 THREE is not defined) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- 4. 引入 OrbitControls 軌道控制器 -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- 5. 引入 3D 物理引擎 (採用不含 export 的標準全域版，並確保已完全移除 cannon-es.js) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+
     <style>
+        /* 這裡保留您原本的 CSS 樣式內容 */
         body { margin: 0; overflow: hidden; background-color: #87CEEB; }
+        canvas { display: block; }
         canvas { display: block; }
         #loading {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
