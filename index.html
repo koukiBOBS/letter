@@ -10042,38 +10042,22 @@ function acceptBankruptcy() {
                 
                 let right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0,1,0)).normalize();
                 
-                let moveVec = new THREE.Vector3()
+              let moveVec = new THREE.Vector3()
                     .add(fwd.multiplyScalar(-wVel))
                     .add(right.multiplyScalar(sVel));
 
                 let nextX = camera.position.x + moveVec.x;
                 let nextZ = camera.position.z + moveVec.z;
 
-nextX = Math.max(-53, Math.min(15, nextX));
+                // 限制 X 軸範圍 (防穿牆與掉入海中)
+                nextX = Math.max(-53, Math.min(15, nextX));
     
-    // 👇👇👇 新增：判斷是否走到青馬大橋方向的盡頭 (觸發點 -235) 👇👇👇
-    if (nextZ < -235 && !window.isTransitioningToSchool) {
-        window.isTransitioningToSchool = true; // 鎖定狀態，防止重複觸發
-        showToast("🌉 正在前往 中華基督教會基元中學..."); // 顯示畫面下方通知
-        
-        // 加上黑畫面淡出效果，讓轉場更自然
-        const fadeOverlay = document.createElement('div');
-        fadeOverlay.style.cssText = "position:fixed; inset:0; background:#000; z-index:999999; opacity:0; transition: opacity 1.5s;";
-        document.body.appendChild(fadeOverlay);
-        setTimeout(() => { fadeOverlay.style.opacity = 1; }, 10);
-        
-        // 1.5秒黑屏後，正式跳轉至學校網頁
-        setTimeout(() => {
-            window.location.href = 'school.html';
-        }, 1500);
-    }
-    // 👆👆👆 新增結束 👆👆👆
+                // 限制 Z 軸範圍 (路面長度 500，邊界設為 -240 到 240，走到盡頭只會被空氣牆擋住)
+                nextZ = Math.max(-240, Math.min(240, nextZ));
 
-    // 你的路面長度是 500 (從 -250 到 250)，將極限放寬到 240，可以走得很遠又不會掉出去
-    nextZ = Math.max(-240, Math.min(240, nextZ));
-
-    let deltaX = nextX - camera.position.x;
-    let deltaZ = nextZ - camera.position.z;
+                let deltaX = nextX - camera.position.x;
+                let deltaZ = nextZ - camera.position.z;
+                
                 // 🌟 將攝影機與注視目標一起推動，保證不穿幫
                 camera.position.x += deltaX;
                 camera.position.z += deltaZ;
