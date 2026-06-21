@@ -13003,7 +13003,7 @@ function startElevatorSequence(destination) {
 }
 
 
-     function setupBusStopWaiting() {
+   function setupBusStopWaiting() {
     isWaitingAtBusStop = true;
     isAtBalcony = false; // 確保退出露台模式，避免視角衝突
     
@@ -13023,15 +13023,14 @@ function startElevatorSequence(destination) {
     controls.minPolarAngle = Math.PI / 2.5; 
     controls.maxPolarAngle = Math.PI / 1.8;
     
-    // 💡 停在 X = -100 的位置，剛好介於房間大樓(-60)與大橋(-140)中間的開闊地帶
-    const waitX = -100;
-
     if (pendingDestination === 'street') {
-        // 🚌 去商店街：站在近側行人路 (z: 23) 往馬路 (z: 8) 看
+        // 🚌 去商店街：站在近側行人路，剛好介於房間大樓與大橋中間的開闊地帶
+        const waitX = -100;
         camera.position.set(waitX, -2.5, 23);
         controls.target.set(waitX, -3.5, 8);
     } else {
-        // 🚌 去學校：站在遠側行人路 (z: -15) 往馬路 (z: 0) 看
+        // 🚌 去學校：安排在摩天輪下，站在遠側行人路往馬路看，避免大廈底座穿模
+        const waitX = 110; 
         camera.position.set(waitX, -2.5, -15);
         controls.target.set(waitX, -3.5, 0);
     }
