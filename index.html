@@ -5383,30 +5383,45 @@ function goToBalcony() {
 function returnToRoom() {
     // 💡 允許從 露台(isAtBalcony) 或 地下站(isWaitingAtBusStop) 返回室內
     if (!isAtBalcony && !isWaitingAtBusStop) return;
-    
+
     isAtBalcony = false;
     isWaitingAtBusStop = false;
 
     // 退回室內時，先解除所有角度限制，確保動畫平滑不會卡頓
     controls.minAzimuthAngle = -Infinity;
     controls.maxAzimuthAngle = Infinity;
-    controls.minPolarAngle = 0; 
+    controls.minPolarAngle = 0;
     controls.maxPolarAngle = Math.PI;
 
+    // 👇 關鍵修復 1：直接從本地記憶庫提取玩家在房間時的真實視角，避免備份被開場動畫污染
+    let targetPos = new THREE.Vector3(0, 22, 45);
+    let targetLook = new THREE.Vector3(0, 7, 0);
+    const savedState = localStorage.getItem('roomCameraState');
+    if (savedState) {
+        try {
+            const s = JSON.parse(savedState);
+            targetPos.set(s.cp.x, s.cp.y, s.cp.z);
+            targetLook.set(s.ct.x, s.ct.y, s.ct.z);
+        } catch(e) {}
+    } else if (roomCameraBackup.cp.length() > 0) {
+        targetPos.copy(roomCameraBackup.cp);
+        targetLook.copy(roomCameraBackup.ct);
+    }
+
     // 退回室內的鏡頭動畫
-    const roomFov = getIdealFov(); 
-    gsap.to(camera.position, { x: roomCameraBackup.cp.x, y: roomCameraBackup.cp.y, z: roomCameraBackup.cp.z, duration: 1.8, ease: "power2.inOut" });
+    const roomFov = getIdealFov();
+    gsap.to(camera.position, { x: targetPos.x, y: targetPos.y, z: targetPos.z, duration: 1.8, ease: "power2.inOut" });
     gsap.to(camera, { fov: roomFov, duration: 1.8, ease: "power2.inOut", onUpdate: () => camera.updateProjectionMatrix() });
-    gsap.to(controls.target, { 
-        x: roomCameraBackup.ct.x, y: roomCameraBackup.ct.y, z: roomCameraBackup.ct.z, 
-        duration: 1.8, 
-        ease: "power2.inOut", 
+    gsap.to(controls.target, {
+        x: targetLook.x, y: targetLook.y, z: targetLook.z,
+        duration: 1.8,
+        ease: "power2.inOut",
         onUpdate: () => controls.update(),
         onComplete: () => {
             // 動畫結束完全進入室內後，重新鎖死抬頭角度
-            controls.minPolarAngle = 1.15; 
+            controls.minPolarAngle = 1.15;
             controls.maxPolarAngle = Math.PI / 2 - 0.05;
-            
+
             // 根據玩家原先的模式，重新鎖定左右旋轉限制
             if (window.knobMode === 2) {
                 controls.minAzimuthAngle = Math.PI / 2;
@@ -5417,9 +5432,18 @@ function returnToRoom() {
             }
 
             if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = false;
-            
-            // 恢復旋鈕狀態
-            if (typeof applyModeState === 'function') applyModeState();
+
+            // 👇 關鍵修復 2：移除 applyModeState() 避免強制重置視角，手動恢復旋鈕外觀即可
+            const knobCenter = document.querySelector('.knob-center');
+            if (knobCenter) {
+                if (window.isWalkMode) {
+                    knobCenter.style.background = '#6b8e73';
+                } else {
+                    knobCenter.style.background = window.knobMode === 1 ? '#fff' : '#e6d7c0';
+                }
+                knobCenter.style.transform = `translate(0px, 0px)`;
+            }
+
             const knob = document.getElementById('mobile-cam-knob');
             if (knob) knob.style.display = '';
         }
@@ -5431,7 +5455,7 @@ function returnToRoom() {
     }
 
     controls.minDistance = 10;
-    controls.maxDistance = 59; 
+    controls.maxDistance = 59;
     document.getElementById('btn-return-room').style.display = 'none';
 }
         
