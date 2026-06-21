@@ -314,7 +314,8 @@ function initHoopGameScene() {
     if (hoopGameGroup) return; 
 
     // 1. 建立物理世界
-    hoopPhysicsWorld = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.82, 0) });
+    hoopPhysicsWorld = new CANNON.World();
+    hoopPhysicsWorld.gravity.set(0, -9.82, 0); // 👈 修改這裡：改用舊版 cannon.js 專用的重力設定方式
     
     const ballMat = new CANNON.Material('ball');
     const groundMat = new CANNON.Material('ground');
