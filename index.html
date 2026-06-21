@@ -13050,21 +13050,21 @@ function setupStreetWaiting() {
     lockWaitingAzimuth();
 }
 
-// 🚌 往基元中學的等車設定（全新修正版）
+// 🚌 往基元中學的等車設定（完美修正版：站對面、正對馬路、避開懸空房屋）
 function setupSchoolWaiting() {
-    const waitX = 60; 
+    // 1. 將等車位置移到遠方 (X = 180)，徹底避開 X 軸 0 附近的懸空房間模型
+    const waitX = 180; 
     
-    // 1. 設定玩家站立位置：站在對面的行人路上 (Z = -13)
-    camera.position.set(waitX, -2.5, -13);
+    // 2. 站在「對面」的行人路 (Z = -15)
+    camera.position.set(waitX, -2.5, -15);
     
-    // 2. 關鍵修復：將「旋轉中軸點 (target)」緊貼在相機正前方 0.1 單位！
-    // 這樣相機就不會被強行吸入馬路中央，玩家能真正站在原地，並面向馬路 (+Z 方向)
-    controls.target.set(waitX, -2.5, -12.9);
+    // 3. 視線「正對」馬路 (+Z 方向)
+    // 秘訣：將目標點設在相機正前方 0.1 單位，完美鎖定第一人稱視角，不歪斜、不穿模
+    controls.target.set(waitX, -2.5, -14.9);
     
-    // 更新控制以套用新中軸點
     controls.update();
 
-    // 鎖定視角，防止轉身看到背後的邊界
+    // 鎖定視角，讓玩家只能左右轉頭看巴士來了沒
     lockWaitingAzimuth();
 }
 
