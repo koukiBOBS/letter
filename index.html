@@ -13052,25 +13052,24 @@ function setupStreetWaiting() {
     lockWaitingAzimuth();
 }
 
-// 🚌 往基元中學的等車設定（完美修正版：站對面、正對馬路、避開懸空房屋）
-// 🚌 往基元中學的等車設定（修正版：站在摩天輪下，正對馬路）
+// 🚌 往基元中學的等車設定（修正版：摩天輪正下方，背向摩天輪，面向馬路與屋）
 function setupSchoolWaiting() {
-    // 1. 將等車位置移到摩天輪正下方附近 (X = 110)
+    // 1. 將等車位置移到摩天輪中心正下方 (X = 110)
     const waitX = 110; 
     
-    // 2. 站在對向的行人路上 (Z = -15)
-    camera.position.set(waitX, -2.5, -15);
+    // 2. 站在摩天輪下 (Z = -35)，高度調整為剛好站在廣場底座上
+    camera.position.set(waitX, -2.5, -35);
     
-    // 3. 視線「正對」馬路 (+Z 方向，看向車道 Z = 0)
-    // 目標點設向馬路中心，並稍微往下看，符合人眼自然視角
-    controls.target.set(waitX, -3.5, 0);
+    // 3. 視線正對馬路與屋的方向 (+Z 方向，看向車道 Z = 0)
+    // 微微向下看，視角更自然
+    controls.target.set(waitX, -3.0, 0);
     
     controls.update();
 
     // 鎖定視角，讓玩家只能左右轉頭看巴士來了沒，防止穿模
     lockWaitingAzimuth();
 }
-
+        
 // 🔒 輔助函數：自動計算並限制只能左右觀看約 80 度
 function lockWaitingAzimuth() {
     controls.minAzimuthAngle = -Infinity;
