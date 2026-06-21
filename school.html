@@ -2,6 +2,9 @@
 <html lang="zh-TW">
 <head>
 
+    <!-- 引入 Hanzi Writer 筆畫測驗套件 -->
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
@@ -145,12 +148,13 @@
         <div class="copy-text-display" id="copy-text-display">
             <!-- 文章內容由 JS 生成 -->
         </div>
-        <div class="copy-canvas-container">
-            <div class="copy-canvas-hint" id="copy-canvas-hint">請在此寫下高亮的字...</div>
-            <canvas id="copy-canvas"></canvas>
+      <div class="copy-canvas-container">
+            <div class="copy-canvas-hint" id="copy-canvas-hint" style="display:none;">載入中...</div>
+            <!-- 替換為 Hanzi Writer 專用容器，並鎖定觸控防止滾動 -->
+            <div id="copy-hanzi-container" style="width: 250px; height: 250px; touch-action: none;"></div>
         </div>
         <div class="copy-tools">
-            <button class="copy-btn" onclick="clearCopyCanvas()">重寫一筆</button>
+            <button class="copy-btn" onclick="resetHanziQuiz()">重新書寫本字</button>
         </div>
     </div>
 </div>
@@ -2055,74 +2059,15 @@ const COPY_EXCERPTS = [
 
 let copyCurrentExcerpt = null;
 let copyCurrentIndex = 0;
-let copyStrokes = [];
-let copyCurrentStroke = [[], [], []];
-let copyHwTimeout = null;
-let copyIsDrawing = false;
-let copyCanvas, copyCtx;
+let hanziWriter = null; // 替換為 Hanzi Writer 實例
 
 // 標點符號正則表達式 (遇到這些自動跳過不需抄寫)
 const puncRegex = /[，。！？、：；「」『』（）《》〈〉]/;
 
-// 1. 初始化畫布與事件
-function initCopyCanvas() {
-    copyCanvas = document.getElementById('copy-canvas');
-    copyCtx = copyCanvas.getContext('2d');
-    
-    function resize() {
-        const rect = copyCanvas.parentElement.getBoundingClientRect();
-        copyCanvas.width = rect.width; copyCanvas.height = rect.height;
-        copyCtx.lineCap = "round"; copyCtx.lineJoin = "round"; copyCtx.lineWidth = 6;
-    }
-    window.addEventListener('resize', resize);
-    resize();
-
-    const getPos = (e) => {
-        const rect = copyCanvas.getBoundingClientRect();
-        const touch = e.touches ? e.touches[0] : e;
-        return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
-    };
-
-    const startDraw = (e) => {
-        e.preventDefault();
-        copyIsDrawing = true;
-        const pos = getPos(e);
-        copyCurrentStroke = [[pos.x], [pos.y], [Date.now()]];
-        copyCtx.beginPath(); copyCtx.moveTo(pos.x, pos.y);
-        document.getElementById('copy-canvas-hint').style.display = 'none';
-        clearTimeout(copyHwTimeout);
-    };
-
-    const draw = (e) => {
-        e.preventDefault();
-        if (!copyIsDrawing) return;
-        const pos = getPos(e);
-        copyCurrentStroke[0].push(pos.x); copyCurrentStroke[1].push(pos.y); copyCurrentStroke[2].push(Date.now());
-        copyCtx.lineTo(pos.x, pos.y);
-        copyCtx.strokeStyle = "#4a4238"; copyCtx.stroke();
-    };
-
-    const stopDraw = () => {
-        if (!copyIsDrawing) return;
-        copyIsDrawing = false;
-        if (copyCurrentStroke[0].length > 0) copyStrokes.push(copyCurrentStroke);
-        copyHwTimeout = setTimeout(recognizeCopyHandwriting, 600); // 停筆 0.6 秒後自動辨識
-    };
-
-    copyCanvas.addEventListener('mousedown', startDraw);
-    copyCanvas.addEventListener('mousemove', draw);
-    window.addEventListener('mouseup', stopDraw);
-    
-    copyCanvas.addEventListener('touchstart', startDraw, {passive: false});
-    copyCanvas.addEventListener('touchmove', draw, {passive: false});
-    copyCanvas.addEventListener('touchend', stopDraw);
-}
 
 // 2. 啟動抄寫任務
 window.startCopyTask = function() {
     document.getElementById('copy-task-overlay').style.display = 'flex';
-    if (!copyCanvas) initCopyCanvas();
-    clearCopyCanvas();
     
     // 隨機抽選一篇佳段
     copyCurrentExcerpt = COPY_EXCERPTS[Math.floor(Math.random() * COPY_EXCERPTS.length)];
@@ -2135,9 +2080,11 @@ window.closeCopyTask = function() {
     document.getElementById('copy-task-overlay').style.display = 'none';
 };
 
-window.clearCopyCanvas = function() {
-    copyStrokes = [];
-    if(copyCtx) copyCtx.clearRect(0, 0, copyCanvas.width, copyCanvas.height);
+// 重新測驗當前文字
+window.resetHanziQuiz = function() {
+    if (hanziWriter) {
+        hanziWriter.quiz(); 
+    }
 };
 
 // 3. 渲染文章狀態 (高亮當前字)
@@ -2174,60 +2121,63 @@ function renderCopyText() {
     const activeSpan = document.getElementById('current-char-span');
     if(activeSpan) activeSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
     
-    document.getElementById('copy-canvas-hint').style.display = 'block';
-    document.getElementById('copy-canvas-hint').innerText = `請寫「${chars[copyCurrentIndex]}」`;
+    // 呼叫 HanziWriter 載入當前要寫的字
+    loadHanziChar(chars[copyCurrentIndex]);
 }
 
-// 4. Google 辨識與校對
-// 4. Google 辨識與校對
-function recognizeCopyHandwriting() {
-    if (copyStrokes.length === 0) return;
-    const targetChar = copyCurrentExcerpt.text[copyCurrentIndex];
-
-    const data = { 
-        "options": "enable_pre_space", 
-        "requests": [{ 
-            "writing_guide": { 
-                "width": copyCanvas.width, 
-                "height": copyCanvas.height 
-            }, 
-            "ink": copyStrokes, 
-            "language": "zh-TW" 
-        }] 
-    };
+// 4. 載入並啟動 HanziWriter 筆劃測驗
+function loadHanziChar(char) {
+    const container = document.getElementById('copy-hanzi-container');
+    const hint = document.getElementById('copy-canvas-hint');
     
-    // 💡 已修正：將 inputinput 改為 inputtools
-    fetch("https://inputtools.google.com/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8", { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify(data) 
-    })
-    .then(res => res.json())
-    .then(res => {
-        if (res[0] === "SUCCESS" && res[1][0] && res[1][0][1]) {
-            const guesses = res[1][0][1]; // 回傳的候選字陣列
-            // 檢查候選字中是否包含我們要的字
-            if (guesses.includes(targetChar)) {
-                // ✅ 寫對了！
-                clearCopyCanvas();
-                copyCurrentIndex++;
-                renderCopyText();
-            } else {
-                // ❌ 寫錯了
-                clearCopyCanvas();
-                document.getElementById('copy-canvas-hint').style.display = 'block';
-                document.getElementById('copy-canvas-hint').innerText = `辨識不到，請重寫「${targetChar}」`;
-                document.getElementById('copy-canvas-hint').style.color = '#ef4444';
-                setTimeout(()=> { document.getElementById('copy-canvas-hint').style.color = '#b4a08c'; }, 1000);
-            }
-        } else {
-            clearCopyCanvas();
+    // 每次載入新字前清空容器
+    container.innerHTML = '';
+    
+    // 初始化 HanziWriter
+    hanziWriter = HanziWriter.create('copy-hanzi-container', char, {
+        width: 250,
+        height: 250,
+        padding: 15,
+        showCharacter: false, // 隱藏原字底色
+        showOutline: true,    // 顯示外框提示讓學生跟隨
+        strokeColor: '#d4af37', // 金色筆劃
+        outlineColor: '#e6dfd1', // 提示框底色
+        drawingColor: '#4a4238', // 學生書寫的顏色
+        // 雙重字庫支援：優先讀取繁體字庫，若無則退回通用字庫
+        charDataLoader: function(char, onComplete) {
+            fetch('https://cdn.jsdelivr.net/npm/hanzi-writer-data-zh-tw@0.1.1/' + char + '.json')
+            .then(res => {
+                if (!res.ok) return fetch('https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0.1/' + char + '.json');
+                return res;
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('Char not found');
+                return res.json();
+            })
+            .then(onComplete)
+            .catch(() => onComplete(null)); // 觸發 onLoadCharDataError
+        },
+        onLoadCharDataError: function(reason) {
+            // 生僻字或字庫沒有的字，自動跳過並載入下一個 (防止卡死)
+            console.warn(`字庫無此字「${char}」，自動跳過。`);
+            copyCurrentIndex++;
+            renderCopyText();
+        },
+        onLoadCharDataSuccess: function() {
+            hint.style.display = 'none'; // 載入成功，隱藏文字提示
+            // 啟動筆劃測驗模式
+            hanziWriter.quiz({
+                onComplete: function() {
+                    // 書寫完成，延遲半秒後自動進入下一個字
+                    copyCurrentIndex++;
+                    setTimeout(renderCopyText, 500);
+                }
+            });
         }
-    }).catch(e => {
-        console.error("辨識失敗", e);
-        clearCopyCanvas();
     });
 }
+
+
 
         
 
