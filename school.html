@@ -469,8 +469,13 @@ function startHoopGameCheck() {
 }
 
 // 啟動投籃模式
+// 啟動投籃模式
 function launchHoopGame(roundNum) {
     initHoopGameScene();
+
+    // 👉 新增：紀錄進入小遊戲前，玩家當下的相機位置與視線目標
+    window.preHoopCamPos = camera.position.clone();
+    window.preHoopCamTarget = controls.target.clone();
 
     // 1. 場景群組切換
     campusGroup.visible = false;
@@ -479,9 +484,10 @@ function launchHoopGame(roundNum) {
     // 2. 禁用 OrbitControls 避免拖曳時畫面滾動
     controls.enabled = false;
 
-    // 3. 調整相機視野置於籃下合理投籃視角
+    // 3. 調整相機視野置於籃下合理投籃視角 (👉 修改這裡：明確設定 controls.target)
     camera.position.set(0, 3.8, 10.5);
-    camera.lookAt(0, 4.3, -4);
+    controls.target.set(0, 4.3, -4); 
+    controls.update(); // 強制控制器接受新視角
 
     // 4. 同步當前天色與路燈
     syncHoopEnvironment();
@@ -680,9 +686,16 @@ function exitHoopGame() {
     campusGroup.visible = true;
     controls.enabled = true;
 
-    // 重設為學校原本的相機位置與目標 (鳥瞰模式)
-    camera.position.set(-55, 45, 105);
-    controls.target.set(5, 10, 0);
+    // 👉 刪除原本這三行寫死的代碼：
+    // camera.position.set(-55, 45, 105);
+    // controls.target.set(5, 10, 0);
+    // controls.update();
+
+    // 👉 替換為以下這段：精準還原進入遊戲前的位置
+    if (window.preHoopCamPos) {
+        camera.position.copy(window.preHoopCamPos);
+        controls.target.copy(window.preHoopCamTarget);
+    }
     controls.update();
 }
 
