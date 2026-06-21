@@ -3129,20 +3129,20 @@ window.addEventListener('pointerup', (e) => {
     }
 
     // 2. 檢查是否點擊搭車回家
-    const intersectsBus = raycaster.intersectObjects(returnTaskGroup.children, true);
-    if (intersectsBus.length > 0) {
-        // 加入過場黑畫面防突兀
-        document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed; inset:0; background:#000; z-index:999999; opacity:0; transition:opacity 1s;" id="bus-fade"></div>');
-        setTimeout(() => document.getElementById('bus-fade').style.opacity = 1, 10);
-        
-        // 👇 記錄最後位置為房間，並帶參數跳轉
-        localStorage.setItem('cachedLocation', 'home'); // 寫入本地記憶，下次直接攔截
-        db.ref(`users/${currentUser.uid}/lastLocation`).set('home').then(() => {
-            setTimeout(() => {
-              window.location.href = 'index.html?returnTrip=true&from=school';
-            }, 1000);
-        });
-    }
+  // 2. 檢查是否點擊搭車回家
+const intersectsBus = raycaster.intersectObjects(returnTaskGroup.children, true);
+if (intersectsBus.length > 0) {
+    // 加入過場黑畫面防突兀
+    document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed; inset:0; background:#000; z-index:999999; opacity:0; transition:opacity 1s;" id="bus-fade"></div>');
+    setTimeout(() => document.getElementById('bus-fade').style.opacity = 1, 10);
+    
+    // 👇 修復：絕不能在此刻把位置改為 home，必須等成功下車才改！
+    // 加入合法乘車標記，防止在車上重新整理
+    sessionStorage.setItem('busRideActive', 'true');
+    setTimeout(() => {
+        window.location.href = 'index.html?returnTrip=true&from=school';
+    }, 1000);
+}
 
 
 // 3. 檢查是否點擊投籃挑戰
