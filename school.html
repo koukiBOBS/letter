@@ -309,7 +309,7 @@ let isHoopDragging = false;
 // 儲存投籃專用的點光源（用於夜間路燈照明）
 let hoopNightLight = null;
 
-// 初始化投籃物理與場景 (僅在第一次啟動時執行)
+// 更新：初始化投籃物理與場景
 function initHoopGameScene() {
     if (hoopGameGroup) return; // 避免重複建立
 
@@ -329,17 +329,25 @@ function initHoopGameScene() {
     hoopGameGroup = new THREE.Group();
     scene.add(hoopGameGroup);
 
-    // 3. 建立符合「外運動場」深藍/橙色調的地面材質
-    // 使用 getCourtMaterial 相同的色調組合：藍底 '#1565C0' 與 橘區 '#E65100'
-    const courtMat = getCourtMaterial('#1565C0', '#E65100');
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), courtMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    hoopGameGroup.add(floor);
+    // 3. 建立瀝青底盤與特製半場貼圖 Decal (解決籃框放在中場線的問題)
+    const floorBase = new THREE.Mesh(
+        new THREE.PlaneGeometry(40, 40),
+        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 }) 
+    );
+    floorBase.rotation.x = -Math.PI / 2;
+    floorBase.receiveShadow = true;
+    hoopGameGroup.add(floorBase);
 
-    // 物理地面
+    const courtMat = getHalfCourtMaterial('#1565C0', '#E65100');
+    const courtDecal = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), courtMat);
+    courtDecal.rotation.x = -Math.PI / 2;
+    courtDecal.position.set(0, 0.01, 2.2); // 精確對齊投籃起點與籃筐投影
+    courtDecal.receiveShadow = true;
+    hoopGameGroup.add(courtDecal);
+
+    // 物理地面 - 💡 修正：改用 setFromAxisAngle 確保相容 0.6.2，防止球體穿透消失
     const floorBody = new CANNON.Body({ type: CANNON.Body.STATIC, shape: new CANNON.Plane(), material: groundMat });
-    floorBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+    floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
     hoopPhysicsWorld.addBody(floorBody);
 
     // 4. 建立壓克力籃板與橘紅色鐵框
@@ -355,7 +363,7 @@ function initHoopGameScene() {
     const boardCanvas = document.createElement('canvas');
     boardCanvas.width = 512; boardCanvas.height = 384;
     const bCtx = boardCanvas.getContext('2d');
-    bCtx.strokeStyle = '#e65100'; // 改為與橘色球場呼應的橙色線框
+    bCtx.strokeStyle = '#e65100'; 
     bCtx.lineWidth = 14; bCtx.strokeRect(176, 160, 160, 120); 
     bCtx.lineWidth = 10; bCtx.strokeRect(6, 6, 500, 372);
     const boardLines = new THREE.Mesh(new THREE.PlaneGeometry(4, 3), new THREE.MeshBasicMaterial({
@@ -420,13 +428,15 @@ function initHoopGameScene() {
     hoopBallMesh.castShadow = true;
     hoopGameGroup.add(hoopBallMesh);
 
+    // 💡 修正：使用具體數值初始化 CANNON.Vec3 防止類型混淆
     hoopBallBody = new CANNON.Body({
-        mass: 1, shape: new CANNON.Sphere(ballRadius), position: hoopStartPos.clone(),
+        mass: 1, shape: new CANNON.Sphere(ballRadius), 
+        position: new CANNON.Vec3(hoopStartPos.x, hoopStartPos.y, hoopStartPos.z),
         material: ballMat, linearDamping: 0.08, angularDamping: 0.08
     });
     hoopPhysicsWorld.addBody(hoopBallBody);
 
-    // 建立夜間照明專用的強力球場街燈 (高處投射)
+    // 建立夜間照明
     hoopNightLight = new THREE.SpotLight(0xffffff, 0, 40, Math.PI/3, 0.5, 1);
     hoopNightLight.position.set(0, 14, 0);
     hoopNightLight.target = rimMesh;
@@ -435,7 +445,6 @@ function initHoopGameScene() {
     hoopNightLight.shadow.mapSize.height = 1024;
     hoopGameGroup.add(hoopNightLight);
 }
-
 // 檢查每日遊玩上限 (Firebase & LocalStorage 雙保險)
 function startHoopGameCheck() {
     if (!currentUser) {
@@ -545,19 +554,25 @@ function updateHoopHUD(roundNum) {
     document.getElementById('hoop-game-hud').dataset.round = roundNum;
 }
 
-// 重設球位置與物理屬性
+// 更新：重設球位置與物理屬性
 function resetHoopBall() {
-    hoopBallBody.position.copy(hoopStartPos);
+    hoopBallBody.position.set(hoopStartPos.x, hoopStartPos.y, hoopStartPos.z);
     hoopBallBody.velocity.set(0, 0, 0);
     hoopBallBody.angularVelocity.set(0, 0, 0);
-    hoopPrevBallPos.copy(hoopBallBody.position);
+    hoopPrevBallPos.set(hoopBallBody.position.x, hoopBallBody.position.y, hoopBallBody.position.z);
     hoopHasScored = false;
     hoopState = 'aiming';
     hoopTimeSinceThrow = 0;
 }
 
-// 投球觸碰拖曳事件
+
+// 更新：投球觸碰拖曳與快速重載事件
 function hoopPointerDown(e) {
+    // 💡 修正：如果球在空中，點擊任意地方立即收球重新準備 (不需等待上一球結束)
+    if (hoopState === 'thrown' || hoopState === 'resetting') {
+        resetHoopBall();
+        return;
+    }
     if (hoopState !== 'aiming') return;
     isHoopDragging = true;
     hoopDragStart = { x: e.clientX, y: e.clientY };
@@ -592,6 +607,7 @@ function hoopPointerUp(e) {
 }
 
 // 每一影格物理模擬及穿環進球檢測
+// 更新：每一影格物理模擬及穿環進球檢測
 function updateHoopPhysics() {
     if (hoopState === 'idle' || !hoopPhysicsWorld) return;
 
@@ -616,7 +632,8 @@ function updateHoopPhysics() {
         }
     }
 
-    hoopPrevBallPos.copy(hoopBallBody.position);
+    // 安全拷貝數值
+    hoopPrevBallPos.set(hoopBallBody.position.x, hoopBallBody.position.y, hoopBallBody.position.z);
     hoopBallMesh.position.copy(hoopBallBody.position);
     hoopBallMesh.quaternion.copy(hoopBallBody.quaternion);
 
@@ -624,7 +641,8 @@ function updateHoopPhysics() {
     if (hoopState === 'thrown') {
         hoopTimeSinceThrow += 1 / 60;
         const isResting = hoopBallBody.position.y < 0.8 && hoopBallBody.velocity.length() < 0.8;
-        const isOut = hoopBallBody.position.y < -1 || hoopBallBody.position.z > 12;
+        // 💡 修正：增加 z < -12 判定 (當力道過大飛往籃板後方時能正確觸發重置)
+        const isOut = hoopBallBody.position.y < -1 || hoopBallBody.position.z > 12 || hoopBallBody.position.z < -12;
 
         if (isResting || isOut || hoopTimeSinceThrow > 4.5) {
             if (hoopShotsLeft > 0) {
@@ -1156,6 +1174,67 @@ function createClassroomDoorTexture() {
             return new THREE.CanvasTexture(canvas);
         }
 
+
+// 新增：特製半場投籃球場材質生成器
+function getHalfCourtMaterial(baseColorHex, keyColorHex) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024; canvas.height = 1024;
+    const c = canvas.getContext('2d');
+    
+    c.fillStyle = baseColorHex;
+    c.fillRect(0, 0, 1024, 1024);
+    
+    // 增加瀝青顆粒感雜訊
+    c.fillStyle = 'rgba(255,255,255,0.03)';
+    for(let i=0; i<15000; i++) c.fillRect(Math.random()*1024, Math.random()*1024, 2, 2);
+    c.fillStyle = 'rgba(0,0,0,0.08)';
+    for(let i=0; i<15000; i++) c.fillRect(Math.random()*1024, Math.random()*1024, 2, 2);
+
+    const m = 64; 
+    const cx = 512; 
+    const baselineY = 100; 
+    const hoopY = baselineY + 1.275 * m; 
+    
+    // 禁區三秒區鋪面
+    c.fillStyle = keyColorHex;
+    c.fillRect(cx - 3.0 * m, baselineY, 6.0 * m, 5.8 * m);
+
+    c.fillStyle = 'rgba(255, 255, 255, 0.15)'; 
+    c.fillRect(cx - 2.45 * m, baselineY, 4.9 * m, 5.8 * m);
+    
+    c.strokeStyle = '#ffffff';
+    c.lineWidth = 10;
+    c.lineCap = 'round';
+    
+    // 底線
+    c.beginPath(); c.moveTo(0, baselineY); c.lineTo(1024, baselineY); c.stroke(); 
+    // 罰球區框線
+    c.strokeRect(cx - 2.45 * m, baselineY, 4.9 * m, 5.8 * m); 
+    
+    // 罰球線半圓
+    c.beginPath(); c.arc(cx, baselineY + 5.8 * m, 1.8 * m, 0, Math.PI); c.stroke();
+    
+    // 三分線兩側直線段
+    c.beginPath();
+    c.moveTo(cx - 6.6 * m, baselineY);
+    c.lineTo(cx - 6.6 * m, baselineY + 3.0 * m);
+    c.moveTo(cx + 6.6 * m, baselineY);
+    c.lineTo(cx + 6.6 * m, baselineY + 3.0 * m);
+    c.stroke();
+    
+    // 三分線弧線段
+    c.beginPath();
+    const angle = Math.asin(3.0 / 6.75);
+    c.arc(cx, hoopY, 6.75 * m, angle, Math.PI - angle);
+    c.stroke();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.anisotropy = 16;
+    return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 });
+}
+
+
+        
         function getCourtMaterial(baseColorHex, keyColorHex) {
             const canvas = document.createElement('canvas');
             canvas.width = 2048; canvas.height = 1024;
