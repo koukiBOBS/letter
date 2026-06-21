@@ -11,6 +11,14 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
 
+        <!-- 引入 Three.js 與 OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- 💡 新增：引入全域版物理引擎 (確保全域變數 CANNON 可被讀取) -->
+<script src="https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"></script>
+
+
     
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -148,9 +156,7 @@
 
         
     </style>
-    <!-- 引入 Three.js 與 OrbitControls -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
 </head>
 <body>
 
@@ -894,6 +900,73 @@ if (hoopGameGroup && hoopGameGroup.visible) {
 }
 // ======================================
 
+
+
+
+// 🏀 投籃遊戲專用：生成網格半透明紋理
+function createNetAlphaTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 256;
+    const c = canvas.getContext('2d');
+    
+    c.fillStyle = '#000000'; c.fillRect(0, 0, 256, 256); 
+    c.strokeStyle = '#ffffff'; c.lineWidth = 6; 
+    
+    const step = 32;
+    for (let i = -256; i < 256; i += step) {
+        c.beginPath();
+        c.moveTo(i, 0); c.lineTo(i + 256, 256);
+        c.stroke();
+        
+        c.beginPath();
+        c.moveTo(i + 256, 0); c.lineTo(i, 256);
+        c.stroke();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(6, 2); 
+    return tex;
+}
+
+// 🏀 投籃遊戲專用：生成寫實籃球紋理
+function createBallMaps() {
+    const canvas = document.createElement('canvas');
+    const bumpCanvas = document.createElement('canvas');
+    canvas.width = bumpCanvas.width = 512; // 調整為 512 降低運算負擔
+    canvas.height = bumpCanvas.height = 512;
+    const c = canvas.getContext('2d');
+    const bc = bumpCanvas.getContext('2d');
+
+    c.fillStyle = '#a63a13'; c.fillRect(0, 0, 512, 512);
+    bc.fillStyle = '#808080'; bc.fillRect(0, 0, 512, 512); 
+    
+    for(let i=0; i<40000; i++) {
+        const x = Math.random()*512;
+        const y = Math.random()*512;
+        bc.fillStyle = Math.random() > 0.5 ? '#999999' : '#666666';
+        bc.fillRect(x, y, 1.5, 1.5);
+    }
+
+    function drawLines(ctx, isBump) {
+        ctx.strokeStyle = isBump ? '#444444' : '#151515'; 
+        ctx.lineWidth = 8;
+        ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(256, 0); ctx.lineTo(256, 512); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, 256); ctx.lineTo(512, 256); ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 256, 175, -Math.PI/2, Math.PI/2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(512, 256, 175, Math.PI/2, -Math.PI/2); ctx.stroke();
+    }
+    drawLines(c, false);
+    drawLines(bc, true);
+
+    return { 
+        map: new THREE.CanvasTexture(canvas), 
+        bumpMap: new THREE.CanvasTexture(bumpCanvas) 
+    };
+}
+
+        
 
 // ❄️ 零效能生成：冷氣機出風口與風扇網格
 function createAcGrilleTexture() {
