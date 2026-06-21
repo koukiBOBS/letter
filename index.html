@@ -1790,9 +1790,24 @@
     
 
 <!-- 👇 新增：如果是從學校回程，在網頁渲染第一時間直接蓋上黑幕，防止看到登入或房間畫面 -->
+<!-- 👇 修復：防重新整理作弊機制，確保未成功下車前重新整理會退回原地 -->
 <script>
-    if (new URLSearchParams(window.location.search).get('returnTrip') === 'true') {
-        document.write('<div id="return-trip-blackout" style="position:fixed; inset:0; background:#000000; z-index:9999999; transition: opacity 1.5s ease;"></div>');
+    const urlParamsForCheck = new URLSearchParams(window.location.search);
+    if (urlParamsForCheck.get('returnTrip') === 'true') {
+        // 判斷是否帶有合法乘車標記 (sessionStorage 在重整後會被我們清空)
+        if (!sessionStorage.getItem('busRideActive')) {
+            // 偵測到在車上重新整理，視為放棄搭車，直接退回出發地
+            const origin = urlParamsForCheck.get('from') || 'street';
+            if (origin === 'school') {
+                window.location.replace('school.html');
+            } else {
+                window.location.replace('index.html'); // 移除參數，自動跳回商店街
+            }
+        } else {
+            // 合法乘車，消耗標記並顯示黑幕
+            sessionStorage.removeItem('busRideActive');
+            document.write('<div id="return-trip-blackout" style="position:fixed; inset:0; background:#000000; z-index:9999999; transition: opacity 1.5s ease;"></div>');
+        }
     }
 </script>
 
@@ -12981,7 +12996,6 @@ streetScene.fog = new THREE.Fog(p.fog, 400, 3000);
 
         
 // 處理商店點擊事件 (基於獨立場景)
-// 處理商店點擊事件 (基於獨立場景)
 window.addEventListener('pointerup', (e) => {
     if(!isAtStreet || isDragging || !streetScene) return;
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -13000,41 +13014,35 @@ window.addEventListener('pointerup', (e) => {
             gsap.to(controls.target, {x: newTarget.x, y: newTarget.y, z: newTarget.z, duration: 1.0, ease: "power2.out", onUpdate: () => controls.update()});
         };
  
-      if(obj.userData.type === 'shop_stationery') {
+        if(obj.userData.type === 'shop_stationery') {
             // 走向文具店，並看向內部
             moveStreetCam(15, 6, 20, 10, 20);
             setTimeout(() => {
                 document.getElementById('modal-stationery-shop').style.display = 'flex';
                 renderStationeryShop();
             }, 800); // 走近之後再彈出商店視窗
-     } else if(obj.userData.type === 'shop_record') {
-    // 走向唱片店，並看向內部
-    moveStreetCam(15, 6, -15, 10, -15);
-    setTimeout(() => {
-        document.getElementById('modal-record-shop').style.display = 'flex';
-        renderRecordShop();
-    }, 800); // 走近之後再彈出商店視窗
-}
-
-
-else if (obj.userData.type === 'street_return') {
+            
+        } else if(obj.userData.type === 'shop_record') {
+            // 走向唱片店，並看向內部
+            moveStreetCam(15, 6, -15, 10, -15);
+            setTimeout(() => {
+                document.getElementById('modal-record-shop').style.display = 'flex';
+                renderRecordShop();
+            }, 800); // 走近之後再彈出商店視窗
+            
+        } else if (obj.userData.type === 'street_return') {
             // 加入過場黑畫面
             document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed; inset:0; background:#000; z-index:999999; opacity:0; transition:opacity 1s;" id="bus-fade"></div>');
             setTimeout(() => document.getElementById('bus-fade').style.opacity = 1, 10);
             
-            // 記錄最後位置為房間，並帶 returnTrip=true 參數重新整理
-            localStorage.setItem('cachedLocation', 'home');
-            db.ref(`users/${currentUser.uid}/lastLocation`).set('home').then(() => {
-                setTimeout(() => {
-                    // 重新載入頁面，觸發與學校完全相同的搭車動畫
-                   window.location.href = '?returnTrip=true&from=street';
-                }, 1000);
-            });
+            // 👇 修復：絕對不能在這裡提早把位置改為房間！加入 busRideActive 標籤，並保持原位置
+            sessionStorage.setItem('busRideActive', 'true');
+            setTimeout(() => {
+                const fromLoc = localStorage.getItem('cachedLocation') || 'street';
+                window.location.href = `?returnTrip=true&from=${fromLoc}`;
+            }, 1000);
         }
-
-        
-    }
-    
+    } // <-- 確保 intersects.length > 0 在這裡才正確關閉
 });
 
 
