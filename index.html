@@ -1865,9 +1865,9 @@
 
 
     
-    <!-- Auth -->
+  <!-- Auth -->
     <div id="auth-overlay">
-  <!-- 👇 新增這段腳本：網頁載入瞬間若發現是搭車回程，立刻將畫面塗黑，徹底消滅登入信封的閃爍 👇 -->
+        <!-- 👇 網頁載入瞬間若發現是搭車回程，立刻將畫面塗黑，徹底消滅登入信封的閃爍 👇 -->
         <script>
             if (window.location.search.includes('returnTrip=true')) {
                 document.getElementById('auth-overlay').style.background = '#000000';
@@ -3272,53 +3272,106 @@ function initApp() {
     });
 
     document.getElementById('room-canvas-container').style.display = 'block'; 
-    
-    // 1. 先建立 3D 場景
     initRoomScene(); 
 
-    // 👇 2. 判斷是否為回程
-    const isReturnTrip = new URLSearchParams(window.location.search).get('returnTrip') === 'true';
+    // 👇 檢查是否為回程
+    const isReturnTrip = window.location.search.includes('returnTrip=true');
 
     if (isReturnTrip) {
-        // 🚀【終極魔法】：在 3D 引擎畫出任何東西之前，先把你的身體定位到車上！
+        // 🚀 1. 瞬間物理定位到露台 (確保下車時位置正確)
         isAtBalcony = true;
         if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = true;
         if (typeof glassDoorL !== 'undefined' && glassDoorL) glassDoorL.position.x = 7.3;
         
+        camera.position.set(0, 15, -19.5);
+        controls.target.set(0, 15, -20);
+        camera.fov = 75;
+        camera.updateProjectionMatrix();
+        controls.update();
+
         roomCameraBackup.cp.copy(camera.position);
         roomCameraBackup.ct.copy(controls.target);
 
         const busHitBox = interactables.find(i => i.userData && i.userData.type === 'bus' && i.userData.direction === 1);
+        
         if (busHitBox) {
-            // 把 GSAP 動畫調快 100 倍，讓鏡頭一瞬間就飛進車內
-            let orgTimeScale = gsap.globalTimeline.timeScale();
-            gsap.globalTimeline.timeScale(100); 
-            
-            rideBus(busHitBox);
+            // 🚀 2. 核心魔法：手動把你塞進車廂，不使用任何動畫！
+            isRidingBus = true;
+            activeBus = busHitBox.userData.vehicleObj;
+            activeBusDirection = 1;
 
-            // 🚀 這時候相機已經在車上了，我們才叫 3D 引擎渲染第一張圖！
+            preRideCameraState.pos.copy(camera.position);
+            preRideCameraState.target.copy(controls.target);
+            preRideCameraState.fov = camera.fov;
+
+            if (!window.originalControlsUpdate) window.originalControlsUpdate = controls.update;
+            controls.update = function() {
+                if (isRidingBus) return;
+                window.originalControlsUpdate.call(controls);
+            };
+
+            activeBus.children.forEach(child => {
+                if (child.isMesh && child !== busHitBox) {
+                    child.userData.wasVisible = child.visible;
+                    child.visible = false;
+                }
+            });
+
+            if (!busInteriorGrp) busInteriorGrp = createBusInterior();
+            
+            const ledMesh = busInteriorGrp.getObjectByName('ledPanel');
+            if (ledMesh) {
+                if (ledMesh.material.map) ledMesh.material.map.dispose();
+                ledMesh.material.dispose();
+                ledMesh.material = createLEDSign("K72  溫暖的家");
+            }
+
+            activeBus.add(busInteriorGrp);
+            const camZPos = 3.5;
+            busInteriorGrp.position.set(0, 4.2, camZPos);
+            busInteriorGrp.rotation.set(0, Math.PI, 0);
+
+            controls.enabled = false;
+            document.getElementById('btn-return-room').style.display = 'none';
+            if(document.getElementById('mobile-cam-knob')) document.getElementById('mobile-cam-knob').style.display = 'none';
+
+            // 直接將相機放入車廂內
+            busInteriorGrp.add(camera);
+            camera.position.set(0, 0.4, 0);
+            camera.rotation.set(0, 0, 0);
+            controls.target.set(0, 4.2, 30); 
+
+            // 啟動車廂顛簸動畫
+            busBumpAnim = gsap.to(camera.position, {
+                y: 0.408, duration: 0.6, yoyo: true, repeat: -1, ease: "sine.inOut"
+            });
+
+            // 啟動下車小遊戲機制
+            if (typeof startBusJourney === 'function') startBusJourney();
+
+            // 🚀 3. 相機已經在車內了，立刻強迫渲染第一幀！
             renderer.compile(scene, camera);
             renderer.render(scene, camera);
 
-            // 等 0.1 秒確保動畫系統處理完畢，恢復正常速度並淡出黑幕
+            // 淡出黑幕，玩家第一眼看到的就是完美的車內畫面
             setTimeout(() => {
-                gsap.globalTimeline.timeScale(orgTimeScale); 
-                hideAuthOverlay(); 
+                hideAuthOverlay();
+                showToast("🚌 歡迎搭乘九龍巴士，請留意落車時機。");
             }, 100);
+
         } else {
             // 防錯備案
             renderer.compile(scene, camera);
             renderer.render(scene, camera);
-            hideAuthOverlay(); 
+            hideAuthOverlay();
         }
     } else {
-        // 正常登入的處理：預熱渲染後淡出白紙介面
+        // 正常登入的處理
         renderer.compile(scene, camera);
         renderer.render(scene, camera);
         hideAuthOverlay();
     }
 
-    // 接下來是其他背景任務
     db.ref(`classes/${currentUser.classId || 'default'}`).on('value', snap => {
         renderTasks();
     });
@@ -3328,7 +3381,6 @@ function initApp() {
     initHandwriting();
     auditAntiCheat(); 
 
-    // 👇 套用新的打字權限判斷
     if (isTypingAllowed(currentUser.email)) {
         document.querySelectorAll('.handwrite-only').forEach(el => {
             el.removeAttribute('readonly');
@@ -3342,42 +3394,6 @@ function initApp() {
 
     if (document.getElementById('dev-panel-wrapper')) {
         document.getElementById('dev-panel-wrapper').style.display = isDevUser(currentUser.email) ? 'block' : 'none';
-    }
-
-    // 👇 自動檢查是否從學校搭車回來
-    if (isReturnTrip) {
-        setTimeout(() => {
-            // 1. 瞬間定位物理位置到露台 (不播走路動畫)
-            isAtBalcony = true;
-            if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = true;
-            if (typeof glassDoorL !== 'undefined' && glassDoorL) glassDoorL.position.x = 7.3;
-            
-            roomCameraBackup.cp.copy(camera.position);
-            roomCameraBackup.ct.copy(controls.target);
-            camera.position.set(0, 15, -19.5);
-            controls.target.set(0, 15, -20);
-            camera.fov = 75;
-            camera.updateProjectionMatrix();
-            controls.update();
-
-            // 2. 抓取反方向的巴士
-            const busHitBox = interactables.find(i => i.userData && i.userData.type === 'bus' && i.userData.direction === 1);
-            if (busHitBox) {
-                // 🚀 關鍵魔法：將動畫速度調到極快 (100倍速)，讓鏡頭飛向車內的 1.2 秒動畫在 0.01 秒內瞬間完成！
-                let orgTimeScale = gsap.globalTimeline.timeScale();
-                gsap.globalTimeline.timeScale(100); 
-                
-                rideBus(busHitBox);
-                
-                // 3. 鏡頭確定坐在車內後，恢復正常速度，並淡出黑幕，此時第一眼就會是車內風景！
-                setTimeout(() => {
-                    gsap.globalTimeline.timeScale(orgTimeScale); 
-                    hideAuthOverlay(); 
-                }, 50); 
-            } else {
-                hideAuthOverlay(); // 防錯備案
-            }
-        }, 100); 
     }
 }
 
@@ -9311,27 +9327,34 @@ function initPianoUI() {
 
 
         
+// 全面防護版音效播放 (無視瀏覽器阻擋)
 function playSynthTone(freq) {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    
-    const osc = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
-    
-    // 鋼琴的合成波形 (結合三角波與正弦波的柔和感)
-    osc.type = 'triangle';
-    osc.frequency.value = freq;
-    
-    // ADSR 包絡線 (模擬鋼琴敲擊後衰減)
-    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.02); // Attack
-    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5); // Decay & Release
-    
-    osc.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-    
-    osc.start();
-    osc.stop(audioCtx.currentTime + 1.5);
+    try {
+        if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (!audioCtx) return; // 如果瀏覽器徹底阻擋，直接放棄播放
+        
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(() => {});
+        }
+        
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        
+        gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.02);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+        
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 1.5);
+    } catch(e) {
+        console.warn("音效播放遭阻擋，已安全略過");
+    }
 }
 
 function openPianoUI() {
