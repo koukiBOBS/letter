@@ -2818,6 +2818,9 @@ const ITEM_REGISTRY = {
     'piano_use': { name: '🎵 學習鋼琴', desc: '掌握指法，解鎖彈奏鋼琴的技能', type: 'privilege', minPts: 10000 },
     'door_use': { name: '🚪 修繕趟門', desc: '修好卡住的趟門，解鎖出外看海', type: 'privilege', minPts: 10000 },
     'bed': { name: '單人木床', desc: '鋪著柔軟格紋被褥的實木床，適合閱讀與休憩', type: 'model', minPts: 0 },
+    
+    // 👇 新增這行：大門鑰匙，設定 minTasks 為 6
+    'main_door_key': { name: '🗝️ 黃銅大門鑰匙', desc: '打開沉重木門的陳舊鑰匙。經過長時間的文字沉澱，是時候走入人群了。', type: 'privilege', minTasks: 6 }
 };
 
 
@@ -3795,32 +3798,29 @@ document.getElementById('volumeSliderPlayer').addEventListener('input', (e) => {
 function auditAntiCheat() {
     if (!currentUser) return;
 
-    // 👇 【新增這段】：如果是開發者或老師，直接跳過防作弊檢查，允許自由加分與測試道具！
     if (typeof isDevUser === 'function' && isDevUser(currentUser.email)) {
         console.log("🛠️ 開發者/老師帳號，已豁免防作弊稽核。");
         return; 
     }
 
-    // 同時抓取該學生的：1.寄出的信件 2.繳交的探索任務 3.收件箱的對話串狀態
     Promise.all([
         db.ref('letters').orderByChild('senderUid').equalTo(currentUser.uid).once('value'),
         db.ref('random_task_submissions').orderByChild('senderUid').equalTo(currentUser.uid).once('value'),
         db.ref(`user_threads/${currentUser.uid}`).once('value')
     ]).then(([rSnap, randSnap, threadSnap]) => {
         
-        // 1. 計算「閱讀心得」數量 (排除 type === 'random' 的信件)
         const readingLetters = Object.values(rSnap.val() || {}).filter(l => l.type !== 'random');
         const readingCount = readingLetters.length;
         
-        // 2. 計算「探索任務」數量
         const randSubs = Object.values(randSnap.val() || {});
         const randomCount = randSubs.length;
         
-        // 3. 計算「回信」數量
         const threads = Object.values(threadSnap.val() || {});
         const replyCount = threads.filter(t => !t.isSender && t.hasReplied).length;
 
-        // 🧮 計算「應得的最高合法總分」
+        // 👇 新增這行：記錄用家總共完成的閱讀與回信次數，供扭蛋機判斷使用
+        window.userLiteratureCount = readingCount + replyCount;
+
         const expectedPoints = (readingCount * 1000) + (randomCount * 500) + (replyCount * 1000);
 
         // 🔍 比對資料庫中目前的分數
@@ -4290,32 +4290,46 @@ function renderTasks() {
 
 
 // 給予積分，如果是閱讀任務則額外進行抽獎
+// 給予積分，如果是閱讀任務則額外進行抽獎
 function addPointsAndGacha(points, triggerGachaAnim) {
     userPoints += points;
     db.ref(`users/${currentUser.uid}/points`).set(userPoints);
     showToast(`💰 獲得 ${points} 積分！當前積分：${userPoints}`);
     
+    // 👇 新增：如果是閱讀或回信 (獲得 1000 分)，任務總數即時 +1
+    if (points === 1000) {
+        window.userLiteratureCount = (window.userLiteratureCount || 0) + 1;
+    }
+
     if (triggerGachaAnim) {
-        let pool = Object.keys(ITEM_REGISTRY).filter(id => !userInventory[id] && userPoints >= ITEM_REGISTRY[id].minPts);
+        // 👇 修改這段過濾邏輯，加入 minTasks 判斷
+        let pool = Object.keys(ITEM_REGISTRY).filter(id => {
+            if (userInventory[id]) return false; // 已經擁有的不抽
+            
+            const item = ITEM_REGISTRY[id];
+            // 檢查積分門檻
+            if (item.minPts !== undefined && userPoints < item.minPts) return false;
+            // 檢查特定任務次數門檻 (針對大門鑰匙)
+            if (item.minTasks !== undefined && (window.userLiteratureCount || 0) < item.minTasks) return false;
+            
+            return true;
+        });
         
         if (pool.length > 0) {
             let wonId = pool[Math.floor(Math.random() * pool.length)];
             userInventory[wonId] = true;
             db.ref(`users/${currentUser.uid}/inventory/${wonId}`).set(true);
             
-            // 延遲 1.5 秒等信封飛走後，顯示緩衝畫面
             setTimeout(() => {
                 const bufferModal = document.getElementById('modal-gacha-buffer');
                 bufferModal.style.display = 'flex';
                 
-                // 👇 加入 GSAP 進場動畫，增添高級感
                 gsap.fromTo(bufferModal, { opacity: 0 }, { opacity: 1, duration: 0.5 });
                 gsap.fromTo("#reward-card-anim",
                     { y: 60, opacity: 0, scale: 0.95 },
                     { y: 0, opacity: 1, scale: 1, duration: 0.8, ease: "back.out(1.2)", delay: 0.2 }
                 );
  
-                // 綁定點擊按鈕後才進入 3D 抽獎 (加入退場動畫)
                 document.getElementById('btn-start-gacha').onclick = () => {
                     gsap.to(bufferModal, {
                         opacity: 0, duration: 0.5, onComplete: () => {
@@ -4330,7 +4344,6 @@ function addPointsAndGacha(points, triggerGachaAnim) {
         }
     }
 }
-
         
 // 修改原有的圖片選擇功能，支援兩種上傳目標
 // 這是正確的，保留這個即可！
@@ -8559,14 +8572,24 @@ function onPointerUp(e) {
             openWalletUI();
         } else if (type === 'radio') {
             toggleRadio();
-        } else if (type === 'stereo') {
+       } else if (type === 'stereo') {
             openMusicPlayer('stereo');
         
-        // 👇 新增：點擊房間大門
+        // 👇 替換點擊大門的區塊
         } else if (type === 'main_door') {
-            document.getElementById('modal-destination').style.display = 'flex';
+            // 檢查是否擁有大門鑰匙
+            if (userInventory['main_door_key']) {
+                document.getElementById('modal-destination').style.display = 'flex';
+            } else {
+                showToast("🚪 大門被生鏽的黃銅鎖鎖上了。或許再多寫幾封信，就能在抽屜找回鑰匙...");
+                // 播放一個門被鎖住推不開的微小震動動畫
+                gsap.to(camera.position, {
+                    z: camera.position.z + 0.2, 
+                    duration: 0.1, yoyo: true, repeat: 3
+                });
+            }
 
-        // 👇 巴士乘車邏輯 (改為在街邊等車)
+        // 👇 巴士乘車邏輯 (保持不變)
         } else if (type === 'bus') {
             // 必須在街邊等車才能上車
             if (typeof isWaitingAtBusStop === 'undefined' || !isWaitingAtBusStop) {
