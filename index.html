@@ -5382,28 +5382,28 @@ function goToBalcony() {
 }
 
 function returnToRoom() {
-    // 💡 允許從 露台(isAtBalcony) 或 地下站(isWaitingAtBusStop) 返回室內
     if (!isAtBalcony && !isWaitingAtBusStop) return;
 
     isAtBalcony = false;
     isWaitingAtBusStop = false;
 
-    // 退回室內時，先解除所有角度限制，確保動畫平滑不會卡頓
+    // 👇 關鍵防禦：斬殺所有相機的進行中動畫，搶奪控制權！
+    gsap.killTweensOf(camera.position);
+    gsap.killTweensOf(camera);
+    gsap.killTweensOf(controls.target);
+
     controls.minAzimuthAngle = -Infinity;
     controls.maxAzimuthAngle = Infinity;
     controls.minPolarAngle = 0;
     controls.maxPolarAngle = Math.PI;
 
-    // 預設房間正中央的視角
     let targetPos = new THREE.Vector3(0, 22, 45); 
     let targetLook = new THREE.Vector3(0, 7, 0);
     
-    // 讀取記憶中的視角
     const savedState = localStorage.getItem('roomCameraState');
     if (savedState) {
         try {
             const s = JSON.parse(savedState);
-            // 🛡️ 終極防錯機制：如果記憶中的座標跑到房間外面(大於 50 或小於 -50)，判定為遭到污染，直接丟棄並使用預設視角！
             if (Math.abs(s.cp.x) < 50 && Math.abs(s.cp.z) < 50) {
                 targetPos.set(s.cp.x, s.cp.y, s.cp.z);
                 targetLook.set(s.ct.x, s.ct.y, s.ct.z);
@@ -5413,11 +5413,10 @@ function returnToRoom() {
 
     const roomFov = getIdealFov();
     
-    // 👉 立即強制隱藏按鈕，不依賴動畫的延遲，確保 UI 絕對消失
+    // 立即強制隱藏按鈕
     const btn = document.getElementById('btn-return-room');
     if (btn) btn.style.display = 'none';
 
-    // 啟動鏡頭平滑退回動畫
     gsap.to(camera.position, { x: targetPos.x, y: targetPos.y, z: targetPos.z, duration: 1.8, ease: "power2.inOut" });
     gsap.to(camera, { fov: roomFov, duration: 1.8, ease: "power2.inOut", onUpdate: () => camera.updateProjectionMatrix() });
     gsap.to(controls.target, {
@@ -5426,11 +5425,9 @@ function returnToRoom() {
         ease: "power2.inOut",
         onUpdate: () => controls.update(),
         onComplete: () => {
-            // 動畫結束完全進入室內後，重新鎖死抬頭角度
             controls.minPolarAngle = 1.15;
             controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
-            // 根據玩家原先的模式，重新鎖定左右旋轉限制
             if (window.knobMode === 2) {
                 controls.minAzimuthAngle = Math.PI / 2;
                 controls.maxAzimuthAngle = Math.PI * 1.5;
@@ -5439,9 +5436,9 @@ function returnToRoom() {
                 controls.maxAzimuthAngle = Math.PI / 2;
             }
 
+            // 👇 確保風景群組絕對被隱藏
             if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = false;
 
-            // 手動恢復旋鈕外觀，不再觸發會干擾相機座標的 applyModeState()
             const knobCenter = document.querySelector('.knob-center');
             if (knobCenter) {
                 if (window.isWalkMode) {
@@ -5457,8 +5454,9 @@ function returnToRoom() {
         }
     });
 
-    // 關門動畫 (如果大門原本是開著的，必定會關上)
+    // 關門動畫
     if (typeof glassDoorL !== 'undefined' && glassDoorL) {
+        gsap.killTweensOf(glassDoorL.position); // 防止開門動畫干擾
         gsap.to(glassDoorL.position, { x: -7.3, duration: 1.3, delay: 0.8, ease: "power2.inOut" });
     }
 
@@ -11470,9 +11468,6 @@ function getOffBus() {
     const timerDisp = document.getElementById('bus-timer-display');
     if (timerDisp) timerDisp.style.display = 'none';
 
-    const oldBtn = document.getElementById('btn-getoff-bus');
-    if (oldBtn) oldBtn.style.display = 'none';
-
     if (busBumpAnim) { busBumpAnim.kill(); busBumpAnim = null; }
 
     const worldPos = new THREE.Vector3();
@@ -11490,11 +11485,14 @@ function getOffBus() {
     }
     activeBus = null;
 
-    // 🛑 【修復重點 1】：先徹底解除視角邊界限制，防止動畫退回時撞到空氣牆導致視角錯亂
     controls.minAzimuthAngle = -Infinity;
     controls.maxAzimuthAngle = Infinity;
 
-    // 將鏡頭平滑退回原本的位置
+    // 👇 關鍵防禦：清除相機上所有的殘留動畫，確保乾淨執行
+    gsap.killTweensOf(camera.position);
+    gsap.killTweensOf(camera);
+    gsap.killTweensOf(controls.target);
+
     gsap.to(camera.position, {
         x: preRideCameraState.pos.x, y: preRideCameraState.pos.y, z: preRideCameraState.pos.z,
         duration: 1.2, ease: "power2.inOut"
@@ -11508,23 +11506,22 @@ function getOffBus() {
         duration: 1.2, ease: "power2.inOut",
         onUpdate: () => controls.update(),
         onComplete: () => {
+            // 如果玩家在這 1.2 秒內已經按了「返回室內」，就不要再執行顯示按鈕的邏輯！
+            if (!isAtBalcony && !isWaitingAtBusStop) return;
+
             controls.enabled = true;
-            
-            // 🛑 【修復重點 1 續】：等鏡頭平滑退回原位後，如果我們是退回巴士站，就重新鎖定左右視角
             if (typeof isWaitingAtBusStop !== 'undefined' && isWaitingAtBusStop) {
                 lockWaitingAzimuth();
             }
 
-            // 安全顯示「返回室內」的按鈕
             const returnBtn = document.getElementById('btn-return-room');
             if (returnBtn) {
                 returnBtn.style.display = 'flex';
-                returnBtn.style.pointerEvents = 'auto'; // 確保絕對可點擊
+                returnBtn.style.pointerEvents = 'auto'; 
             }
         } 
     });
 }
-
 
 
 
