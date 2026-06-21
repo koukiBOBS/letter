@@ -2088,35 +2088,31 @@ const COPY_EXCERPTS = [
 let copyCurrentExcerpt = null;
 let copyCurrentIndex = 0;
 let hanziWriter = null; 
-let hanziCache = {}; // 👉 新增：用來存儲已經抓取過的字庫資料（快取）
+let hanziCache = {}; // 👉 用來存放 Promise 快取
 
-// 👉 新增：背景默默預載後續漢字的函式
+// 👉 新增：專門負責抓取字庫資料的函式
+function fetchHanziData(char) {
+    // 優先抓取繁體字庫，若回傳 404 (瀏覽器會報錯但無妨)，就自動改抓通用字庫
+    return fetch('https://cdn.jsdelivr.net/npm/hanzi-writer-data-zh-tw@0.1.1/' + char + '.json')
+        .then(res => {
+            if (!res.ok) return fetch('https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0.1/' + char + '.json');
+            return res;
+        })
+        .then(res => {
+            if (!res.ok) throw new Error('Char not found');
+            return res.json();
+        });
+}
+
+// 👉 預載函式：改為直接儲存 Promise 任務，避免重複發送請求
 window.preloadNextHanzi = function(chars, startIndex) {
     let loadedCount = 0;
     let i = startIndex;
-    // 往前預載接下來的 3 個漢字 (可調整數量)
     while (loadedCount < 3 && i < chars.length) {
         const char = chars[i];
-        // 如果不是標點符號，且從未被抓取過
         if (!puncRegex.test(char) && !hanziCache[char]) {
-            hanziCache[char] = "loading"; // 標記為讀取中，防重複發送
-            
-            fetch('https://cdn.jsdelivr.net/npm/hanzi-writer-data-zh-tw@0.1.1/' + char + '.json')
-            .then(res => {
-                if (!res.ok) return fetch('https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0.1/' + char + '.json');
-                return res;
-            })
-            .then(res => {
-                if (!res.ok) throw new Error('not found');
-                return res.json();
-            })
-            .then(data => {
-                hanziCache[char] = data; // 抓取成功，將筆畫數據存入快取
-            })
-            .catch(() => {
-                hanziCache[char] = "error"; // 抓不到該字(生僻字)，標記錯誤
-            });
-            
+            // 直接將「正在下載的任務」存入快取中
+            hanziCache[char] = fetchHanziData(char); 
             loadedCount++;
         }
         i++;
@@ -2223,7 +2219,7 @@ function loadHanziChar(char) {
     const container = document.getElementById('copy-hanzi-container');
     const hint = document.getElementById('copy-canvas-hint');
     
-    // 👉 動態獲取父容器安全尺寸，避免超出邊界（留 10px 緩衝）
+    // 動態獲取父容器安全尺寸
     const rect = document.getElementById('copy-canvas-container').getBoundingClientRect();
     const safeSize = Math.min(rect.width, rect.height) - 10 > 0 ? Math.min(rect.width, rect.height) - 10 : 230; 
 
@@ -2239,35 +2235,15 @@ function loadHanziChar(char) {
         outlineColor: '#e6dfd1', 
         drawingColor: '#4a4238', 
         charDataLoader: function(char, onComplete) {
-            // 👉 1. 檢查快取：如果資料已經預載好，直接「秒殺」載入！
-            if (hanziCache[char] && typeof hanziCache[char] === 'object') {
-                onComplete(hanziCache[char]);
-                return;
+            // 👉 直接從快取拿取預載任務，如果還沒預載過就現場發起任務
+            if (!hanziCache[char]) {
+                hanziCache[char] = fetchHanziData(char);
             }
-            // 👉 2. 檢查快取：如果是前面已經判定抓不到的生僻字，直接跳過不浪費時間
-            if (hanziCache[char] === "error") {
-                onComplete(null);
-                return;
-            }
-
-            // 👉 3. 兜底方案：如果寫太快預載還沒完成，就在這時乖乖發送請求
-            fetch('https://cdn.jsdelivr.net/npm/hanzi-writer-data-zh-tw@0.1.1/' + char + '.json')
-            .then(res => {
-                if (!res.ok) return fetch('https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0.1/' + char + '.json');
-                return res;
-            })
-            .then(res => {
-                if (!res.ok) throw new Error('Char not found');
-                return res.json();
-            })
-            .then(data => {
-                hanziCache[char] = data; // 同步存入快取
-                onComplete(data);
-            })
-            .catch(() => {
-                hanziCache[char] = "error";
-                onComplete(null);
-            }); 
+            
+            // 任務完成後，將資料交給 Hanzi Writer
+            hanziCache[char]
+                .then(data => onComplete(data))
+                .catch(() => onComplete(null)); // 真的抓不到(生僻字)，回傳 null
         },
         onLoadCharDataError: function(reason) {
             console.warn(`字庫無此字「${char}」，自動跳過。`);
@@ -2285,7 +2261,6 @@ function loadHanziChar(char) {
         }
     });
 }
-
 
         
 
