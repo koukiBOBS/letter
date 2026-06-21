@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 
 <html lang="zh-HK">
@@ -13051,14 +13050,21 @@ function setupStreetWaiting() {
     lockWaitingAzimuth();
 }
 
-// 🚌 往基元中學的等車設定（全新修正：站在馬路另一側，正對馬路，避免穿模與望海）
+// 🚌 往基元中學的等車設定（全新修正版）
 function setupSchoolWaiting() {
-    // 站在對面遠側行人路 (Z = -15)，避開摩天輪廣場，視點水平正對前方馬路 (Z = 4)
-    const waitX = 80; 
-    camera.position.set(waitX, -2.5, -15);
-    controls.target.set(waitX, -2.5, 4); // 朝向 +Z 方向看，正對馬路與建築物
+    const waitX = 60; 
     
-    // 鎖定視角，防止轉向過度導致穿模
+    // 1. 設定玩家站立位置：站在對面的行人路上 (Z = -13)
+    camera.position.set(waitX, -2.5, -13);
+    
+    // 2. 關鍵修復：將「旋轉中軸點 (target)」緊貼在相機正前方 0.1 單位！
+    // 這樣相機就不會被強行吸入馬路中央，玩家能真正站在原地，並面向馬路 (+Z 方向)
+    controls.target.set(waitX, -2.5, -12.9);
+    
+    // 更新控制以套用新中軸點
+    controls.update();
+
+    // 鎖定視角，防止轉身看到背後的邊界
     lockWaitingAzimuth();
 }
 
