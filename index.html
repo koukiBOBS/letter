@@ -13073,7 +13073,7 @@ function setupSchoolWaiting() {
     
     // 3. 視角目標 (構成完美直角)：
     // 👇 【修復重點 2】：將 target.x 減去 10 (waitX - 10)，讓相機預設注視點往左移！
-    controls.target.set(waitX 10, -3.5, -70);
+   controls.target.set(waitX + 10, -3.5, -70);
     
     controls.update();
 
