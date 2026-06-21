@@ -9104,9 +9104,9 @@ function animateRoom() {
     // ⚡ 效能優化區：精準判斷是否看到窗外
     // ==========================================
  
-   // 只要視線掃到「窗外的虛擬區域」，或是玩家正站在露台上，就判定為正在看窗外
-  // 💡 關鍵修復：把 isWaitingAtBusStop 也加入判斷，確保地下等車時車流不會因為效能優化而被凍結
-    let isLookingOutside = isAtBalcony || (typeof isWaitingAtBusStop !== 'undefined' && isWaitingAtBusStop) || cameraFrustum.intersectsBox(outsideWorldBox);
+  // 只要視線掃到「窗外的虛擬區域」，或是玩家正站在露台上，就判定為正在看窗外
+  // 💡 關鍵修復：把 isWaitingAtBusStop 與 isRidingBus 都加入判斷，確保搭車與等車時窗外動畫正常運行
+    let isLookingOutside = isAtBalcony || (typeof isWaitingAtBusStop !== 'undefined' && isWaitingAtBusStop) || (typeof isRidingBus !== 'undefined' && isRidingBus) || cameraFrustum.intersectsBox(outsideWorldBox);
  
     if (isLookingOutside) {
         // 1. 車輛邏輯 (配合無盡道路延伸)
@@ -12946,6 +12946,10 @@ window.devGoToSchool = function() {
     const fadeOverlay = document.createElement('div');
     fadeOverlay.style.cssText = "position:fixed; inset:0; background:#000; z-index:999999; opacity:0; transition: opacity 1.0s;";
     document.body.appendChild(fadeOverlay);
+    
+    // 👇 加入位置記憶覆寫，防止被 school.html 攔截退回
+    localStorage.setItem('cachedLocation', 'school');
+    if (currentUser) db.ref(`users/${currentUser.uid}/lastLocation`).set('school');
     
     setTimeout(() => { fadeOverlay.style.opacity = 1; }, 10);
     setTimeout(() => { window.location.href = 'school.html'; }, 1000);
