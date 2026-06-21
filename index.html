@@ -12857,7 +12857,7 @@ streetScene.background = createSkyTexture(p.skyTop, p.skyBot);
 
 // 🚀 將指數霧改為「線性霧」，設定近距離(150)完全不模糊，遠距離(2500)才完全隱沒。
 // 這樣退遠觀看商店街時，就不會被深色的霧氣籠罩而變暗了！
-streetScene.fog = new THREE.Fog(p.fog, 400, 3000);
+streetScene.fog = new THREE.Fog(p.fog, 1000, 10000);
 
   const ambient = streetScene.getObjectByName('streetAmbient');
     if (ambient) {
