@@ -3069,10 +3069,23 @@ let userPlantData = null; let timeForced = false;
 
 auth.onAuthStateChanged(user => {
     if (user) {
-        // 👇 1. 一偵測到使用者，立刻隱藏登入按鈕，顯示唯美 Loading 畫面
+        // 👇 1. 一偵測到使用者，立刻判斷是否為回程
+        const isReturnTrip = new URLSearchParams(window.location.search).get('returnTrip') === 'true';
         document.getElementById('login-container').style.display = 'none';
         document.getElementById('name-setup-container').style.display = 'none';
-        document.getElementById('auth-loading-container').style.display = 'flex';
+        
+        if (isReturnTrip) {
+            // 🚀 回程模式：瞬間將畫面塗黑，完全隱藏信封與字體，作為電影黑幕
+            const authOverlay = document.getElementById('auth-overlay');
+            authOverlay.style.background = '#000000';
+            authOverlay.style.opacity = '1';
+            const letterContainer = document.querySelector('.auth-letter-container');
+            if(letterContainer) letterContainer.style.display = 'none';
+            document.getElementById('auth-loading-container').style.display = 'none';
+        } else {
+            // 正常登入：顯示唯美 Loading 畫面
+            document.getElementById('auth-loading-container').style.display = 'flex';
+        }
         
         // 👇 2. 啟動充滿文學氣息的跑馬燈文字
         const loadingMsgs = ["拂去桌上的塵埃...", "正在為您點亮檯燈...", "鋪平信紙...", "正在還原您的書房...", "靜候靈魂的共鳴..."];
@@ -3252,12 +3265,11 @@ function initApp() {
     // 1. 先建立 3D 場景
     initRoomScene(); 
     
-    // 2. 👇 【關鍵修復】：強制 WebGL 在背景預先編譯並渲染一幀 (預熱)
-  // 2. 👇 【關鍵修復】：強制 WebGL 在背景預先編譯並渲染一幀 (預熱)
+ // 2. 👇 【關鍵修復】：強制 WebGL 在背景預先編譯並渲染一幀 (預熱)
     renderer.compile(scene, camera);
     renderer.render(scene, camera);
 
-    // 3. 判斷是否為「回程」，決定是否立刻淡出登入介面
+    // 3. 判斷如果是回程，就「扣住黑幕不放」，留給後面上車後再打開
     const urlParams = new URLSearchParams(window.location.search);
     const isReturnTrip = urlParams.get('returnTrip') === 'true';
     if (!isReturnTrip) {
@@ -3299,33 +3311,38 @@ db.ref(`classes/${currentUser.classId || 'default'}`).on('value', snap => {
         const letterContainer = document.querySelector('.auth-letter-container');
         if(letterContainer) letterContainer.style.display = 'none';
 
+       // 👇 自動檢查是否從學校搭車回來
+    if (isReturnTrip) {
         setTimeout(() => {
-            // 1. 不播放動畫，瞬間將玩家的物理位置設定在露台 (確保下車時位置正確)
+            // 1. 瞬間定位物理位置到露台 (不播走路動畫)
             isAtBalcony = true;
             if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = true;
             if (typeof glassDoorL !== 'undefined' && glassDoorL) glassDoorL.position.x = 7.3;
             
             roomCameraBackup.cp.copy(camera.position);
             roomCameraBackup.ct.copy(controls.target);
-
-            // 瞬間將鏡頭切換到露台位置
             camera.position.set(0, 15, -19.5);
             controls.target.set(0, 15, -20);
             camera.fov = 75;
             camera.updateProjectionMatrix();
             controls.update();
 
-            // 2. 瞬間抓取一輛反方向的巴士讓他上車
+            // 2. 抓取反方向的巴士
             const busHitBox = interactables.find(i => i.userData && i.userData.type === 'bus' && i.userData.direction === 1);
             if (busHitBox) {
+                // 🚀 關鍵魔法：將動畫速度調到極快 (100倍速)，讓鏡頭飛向車內的動畫在 0.01 秒內完成
+                let orgTimeScale = gsap.globalTimeline.timeScale();
+                gsap.globalTimeline.timeScale(100); 
+                
                 rideBus(busHitBox);
                 
-                // 3. 等待 rideBus 內部的運鏡動畫 (1.2秒) 走完後，才把黑畫面淡出，實現完美「一睜開眼就在車上」
+                // 3. 鏡頭確定坐在車內後，恢復正常速度，並淡出黑幕，此時第一眼就會是車內風景！
                 setTimeout(() => {
-                    hideAuthOverlay();
-                }, 1300);
+                    gsap.globalTimeline.timeScale(orgTimeScale); 
+                    hideAuthOverlay(); 
+                }, 50); 
             } else {
-                hideAuthOverlay(); // 防錯備用
+                hideAuthOverlay(); // 防錯備案
             }
         }, 100); 
     }
