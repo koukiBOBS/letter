@@ -3151,7 +3151,16 @@ auth.onAuthStateChanged(user => {
                     // 👇 檢查位置記憶：如果上次在學校，且這次不是「搭車回程(?returnTrip=true)」，強制將他送回學校
                     if (data.lastLocation === 'school' && !isReturnTrip) {
                         window.location.href = 'school.html';
-                        return; // 中斷房間載入，直接跳轉
+                        return; 
+                    }
+                    
+                    // 👇 新增：如果上次在商店街，初始化房間後「瞬間」切換到商店街
+                    if (data.lastLocation === 'street' && !isReturnTrip) {
+                        document.getElementById('user-name').innerText = data.name; 
+                        document.getElementById('room-canvas-container').style.display = 'block'; 
+                        initRoomScene();
+                        setTimeout(() => { enterShoppingStreet(true); }, 300);
+                        return;
                     }
 
                     document.getElementById('user-name').innerText = data.name; 
@@ -8866,6 +8875,20 @@ function animateRoom() {
                 fwCabins.forEach(cabin => cabin.rotation.z = -ferrisWheelGrp.rotation.z);
             }
         }
+
+
+
+        // 讓商店街的搭車標籤產生浮動動畫
+        streetScene.traverse(child => {
+            if (child.userData.isAnimRing) {
+                child.rotation.z += 0.01;
+                const ringScale = 1.0 + Math.sin(Date.now() * 0.002) * 0.1;
+                child.scale.set(ringScale, ringScale, 1);
+                child.material.opacity = 0.3 + Math.sin(Date.now() * 0.003) * 0.2;
+            } else if (child.userData.isAnimText) {
+                child.position.y = child.userData.baseY + Math.sin(Date.now() * 0.003) * 0.15;
+            }
+        });
         
         renderer.render(streetScene, camera);
         return; // 這裡中斷只會跳過房間的渲染，不會殺死整個 3D 引擎了！
@@ -11241,8 +11264,11 @@ function getOffBus() {
 
 
         // 成功進入商店街邏輯
-// 成功進入商店街邏輯 (修復相機鎖死黑畫面問題)
-function enterShoppingStreet() {
+function enterShoppingStreet(isInstant = false) {
+    // 👇 記錄最後位置為商店街
+    localStorage.setItem('cachedLocation', 'street');
+    db.ref(`users/${currentUser.uid}/lastLocation`).set('street');
+
     const bellBox = document.getElementById('bus-bell-box');
     if (bellBox) bellBox.style.display = 'none';
     const timerDisp = document.getElementById('bus-timer-display');
@@ -11252,61 +11278,49 @@ function enterShoppingStreet() {
     fadeOverlay.style.cssText = "position:fixed; inset:0; background:#000; z-index:99999; opacity:0; pointer-events:none; transition: opacity 0.8s;";
     document.body.appendChild(fadeOverlay);
     
-    setTimeout(() => { fadeOverlay.style.opacity = 1; }, 10);
+    // 如果不是瞬間載入，就播黑幕淡入
+    if (!isInstant) setTimeout(() => { fadeOverlay.style.opacity = 1; }, 10);
     
     setTimeout(() => {
-        // 🛑 【關鍵修復 1】：立刻殺死巴士的顛簸動畫，防止它與第一人稱相機打架！
         if (typeof busBumpAnim !== 'undefined' && busBumpAnim) {
-            busBumpAnim.kill();
-            busBumpAnim = null;
+            busBumpAnim.kill(); busBumpAnim = null;
         }
- 
-        // 🛑 【關鍵修復 2】：解除巴士對攝影機的綁定與鎖死
         isRidingBus = false;
-        if (window.originalControlsUpdate) {
-            controls.update = window.originalControlsUpdate;
-        }
+        if (window.originalControlsUpdate) controls.update = window.originalControlsUpdate;
         
-        // 將攝影機加入到「街道場景」，而不是房間場景
-    if (typeof streetScene === 'undefined' || !streetScene) {
+        if (typeof streetScene === 'undefined' || !streetScene) {
             buildShoppingStreet();
         }
         streetScene.add(camera);
-        
         isAtStreet = true;
+        
         if (typeof syncStreetEnvironment === 'function') syncStreetEnvironment();
  
-        // 🌟 第一人稱沉浸式視角設定
-        controls.enabled = true; // 確保允許滑動螢幕轉頭
-        controls.minAzimuthAngle = -Infinity;
-        controls.maxAzimuthAngle = Infinity;
-        controls.minPolarAngle = Math.PI / 3;
-        controls.maxPolarAngle = Math.PI / 1.5;
-        controls.enablePan = false; // 禁用雙指平移，防穿幫
+        controls.enabled = true; 
+        controls.minAzimuthAngle = -Infinity; controls.maxAzimuthAngle = Infinity;
+        controls.minPolarAngle = Math.PI / 3; controls.maxPolarAngle = Math.PI / 1.5;
+        controls.enablePan = false; 
+        controls.minDistance = 0.1; controls.maxDistance = 0.1;
  
-        // 💡 魔法機制：將相機與目標點的距離鎖死在 0.1，這會強制讓 OrbitControls 變成第一人稱轉頭！
-        controls.minDistance = 0.1;
-        controls.maxDistance = 0.1;
- 
-        // 🛑 初始化人物站立位置與視線目標 (兩者相距 0.1)
         camera.position.set(-15, 6, 0);
         controls.target.set(-14.9, 6, 0);
-        camera.lookAt(-14.9, 6, 0); // 強制對齊視線
+        camera.lookAt(-14.9, 6, 0);
         controls.update();
  
-        // 重新顯示搖桿
         const knob = document.getElementById('mobile-cam-knob');
         if (knob) knob.style.display = 'flex';
         
-        document.getElementById('btn-leave-street').style.display = 'flex';
-        
-        fadeOverlay.style.opacity = 0;
-        setTimeout(() => fadeOverlay.remove(), 800);
-        
-        showToast("🛍️ 抵達商店街！左手搖桿橫移前進，右手滑動螢幕轉頭。");
-    }, 850);
+        // 如果是瞬間載入，直接移除黑幕並關閉登入畫面；否則播淡出
+        if (isInstant) {
+            fadeOverlay.remove();
+            hideAuthOverlay();
+        } else {
+            fadeOverlay.style.opacity = 0;
+            setTimeout(() => fadeOverlay.remove(), 800);
+            showToast("🛍️ 抵達商店街！左手搖桿橫移前進，右手滑動螢幕轉頭。");
+        }
+    }, isInstant ? 50 : 850);
 }
-
 // 離開商店街，返回房間露台
 function leaveShoppingStreet() {
     document.getElementById('btn-leave-street').style.display = 'none';
@@ -12372,9 +12386,36 @@ function createTangLauUpperFloors(x, z, width, baseColor) {
         const pawnSign = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 0.2), new THREE.MeshStandardMaterial({map: pawnTex, emissiveMap: pawnTex, emissive: 0xffffff, emissiveIntensity: 0}));
         pawnSign.position.set(3, 22, -25); pawnSign.userData = { isNeon: true }; buildingsGrp.add(pawnSign);
      
-        const stopGrp = new THREE.Group(); stopGrp.position.set(11, 0, 25);
+      const stopGrp = new THREE.Group(); stopGrp.position.set(11, 0, 25);
         const stopPole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 7, 16), new THREE.MeshStandardMaterial({color: 0x555555, metalness: 0.8})); stopPole.position.y = 3.5; stopPole.castShadow = true; stopGrp.add(stopPole);
         const stopSign = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.1, 32), new THREE.MeshStandardMaterial({map: createBusStopTexture(), roughness: 0.8})); stopSign.rotation.set(0, 0, Math.PI / 2); stopSign.position.set(-0.15, 6.5, 0); stopGrp.add(stopSign);
+        
+        // 👇 新增：商店街專屬 3D 乘車標籤與光環
+        const ringMatBus = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false });
+        const busRing = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.2, 32), ringMatBus);
+        busRing.rotation.x = -Math.PI / 2; busRing.position.y = 0.05;
+        busRing.userData = { isAnimRing: true }; // 標記以供動畫更新
+        stopGrp.add(busRing);
+
+        const textCanvasBus = document.createElement('canvas');
+        textCanvasBus.width = 512; textCanvasBus.height = 128;
+        const tCtxBus = textCanvasBus.getContext('2d');
+        tCtxBus.fillStyle = 'rgba(30, 41, 59, 0.85)';
+        tCtxBus.beginPath(); tCtxBus.roundRect ? tCtxBus.roundRect(10, 10, 492, 108, 20) : tCtxBus.rect(10, 10, 492, 108); tCtxBus.fill();
+        tCtxBus.strokeStyle = 'rgba(255, 170, 0, 0.6)'; tCtxBus.lineWidth = 4; tCtxBus.stroke();
+        tCtxBus.fillStyle = '#ffffff'; tCtxBus.font = 'bold 36px "Microsoft JhengHei", sans-serif'; tCtxBus.textAlign = 'center'; tCtxBus.textBaseline = 'middle';
+        tCtxBus.fillText('🚌 搭車回家', 256, 64);
+        const textSpriteBus = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(textCanvasBus), transparent: true, depthTest: false }));
+        textSpriteBus.position.set(0, 4.5, 0); textSpriteBus.scale.set(3.5, 0.875, 1);
+        textSpriteBus.userData = { isAnimText: true, baseY: 4.5 }; // 標記
+        stopGrp.add(textSpriteBus);
+
+        // 隱形點擊框
+        const streetReturnHitBox = new THREE.Mesh(new THREE.BoxGeometry(5, 8, 5), new THREE.MeshBasicMaterial({visible: false}));
+        streetReturnHitBox.position.y = 4;
+        streetReturnHitBox.userData = { type: 'street_return' };
+        stopGrp.add(streetReturnHitBox);
+        
         streetScene.add(stopGrp);
 
 
@@ -12703,6 +12744,24 @@ window.addEventListener('pointerup', (e) => {
         renderRecordShop();
     }, 800); // 走近之後再彈出商店視窗
 }
+
+
+else if (obj.userData.type === 'street_return') {
+            // 加入過場黑畫面
+            document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed; inset:0; background:#000; z-index:999999; opacity:0; transition:opacity 1s;" id="bus-fade"></div>');
+            setTimeout(() => document.getElementById('bus-fade').style.opacity = 1, 10);
+            
+            // 記錄最後位置為房間，並帶 returnTrip=true 參數重新整理
+            localStorage.setItem('cachedLocation', 'home');
+            db.ref(`users/${currentUser.uid}/lastLocation`).set('home').then(() => {
+                setTimeout(() => {
+                    // 重新載入頁面，觸發與學校完全相同的搭車動畫
+                    window.location.href = '?returnTrip=true'; 
+                }, 1000);
+            });
+        }
+
+        
     }
     
 });
