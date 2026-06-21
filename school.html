@@ -236,6 +236,15 @@
     <script>
 
 
+
+// ⚡ 極速攔截網：如果在房間，直接跳回，連 Firebase 都不用啟動
+const cachedLoc = localStorage.getItem('cachedLocation');
+if (cachedLoc === 'home' || !cachedLoc) {
+    window.location.href = 'index.html';
+}
+
+        
+
 // ====== Firebase 初始化與共用資料 ======
 const firebaseConfig = { 
     apiKey: "AIzaSyCkGPRej1rMWVfm7Et6zJlrj3Bnm5-IVms", 
