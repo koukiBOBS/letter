@@ -5387,7 +5387,7 @@ function returnToRoom() {
     isAtBalcony = false;
     isWaitingAtBusStop = false;
 
-    // 👇 關鍵防禦：斬殺所有相機的進行中動畫，搶奪控制權！
+    // 🧹 斬殺所有相機的進行中動畫，搶奪控制權！
     gsap.killTweensOf(camera.position);
     gsap.killTweensOf(camera);
     gsap.killTweensOf(controls.target);
@@ -5413,7 +5413,7 @@ function returnToRoom() {
 
     const roomFov = getIdealFov();
     
-    // 立即強制隱藏按鈕
+    // 💡 第一時間強制隱藏按鈕，不留一絲痕跡
     const btn = document.getElementById('btn-return-room');
     if (btn) btn.style.display = 'none';
 
@@ -5436,7 +5436,6 @@ function returnToRoom() {
                 controls.maxAzimuthAngle = Math.PI / 2;
             }
 
-            // 👇 確保風景群組絕對被隱藏
             if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = false;
 
             const knobCenter = document.querySelector('.knob-center');
@@ -5451,12 +5450,15 @@ function returnToRoom() {
 
             const knob = document.getElementById('mobile-cam-knob');
             if (knob) knob.style.display = '';
+            
+            // 雙重保險：再次確保按鈕隱藏
+            if (btn) btn.style.display = 'none';
         }
     });
 
-    // 關門動畫
+    // 🚪 關門動畫
     if (typeof glassDoorL !== 'undefined' && glassDoorL) {
-        gsap.killTweensOf(glassDoorL.position); // 防止開門動畫干擾
+        gsap.killTweensOf(glassDoorL.position); 
         gsap.to(glassDoorL.position, { x: -7.3, duration: 1.3, delay: 0.8, ease: "power2.inOut" });
     }
 
@@ -11456,12 +11458,10 @@ function rideBus(busHitBox) {
 }
 // 終極安全版下車邏輯，保證不會因為按鈕遺失而報錯卡死
 // 終極安全版下車邏輯，保證不會因為按鈕遺失而報錯卡死
-// 終極安全版下車邏輯，保證不會因為按鈕遺失而報錯卡死
 function getOffBus() {
     if (!isRidingBus) return;
     isRidingBus = false;
     
-    // 安全隱藏落車按鈕與計時器
     const bellBox = document.getElementById('bus-bell-box');
     if (bellBox) bellBox.style.display = 'none';
     
@@ -11488,25 +11488,36 @@ function getOffBus() {
     controls.minAzimuthAngle = -Infinity;
     controls.maxAzimuthAngle = Infinity;
 
-    // 👇 關鍵防禦：清除相機上所有的殘留動畫，確保乾淨執行
+    // 🧹 清除相機上所有的殘留動畫
     gsap.killTweensOf(camera.position);
     gsap.killTweensOf(camera);
     gsap.killTweensOf(controls.target);
 
+    // 💡 終極防護：強制鎖定下車降落點
+    let targetPos = preRideCameraState.pos;
+    let targetLook = preRideCameraState.target;
+    let targetFov = preRideCameraState.fov;
+
+    // 如果系統標記要回到露台，就強制將座標鎖死在露台，絕不允許被其他錯誤記憶帶入室內！
+    if (typeof isAtBalcony !== 'undefined' && isAtBalcony) {
+        targetPos = new THREE.Vector3(0, 15, -19.5);
+        targetLook = new THREE.Vector3(0, 15, -20);
+        targetFov = 75;
+    }
+
     gsap.to(camera.position, {
-        x: preRideCameraState.pos.x, y: preRideCameraState.pos.y, z: preRideCameraState.pos.z,
+        x: targetPos.x, y: targetPos.y, z: targetPos.z,
         duration: 1.2, ease: "power2.inOut"
     });
-    gsap.to(camera, { fov: preRideCameraState.fov, duration: 1.2, onUpdate: () => camera.updateProjectionMatrix() });
+    gsap.to(camera, { fov: targetFov, duration: 1.2, onUpdate: () => camera.updateProjectionMatrix() });
     
     if (window.originalControlsUpdate) controls.update = window.originalControlsUpdate;
     
     gsap.to(controls.target, {
-        x: preRideCameraState.target.x, y: preRideCameraState.target.y, z: preRideCameraState.target.z,
+        x: targetLook.x, y: targetLook.y, z: targetLook.z,
         duration: 1.2, ease: "power2.inOut",
         onUpdate: () => controls.update(),
         onComplete: () => {
-            // 如果玩家在這 1.2 秒內已經按了「返回室內」，就不要再執行顯示按鈕的邏輯！
             if (!isAtBalcony && !isWaitingAtBusStop) return;
 
             controls.enabled = true;
@@ -11514,6 +11525,7 @@ function getOffBus() {
                 lockWaitingAzimuth();
             }
 
+            // 安全顯示「返回室內」的按鈕
             const returnBtn = document.getElementById('btn-return-room');
             if (returnBtn) {
                 returnBtn.style.display = 'flex';
@@ -11522,7 +11534,6 @@ function getOffBus() {
         } 
     });
 }
-
 
 
         // 成功進入商店街邏輯
@@ -11587,7 +11598,6 @@ function enterShoppingStreet(isInstant = false) {
 function leaveShoppingStreet() {
     document.getElementById('btn-leave-street').style.display = 'none';
  
-    // 準備搭車回房間時，先把搖桿藏起來
     const knob = document.getElementById('mobile-cam-knob');
     if (knob) knob.style.display = 'none';
     
@@ -11600,7 +11610,9 @@ function leaveShoppingStreet() {
     setTimeout(() => {
         isAtStreet = false;
         
-        // 將摩天輪還給原本的風景群組
+        // 💡 確保系統知道我們是回到露台，這樣 getOffBus 才會精準降落
+        isAtBalcony = true; 
+        
         if (typeof ferrisWheelGrp !== 'undefined' && typeof balconyOnlyGroup !== 'undefined') {
             balconyOnlyGroup.add(ferrisWheelGrp.parent);
             ferrisWheelGrp.parent.position.set(110, -5, -35);
@@ -11609,7 +11621,6 @@ function leaveShoppingStreet() {
             ferrisWheelGrp.parent.matrixAutoUpdate = false;
         }
  
-        // 🛑 【關鍵修復 4】：搭車回房間前，必須解開第一人稱的 0.1 距離鎖定，否則露台視角會壞掉
         controls.minDistance = 0.1;
         controls.maxDistance = 100;
         controls.minAzimuthAngle = -Math.PI / 2.5;
@@ -11618,7 +11629,7 @@ function leaveShoppingStreet() {
         controls.maxPolarAngle = Math.PI / 2;
  
         isRidingBus = true;
-        getOffBus(); // 觸發下車邏輯，鏡頭自動回到房間
+        getOffBus(); 
         
         fadeOverlay.style.opacity = 0;
         setTimeout(() => fadeOverlay.remove(), 800);
