@@ -11366,18 +11366,18 @@ function rideBus(busHitBox) {
 }
 // 終極安全版下車邏輯，保證不會因為按鈕遺失而報錯卡死
 // 終極安全版下車邏輯，保證不會因為按鈕遺失而報錯卡死
+// 終極安全版下車邏輯，保證不會因為按鈕遺失而報錯卡死
 function getOffBus() {
     if (!isRidingBus) return;
     isRidingBus = false;
     
-    // 安全隱藏落車按鈕與計時器 (若元素存在才隱藏)
+    // 安全隱藏落車按鈕與計時器
     const bellBox = document.getElementById('bus-bell-box');
     if (bellBox) bellBox.style.display = 'none';
     
     const timerDisp = document.getElementById('bus-timer-display');
     if (timerDisp) timerDisp.style.display = 'none';
 
-    // 如果程式碼裡還有殘留舊的下車按鈕，也安全地隱藏它
     const oldBtn = document.getElementById('btn-getoff-bus');
     if (oldBtn) oldBtn.style.display = 'none';
 
@@ -11398,7 +11398,11 @@ function getOffBus() {
     }
     activeBus = null;
 
-    // 將鏡頭平滑退回原本站在露台的位置
+    // 🛑 【修復重點 1】：先徹底解除視角邊界限制，防止動畫退回時撞到空氣牆導致視角錯亂
+    controls.minAzimuthAngle = -Infinity;
+    controls.maxAzimuthAngle = Infinity;
+
+    // 將鏡頭平滑退回原本的位置
     gsap.to(camera.position, {
         x: preRideCameraState.pos.x, y: preRideCameraState.pos.y, z: preRideCameraState.pos.z,
         duration: 1.2, ease: "power2.inOut"
@@ -11414,14 +11418,18 @@ function getOffBus() {
         onComplete: () => {
             controls.enabled = true;
             
+            // 🛑 【修復重點 1 續】：等鏡頭平滑退回原位後，如果我們是退回巴士站，就重新鎖定左右視角
+            if (typeof isWaitingAtBusStop !== 'undefined' && isWaitingAtBusStop) {
+                lockWaitingAzimuth();
+            }
+
             // 安全顯示「返回室內」的按鈕
             const returnBtn = document.getElementById('btn-return-room');
             if (returnBtn) {
                 returnBtn.style.display = 'flex';
                 returnBtn.style.pointerEvents = 'auto'; // 確保絕對可點擊
             }
-            // ⚠️ 防錯：下巴士時人是站在露台看海的，絕對不可以把搖桿顯示出來
-        } // 👈 就是這裡剛剛少了一個 } ！！！
+        } 
     });
 }
 
@@ -13055,21 +13063,17 @@ function setupStreetWaiting() {
     lockWaitingAzimuth();
 }
 
-// 🚌 往基元中學的等車設定（終極修正：摩天輪下，完美正對馬路）
+// 🚌 往基元中學的等車設定（終極修正：摩天輪下，完美正對馬路並微偏左）
 function setupSchoolWaiting() {
     // 1. X 座標設為 110（精準位於摩天輪正下方）
     const waitX = 110; 
     
-    // 2. 攝影機位置：
-    // Y = -2.5 (維持與去商店街相同的俯視高度，確保馬路橫躺在畫面中)
-    // Z = -85 (大廈與摩天輪所在的對岸座標，背靠摩天輪)
+    // 2. 攝影機位置保持不變：
     camera.position.set(waitX, -2.5, -85);
     
     // 3. 視角目標 (構成完美直角)：
-    // X = 110 (X座標與相機相同，視線與馬路呈 90 度直角)
-    // Y = -3.5 (微微向下俯視馬路)
-    // Z = -70 (朝向 +Z 方向，即面向馬路與對岸屋子的方向)
-    controls.target.set(waitX, -3.5, -70);
+    // 👇 【修復重點 2】：將 target.x 減去 10 (waitX - 10)，讓相機預設注視點往左移！
+    controls.target.set(waitX - 10, -3.5, -70);
     
     controls.update();
 
