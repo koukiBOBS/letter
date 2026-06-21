@@ -8412,12 +8412,12 @@ const intersects = getValidIntersects();
 function onPointerUp(e) {
     // 👇 新增這行：防穿透保護
     if (e.target.tagName !== 'CANVAS') return;
-    if(dragTimer) { 
+    if (dragTimer) { 
         clearTimeout(dragTimer); 
         dragTimer = null; 
     }
 
-    if(isDragging && dragTarget) {
+    if (isDragging && dragTarget) {
         const type = dragTarget.userData.dragType; 
         const droppedObj = dragTarget;             
 
@@ -8430,18 +8430,16 @@ function onPointerUp(e) {
             return;
         }
 
-
-if (type === 'painting' || type === 'bookcase') {
+        if (type === 'painting' || type === 'bookcase') {
             saveObjectPositions(); // 儲存畫作與書櫃新位置
-                isDragging = false;
-                dragTarget = null;
-                controls.enabled = true;
-                document.body.style.cursor = 'default';
-                return;
-            }
+            isDragging = false;
+            dragTarget = null;
+            controls.enabled = true;
+            document.body.style.cursor = 'default';
+            return;
+        }
         
-
-  let snapTargetX = droppedObj.position.x;
+        let snapTargetX = droppedObj.position.x;
         let snapTargetZ = droppedObj.position.z;
 
         // 🧲 磁吸效應：如果拖曳的是琴椅，靠近鋼琴時自動吸附到演奏位
@@ -8502,91 +8500,102 @@ if (type === 'painting' || type === 'bookcase') {
         return;
     }
 
-   if(Math.abs(e.clientX - pointerDownPos.x) > 10 || Math.abs(e.clientY - pointerDownPos.y) > 10) return;
-    if(document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
+    if (Math.abs(e.clientX - pointerDownPos.x) > 10 || Math.abs(e.clientY - pointerDownPos.y) > 10) return;
+    if (document.querySelector('.room-modal[style*="flex"]') || isDrawerAnimating) return;
     
     // 👇 新增這行：如果在商店街，立刻中斷，不再進行房間物品的射線檢測！
     if (typeof isAtStreet !== 'undefined' && isAtStreet) return;
     
-    mouse.x = (e.clientX/window.innerWidth)*2-1; mouse.y = -(e.clientY/window.innerHeight)*2+1;
+    mouse.x = (e.clientX/window.innerWidth)*2-1; 
+    mouse.y = -(e.clientY/window.innerHeight)*2+1;
     raycaster.setFromCamera(mouse, camera);
- const intersects = getValidIntersects();
-    if(intersects.length > 0) {
-        let obj = intersects[0].object; while(obj.parent && !obj.userData.type) obj = obj.parent;
+    const intersects = getValidIntersects();
+    
+    // ==========================================
+    // 🖱️ 點擊事件判斷區
+    // ==========================================
+    if (intersects.length > 0) {
+        let obj = intersects[0].object; 
+        while(obj.parent && !obj.userData.type) obj = obj.parent;
         const type = obj.userData.type;
         
-        if(type === 'replies' && leftDrawer.position.z <= 0) {
-            isDrawerAnimating = true; gsap.to(leftDrawer.position, {z: 3.5, duration: 0.5, onComplete: () => { document.getElementById('modal-replies').style.display = 'flex'; isDrawerAnimating = false; }});
-        } else if(type === 'inbox' && rightDrawer.position.z <= 0) {
-            isDrawerAnimating = true; gsap.to(rightDrawer.position, {z: 3.5, duration: 0.5, onComplete: () => { document.getElementById('modal-inbox').style.display = 'flex'; isDrawerAnimating = false; }});
-        } else if(type === 'log') { gsap.to(book.position, {y: 9, rotationY: 0, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-log').style.display = 'flex'; }});
-        } else if(type === 'tasks') { gsap.to(clipboard.position, {y: 9, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-tasks').style.display = 'flex'; }});
-        } else if(type === 'water') { performWateringAnimation();
-       } else if(type === 'plant') { 
+        if (type === 'replies' && leftDrawer.position.z <= 0) {
+            isDrawerAnimating = true; 
+            gsap.to(leftDrawer.position, {z: 3.5, duration: 0.5, onComplete: () => { document.getElementById('modal-replies').style.display = 'flex'; isDrawerAnimating = false; }});
+        } else if (type === 'inbox' && rightDrawer.position.z <= 0) {
+            isDrawerAnimating = true; 
+            gsap.to(rightDrawer.position, {z: 3.5, duration: 0.5, onComplete: () => { document.getElementById('modal-inbox').style.display = 'flex'; isDrawerAnimating = false; }});
+        } else if (type === 'log') { 
+            gsap.to(book.position, {y: 9, rotationY: 0, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-log').style.display = 'flex'; }});
+        } else if (type === 'tasks') { 
+            gsap.to(clipboard.position, {y: 9, duration: 0.4, yoyo: true, repeat: 1, onComplete: () => { document.getElementById('modal-tasks').style.display = 'flex'; }});
+        } else if (type === 'water') { 
+            performWateringAnimation();
+        } else if (type === 'plant') { 
             if (userPlantData && userPlantData.isDead) { 
                 showToast("🥀 這盆植物已經枯萎了，請重新挑選一盆吧。"); 
                 setTimeout(() => document.getElementById('modal-plant-selector').style.display = 'flex', 1500); 
             } else { 
                 showPlantStatus(); 
             } 
-        // 👇 新增這三行，讓窗戶可以直接點擊
-       } else if(type === 'window') {
-    if(hasDoorPrivilege) goToBalcony(); else showToast("🚪 露台趟門失修，無法開啟。需收集「通行權」。");
-} else if(type === 'piano') {
-    if(hasPianoPrivilege) openPianoUI(); else showToast("🎹 需要收集「鋼琴彈奏權」才能彈奏。");
-} else if(type === 'wallet') {
-    openWalletUI();
- // 👇 新增這兩行：點擊收音機 👇
-        } else if(type === 'radio') {
+        } else if (type === 'window') {
+            if (hasDoorPrivilege) goToBalcony(); 
+            else showToast("🚪 露台趟門失修，無法開啟。需收集「通行權」。");
+        } else if (type === 'piano') {
+            if (hasPianoPrivilege) openPianoUI(); 
+            else showToast("🎹 需要收集「鋼琴彈奏權」才能彈奏。");
+        } else if (type === 'wallet') {
+            openWalletUI();
+        } else if (type === 'radio') {
             toggleRadio();
-      // 在 onPointerUp(e) 裡，找到檢查 type 的區塊，加入以下判斷：
-} 
+        } else if (type === 'stereo') {
+            openMusicPlayer('stereo');
         
-        
-      } else if (type === 'main_door') {
-    // 點擊大門，彈出目的地選單
-    document.getElementById('modal-destination').style.display = 'flex';
-}  
-        
-        
-        else if(type === 'stereo') {
-            openMusicPlayer('stereo'); // 👈 告訴系統：這是從家裡音響打開的！
+        // 👇 新增：點擊房間大門
+        } else if (type === 'main_door') {
+            document.getElementById('modal-destination').style.display = 'flex';
+
+        // 👇 巴士乘車邏輯 (改為在街邊等車)
+        } else if (type === 'bus') {
+            // 必須在街邊等車才能上車
+            if (typeof isWaitingAtBusStop === 'undefined' || !isWaitingAtBusStop) {
+                showToast("💡 請先點擊室內大門，搭𨋢下樓至巴士站才能乘車。");
+                return;
+            }
+
+            const direction = obj.userData.direction;
+            
+            // 驗證玩家是否搭錯方向的車
+            if (typeof pendingDestination !== 'undefined') {
+                if (pendingDestination === 'street' && direction !== 1) {
+                    return showToast("⚠️ 這輛車的方向不對喔，前往海濱商店街的車在這一側！");
+                } else if (pendingDestination === 'school' && direction !== -1) {
+                    return showToast("⚠️ 這輛車的方向不對喔，前往基元中學的車在這一側！");
+                }
+            }
+
+            // 扣除車費邏輯
+            if (userPoints < 200) {
+                alert("您的積分不足 200 分，無法支付車資！\n請多寫信與探索來賺取積分。");
+                return;
+            }
+            
+            if (confirm("乘搭巴士出門將扣除 200 積分作為車資，確定要出發嗎？")) {
+                userPoints -= 200; // 扣除積分
+                db.ref(`users/${currentUser.uid}/points`).set(userPoints); // 同步至資料庫
+                
+                // 更新畫面的積分顯示
+                const pointsEl = document.getElementById('user-points-text');
+                if (pointsEl) pointsEl.innerText = userPoints;
+                
+                showToast("🎫 已扣除 200 積分購買車票。");
+                
+                isWaitingAtBusStop = false; // 取消等車狀態
+                rideBus(obj); // 執行上車動畫
+            }
         }
-        
-     else if (type === 'bus') {
-    if (!isWaitingAtBusStop) {
-        showToast("💡 請先點擊室內木門，搭𨋢下樓至巴士站才能乘車。");
-        return;
-    }
-
-    const direction = obj.userData.direction;
-    
-    // 驗證玩家是否搭錯方向的車
-    if (pendingDestination === 'street' && direction !== 1) {
-        return showToast("⚠️ 這輛車的方向不對喔，前往海濱商店街的車在這一側！");
-    } else if (pendingDestination === 'school' && direction !== -1) {
-        return showToast("⚠️ 這輛車的方向不對喔，前往基元中學的車在這一側！");
-    }
-
-    // 扣除車費邏輯
-    if (userPoints < 200) {
-        alert("您的積分不足 200 分，無法支付車資！");
-        return;
-    }
-    
-    if (confirm("乘搭巴士將扣除 200 積分作為車資，確定上車嗎？")) {
-        userPoints -= 200;
-        db.ref(`users/${currentUser.uid}/points`).set(userPoints);
-        const pointsEl = document.getElementById('user-points-text');
-        if (pointsEl) pointsEl.innerText = userPoints;
-        showToast("🎫 已扣除 200 積分購買車票。");
-        
-        isWaitingAtBusStop = false; // 取消等車狀態
-        rideBus(obj); // 執行上車動畫
-    }
+    } // <-- if (intersects.length > 0) 結束區塊
 }
-        
-    }
 
 
         // 📻 控制香港電台播放
