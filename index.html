@@ -3353,7 +3353,7 @@ function initApp() {
 // 👇 自動檢查是否從學校/商店街搭車回來
     if (isReturnTrip) {
         setTimeout(() => {
-            // 1. 直接定位到露台
+            // 1. 先將環境預設為「站在露台」
             isAtBalcony = true;
             if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = true;
             if (typeof glassDoorL !== 'undefined' && glassDoorL) glassDoorL.position.x = 7.3;
@@ -3362,7 +3362,7 @@ function initApp() {
             roomCameraBackup.cp.copy(camera.position);
             roomCameraBackup.ct.copy(controls.target);
             
-            // 設定露台視角
+            // 設定露台視角 (作為巴士下車後的預設降落點)
             camera.position.set(0, 15, -19.5);
             controls.target.set(0, 15, -20);
             camera.fov = 75;
@@ -3375,26 +3375,48 @@ function initApp() {
             controls.minPolarAngle = 0.05; controls.maxPolarAngle = Math.PI / 2;
             controls.update();
 
-            // 2. 隱藏第一人稱旋鈕，並強制顯示「返回室內」按鈕
+            // 2. 隱藏第一人稱旋鈕
             const knob = document.getElementById('mobile-cam-knob');
             if (knob) knob.style.display = 'none';
             
+            // ⚠️ 不用先顯示「返回室內」按鈕，因為我們要直接上車，下車時自會顯示
             const btn = document.getElementById('btn-return-room');
-            if (btn) {
-                btn.style.display = 'flex';
-                btn.style.pointerEvents = 'auto'; // 👈 確保絕對可以點擊
+            if (btn) btn.style.display = 'none';
+
+            // 3. 尋找回程巴士 (-1 方向) 並自動上車
+            let targetBusHitBox = null;
+            for (let obj of interactables) {
+                if (obj.userData && obj.userData.type === 'bus' && obj.userData.direction === -1) {
+                    targetBusHitBox = obj;
+                    break;
+                }
             }
 
-            // 3. 淡出黑幕
-            hideAuthOverlay(); 
-            const blackout = document.getElementById('return-trip-blackout');
-            if(blackout) {
-                blackout.style.opacity = '0';
-                setTimeout(() => blackout.remove(), 1500); 
+            if (targetBusHitBox) {
+                // 稍微延遲讓場景穩定後上車
+                setTimeout(() => {
+                    rideBus(targetBusHitBox);
+                    
+                    // 4. 坐穩上車後才淡出黑幕，達到無縫運鏡接軌
+                    hideAuthOverlay(); 
+                    const blackout = document.getElementById('return-trip-blackout');
+                    if(blackout) {
+                        blackout.style.opacity = '0';
+                        setTimeout(() => blackout.remove(), 1500); 
+                    }
+                }, 100);
+            } else {
+                // 防錯：萬一極端情況找不到巴士，正常淡出並待在露台
+                hideAuthOverlay(); 
+                const blackout = document.getElementById('return-trip-blackout');
+                if(blackout) blackout.style.opacity = '0';
+                if (btn) {
+                    btn.style.display = 'flex';
+                    btn.style.pointerEvents = 'auto';
+                }
             }
         }, 300);
     }
-}
 
 
 
