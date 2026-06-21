@@ -2552,6 +2552,7 @@ function updateBusTimerUI() {
 
 
 // 失敗懲罰處理 (加入安全檢查防報錯)
+// 失敗懲罰處理 (根據去程或回程，退回正確地點)
 function failBusJourney(msg) {
     const bellBox = document.getElementById('bus-bell-box');
     if (bellBox) bellBox.style.display = 'none';
@@ -2559,19 +2560,31 @@ function failBusJourney(msg) {
     const timerDisp = document.getElementById('bus-timer-display');
     if (timerDisp) timerDisp.style.display = 'none';
 
-    showToast(`❌ ${msg} \n(折返回家)`);
+    showToast(`❌ ${msg}`);
     
-    // 延遲 2 秒後，呼叫原本的 getOffBus 鏡頭函數，把玩家送回房間
     setTimeout(() => {
-        // 清除網址列參數，防止重新整理後又自動搭車
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('returnTrip') === 'true') {
+            // 🚌 【回程失敗】：根據來源地退回學校或商店街
+            const origin = urlParams.get('from');
+            if (origin === 'school') {
+                localStorage.setItem('cachedLocation', 'school');
+                db.ref(`users/${currentUser.uid}/lastLocation`).set('school').then(() => {
+                    window.location.href = 'school.html';
+                });
+            } else {
+                localStorage.setItem('cachedLocation', 'street');
+                db.ref(`users/${currentUser.uid}/lastLocation`).set('street').then(() => {
+                    window.location.href = 'index.html'; // 重新載入，自動跳轉商店街
+                });
+            }
+        } else {
+            // 🚌 【去程失敗】：退回房間露台
             window.history.replaceState({}, document.title, window.location.pathname);
+            getOffBus(); 
         }
-        getOffBus(); 
     }, 2000);
 }
-
 
 
 
@@ -5240,19 +5253,17 @@ function returnToRoom() {
         duration: 1.8, 
         ease: "power2.inOut", 
         onUpdate: () => controls.update(),
-        onComplete: () => {
+      onComplete: () => {
             // 動畫結束完全進入室內後，重新鎖死抬頭角度
             controls.minPolarAngle = 1.15; 
             if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = false;
             
-            // 👇 關鍵修復：呼叫 applyModeState 來重新判斷並套用綠色搖桿或白色旋鈕
+            // 👇 確保重新判斷要顯示綠色還是白色旋鈕
             if (typeof applyModeState === 'function') applyModeState();
             
-            // 👇 根據設備決定是否顯示搖桿
+            // 👇 關鍵修復：清空 JS 強加的 style，讓 CSS 的 @media 重新接管，旋鈕就不會消失了！
             const knob = document.getElementById('mobile-cam-knob');
-            if(window.innerWidth <= 900 && knob) {
-                knob.style.display = 'flex';
-            }
+            if (knob) knob.style.display = '';
         }
     });
 
@@ -12757,7 +12768,7 @@ else if (obj.userData.type === 'street_return') {
             db.ref(`users/${currentUser.uid}/lastLocation`).set('home').then(() => {
                 setTimeout(() => {
                     // 重新載入頁面，觸發與學校完全相同的搭車動畫
-                    window.location.href = '?returnTrip=true'; 
+                   window.location.href = '?returnTrip=true&from=street';
                 }, 1000);
             });
         }
