@@ -346,9 +346,13 @@ function initHoopGameScene() {
     courtDecal.receiveShadow = true;
     hoopGameGroup.add(courtDecal);
 
-    // 物理地面 - 💡 修正：改用 setFromAxisAngle 確保相容 0.6.2，防止球體穿透消失
-    const floorBody = new CANNON.Body({ type: CANNON.Body.STATIC, shape: new CANNON.Plane(), material: groundMat });
-    floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+  // 💡 修正：改用厚度 2m 的實心箱體（Box）代替容易穿模的 Plane，確保 100% 不會穿透掉落
+    const floorBody = new CANNON.Body({
+        type: CANNON.Body.STATIC,
+        shape: new CANNON.Box(new CANNON.Vec3(25, 1, 25)), // 寬 50, 厚 2, 深 50
+        position: new CANNON.Vec3(0, -1, 0), // 頂部表面剛好對齊 Y = 0
+        material: groundMat
+    });
     hoopPhysicsWorld.addBody(floorBody);
 
     // 4. 建立壓克力籃板與橘紅色鐵框
@@ -556,6 +560,7 @@ function updateHoopHUD(roundNum) {
 }
 
 // 更新：重設球位置與物理屬性
+// 重置籃球狀態
 function resetHoopBall() {
     hoopBallBody.position.set(hoopStartPos.x, hoopStartPos.y, hoopStartPos.z);
     hoopBallBody.velocity.set(0, 0, 0);
@@ -567,9 +572,8 @@ function resetHoopBall() {
 }
 
 
-// 更新：投球觸碰拖曳與快速重載事件
+// 更新：投球觸碰拖曳與快速重載事件（同步獨立版力學）
 function hoopPointerDown(e) {
-    // 💡 修正：如果球在空中，點擊任意地方立即收球重新準備 (不需等待上一球結束)
     if (hoopState === 'thrown' || hoopState === 'resetting') {
         resetHoopBall();
         return;
@@ -577,6 +581,37 @@ function hoopPointerDown(e) {
     if (hoopState !== 'aiming') return;
     isHoopDragging = true;
     hoopDragStart = { x: e.clientX, y: e.clientY };
+}
+
+function hoopPointerUp(e) {
+    if (!isHoopDragging) return;
+    isHoopDragging = false;
+
+    const dx = e.clientX - hoopDragStart.x;
+    const dy = e.clientY - hoopDragStart.y;
+    
+    const dxNormal = dx / window.innerWidth;
+    const dyNormal = dy / window.innerHeight;
+
+    // 必須是向上的滑動動作
+    if (dyNormal > -0.05) return;
+
+    // 智慧直行輔助（與獨立版完全一致）
+    let forceX = dxNormal * 15;
+    if (Math.abs(forceX) < 2.0) {
+        forceX *= 0.25;
+    }
+
+    // 採用中遠距離優化的拋物線力道公式
+    const forceY = Math.min(-dyNormal * 23 + 6.5, 17);
+    const forceZ = Math.max(dyNormal * 37 - 4, -23);
+
+    hoopBallBody.velocity.set(forceX, forceY, forceZ);
+    hoopBallBody.angularVelocity.set(-13, 0, forceX * 0.4); // 後旋力矩
+
+    hoopState = 'thrown';
+    hoopShotsLeft--;
+    document.getElementById('hoop-shots-left').innerText = hoopShotsLeft;
 }
 
 function hoopPointerUp(e) {
@@ -607,19 +642,12 @@ function hoopPointerUp(e) {
     document.getElementById('hoop-shots-left').innerText = hoopShotsLeft;
 }
 
-// 每一影格物理模擬及穿環進球檢測（修正版）
+// 每一影格物理模擬及穿環進球檢測（同步獨立版邏輯）
 function updateHoopPhysics() {
     if (hoopState === 'idle' || !hoopPhysicsWorld) return;
 
-    // 💡 修正 1：只有在球投出後（'thrown'），才運行物理引擎模擬
-    if (hoopState === 'thrown') {
-        hoopPhysicsWorld.step(1 / 60);
-    } else if (hoopState === 'aiming') {
-        // 瞄準階段：強制將物理球體的位置與速度鎖定在起點，防止其在投出前提前下墜或掉入虛擬深淵
-        hoopBallBody.position.set(hoopStartPos.x, hoopStartPos.y, hoopStartPos.z);
-        hoopBallBody.velocity.set(0, 0, 0);
-        hoopBallBody.angularVelocity.set(0, 0, 0);
-    }
+    // 物理世界步進（與獨立版一致，隨時進行重力與碰撞模擬）
+    hoopPhysicsWorld.step(1 / 60);
 
     const currY = hoopBallBody.position.y;
     const prevY = hoopPrevBallPos.y;
@@ -631,8 +659,8 @@ function updateHoopPhysics() {
             const interpX = hoopBallBody.position.x + t * (hoopPrevBallPos.x - hoopBallBody.position.x);
             const interpZ = hoopBallBody.position.z + t * (hoopPrevBallPos.z - hoopBallBody.position.z);
             
-            const dist = Math.hypot(interpX - 0, interpZ - (-4.2));
-            if (dist < 0.48) { // 籃框範圍內算進球
+            const dist = Math.hypot(interpX - 0, interpZ - (-4.2)); // rimZ 為 -4.2
+            if (dist < 0.48) { 
                 hoopScore++;
                 hoopHasScored = true;
                 document.getElementById('hoop-score').innerText = String(hoopScore).padStart(2, '0');
@@ -640,27 +668,31 @@ function updateHoopPhysics() {
         }
     }
 
-    // 安全拷貝數值並同步 3D 網格
+    // 儲存上一次位置
     hoopPrevBallPos.set(hoopBallBody.position.x, hoopBallBody.position.y, hoopBallBody.position.z);
+    
+    // 同步 3D 網格
     hoopBallMesh.position.copy(hoopBallBody.position);
     hoopBallMesh.quaternion.copy(hoopBallBody.quaternion);
 
-    // 狀態機轉移
+    // 狀態轉移與重置判定
     if (hoopState === 'thrown') {
         hoopTimeSinceThrow += 1 / 60;
-        
-        // 判斷球體是否靜止在地面
-        const isResting = hoopBallBody.position.y < 0.8 && hoopBallBody.velocity.length() < 0.8;
-        
-        // 💡 修正 2：放寬出界判定範圍（y 降至 -5，z 擴展至 ±25），使球體擁有充足的飛行與碰撞反彈空間
-        const isOut = hoopBallBody.position.y < -5 || hoopBallBody.position.z > 25 || hoopBallBody.position.z < -25;
 
-        if (isResting || isOut || hoopTimeSinceThrow > 4.5) {
-            if (hoopShotsLeft > 0) {
-                resetHoopBall();
-            } else {
-                finishHoopGame();
-            }
+        const isResting = hoopBallBody.position.y < 0.8 && hoopBallBody.velocity.length() < 0.8;
+        const isOut = hoopBallBody.position.y < -1 || hoopBallBody.position.z > 12 || hoopBallBody.position.z < -12;
+
+        if ((isResting || isOut || hoopTimeSinceThrow > 5) && hoopState !== 'resetting') {
+            hoopState = 'resetting';
+            
+            // 💡 引入 600ms 延遲重置，避免球體飛行後瞬間突兀消失
+            setTimeout(() => {
+                if (hoopShotsLeft > 0) {
+                    resetHoopBall();
+                } else {
+                    finishHoopGame();
+                }
+            }, 600);
         }
     }
 }
