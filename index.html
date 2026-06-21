@@ -11201,6 +11201,7 @@ function rideBus(busHitBox) {
     });
 }
 // 終極安全版下車邏輯，保證不會因為按鈕遺失而報錯卡死
+// 終極安全版下車邏輯，保證不會因為按鈕遺失而報錯卡死
 function getOffBus() {
     if (!isRidingBus) return;
     isRidingBus = false;
@@ -11246,7 +11247,7 @@ function getOffBus() {
         x: preRideCameraState.target.x, y: preRideCameraState.target.y, z: preRideCameraState.target.z,
         duration: 1.2, ease: "power2.inOut",
         onUpdate: () => controls.update(),
-       onComplete: () => {
+        onComplete: () => {
             controls.enabled = true;
             
             // 安全顯示「返回室內」的按鈕
@@ -11255,6 +11256,8 @@ function getOffBus() {
                 returnBtn.style.display = 'flex';
                 returnBtn.style.pointerEvents = 'auto'; // 確保絕對可點擊
             }
+            // ⚠️ 防錯：下巴士時人是站在露台看海的，絕對不可以把搖桿顯示出來
+        } // 👈 就是這裡剛剛少了一個 } ！！！
     });
 }
 
