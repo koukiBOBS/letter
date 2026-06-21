@@ -275,7 +275,6 @@ window.devResetSchoolTime = function() {
     console.log("🔄 測試：已恢復真實時間同步");
 };
 
-// 檢查登入狀態與權限
 auth.onAuthStateChanged(user => {
     if (user) {
         currentUser = user;
@@ -285,20 +284,25 @@ auth.onAuthStateChanged(user => {
             let data = snap.val() || {};
             let inventory = data.inventory || {};
             
-            // 🛡️ 權限檢查 1：沒有「修繕趟門 (door_use)」權限，且不是老師
-            if (!inventory['door_use'] && !isTeacherEmail(user.email)) {
+            // 同步最新的伺服器位置到本地快取
+            if (data.lastLocation) {
+                localStorage.setItem('cachedLocation', data.lastLocation);
+            }
+            
+            // 🛡️ 權限檢查 1：沒有「修繕趟門 (door_use)」權限，全部擋下 (包含老師)
+            if (!inventory['door_use']) {
                 alert("🚪 露台的趟門仍未修繕，您還無法出門搭車。\n請在房間內努力收集積分以獲取「修繕趟門」的權限。");
                 window.location.href = 'index.html';
                 return;
             }
             
-            // 🛡️ 位置檢查 2：如果有權限，但上次是留在房間，不可直接打開網址，需強制退回房間
-            if (data.lastLocation !== 'school' && !isTeacherEmail(user.email)) {
+            // 🛡️ 位置檢查 2：上次是留在房間，不可直接打開網址，需強制退回房間 (包含老師)
+            if (data.lastLocation !== 'school') {
                 window.location.href = 'index.html';
                 return;
             }
 
-            // 🔑 如果檢查通過，或者是老師，就正常放行
+            // 🔑 如果檢查通過，且是老師，才顯示開發面板
             if (isTeacherEmail(user.email)) {
                 document.getElementById('dev-panel-wrapper').style.display = 'block';
             }
@@ -2206,7 +2210,8 @@ window.addEventListener('pointerup', (e) => {
         document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed; inset:0; background:#000; z-index:999999; opacity:0; transition:opacity 1s;" id="bus-fade"></div>');
         setTimeout(() => document.getElementById('bus-fade').style.opacity = 1, 10);
         
-        // 👇 記錄最後位置為房間，並帶參數跳轉
+       // 👇 記錄最後位置為房間，並帶參數跳轉
+        localStorage.setItem('cachedLocation', 'home'); // 寫入本地記憶，下次直接攔截
         db.ref(`users/${currentUser.uid}/lastLocation`).set('home').then(() => {
             setTimeout(() => {
                 window.location.href = 'index.html?returnTrip=true';
