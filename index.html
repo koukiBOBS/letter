@@ -3346,11 +3346,11 @@ function initApp() {
         });
     }
 
-    if (document.getElementById('dev-panel-wrapper')) {
+   if (document.getElementById('dev-panel-wrapper')) {
         document.getElementById('dev-panel-wrapper').style.display = isDevUser(currentUser.email) ? 'block' : 'none';
     }
 
-// 👇 自動檢查是否從學校/商店街搭車回來
+    // 👇 自動檢查是否從學校/商店街搭車回來
     if (isReturnTrip) {
         setTimeout(() => {
             // 1. 先將環境預設為「站在露台」
@@ -3417,6 +3417,8 @@ function initApp() {
             }
         }, 300);
     }
+} // 👈 這裡就是 initApp() 函數的結尾大括號！剛剛報錯是因為它遺失了。
+
 
 
 
