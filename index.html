@@ -2504,6 +2504,7 @@ function pressBusBell() {
 
 
 // 成功進入中學邏輯
+// 成功進入中學邏輯
 function enterSchool() {
     const bellBox = document.getElementById('bus-bell-box');
     if (bellBox) bellBox.style.display = 'none';
@@ -2516,9 +2517,12 @@ function enterSchool() {
     
     setTimeout(() => { fadeOverlay.style.opacity = 1; }, 10);
     
-    setTimeout(() => {
-        window.location.href = 'school.html';
-    }, 1500);
+    // 👇 記錄最後位置為學校，並跳轉
+    db.ref(`users/${currentUser.uid}/lastLocation`).set('school').then(() => {
+        setTimeout(() => {
+            window.location.href = 'school.html';
+        }, 1500);
+    });
 }
 
 
@@ -3124,10 +3128,16 @@ auth.onAuthStateChanged(user => {
                 return; 
             }
 
-            currentUser = user;
+           currentUser = user;
             db.ref(`users/${user.uid}`).once('value').then(userSnap => {
                 let data = userSnap.val();
                 if (data && data.name) { 
+                    // 👇 檢查位置記憶：如果上次在學校，且這次不是「搭車回程(?returnTrip=true)」，強制將他送回學校
+                    if (data.lastLocation === 'school' && !isReturnTrip) {
+                        window.location.href = 'school.html';
+                        return; // 中斷房間載入，直接跳轉
+                    }
+
                     document.getElementById('user-name').innerText = data.name; 
                     
                    if (isTeacherEmail(user.email)) {
