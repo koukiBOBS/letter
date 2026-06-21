@@ -5311,17 +5311,17 @@ function goToBalcony() {
 }
 
 function returnToRoom() {
-    // 💡 允許從露台 (isAtBalcony) 或 地下站 (isWaitingAtBusStop) 返回室內
+    // 💡 允許從 露台(isAtBalcony) 或 地下站(isWaitingAtBusStop) 返回室內
     if (!isAtBalcony && !isWaitingAtBusStop) return;
     
     isAtBalcony = false;
     isWaitingAtBusStop = false;
 
-    // 退回室內時，立刻限制左右旋轉角度
-    controls.minAzimuthAngle = -Math.PI / 2;
-    controls.maxAzimuthAngle = Math.PI / 2;
-    controls.minPolarAngle = 0; // 動畫期間先暫時放寬抬頭限制，確保退回過程順滑
-    controls.maxPolarAngle = Math.PI / 2 - 0.05;
+    // 退回室內時，先解除所有角度限制，確保動畫平滑不會卡頓
+    controls.minAzimuthAngle = -Infinity;
+    controls.maxAzimuthAngle = Infinity;
+    controls.minPolarAngle = 0; 
+    controls.maxPolarAngle = Math.PI;
 
     // 退回室內的鏡頭動畫
     const roomFov = getIdealFov(); 
@@ -5335,16 +5335,27 @@ function returnToRoom() {
         onComplete: () => {
             // 動畫結束完全進入室內後，重新鎖死抬頭角度
             controls.minPolarAngle = 1.15; 
+            controls.maxPolarAngle = Math.PI / 2 - 0.05;
+            
+            // 根據玩家原先的模式，重新鎖定左右旋轉限制
+            if (window.knobMode === 2) {
+                controls.minAzimuthAngle = Math.PI / 2;
+                controls.maxAzimuthAngle = Math.PI * 1.5;
+            } else {
+                controls.minAzimuthAngle = -Math.PI / 2;
+                controls.maxAzimuthAngle = Math.PI / 2;
+            }
+
             if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = false;
             
+            // 恢復旋鈕狀態
             if (typeof applyModeState === 'function') applyModeState();
-            
             const knob = document.getElementById('mobile-cam-knob');
             if (knob) knob.style.display = '';
         }
     });
 
-    // 關門動畫 (等鏡頭退回室內再拉上門)
+    // 關門動畫 (如果大門原本是開著的)
     if (typeof glassDoorL !== 'undefined' && glassDoorL) {
         gsap.to(glassDoorL.position, { x: -7.3, duration: 1.3, delay: 0.8, ease: "power2.inOut" });
     }
@@ -12972,35 +12983,48 @@ function startElevatorSequence(destination) {
 
        function setupBusStopWaiting() {
     isWaitingAtBusStop = true;
-    isAtBalcony = false; 
+    isAtBalcony = false; // 確保退出露台模式，避免視角衝突
     
-    // 顯示戶外風景 (大橋、馬路等)
+    // 確保強制顯示戶外風景群組
     if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = true;
 
-    // 限制視角 (禁止平移，只能轉頭看車)
-    controls.enabled = true;
-    controls.minDistance = 0.1; controls.maxDistance = 0.1;
-    controls.minPolarAngle = Math.PI / 2.5; controls.maxPolarAngle = Math.PI / 1.8;
-    
-    // 💡 關鍵修復：把等車站的 X 座標移到 80，避開被中央「房間建築物地基」包覆導致的黑畫面
-    const waitX = 80;
+    // ⛔ 關閉並隱藏房間內的視角搖桿，防止它把鏡頭拉回房間
+    const knob = document.getElementById('mobile-cam-knob');
+    if (knob) knob.style.display = 'none';
+    if (typeof applyModeState === 'function') {
+        window.isWalkMode = false; // 退出行走模式
+    }
 
+    // 啟動原生 OrbitControls，只允許左右看車
+    controls.enabled = true;
+    controls.minDistance = 0.1; 
+    controls.maxDistance = 0.1;
+    controls.minPolarAngle = Math.PI / 2.5; 
+    controls.maxPolarAngle = Math.PI / 1.8;
+    
+    // 💡 關鍵修復：把等車位置移到 X = -90 (遠離房間建築物本體，視野超開闊)
+    const waitX = -90;
+
+    // 根據目的地，將玩家放到對應車道的行人路上
     if (pendingDestination === 'street') {
-        // 去商店街的車行駛在 laneZ: 8，玩家站在行人路 Z: 22 往馬路看
-        camera.position.set(waitX, -3.5, 22);
+        // 🚌 去商店街：巴士從左開到右 (direction: 1)，行駛在近側車道
+        // 站在近側行人路 (z: 23) 往馬路 (z: 8) 看
+        camera.position.set(waitX, -2.5, 23);
         controls.target.set(waitX, -3.5, 8);
-        controls.minAzimuthAngle = -Math.PI / 4; 
-        controls.maxAzimuthAngle = Math.PI / 4;
+        controls.minAzimuthAngle = -Math.PI / 2; // 允許左右看 90 度
+        controls.maxAzimuthAngle = Math.PI / 2;
     } else {
-        // 去學校的車行駛在 laneZ: 0，玩家站在對面行人路 Z: -14 往馬路看
-        camera.position.set(waitX, -3.5, -14);
+        // 🚌 去學校：巴士從右開到左 (direction: -1)，行駛在遠側車道
+        // 站在遠側行人路 (z: -15) 往馬路 (z: 0) 看
+        camera.position.set(waitX, -2.5, -15);
         controls.target.set(waitX, -3.5, 0);
-        controls.minAzimuthAngle = Math.PI * 0.75; 
-        controls.maxAzimuthAngle = Math.PI * 1.25;
+        // 這裡因為是反向看，角度基於 PI (180度)
+        controls.minAzimuthAngle = Math.PI / 2; 
+        controls.maxAzimuthAngle = Math.PI * 1.5;
     }
     controls.update();
 
-    // 允許玩家在地下站反悔，點擊「返回室內」直接搭電梯回家
+    // 顯示「返回室內」的按鈕，允許玩家反悔不搭了
     const returnBtn = document.getElementById('btn-return-room');
     if (returnBtn) {
         returnBtn.style.display = 'flex';
