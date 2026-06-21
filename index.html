@@ -5393,23 +5393,30 @@ function returnToRoom() {
     controls.minPolarAngle = 0;
     controls.maxPolarAngle = Math.PI;
 
-    // 👇 關鍵修復 1：直接從本地記憶庫提取玩家在房間時的真實視角，避免備份被開場動畫污染
-    let targetPos = new THREE.Vector3(0, 22, 45);
+    // 預設房間正中央的視角
+    let targetPos = new THREE.Vector3(0, 22, 45); 
     let targetLook = new THREE.Vector3(0, 7, 0);
+    
+    // 讀取記憶中的視角
     const savedState = localStorage.getItem('roomCameraState');
     if (savedState) {
         try {
             const s = JSON.parse(savedState);
-            targetPos.set(s.cp.x, s.cp.y, s.cp.z);
-            targetLook.set(s.ct.x, s.ct.y, s.ct.z);
+            // 🛡️ 終極防錯機制：如果記憶中的座標跑到房間外面(大於 50 或小於 -50)，判定為遭到污染，直接丟棄並使用預設視角！
+            if (Math.abs(s.cp.x) < 50 && Math.abs(s.cp.z) < 50) {
+                targetPos.set(s.cp.x, s.cp.y, s.cp.z);
+                targetLook.set(s.ct.x, s.ct.y, s.ct.z);
+            }
         } catch(e) {}
-    } else if (roomCameraBackup.cp.length() > 0) {
-        targetPos.copy(roomCameraBackup.cp);
-        targetLook.copy(roomCameraBackup.ct);
     }
 
-    // 退回室內的鏡頭動畫
     const roomFov = getIdealFov();
+    
+    // 👉 立即強制隱藏按鈕，不依賴動畫的延遲，確保 UI 絕對消失
+    const btn = document.getElementById('btn-return-room');
+    if (btn) btn.style.display = 'none';
+
+    // 啟動鏡頭平滑退回動畫
     gsap.to(camera.position, { x: targetPos.x, y: targetPos.y, z: targetPos.z, duration: 1.8, ease: "power2.inOut" });
     gsap.to(camera, { fov: roomFov, duration: 1.8, ease: "power2.inOut", onUpdate: () => camera.updateProjectionMatrix() });
     gsap.to(controls.target, {
@@ -5433,7 +5440,7 @@ function returnToRoom() {
 
             if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = false;
 
-            // 👇 關鍵修復 2：移除 applyModeState() 避免強制重置視角，手動恢復旋鈕外觀即可
+            // 手動恢復旋鈕外觀，不再觸發會干擾相機座標的 applyModeState()
             const knobCenter = document.querySelector('.knob-center');
             if (knobCenter) {
                 if (window.isWalkMode) {
@@ -5449,14 +5456,13 @@ function returnToRoom() {
         }
     });
 
-    // 關門動畫 (如果大門原本是開著的)
+    // 關門動畫 (如果大門原本是開著的，必定會關上)
     if (typeof glassDoorL !== 'undefined' && glassDoorL) {
         gsap.to(glassDoorL.position, { x: -7.3, duration: 1.3, delay: 0.8, ease: "power2.inOut" });
     }
 
     controls.minDistance = 10;
     controls.maxDistance = 59;
-    document.getElementById('btn-return-room').style.display = 'none';
 }
         
 
@@ -6440,9 +6446,9 @@ renderer.setPixelRatio(isTouchDevice ? 1 : Math.min(window.devicePixelRatio || 1
     
     controls.update(); 
     
-    controls.addEventListener('change', () => { 
-        // 加上 isAtBalcony 判斷，若在露臺則不儲存視角
-        if(!camera || !controls || isAtBalcony) return; 
+ controls.addEventListener('change', () => { 
+        // 🛑 徹底防堵：只要在露台、等車、搭車、商店街，都不准覆寫房間的視角存檔！
+        if(!camera || !controls || isAtBalcony || (typeof isWaitingAtBusStop !== 'undefined' && isWaitingAtBusStop) || (typeof isRidingBus !== 'undefined' && isRidingBus) || (typeof isAtStreet !== 'undefined' && isAtStreet)) return; 
         const state = { 
             cp: {x: camera.position.x, y: camera.position.y, z: camera.position.z}, 
             ct: {x: controls.target.x, y: controls.target.y, z: controls.target.z} 
