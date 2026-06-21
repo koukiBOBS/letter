@@ -237,9 +237,9 @@
 
 
 
-// ⚡ 極速攔截網：如果在房間，直接跳回，連 Firebase 都不用啟動
+// ⚡ 極速攔截網：如果在房間或商店街，直接跳回 index.html，連 Firebase 都不用啟動
 const cachedLoc = localStorage.getItem('cachedLocation');
-if (cachedLoc === 'home' || !cachedLoc) {
+if (cachedLoc === 'home' || cachedLoc === 'street' || !cachedLoc) {
     window.location.href = 'index.html';
 }
 
