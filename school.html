@@ -607,12 +607,19 @@ function hoopPointerUp(e) {
     document.getElementById('hoop-shots-left').innerText = hoopShotsLeft;
 }
 
-// 每一影格物理模擬及穿環進球檢測
-// 更新：每一影格物理模擬及穿環進球檢測
+// 每一影格物理模擬及穿環進球檢測（修正版）
 function updateHoopPhysics() {
     if (hoopState === 'idle' || !hoopPhysicsWorld) return;
 
-    hoopPhysicsWorld.step(1 / 60);
+    // 💡 修正 1：只有在球投出後（'thrown'），才運行物理引擎模擬
+    if (hoopState === 'thrown') {
+        hoopPhysicsWorld.step(1 / 60);
+    } else if (hoopState === 'aiming') {
+        // 瞄準階段：強制將物理球體的位置與速度鎖定在起點，防止其在投出前提前下墜或掉入虛擬深淵
+        hoopBallBody.position.set(hoopStartPos.x, hoopStartPos.y, hoopStartPos.z);
+        hoopBallBody.velocity.set(0, 0, 0);
+        hoopBallBody.angularVelocity.set(0, 0, 0);
+    }
 
     const currY = hoopBallBody.position.y;
     const prevY = hoopPrevBallPos.y;
@@ -633,7 +640,7 @@ function updateHoopPhysics() {
         }
     }
 
-    // 安全拷貝數值
+    // 安全拷貝數值並同步 3D 網格
     hoopPrevBallPos.set(hoopBallBody.position.x, hoopBallBody.position.y, hoopBallBody.position.z);
     hoopBallMesh.position.copy(hoopBallBody.position);
     hoopBallMesh.quaternion.copy(hoopBallBody.quaternion);
@@ -641,9 +648,12 @@ function updateHoopPhysics() {
     // 狀態機轉移
     if (hoopState === 'thrown') {
         hoopTimeSinceThrow += 1 / 60;
+        
+        // 判斷球體是否靜止在地面
         const isResting = hoopBallBody.position.y < 0.8 && hoopBallBody.velocity.length() < 0.8;
-        // 💡 修正：增加 z < -12 判定 (當力道過大飛往籃板後方時能正確觸發重置)
-        const isOut = hoopBallBody.position.y < -1 || hoopBallBody.position.z > 12 || hoopBallBody.position.z < -12;
+        
+        // 💡 修正 2：放寬出界判定範圍（y 降至 -5，z 擴展至 ±25），使球體擁有充足的飛行與碰撞反彈空間
+        const isOut = hoopBallBody.position.y < -5 || hoopBallBody.position.z > 25 || hoopBallBody.position.z < -25;
 
         if (isResting || isOut || hoopTimeSinceThrow > 4.5) {
             if (hoopShotsLeft > 0) {
