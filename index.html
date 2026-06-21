@@ -2606,7 +2606,6 @@ function updateBusTimerUI() {
 
 
 
-// 失敗懲罰處理 (加入安全檢查防報錯)
 // 失敗懲罰處理 (根據去程或回程，退回正確地點)
 function failBusJourney(msg) {
     const bellBox = document.getElementById('bus-bell-box');
@@ -2634,8 +2633,12 @@ function failBusJourney(msg) {
                 });
             }
         } else {
-            // 🚌 【去程失敗】：退回房間露台
+            // 🚌 【去程失敗】：退回等車狀態 (地下巴士站)
             window.history.replaceState({}, document.title, window.location.pathname);
+            
+            // 👇 關鍵修復：恢復玩家「正在等車」的狀態，否則無法再次點擊巴士或返回室內
+            isWaitingAtBusStop = true; 
+            
             getOffBus(); 
         }
     }, 2000);
