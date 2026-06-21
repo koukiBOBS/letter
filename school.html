@@ -280,12 +280,32 @@ auth.onAuthStateChanged(user => {
     if (user) {
         currentUser = user;
         
-        // 🔑 權限檢查：如果是老師，就顯示開發者面板
-        if (isTeacherEmail(user.email)) {
-            document.getElementById('dev-panel-wrapper').style.display = 'block';
-        }
+        // 🔍 從資料庫檢查玩家的物品庫(權限)與最後位置
+        db.ref(`users/${user.uid}`).once('value').then(snap => {
+            let data = snap.val() || {};
+            let inventory = data.inventory || {};
+            
+            // 🛡️ 權限檢查 1：沒有「修繕趟門 (door_use)」權限，且不是老師
+            if (!inventory['door_use'] && !isTeacherEmail(user.email)) {
+                alert("🚪 露台的趟門仍未修繕，您還無法出門搭車。\n請在房間內努力收集積分以獲取「修繕趟門」的權限。");
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            // 🛡️ 位置檢查 2：如果有權限，但上次是留在房間，不可直接打開網址，需強制退回房間
+            if (data.lastLocation !== 'school' && !isTeacherEmail(user.email)) {
+                window.location.href = 'index.html';
+                return;
+            }
 
-        console.log("🏫 成功載入學校！");
+            // 🔑 如果檢查通過，或者是老師，就正常放行
+            if (isTeacherEmail(user.email)) {
+                document.getElementById('dev-panel-wrapper').style.display = 'block';
+            }
+
+            console.log("🏫 成功載入學校！");
+        });
+
     } else {
         alert("請先登入紙短情長系統！");
         window.location.href = 'index.html'; 
@@ -2179,18 +2199,20 @@ window.addEventListener('pointerup', (e) => {
     }
 
     // 2. 檢查是否點擊搭車回家
+   // 2. 檢查是否點擊搭車回家
     const intersectsBus = raycaster.intersectObjects(returnTaskGroup.children, true);
     if (intersectsBus.length > 0) {
         // 加入過場黑畫面防突兀
         document.body.insertAdjacentHTML('beforeend', '<div style="position:fixed; inset:0; background:#000; z-index:999999; opacity:0; transition:opacity 1s;" id="bus-fade"></div>');
         setTimeout(() => document.getElementById('bus-fade').style.opacity = 1, 10);
         
-        // 帶上參數跳轉回房間
-        setTimeout(() => {
-            window.location.href = 'index.html?returnTrip=true';
-        }, 1000);
+        // 👇 記錄最後位置為房間，並帶參數跳轉
+        db.ref(`users/${currentUser.uid}/lastLocation`).set('home').then(() => {
+            setTimeout(() => {
+                window.location.href = 'index.html?returnTrip=true';
+            }, 1000);
+        });
     }
-});
 
         animate();
 
