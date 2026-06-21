@@ -2985,17 +2985,21 @@ function renderStationeryShop() {
         Object.keys(registry).forEach(id => {
             if (id === 'default') return; // 預設免費，不顯示在商店
             const item = registry[id];
-            // 新道具的 ID 格式為 paper_xxx 或 ink_xxx
             const fullId = `${type}_${id}`; 
-            const isOwned = !!userInventory[fullId];
+            
+            // 相容舊資料(true變為1)，計算目前擁有數量
+            const ownedCount = typeof userInventory[fullId] === 'number' ? userInventory[fullId] : (userInventory[fullId] ? 1 : 0);
+            
             const imgSrc = generateStationeryIcon(type, id);
             
-            const btnHtml = isOwned ? 
-                `<button class="btn" disabled style="background:#eee; color:#999; border:none; padding:8px 20px;">已擁有</button>` :
-                `<button class="btn" style="background:var(--color-tasks); border:none; padding:8px 20px;" onclick="buyStationery('${type}', '${id}', ${item.price})">購買</button>`;
+            const countHtml = ownedCount > 0 ? 
+                `<div style="position:absolute; top:15px; right:-25px; background:#6b8e73; color:white; font-size:0.75rem; padding:4px 30px; transform:rotate(45deg); font-weight:bold; box-shadow:0 2px 4px rgba(0,0,0,0.2);">已擁有 ${ownedCount} 份</div>` : '';
+            
+            const btnHtml = `<button class="btn" style="background:var(--color-tasks); border:none; padding:8px 20px; width:100%;" onclick="buyStationery('${type}', '${id}', ${item.price})">購買 1 份</button>`;
             
             container.innerHTML += `
-                <div class="shop-item ${isOwned ? 'owned' : ''}">
+                <div class="shop-item">
+                    ${countHtml}
                     <img src="${imgSrc}">
                     <h4>${item.name}</h4>
                     <p>${item.desc}</p>
@@ -3014,17 +3018,17 @@ function renderStationeryShop() {
 window.buyStationery = function(type, id, price) {
     if (userPoints < price) return alert("積分不足！請多寫信與探索來賺取積分。");
     const fullId = `${type}_${id}`;
-    if (userInventory[fullId]) return alert("您已經擁有此物品了！");
     
-    if(confirm(`確認花費 ${price} 積分購買 ${type === 'paper' ? PAPER_REGISTRY[id].name : INK_REGISTRY[id].name} 嗎？`)) {
+    if(confirm(`確認花費 ${price} 積分購買 1 份 ${type === 'paper' ? PAPER_REGISTRY[id].name : INK_REGISTRY[id].name} 嗎？`)) {
         userPoints -= price;
-        userInventory[fullId] = true;
+        // 將庫存數值加 1 (相容舊版 boolean)
+        userInventory[fullId] = (typeof userInventory[fullId] === 'number' ? userInventory[fullId] : (userInventory[fullId] ? 1 : 0)) + 1;
         
         db.ref(`users/${currentUser.uid}/points`).set(userPoints);
-        db.ref(`users/${currentUser.uid}/inventory/${fullId}`).set(true).then(() => {
-            showToast("🛒 購買成功！前往寫信時即可套用。");
+        db.ref(`users/${currentUser.uid}/inventory/${fullId}`).set(userInventory[fullId]).then(() => {
+            showToast(`🛒 購買成功！您目前擁有 ${userInventory[fullId]} 份。`);
             document.getElementById('user-points-text').innerText = userPoints;
-            renderStationeryShop(); // 重新渲染商店
+            renderStationeryShop(); // 重新渲染商店顯示最新數量
         });
     }
 };
@@ -3038,7 +3042,6 @@ window.selectedStationery = {
 let currentStationeryContext = 'write';
 let currentStationeryType = 'paper';
 
-// 打開視覺化挑選視窗
 window.openStationerySelector = function(context, type) {
     currentStationeryContext = context;
     currentStationeryType = type;
@@ -3050,21 +3053,25 @@ window.openStationerySelector = function(context, type) {
     const registry = (type === 'paper') ? PAPER_REGISTRY : INK_REGISTRY;
     
     Object.keys(registry).forEach(id => {
-        // 檢查是否擁有：預設款永遠擁有，其他款檢查 userInventory
-        const isOwned = (id === 'default') || !!userInventory[`${type}_${id}`];
-        if (!isOwned) return; // 沒有買的就不顯示
+        // 檢查擁有數量
+        const ownedCount = typeof userInventory[`${type}_${id}`] === 'number' ? userInventory[`${type}_${id}`] : (userInventory[`${type}_${id}`] ? 1 : 0);
+        
+        // 只有預設款或是數量大於0的才會顯示在挑選清單
+        const isOwned = (id === 'default') || (ownedCount > 0);
+        if (!isOwned) return; 
         
         const item = registry[id];
         const imgSrc = generateStationeryIcon(type, id);
         const isSelected = window.selectedStationery[context][type] === id;
         
-        // 如果是被選中的，加上明顯的金黃色邊框標示
         const selectedStyle = isSelected ? 'border-color: #d4af37; box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.3); background: #fffcf5;' : '';
+        const countText = id === 'default' ? '無限使用' : `剩餘: ${ownedCount} 份`;
         
         grid.innerHTML += `
             <div class="shop-item" style="cursor: pointer; ${selectedStyle}" onclick="confirmStationerySelection('${id}')">
                 <img src="${imgSrc}" style="background: #fff; padding: 5px; border-radius: 4px;">
                 <h4 style="${isSelected ? 'color: #d4af37;' : ''}">${item.name}</h4>
+                <div style="font-size: 0.85rem; color: #8b7355; margin-top: 5px; font-weight: bold;">${countText}</div>
             </div>
         `;
     });
@@ -3072,6 +3079,40 @@ window.openStationerySelector = function(context, type) {
     document.getElementById('modal-stationery-selector').style.display = 'flex';
 };
 
+
+
+        // 扣除文具庫存的輔助函數
+function consumeStationery(paperId, inkId) {
+    let updates = {};
+    let modified = false;
+
+    if (paperId && paperId !== 'default') {
+        const pId = `paper_${paperId}`;
+        let pCount = typeof userInventory[pId] === 'number' ? userInventory[pId] : (userInventory[pId] ? 1 : 0);
+        if (pCount > 0) {
+            userInventory[pId] = pCount - 1;
+            updates[`users/${currentUser.uid}/inventory/${pId}`] = userInventory[pId];
+            modified = true;
+        }
+    }
+    
+    if (inkId && inkId !== 'default') {
+        const iId = `ink_${inkId}`;
+        let iCount = typeof userInventory[iId] === 'number' ? userInventory[iId] : (userInventory[iId] ? 1 : 0);
+        if (iCount > 0) {
+            userInventory[iId] = iCount - 1;
+            updates[`users/${currentUser.uid}/inventory/${iId}`] = userInventory[iId];
+            modified = true;
+        }
+    }
+
+    if (modified) {
+        db.ref().update(updates);
+    }
+}
+
+
+        
 // 點擊卡片確認選用
 window.confirmStationerySelection = function(id) {
     // 儲存狀態
@@ -4657,7 +4698,15 @@ else processReply(letterId, partnerUid, ObjectData);
                     if (rec) db.ref(`user_threads/${rec}/${ref.key}`).set({ letterId: ref.key, bookTitle: data.title, isSender: false, hasUnread: true, hasReplied: false, lastUpdated: ts });
                     else db.ref(`unassigned_letters/${ref.key}`).set({ senderUid: currentUser.uid });
                     
-                   db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, attachedQuoteId: data.quoteId || null, paperId: data.paperId || 'default', inkId: data.inkId || 'default', timestamp: ts }).then(() => {
+                 db.ref(`conversations/${ref.key}`).push({ senderUid: currentUser.uid, text: data.text, imageUrl: data.imageUrl, attachedQuoteId: data.quoteId || null, paperId: data.paperId || 'default', inkId: data.inkId || 'default', timestamp: ts }).then(() => {
+                        // 👇 新增這段：扣除消耗品，並重置寫信介面的文具選擇
+                        consumeStationery(data.paperId, data.inkId);
+                        window.selectedStationery.write = { paper: 'default', ink: 'default' };
+                        const btnWritePaper = document.getElementById('btn-write-paper');
+                        if (btnWritePaper) { btnWritePaper.innerHTML = `📜 預設宣紙`; btnWritePaper.style.borderColor = '#dcd5c9'; btnWritePaper.style.color = '#4a4238'; }
+                        const btnWriteInk = document.getElementById('btn-write-ink');
+                        if (btnWriteInk) { btnWriteInk.innerHTML = `🖋️ 預設墨褐`; btnWriteInk.style.borderColor = '#dcd5c9'; btnWriteInk.style.color = '#4a4238'; }
+                        
                         removeAttachedQuote();
                         isSubmittingLog = false; 
                         
@@ -4766,9 +4815,14 @@ function processRandomTask(data) {
             inkId: ObjectData.inkId || 'default',
             timestamp: ts
         }).then(() => {
-            if (pUid) db.ref(`user_threads/${pUid}/${id}`).update({ hasUnread: true, lastUpdated: ts, hasBeenRepliedTo: true });
+           if (pUid) db.ref(`user_threads/${pUid}/${id}`).update({ hasUnread: true, lastUpdated: ts, hasBeenRepliedTo: true });
             db.ref(`user_threads/${currentUser.uid}/${id}`).update({ hasUnread: false, hasReplied: true, lastUpdated: ts }).then(() => {
                 isSubmittingReply = false;
+                
+                // 👇 新增這段：扣除消耗品，並重置回信介面的文具選擇
+                consumeStationery(ObjectData.paperId, ObjectData.inkId);
+                window.selectedStationery.reply = { paper: 'default', ink: 'default' };
+                
                 removeAttachedQuote(); // 寄出後清除語錄狀態
                 closeChatModal();
                 showToast("回信已成功寄出！");
@@ -11070,12 +11124,20 @@ function hijackWalletRender() {
                     Object.keys(registry).forEach(id => {
                         if (id === 'default') return;
                         const fullId = `${type}_${id}`;
-                        const isOwned = !!userInventory[fullId];
+                        
+                        // 👇 修改：抓取擁有的數量，如果 > 0 才是已解鎖狀態
+                        const ownedCount = typeof userInventory[fullId] === 'number' ? userInventory[fullId] : (userInventory[fullId] ? 1 : 0);
+                        const isOwned = ownedCount > 0;
+                        
                         const item = registry[id];
                         const imgSrc = generateStationeryIcon(type, id);
                         
+                        // 👇 加上顯眼的擁有數量徽章
+                        const countBadge = isOwned ? `<div style="position:absolute; top:10px; right:10px; background:#da604f; color:#fff; font-size:0.8rem; font-weight:bold; padding:4px 8px; border-radius:12px; z-index:5;">x ${ownedCount}</div>` : '';
+
                         gridStationery.innerHTML += `
-                            <div class="item-card ${isOwned ? '' : 'locked'}">
+                            <div class="item-card ${isOwned ? '' : 'locked'}" style="position:relative;">
+                                ${countBadge}
                                 <img src="${imgSrc}" style="background:#fff; padding:5px; border-radius:4px;">
                                 <h4>${item.name}</h4>
                                 <p>${item.desc}</p>
