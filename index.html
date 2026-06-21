@@ -1867,6 +1867,17 @@
     
     <!-- Auth -->
     <div id="auth-overlay">
+  <!-- 👇 新增這段腳本：網頁載入瞬間若發現是搭車回程，立刻將畫面塗黑，徹底消滅登入信封的閃爍 👇 -->
+        <script>
+            if (window.location.search.includes('returnTrip=true')) {
+                document.getElementById('auth-overlay').style.background = '#000000';
+                document.getElementById('auth-overlay').style.opacity = '1';
+                document.write('<style>.auth-letter-container { display: none !important; } #auth-loading-container { display: none !important; }</style>');
+            }
+        </script>
+        <!-- 👆 新增結束 👆 -->
+
+        
         <div id="canvas-container"></div>
         <div class="auth-letter-container">
             <div class="auth-stamp">印</div>
@@ -3264,19 +3275,50 @@ function initApp() {
     
     // 1. 先建立 3D 場景
     initRoomScene(); 
-    
-    // 2. 👇 【關鍵修復】：強制 WebGL 在背景預先編譯並渲染一幀 (預熱)
-    renderer.compile(scene, camera);
-    renderer.render(scene, camera);
 
-    // 3. 判斷如果是回程，就「扣住黑幕不放」，留給後面上車後再打開
-    const urlParams = new URLSearchParams(window.location.search);
-    const isReturnTrip = urlParams.get('returnTrip') === 'true';
-    if (!isReturnTrip) {
-        hideAuthOverlay(); // 正常登入，立刻淡出
+    // 👇 2. 判斷是否為回程
+    const isReturnTrip = new URLSearchParams(window.location.search).get('returnTrip') === 'true';
+
+    if (isReturnTrip) {
+        // 🚀【終極魔法】：在 3D 引擎畫出任何東西之前，先把你的身體定位到車上！
+        isAtBalcony = true;
+        if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = true;
+        if (typeof glassDoorL !== 'undefined' && glassDoorL) glassDoorL.position.x = 7.3;
+        
+        roomCameraBackup.cp.copy(camera.position);
+        roomCameraBackup.ct.copy(controls.target);
+
+        const busHitBox = interactables.find(i => i.userData && i.userData.type === 'bus' && i.userData.direction === 1);
+        if (busHitBox) {
+            // 把 GSAP 動畫調快 100 倍，讓鏡頭一瞬間就飛進車內
+            let orgTimeScale = gsap.globalTimeline.timeScale();
+            gsap.globalTimeline.timeScale(100); 
+            
+            rideBus(busHitBox);
+
+            // 🚀 這時候相機已經在車上了，我們才叫 3D 引擎渲染第一張圖！
+            renderer.compile(scene, camera);
+            renderer.render(scene, camera);
+
+            // 等 0.1 秒確保動畫系統處理完畢，恢復正常速度並淡出黑幕
+            setTimeout(() => {
+                gsap.globalTimeline.timeScale(orgTimeScale); 
+                hideAuthOverlay(); 
+            }, 100);
+        } else {
+            // 防錯備案
+            renderer.compile(scene, camera);
+            renderer.render(scene, camera);
+            hideAuthOverlay(); 
+        }
+    } else {
+        // 正常登入的處理：預熱渲染後淡出白紙介面
+        renderer.compile(scene, camera);
+        renderer.render(scene, camera);
+        hideAuthOverlay();
     }
-    // ⚠️ 這裡原本多了一個 } ，已經幫您移除了！
 
+    // 接下來是其他背景任務
     db.ref(`classes/${currentUser.classId || 'default'}`).on('value', snap => {
         renderTasks();
     });
@@ -3301,7 +3343,7 @@ function initApp() {
     if (document.getElementById('dev-panel-wrapper')) {
         document.getElementById('dev-panel-wrapper').style.display = isDevUser(currentUser.email) ? 'block' : 'none';
     }
-
+}
     // 👇 自動檢查是否從學校搭車回來
     if (isReturnTrip) {
         setTimeout(() => {
