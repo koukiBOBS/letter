@@ -922,8 +922,8 @@ copyTaskGroup.add(textSprite);
 // 📍 返回房間 3D 乘車標籤 (懸浮巴士站牌)
 // ==========================================
 const returnTaskGroup = new THREE.Group();
-// 已移至停車場閘門外側
-returnTaskGroup.position.set(39.5, 0, 20.0); 
+// 已移至停車場內的車門前方（原座標 39.5 調整至 33.5）
+returnTaskGroup.position.set(33.5, 0, 20.0); 
 campusGroup.add(returnTaskGroup);
 
 // 1. 地面任務光環 (黃色)
