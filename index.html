@@ -3265,7 +3265,9 @@ function initApp() {
     // 1. 先建立 3D 場景
     initRoomScene(); 
     
- // 2. 👇 【關鍵修復】：強制 WebGL 在背景預先編譯並渲染一幀 (預熱)
+    // 2. 👇 【關鍵修復】：強制 WebGL 在背景預先編譯並渲染一幀 (預熱)
+  // 2. 👇 【關鍵修復】：強制 WebGL 在背景預先編譯並渲染一幀 (預熱)
+  // 2. 👇 【關鍵修復】：強制 WebGL 在背景預先編譯並渲染一幀 (預熱)
     renderer.compile(scene, camera);
     renderer.render(scene, camera);
 
@@ -3274,6 +3276,7 @@ function initApp() {
     const isReturnTrip = urlParams.get('returnTrip') === 'true';
     if (!isReturnTrip) {
         hideAuthOverlay(); // 正常登入，立刻淡出
+    }
     }
 
 
@@ -3305,14 +3308,6 @@ db.ref(`classes/${currentUser.classId || 'default'}`).on('value', snap => {
 
 // 👇 自動檢查是否從學校搭車回來
     if (isReturnTrip) {
-        // 將登入畫面瞬間轉為純黑背景，隱藏白紙信封，作為完美的過場遮罩
-        const authOverlay = document.getElementById('auth-overlay');
-        authOverlay.style.background = '#000000';
-        const letterContainer = document.querySelector('.auth-letter-container');
-        if(letterContainer) letterContainer.style.display = 'none';
-
-       // 👇 自動檢查是否從學校搭車回來
-    if (isReturnTrip) {
         setTimeout(() => {
             // 1. 瞬間定位物理位置到露台 (不播走路動畫)
             isAtBalcony = true;
@@ -3330,7 +3325,7 @@ db.ref(`classes/${currentUser.classId || 'default'}`).on('value', snap => {
             // 2. 抓取反方向的巴士
             const busHitBox = interactables.find(i => i.userData && i.userData.type === 'bus' && i.userData.direction === 1);
             if (busHitBox) {
-                // 🚀 關鍵魔法：將動畫速度調到極快 (100倍速)，讓鏡頭飛向車內的動畫在 0.01 秒內完成
+                // 🚀 關鍵魔法：將動畫速度調到極快 (100倍速)，讓鏡頭飛向車內的 1.2 秒動畫在 0.01 秒內瞬間完成！
                 let orgTimeScale = gsap.globalTimeline.timeScale();
                 gsap.globalTimeline.timeScale(100); 
                 
@@ -3346,7 +3341,6 @@ db.ref(`classes/${currentUser.classId || 'default'}`).on('value', snap => {
             }
         }, 100); 
     }
-    
 }
 
 
