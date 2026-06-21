@@ -76,56 +76,73 @@
 
 
 
-        /* === 抄寫任務專屬 UI === */
+/* === 抄寫任務專屬 UI === */
 #copy-task-overlay {
     position: fixed; inset: 0; background: rgba(20, 18, 16, 0.95);
-    z-index: 100000; display: none; flex-direction: column; align-items: center;
+    z-index: 2000000; /* 👉 修改：將 z-index 調到 2百萬，確保蓋過開發者面板的 999999 */
+    display: none; flex-direction: column; align-items: center;
     backdrop-filter: blur(10px); font-family: 'Microsoft JhengHei', 'Noto Serif TC', serif;
 }
 .copy-header {
     width: 100%; max-width: 800px; padding: 20px; text-align: center;
     color: #d4af37; font-size: 1.5rem; letter-spacing: 2px;
-    border-bottom: 1px dashed #5a5042; position: relative;
+    border-bottom: 1px dashed #5a5042; position: relative; flex-shrink: 0;
 }
 .copy-close-btn {
     position: absolute; right: 20px; top: 15px; background: transparent;
     border: none; color: #a48c76; font-size: 2rem; cursor: pointer; transition: 0.3s;
 }
 .copy-close-btn:hover { color: #ef4444; }
+
 .copy-content-area {
     display: flex; flex-direction: column; width: 100%; max-width: 800px;
-    flex-grow: 1; padding: 20px; gap: 20px;
+    flex-grow: 1; padding: 15px 20px 30px; gap: 15px; overflow: hidden;
 }
+
+/* 👉 修改：讓文字區塊自適應彈性縮放，不再寫死 40vh */
 .copy-text-display {
-    background: #fcfbf8; padding: 30px; border-radius: 8px;
-    font-size: 1.3rem; line-height: 2.2; color: #a48c76;
+    background: #fcfbf8; padding: 20px; border-radius: 8px;
+    font-size: 1.25rem; line-height: 2.2; color: #a48c76;
     box-shadow: inset 0 0 20px rgba(180, 160, 130, 0.1);
-    height: 40vh; overflow-y: auto; text-align: justify;
+    flex: 1; min-height: 150px; overflow-y: auto; text-align: justify;
 }
 /* 字體狀態顏色 */
-.char-pending { color: #dcd5c9; } /* 未抄寫：淺灰 */
-.char-active { color: #d4af37; font-weight: bold; border-bottom: 2px solid #d4af37; animation: blink 1.5s infinite; } /* 正在抄寫：金色底線 */
-.char-done { color: #4a4238; } /* 已抄寫：深茶色 */
+.char-pending { color: #dcd5c9; }
+.char-active { color: #d4af37; font-weight: bold; border-bottom: 2px solid #d4af37; animation: blink 1.5s infinite; }
+.char-done { color: #4a4238; }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
+/* 👉 修改：畫布區塊給定固定高度，不再使用 35vh 以免被擠壓 */
 .copy-canvas-container {
-    position: relative; height: 35vh; background: #fdfaf6;
+    position: relative; height: 260px; flex-shrink: 0; background: #fdfaf6;
     border: 2px dashed #c4b8aa; border-radius: 8px;
     display: flex; justify-content: center; align-items: center;
 }
-#copy-canvas { width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+#copy-hanzi-container { width: 100%; height: 100%; touch-action: none; display: flex; justify-content: center; align-items: center; }
 .copy-canvas-hint {
     position: absolute; color: #b4a08c; font-size: 1.5rem; pointer-events: none;
     letter-spacing: 2px; opacity: 0.5;
 }
-.copy-tools { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; }
+.copy-tools { display: flex; justify-content: center; gap: 15px; flex-shrink: 0; }
 .copy-btn {
     background: #3e2418; color: #e6dfd1; border: 1px solid #7d5a40;
-    padding: 10px 30px; font-size: 1.1rem; border-radius: 30px;
+    padding: 10px 25px; font-size: 1rem; border-radius: 30px;
     cursor: pointer; transition: 0.3s;
 }
-.copy-btn:hover { background: #5c3926; }
+.copy-btn:hover { background: #5c3926; transform: translateY(-2px); }
 
+/* 👇 新增：文章目錄選單樣式 👇 */
+.article-list { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; flex-grow: 1; padding: 5px; }
+.article-btn { background: #fcfbf8; border: 1px solid #c4b8aa; padding: 18px; border-radius: 8px; color: #5a5042; font-size: 1.1rem; text-align: left; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 5px;}
+.article-btn:hover { background: #fdfaf6; border-color: #d4af37; box-shadow: 0 6px 12px rgba(212, 175, 55, 0.15); transform: translateY(-2px); }
+.article-btn span.author { font-weight: bold; color: #d4af37; font-size: 1.2rem; }
+
+/* 👉 新增：手機版特化響應式排版 */
+@media (max-width: 600px) {
+    .copy-text-display { font-size: 1.15rem; padding: 15px; }
+    .copy-canvas-container { height: 230px; }
+    .copy-tools { flex-wrap: wrap; margin-bottom: 20px; }
+}
 
 
         
@@ -138,25 +155,36 @@
 
 
 
-<!-- 抄寫任務 UI -->
 <div id="copy-task-overlay">
     <div class="copy-header">
         <span id="copy-title">文苑拾芳</span>
         <button class="copy-close-btn" onclick="closeCopyTask()">×</button>
     </div>
-    <div class="copy-content-area">
+    
+    <!-- 1. 文章選單區塊 (新增) -->
+    <div id="copy-selection-menu" class="copy-content-area">
+        <h3 style="color:#d4af37; text-align:center; margin-top: 0; font-size:1.3rem;">📖 請選擇抄寫篇章</h3>
+        <div class="article-list" id="article-selection-list">
+            <!-- JS 動態生成選項 -->
+        </div>
+    </div>
+
+    <!-- 2. 實際書寫區塊 -->
+    <div id="copy-writing-area" class="copy-content-area" style="display:none;">
         <div class="copy-text-display" id="copy-text-display">
             <!-- 文章內容由 JS 生成 -->
         </div>
-      <div class="copy-canvas-container">
+        <div class="copy-canvas-container" id="copy-canvas-container">
             <div class="copy-canvas-hint" id="copy-canvas-hint" style="display:none;">載入中...</div>
-            <!-- 替換為 Hanzi Writer 專用容器，並鎖定觸控防止滾動 -->
-            <div id="copy-hanzi-container" style="width: 250px; height: 250px; touch-action: none;"></div>
+            <div id="copy-hanzi-container"></div>
         </div>
         <div class="copy-tools">
-            <button class="copy-btn" onclick="resetHanziQuiz()">重新書寫本字</button>
+            <button class="copy-btn" onclick="resetHanziQuiz()">🔄 重新書寫本字</button>
+            <button class="copy-btn" onclick="backToArticleSelection()" style="background:#5a5042;">📜 選擇其他篇章</button>
         </div>
     </div>
+</div>
+    
 </div>
 
     
@@ -2065,41 +2093,68 @@ let hanziWriter = null; // 替換為 Hanzi Writer 實例
 const puncRegex = /[，。！？、：；「」『』（）《》〈〉]/;
 
 
-// 2. 啟動抄寫任務
+// 2. 啟動抄寫任務 (展開目錄)
 window.startCopyTask = function() {
     document.getElementById('copy-task-overlay').style.display = 'flex';
-    
-    // 隨機抽選一篇佳段
-    copyCurrentExcerpt = COPY_EXCERPTS[Math.floor(Math.random() * COPY_EXCERPTS.length)];
+    document.getElementById('copy-selection-menu').style.display = 'flex';
+    document.getElementById('copy-writing-area').style.display = 'none';
+
+    // 動態生成文章目錄
+    const list = document.getElementById('article-selection-list');
+    list.innerHTML = '';
+    COPY_EXCERPTS.forEach((excerpt, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'article-btn';
+        // 預覽文字截斷
+        const preview = excerpt.text.length > 25 ? excerpt.text.substring(0, 25) + '...' : excerpt.text;
+        btn.innerHTML = `<span class="author">${excerpt.author}《${excerpt.source}》</span><span style="font-size:0.95rem; color:#888;">${preview}</span>`;
+        btn.onclick = () => selectArticle(index);
+        list.appendChild(btn);
+    });
+};
+
+// 選擇文章後進入書寫模式
+window.selectArticle = function(index) {
+    copyCurrentExcerpt = COPY_EXCERPTS[index];
     copyCurrentIndex = 0;
+
+    document.getElementById('copy-selection-menu').style.display = 'none';
+    document.getElementById('copy-writing-area').style.display = 'flex';
     
+    // 重設 UI 狀態
+    document.querySelector('.copy-canvas-container').style.display = 'flex';
+    document.querySelector('.copy-tools').style.display = 'flex';
+
     renderCopyText();
+};
+
+// 返回文章目錄
+window.backToArticleSelection = function() {
+    document.getElementById('copy-hanzi-container').innerHTML = ''; // 清除正在運作的筆劃
+    document.getElementById('copy-writing-area').style.display = 'none';
+    document.getElementById('copy-selection-menu').style.display = 'flex';
 };
 
 window.closeCopyTask = function() {
     document.getElementById('copy-task-overlay').style.display = 'none';
+    document.getElementById('copy-hanzi-container').innerHTML = '';
 };
 
-// 重新測驗當前文字
 window.resetHanziQuiz = function() {
-    if (hanziWriter) {
-        hanziWriter.quiz(); 
-    }
+    if (hanziWriter) { hanziWriter.quiz(); }
 };
 
-// 3. 渲染文章狀態 (高亮當前字)
+// 3. 渲染文章狀態
 function renderCopyText() {
     const display = document.getElementById('copy-text-display');
     let html = `<div style="text-align:right; font-size:1rem; margin-bottom:15px; color:#8b7355;">— ${copyCurrentExcerpt.author}《${copyCurrentExcerpt.source}》</div>`;
     
     const chars = copyCurrentExcerpt.text.split('');
     
-    // 自動跳過標點符號
     while(copyCurrentIndex < chars.length && puncRegex.test(chars[copyCurrentIndex])) {
         copyCurrentIndex++;
     }
 
-    // 檢查是否完成整篇
     if (copyCurrentIndex >= chars.length) {
         completeCopyTask();
         return;
@@ -2117,33 +2172,32 @@ function renderCopyText() {
     
     display.innerHTML = html;
     
-    // 讓滾動條自動跟隨目前抄寫進度
     const activeSpan = document.getElementById('current-char-span');
     if(activeSpan) activeSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
     
-    // 呼叫 HanziWriter 載入當前要寫的字
     loadHanziChar(chars[copyCurrentIndex]);
 }
 
-// 4. 載入並啟動 HanziWriter 筆劃測驗
+// 4. 動態適應尺寸並載入 HanziWriter
 function loadHanziChar(char) {
     const container = document.getElementById('copy-hanzi-container');
     const hint = document.getElementById('copy-canvas-hint');
     
-    // 每次載入新字前清空容器
+    // 👉 動態獲取父容器安全尺寸，避免超出邊界（留 10px 緩衝）
+    const rect = document.getElementById('copy-canvas-container').getBoundingClientRect();
+    const safeSize = Math.min(rect.width, rect.height) - 10 > 0 ? Math.min(rect.width, rect.height) - 10 : 230; 
+
     container.innerHTML = '';
     
-    // 初始化 HanziWriter
     hanziWriter = HanziWriter.create('copy-hanzi-container', char, {
-        width: 250,
-        height: 250,
-        padding: 15,
-        showCharacter: false, // 隱藏原字底色
-        showOutline: true,    // 顯示外框提示讓學生跟隨
-        strokeColor: '#d4af37', // 金色筆劃
-        outlineColor: '#e6dfd1', // 提示框底色
-        drawingColor: '#4a4238', // 學生書寫的顏色
-        // 雙重字庫支援：優先讀取繁體字庫，若無則退回通用字庫
+        width: safeSize,
+        height: safeSize,
+        padding: 10,
+        showCharacter: false, 
+        showOutline: true,    
+        strokeColor: '#d4af37', 
+        outlineColor: '#e6dfd1', 
+        drawingColor: '#4a4238', 
         charDataLoader: function(char, onComplete) {
             fetch('https://cdn.jsdelivr.net/npm/hanzi-writer-data-zh-tw@0.1.1/' + char + '.json')
             .then(res => {
@@ -2155,28 +2209,24 @@ function loadHanziChar(char) {
                 return res.json();
             })
             .then(onComplete)
-            .catch(() => onComplete(null)); // 觸發 onLoadCharDataError
+            .catch(() => onComplete(null)); 
         },
         onLoadCharDataError: function(reason) {
-            // 生僻字或字庫沒有的字，自動跳過並載入下一個 (防止卡死)
             console.warn(`字庫無此字「${char}」，自動跳過。`);
             copyCurrentIndex++;
             renderCopyText();
         },
         onLoadCharDataSuccess: function() {
-            hint.style.display = 'none'; // 載入成功，隱藏文字提示
-            // 啟動筆劃測驗模式
+            hint.style.display = 'none'; 
             hanziWriter.quiz({
                 onComplete: function() {
-                    // 書寫完成，延遲半秒後自動進入下一個字
                     copyCurrentIndex++;
-                    setTimeout(renderCopyText, 500);
+                    setTimeout(renderCopyText, 400);
                 }
             });
         }
     });
 }
-
 
 
         
