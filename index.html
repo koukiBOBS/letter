@@ -5311,8 +5311,11 @@ function goToBalcony() {
 }
 
 function returnToRoom() {
-    if (!isAtBalcony) return;
+    // 💡 允許從露台 (isAtBalcony) 或 地下站 (isWaitingAtBusStop) 返回室內
+    if (!isAtBalcony && !isWaitingAtBusStop) return;
+    
     isAtBalcony = false;
+    isWaitingAtBusStop = false;
 
     // 退回室內時，立刻限制左右旋轉角度
     controls.minAzimuthAngle = -Math.PI / 2;
@@ -5329,15 +5332,13 @@ function returnToRoom() {
         duration: 1.8, 
         ease: "power2.inOut", 
         onUpdate: () => controls.update(),
-      onComplete: () => {
+        onComplete: () => {
             // 動畫結束完全進入室內後，重新鎖死抬頭角度
             controls.minPolarAngle = 1.15; 
             if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = false;
             
-            // 👇 確保重新判斷要顯示綠色還是白色旋鈕
             if (typeof applyModeState === 'function') applyModeState();
             
-            // 👇 關鍵修復：清空 JS 強加的 style，讓 CSS 的 @media 重新接管，旋鈕就不會消失了！
             const knob = document.getElementById('mobile-cam-knob');
             if (knob) knob.style.display = '';
         }
@@ -9067,7 +9068,8 @@ function animateRoom() {
     // ==========================================
  
    // 只要視線掃到「窗外的虛擬區域」，或是玩家正站在露台上，就判定為正在看窗外
-    let isLookingOutside = isAtBalcony || cameraFrustum.intersectsBox(outsideWorldBox);
+  // 💡 關鍵修復：把 isWaitingAtBusStop 也加入判斷，確保地下等車時車流不會因為效能優化而被凍結
+    let isLookingOutside = isAtBalcony || (typeof isWaitingAtBusStop !== 'undefined' && isWaitingAtBusStop) || cameraFrustum.intersectsBox(outsideWorldBox);
  
     if (isLookingOutside) {
         // 1. 車輛邏輯 (配合無盡道路延伸)
@@ -12919,6 +12921,10 @@ function startElevatorSequence(destination) {
     pendingDestination = destination;
     let floor = 25;
     textEl.innerText = floor + "F";
+
+    // 💡 關鍵修復：備份室內座標，讓玩家在地下站反悔時能找得到路回房間
+    roomCameraBackup.cp.copy(camera.position);
+    roomCameraBackup.ct.copy(controls.target);
     
     // 簡單的 Canvas 畫兩個電梯門
     const cvs = document.getElementById('elevator-canvas');
@@ -12960,13 +12966,13 @@ function startElevatorSequence(destination) {
                 }
             });
         }
-    }, 150); // 每層樓 0.15 秒，約 3.7 秒到地下
+    }, 150);
 }
 
 
-        function setupBusStopWaiting() {
+       function setupBusStopWaiting() {
     isWaitingAtBusStop = true;
-    isAtBalcony = false; // 確保不是在露台模式
+    isAtBalcony = false; 
     
     // 顯示戶外風景 (大橋、馬路等)
     if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = true;
@@ -12976,23 +12982,31 @@ function startElevatorSequence(destination) {
     controls.minDistance = 0.1; controls.maxDistance = 0.1;
     controls.minPolarAngle = Math.PI / 2.5; controls.maxPolarAngle = Math.PI / 1.8;
     
-    // 根據目的地，將玩家放到正確的巴士站位置
+    // 💡 關鍵修復：把等車站的 X 座標移到 80，避開被中央「房間建築物地基」包覆導致的黑畫面
+    const waitX = 80;
+
     if (pendingDestination === 'street') {
-        // 去商店街的車是 direction: 1，行駛在 laneZ: 8
-        // 玩家站在行人路 Z: 22 往馬路看 (-Z方向)
-        camera.position.set(0, -3.5, 22);
-        controls.target.set(0, -3.5, 8);
+        // 去商店街的車行駛在 laneZ: 8，玩家站在行人路 Z: 22 往馬路看
+        camera.position.set(waitX, -3.5, 22);
+        controls.target.set(waitX, -3.5, 8);
         controls.minAzimuthAngle = -Math.PI / 4; 
         controls.maxAzimuthAngle = Math.PI / 4;
     } else {
-        // 去學校的車是 direction: -1，行駛在 laneZ: 0
-        // 玩家站在對面行人路 Z: -14 往馬路看 (+Z方向)
-        camera.position.set(0, -3.5, -14);
-        controls.target.set(0, -3.5, 0);
+        // 去學校的車行駛在 laneZ: 0，玩家站在對面行人路 Z: -14 往馬路看
+        camera.position.set(waitX, -3.5, -14);
+        controls.target.set(waitX, -3.5, 0);
         controls.minAzimuthAngle = Math.PI * 0.75; 
         controls.maxAzimuthAngle = Math.PI * 1.25;
     }
     controls.update();
+
+    // 允許玩家在地下站反悔，點擊「返回室內」直接搭電梯回家
+    const returnBtn = document.getElementById('btn-return-room');
+    if (returnBtn) {
+        returnBtn.style.display = 'flex';
+        returnBtn.style.pointerEvents = 'auto';
+    }
+
     showToast("🚏 已抵達地下巴士站，請點擊正確方向的雙層巴士上車。");
 }
 
