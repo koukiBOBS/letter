@@ -3223,7 +3223,7 @@ function signIn() {
         function hideAuthOverlay() { gsap.to("#auth-overlay", { opacity: 0, duration: 0.6, onComplete: () => { document.getElementById('auth-overlay').style.display = 'none'; }}); }
 
 function initApp() { 
-   // 👇 將最後上線時間寫入輕量級的 user_meta，而不是肥大的 users 節點
+    // 👇 將最後上線時間寫入輕量級的 user_meta，而不是肥大的 users 節點
     db.ref(`user_meta/${currentUser.uid}/lastLoginTime`).set(firebase.database.ServerValue.TIMESTAMP);
     db.ref(`users/${currentUser.uid}`).on('value', snap => {
         let data = snap.val() || {};
@@ -3266,8 +3266,6 @@ function initApp() {
     initRoomScene(); 
     
     // 2. 👇 【關鍵修復】：強制 WebGL 在背景預先編譯並渲染一幀 (預熱)
-  // 2. 👇 【關鍵修復】：強制 WebGL 在背景預先編譯並渲染一幀 (預熱)
-  // 2. 👇 【關鍵修復】：強制 WebGL 在背景預先編譯並渲染一幀 (預熱)
     renderer.compile(scene, camera);
     renderer.render(scene, camera);
 
@@ -3277,19 +3275,18 @@ function initApp() {
     if (!isReturnTrip) {
         hideAuthOverlay(); // 正常登入，立刻淡出
     }
-    }
+    // ⚠️ 這裡原本多了一個 } ，已經幫您移除了！
 
-
-db.ref(`classes/${currentUser.classId || 'default'}`).on('value', snap => {
-    renderTasks();
-});
+    db.ref(`classes/${currentUser.classId || 'default'}`).on('value', snap => {
+        renderTasks();
+    });
     setupNotifications(); 
     loadMailbox(); 
     loadUserPlant(); 
     initHandwriting();
     auditAntiCheat(); 
 
- // 👇 套用新的打字權限判斷
+    // 👇 套用新的打字權限判斷
     if (isTypingAllowed(currentUser.email)) {
         document.querySelectorAll('.handwrite-only').forEach(el => {
             el.removeAttribute('readonly');
@@ -3305,8 +3302,7 @@ db.ref(`classes/${currentUser.classId || 'default'}`).on('value', snap => {
         document.getElementById('dev-panel-wrapper').style.display = isDevUser(currentUser.email) ? 'block' : 'none';
     }
 
-
-// 👇 自動檢查是否從學校搭車回來
+    // 👇 自動檢查是否從學校搭車回來
     if (isReturnTrip) {
         setTimeout(() => {
             // 1. 瞬間定位物理位置到露台 (不播走路動畫)
@@ -3342,7 +3338,6 @@ db.ref(`classes/${currentUser.classId || 'default'}`).on('value', snap => {
         }, 100); 
     }
 }
-
 
 
 
