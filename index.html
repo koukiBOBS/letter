@@ -13003,6 +13003,7 @@ function startElevatorSequence(destination) {
     }, 150);
 }
 
+// 🚏 巴士站等車總調度函數
 function setupBusStopWaiting() {
     isWaitingAtBusStop = true;
     isAtBalcony = false; // 確保退出露台模式，避免視角衝突
@@ -13022,30 +13023,15 @@ function setupBusStopWaiting() {
     controls.maxDistance = 0.1;
     controls.minPolarAngle = Math.PI / 2.5; 
     controls.maxPolarAngle = Math.PI / 1.8;
-    
+
+    // 根據目的地分流到專屬的等待處理函數
     if (pendingDestination === 'street') {
-        // 🚌 往商店街（維持原樣）：站在左側近側行人路 (z: 23) 往馬路 (z: 8) 看
-        const waitX = -100;
-        camera.position.set(waitX, -2.5, 23);
-        controls.target.set(waitX, -3.5, 8);
-    } else {
-        // 🚌 往中學（新方案）：站在右側摩天輪下方遠側行人路 (z: -15) 正對馬路 (z: 8) 看，防止穿模
-        const waitX = 110; 
-        camera.position.set(waitX, -2.5, -15);
-        controls.target.set(waitX, -3.5, 8);
+        setupStreetWaiting();
+    } else if (pendingDestination === 'school') {
+        setupSchoolWaiting();
     }
 
-    // 💡 終極視角防呆鎖定法：先解除限制，讓它看向目標後取得當前的方位角
-    controls.minAzimuthAngle = -Infinity;
-    controls.maxAzimuthAngle = Infinity;
-    controls.update();
-
-    // 然後以此方位角為中心，嚴格限制只能左右轉頭 80 度 (避免轉頭太過去看到不該看的大樓底座)
-    const currentAzimuth = controls.getAzimuthalAngle();
-    controls.minAzimuthAngle = currentAzimuth - Math.PI * 0.45;
-    controls.maxAzimuthAngle = currentAzimuth + Math.PI * 0.45;
-
-    // 顯示「返回室內」的按鈕，允許玩家反悔不搭了
+    // 顯示「返回室內」的按鈕，允許玩家反悔
     const returnBtn = document.getElementById('btn-return-room');
     if (returnBtn) {
         returnBtn.style.display = 'flex';
@@ -13053,6 +13039,39 @@ function setupBusStopWaiting() {
     }
 
     showToast("🚏 已抵達地下巴士站，請點擊正確方向的雙層巴士上車。");
+}
+
+// 🚌 往海濱商店街的等車設定（維持您原本滿意的設定，完全不作修改）
+function setupStreetWaiting() {
+    const waitX = -100;
+    camera.position.set(waitX, -2.5, 23);
+    controls.target.set(waitX, -3.5, 8);
+    
+    // 鎖定視角，防止轉向過度導致穿模
+    lockWaitingAzimuth();
+}
+
+// 🚌 往基元中學的等車設定（全新修正：站在馬路另一側，正對馬路，避免穿模與望海）
+function setupSchoolWaiting() {
+    // 站在對面遠側行人路 (Z = -15)，避開摩天輪廣場，視點水平正對前方馬路 (Z = 4)
+    const waitX = 80; 
+    camera.position.set(waitX, -2.5, -15);
+    controls.target.set(waitX, -2.5, 4); // 朝向 +Z 方向看，正對馬路與建築物
+    
+    // 鎖定視角，防止轉向過度導致穿模
+    lockWaitingAzimuth();
+}
+
+// 🔒 輔助函數：自動計算並限制只能左右觀看約 80 度
+function lockWaitingAzimuth() {
+    controls.minAzimuthAngle = -Infinity;
+    controls.maxAzimuthAngle = Infinity;
+    controls.update();
+
+    const currentAzimuth = controls.getAzimuthalAngle();
+    controls.minAzimuthAngle = currentAzimuth - Math.PI * 0.45;
+    controls.maxAzimuthAngle = currentAzimuth + Math.PI * 0.45;
+    controls.update();
 }
         
         
