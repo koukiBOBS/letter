@@ -597,7 +597,7 @@ function syncHoopEnvironment() {
     if (currentPhaseIsNight) {
         // 夜間：啟動球場街燈照明
         hoopNightLight.intensity = 3.5; 
-        scene.fog.density = 0.015;
+        scene.fog.density = 0.005;
     } else {
         // 白天/黃昏：關閉燈光
         hoopNightLight.intensity = 0.0;
