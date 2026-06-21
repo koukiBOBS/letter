@@ -489,14 +489,19 @@ function initHoopGameScene() {
 
 
         
+let isHoopChecking = false; // 🛑 防連點鎖
+
 // 檢查每日遊玩上限與中途進度
 function startHoopGameCheck() {
     if (!currentUser) {
         alert("訪客模式無法進行投籃挑戰，請先登入系統。");
         return;
     }
+    
+    if (isHoopChecking) return; // 如果正在查詢中，攔截連續點擊
+    isHoopChecking = true;
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalTodayDate(); // 🌟 改用本地時間
 
     db.ref(`users/${currentUser.uid}/mini_games/basketball`).once('value').then(snap => {
         let dbData = snap.val() || { date: "", rounds: 0, ongoing: null };
@@ -508,14 +513,22 @@ function startHoopGameCheck() {
 
         // 如果已經完成 2 局，而且沒有正在進行中的殘局，則阻止進入
         if (dbData.rounds >= 2 && !dbData.ongoing) {
-            alert("🏀 休息一下吧！每天最多只能挑戰 2 個回合，明天再試試！");
+            alert("🏀 休息一下吧！每天最多只能挑戰 2 個回合，明天午夜過後再來！");
+            isHoopChecking = false; // 解鎖
             return;
         }
 
-        // 准許進入 (傳遞已完成局數+1，以及是否有未完成的進度資料)
         launchHoopGame(dbData.rounds + 1, dbData.ongoing);
+        
+        // 延遲解鎖，防止場景切換瞬間的誤觸
+        setTimeout(() => { isHoopChecking = false; }, 1000); 
+    }).catch(() => {
+        isHoopChecking = false; // 發生網路錯誤時也要解鎖
     });
 }
+
+
+        
 
 // 啟動投籃模式 (加入中途進度恢復功能)
 function launchHoopGame(roundNum, ongoingData) {
@@ -720,16 +733,13 @@ function finishHoopGame() {
     hoopState = 'idle';
 
     const roundNum = parseInt(document.getElementById('hoop-game-hud').dataset.round || "1");
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalTodayDate(); // 🌟 改用本地時間
 
-    // 🌟 本局完整打完，清除 ongoing 殘局記錄，並將 completed rounds 設為目前局數
     const dataSave = { date: todayStr, rounds: roundNum, ongoing: null };
     localStorage.setItem('hoop_daily_' + currentUser.uid, JSON.stringify(dataSave));
     db.ref(`users/${currentUser.uid}/mini_games/basketball`).set(dataSave);
 
     const success = hoopScore >= 10;
-    
-    // 渲染結算視窗
     const emoji = document.getElementById('hoop-result-emoji');
     const title = document.getElementById('hoop-result-title');
     const desc = document.getElementById('hoop-result-desc');
@@ -739,7 +749,6 @@ function finishHoopGame() {
         title.innerText = "挑戰成功！";
         desc.innerHTML = `順利投進 <b>${hoopScore}</b> 球！<br>成功在運動場留下你的汗水！獲得 <b>500</b> 積分獎勵！`;
         
-        // 增加 500 積分
         db.ref(`users/${currentUser.uid}/points`).once('value').then(snap => {
             const pts = snap.val() || 0;
             db.ref(`users/${currentUser.uid}/points`).set(pts + 500);
@@ -753,15 +762,14 @@ function finishHoopGame() {
     document.getElementById('hoop-result-modal').style.display = 'flex';
 }
 
+
         
 // 退出/關閉投籃模式 (中途離開時自動存檔)
 function exitHoopGame() {
-    // 🌟 記錄中途退出的進度 (如果球還沒投完)
     if (currentUser && hoopShotsLeft > 0 && hoopShotsLeft < 20) {
         const roundNum = parseInt(document.getElementById('hoop-game-hud').dataset.round || "1");
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = getLocalTodayDate(); // 🌟 改用本地時間
         
-        // 保存「已完成的局數 (roundNum - 1)」以及「這局目前的狀態」
         const dataSave = { 
             date: todayStr, 
             rounds: roundNum - 1, 
@@ -772,24 +780,19 @@ function exitHoopGame() {
     }
 
     hoopState = 'idle';
-
-    // 1. 清理事件監聽器
     window.removeEventListener('pointerdown', hoopPointerDown);
     window.removeEventListener('pointerup', hoopPointerUp);
     window.removeEventListener('touchstart', hoopPointerDown);
     window.removeEventListener('touchend', hoopPointerUp);
 
-    // 2. 隱藏 UI
     document.getElementById('hoop-game-hud').style.display = 'none';
     document.getElementById('hoop-result-modal').style.display = 'none';
     document.getElementById('hoop-exit-btn').style.display = 'none';
 
-    // 3. 切換回校園景觀與視角
     hoopGameGroup.visible = false;
     campusGroup.visible = true;
     controls.enabled = true;
 
-    // 精準還原進入遊戲前的位置
     if (window.preHoopCamPos) {
         camera.position.copy(window.preHoopCamPos);
         controls.target.copy(window.preHoopCamTarget);
@@ -821,6 +824,19 @@ const db = firebase.database();
 
 let currentUser = null;
 let timeForced = false; // 紀錄開發者是否鎖定了時間
+
+
+// 🕒 取得玩家本地時區的 YYYY-MM-DD (確保午夜 00:00 準時重置)
+function getLocalTodayDate() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+
+        
 
 // 判斷是否為老師 Email
 function isTeacherEmail(email) {
@@ -3164,6 +3180,8 @@ let hanziWriter = null;
 let hanziCache = {}; // 👉 用來存放 Promise 快取
 
 
+let isCopyChecking = false; // 🛑 防連點鎖
+
 // 檢查每日抄寫上限 (每日最多 3 篇)
 function startCopyTaskCheck() {
     if (!currentUser) {
@@ -3172,28 +3190,28 @@ function startCopyTaskCheck() {
         return;
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const localData = JSON.parse(localStorage.getItem('copy_daily_' + currentUser.uid) || '{"date":"","rounds":0}');
-    
-    if (localData.date === todayStr && localData.rounds >= 3) {
-        alert("✍️ 今日靜心抄寫已達 3 次上限，您的心靈已得到充分沉澱，請明日再來！");
-        return;
-    }
+    if (isCopyChecking) return; // 擋住連點
+    isCopyChecking = true;
+
+    const todayStr = getLocalTodayDate(); // 🌟 改用本地時間
 
     db.ref(`users/${currentUser.uid}/mini_games/copying`).once('value').then(snap => {
         const dbData = snap.val() || { date: "", rounds: 0 };
         let currentRounds = (dbData.date === todayStr) ? dbData.rounds : 0;
 
         if (currentRounds >= 3) {
-            localStorage.setItem('copy_daily_' + currentUser.uid, JSON.stringify({ date: todayStr, rounds: 3 }));
             alert("✍️ 今日靜心抄寫已達 3 次上限，您的心靈已得到充分沉澱，請明日再來！");
+            isCopyChecking = false; // 解鎖
             return;
         }
         
-        // 通過檢查，啟動介面
         startCopyTask();
+        setTimeout(() => { isCopyChecking = false; }, 1000); // 延遲解鎖
+    }).catch(() => {
+        isCopyChecking = false;
     });
 }
+
 
 
         
@@ -3372,7 +3390,7 @@ function loadHanziChar(char) {
 
         
 
-// 5. 完成任務與給予獎勵
+// 完成任務與給予獎勵
 function completeCopyTask() {
     const display = document.getElementById('copy-text-display');
     display.innerHTML = `<div style="text-align:center; padding: 40px 0;">
@@ -3384,11 +3402,9 @@ function completeCopyTask() {
     document.querySelector('.copy-canvas-container').style.display = 'none';
     document.querySelector('.copy-tools').style.display = 'none';
 
-    // 💰 呼叫 Firebase 給予 500 積分並記錄次數
     if (currentUser) {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = getLocalTodayDate(); // 🌟 改用本地時間
         
-        // 更新次數
         db.ref(`users/${currentUser.uid}/mini_games/copying`).once('value').then(snap => {
             let dbData = snap.val() || { date: "", rounds: 0 };
             let currentRounds = (dbData.date === todayStr) ? dbData.rounds : 0;
@@ -3397,7 +3413,6 @@ function completeCopyTask() {
             db.ref(`users/${currentUser.uid}/mini_games/copying`).set(dataSave);
         });
 
-        // 增加 500 積分
         db.ref(`users/${currentUser.uid}/points`).once('value').then(snap => {
             let pts = snap.val() || 0;
             db.ref(`users/${currentUser.uid}/points`).set(pts + 500);
@@ -3413,7 +3428,6 @@ function completeCopyTask() {
         setTimeout(closeCopyTask, 1500);
     }
 }
-
 
         
     </script>
