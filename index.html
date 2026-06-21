@@ -13003,14 +13003,14 @@ function startElevatorSequence(destination) {
 }
 
 
-     function setupBusStopWaiting() {
+   function setupBusStopWaiting() {
     isWaitingAtBusStop = true;
     isAtBalcony = false; // 確保退出露台模式，避免視角衝突
     
     // 確保強制顯示戶外風景群組
     if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = true;
 
-    // ⛔ 關閉並隱藏房間內的視角搖桿，防止它把鏡頭拉回房間
+    // ⛔ 關閉並隱藏房間內的視角搖桿
     const knob = document.getElementById('mobile-cam-knob');
     if (knob) knob.style.display = 'none';
     if (typeof applyModeState === 'function') {
@@ -13023,25 +13023,30 @@ function startElevatorSequence(destination) {
     controls.minPolarAngle = Math.PI / 2.5; 
     controls.maxPolarAngle = Math.PI / 1.8;
     
-    // 💡 停在 X = -100 的位置，剛好介於房間大樓(-60)與大橋(-140)中間的開闊地帶
+    // 完全重置左右視角限制，避免上一階段的鎖定干擾
+    controls.minAzimuthAngle = -Infinity;
+    controls.maxAzimuthAngle = Infinity;
+    
+    // 停在 X = -100 的開闊地帶
     const waitX = -100;
 
     if (pendingDestination === 'street') {
         // 🚌 去商店街：站在近側行人路 (z: 23) 往馬路 (z: 8) 看
-        camera.position.set(waitX, -2.5, 23);
+        // 💡 加入 0.01 的微小 X 偏移，破解 3D 引擎的 180 度翻轉死角
+        camera.position.set(waitX + 0.01, -2.5, 23);
         controls.target.set(waitX, -3.5, 8);
     } else {
         // 🚌 去學校：站在遠側行人路 (z: -15) 往馬路 (z: 0) 看
-        camera.position.set(waitX, -2.5, -15);
+        // 💡 加入 0.01 的微小 X 偏移，保證鏡頭絕對面向馬路，不會再轉回頭看海！
+        camera.position.set(waitX + 0.01, -2.5, -15);
         controls.target.set(waitX, -3.5, 0);
     }
 
-    // 💡 終極視角防呆鎖定法：先解除限制，讓它看向目標後取得當前的方位角
-    controls.minAzimuthAngle = -Infinity;
-    controls.maxAzimuthAngle = Infinity;
+    // 強制套用相機方向，再更新控制器
+    camera.lookAt(controls.target);
     controls.update();
 
-    // 然後以此方位角為中心，嚴格限制只能左右轉頭 80 度 (避免轉頭太過去看到不該看的大樓底座)
+    // 取得當前真實的方位角，並以此為中心限制 80 度 (0.45 * PI)
     const currentAzimuth = controls.getAzimuthalAngle();
     controls.minAzimuthAngle = currentAzimuth - Math.PI * 0.45;
     controls.maxAzimuthAngle = currentAzimuth + Math.PI * 0.45;
