@@ -13003,7 +13003,7 @@ function startElevatorSequence(destination) {
 }
 
 
-       function setupBusStopWaiting() {
+     function setupBusStopWaiting() {
     isWaitingAtBusStop = true;
     isAtBalcony = false; // 確保退出露台模式，避免視角衝突
     
@@ -13014,37 +13014,37 @@ function startElevatorSequence(destination) {
     const knob = document.getElementById('mobile-cam-knob');
     if (knob) knob.style.display = 'none';
     if (typeof applyModeState === 'function') {
-        window.isWalkMode = false; // 退出行走模式
+        window.isWalkMode = false; 
     }
 
-    // 啟動原生 OrbitControls，只允許左右看車
     controls.enabled = true;
     controls.minDistance = 0.1; 
     controls.maxDistance = 0.1;
     controls.minPolarAngle = Math.PI / 2.5; 
     controls.maxPolarAngle = Math.PI / 1.8;
     
-    // 💡 關鍵修復：把等車位置移到 X = -90 (遠離房間建築物本體，視野超開闊)
-    const waitX = -90;
+    // 💡 停在 X = -100 的位置，剛好介於房間大樓(-60)與大橋(-140)中間的開闊地帶
+    const waitX = -100;
 
-    // 根據目的地，將玩家放到對應車道的行人路上
     if (pendingDestination === 'street') {
-        // 🚌 去商店街：巴士從左開到右 (direction: 1)，行駛在近側車道
-        // 站在近側行人路 (z: 23) 往馬路 (z: 8) 看
+        // 🚌 去商店街：站在近側行人路 (z: 23) 往馬路 (z: 8) 看
         camera.position.set(waitX, -2.5, 23);
         controls.target.set(waitX, -3.5, 8);
-        controls.minAzimuthAngle = -Math.PI / 2; // 允許左右看 90 度
-        controls.maxAzimuthAngle = Math.PI / 2;
     } else {
-        // 🚌 去學校：巴士從右開到左 (direction: -1)，行駛在遠側車道
-        // 站在遠側行人路 (z: -15) 往馬路 (z: 0) 看
+        // 🚌 去學校：站在遠側行人路 (z: -15) 往馬路 (z: 0) 看
         camera.position.set(waitX, -2.5, -15);
         controls.target.set(waitX, -3.5, 0);
-        // 這裡因為是反向看，角度基於 PI (180度)
-        controls.minAzimuthAngle = Math.PI / 2; 
-        controls.maxAzimuthAngle = Math.PI * 1.5;
     }
+
+    // 💡 終極視角防呆鎖定法：先解除限制，讓它看向目標後取得當前的方位角
+    controls.minAzimuthAngle = -Infinity;
+    controls.maxAzimuthAngle = Infinity;
     controls.update();
+
+    // 然後以此方位角為中心，嚴格限制只能左右轉頭 80 度 (避免轉頭太過去看到不該看的大樓底座)
+    const currentAzimuth = controls.getAzimuthalAngle();
+    controls.minAzimuthAngle = currentAzimuth - Math.PI * 0.45;
+    controls.maxAzimuthAngle = currentAzimuth + Math.PI * 0.45;
 
     // 顯示「返回室內」的按鈕，允許玩家反悔不搭了
     const returnBtn = document.getElementById('btn-return-room');
