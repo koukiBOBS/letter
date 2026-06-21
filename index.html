@@ -13003,8 +13003,7 @@ function startElevatorSequence(destination) {
     }, 150);
 }
 
-
-   function setupBusStopWaiting() {
+function setupBusStopWaiting() {
     isWaitingAtBusStop = true;
     isAtBalcony = false; // 確保退出露台模式，避免視角衝突
     
@@ -13025,15 +13024,15 @@ function startElevatorSequence(destination) {
     controls.maxPolarAngle = Math.PI / 1.8;
     
     if (pendingDestination === 'street') {
-        // 🚌 去商店街：站在近側行人路，剛好介於房間大樓與大橋中間的開闊地帶
+        // 🚌 往商店街（維持原樣）：站在左側近側行人路 (z: 23) 往馬路 (z: 8) 看
         const waitX = -100;
         camera.position.set(waitX, -2.5, 23);
         controls.target.set(waitX, -3.5, 8);
     } else {
-        // 🚌 去學校：安排在摩天輪下，站在遠側行人路往馬路看，避免大廈底座穿模
+        // 🚌 往中學（新方案）：站在右側摩天輪下方遠側行人路 (z: -15) 正對馬路 (z: 8) 看，防止穿模
         const waitX = 110; 
         camera.position.set(waitX, -2.5, -15);
-        controls.target.set(waitX, -3.5, 0);
+        controls.target.set(waitX, -3.5, 8);
     }
 
     // 💡 終極視角防呆鎖定法：先解除限制，讓它看向目標後取得當前的方位角
@@ -13055,7 +13054,6 @@ function startElevatorSequence(destination) {
 
     showToast("🚏 已抵達地下巴士站，請點擊正確方向的雙層巴士上車。");
 }
-
         
         
     </script>
