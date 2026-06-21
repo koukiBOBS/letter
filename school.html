@@ -489,7 +489,7 @@ function initHoopGameScene() {
 
 
         
-// 檢查每日遊玩上限 (Firebase & LocalStorage 雙保險)
+// 檢查每日遊玩上限與中途進度
 function startHoopGameCheck() {
     if (!currentUser) {
         alert("訪客模式無法進行投籃挑戰，請先登入系統。");
@@ -497,37 +497,30 @@ function startHoopGameCheck() {
     }
 
     const todayStr = new Date().toISOString().split('T')[0];
-    const localData = JSON.parse(localStorage.getItem('hoop_daily_' + currentUser.uid) || '{"date":"","rounds":0}');
-    
-    // 1. 本地快速預檢
-    if (localData.date === todayStr && localData.rounds >= 2) {
-        alert("🏀 休息一下吧！每天最多只能挑戰 2 個回合，明天再試試！");
-        return;
-    }
 
-    // 2. 雲端 Firebase 即時複檢防止作弊
     db.ref(`users/${currentUser.uid}/mini_games/basketball`).once('value').then(snap => {
-        const dbData = snap.val() || { date: "", rounds: 0 };
-        let currentRounds = (dbData.date === todayStr) ? dbData.rounds : 0;
+        let dbData = snap.val() || { date: "", rounds: 0, ongoing: null };
+        
+        // 跨日重置
+        if (dbData.date !== todayStr) {
+            dbData = { date: todayStr, rounds: 0, ongoing: null };
+        }
 
-        if (currentRounds >= 2) {
-            // 同步回本地
-            localStorage.setItem('hoop_daily_' + currentUser.uid, JSON.stringify({ date: todayStr, rounds: 2 }));
+        // 如果已經完成 2 局，而且沒有正在進行中的殘局，則阻止進入
+        if (dbData.rounds >= 2 && !dbData.ongoing) {
             alert("🏀 休息一下吧！每天最多只能挑戰 2 個回合，明天再試試！");
             return;
         }
 
-        // 准許進入
-        launchHoopGame(currentRounds + 1);
+        // 准許進入 (傳遞已完成局數+1，以及是否有未完成的進度資料)
+        launchHoopGame(dbData.rounds + 1, dbData.ongoing);
     });
 }
 
-// 啟動投籃模式
-// 啟動投籃模式
-function launchHoopGame(roundNum) {
+// 啟動投籃模式 (加入中途進度恢復功能)
+function launchHoopGame(roundNum, ongoingData) {
     initHoopGameScene();
 
-    // 👉 新增：紀錄進入小遊戲前，玩家當下的相機位置與視線目標
     window.preHoopCamPos = camera.position.clone();
     window.preHoopCamTarget = controls.target.clone();
 
@@ -537,35 +530,41 @@ function launchHoopGame(roundNum) {
 
     // 2. 禁用 OrbitControls 避免拖曳時畫面滾動
     controls.enabled = false;
-
-   // 3. 調整相機視野置於籃下合理投籃視角
-    controls.minDistance = 0;          // 👉 新增：解除第一人稱的最近距離鎖定
-    controls.maxDistance = Infinity;   // 👉 新增：解除第一人稱的最遠距離鎖定
-    controls.minPolarAngle = 0;        // 👉 新增：解除上下視角鎖定
-    controls.maxPolarAngle = Math.PI;  // 👉 新增：解除上下視角鎖定
+    controls.minDistance = 0;          
+    controls.maxDistance = Infinity;   
+    controls.minPolarAngle = 0;        
+    controls.maxPolarAngle = Math.PI;  
     
-    camera.position.set(0, 4.0, 10.8); // 採用你優化版的完美距離
+    camera.position.set(0, 4.0, 10.8); 
     controls.target.set(0, 4.3, -4); 
     controls.update();
 
-    // 4. 同步當前天色與路燈
+    // 3. 同步當前天色與路燈
     syncHoopEnvironment();
 
-    // 5. 初始化回合參數
-    hoopShotsLeft = 20;
-    hoopScore = 0;
+    // 4. 🌟 恢復中斷的進度，或開啟全新一局
+    if (ongoingData && ongoingData.shotsLeft > 0) {
+        hoopShotsLeft = ongoingData.shotsLeft;
+        hoopScore = ongoingData.score;
+        // 溫馨提示玩家這是接續的局數
+        // console.log(`已恢復進度：剩餘 ${hoopShotsLeft} 球，得分 ${hoopScore}`);
+    } else {
+        hoopShotsLeft = 20;
+        hoopScore = 0;
+    }
+    
     hoopState = 'aiming';
     updateHoopHUD(roundNum);
 
-    // 6. 顯示 UI 元件
+    // 5. 顯示 UI 元件
     document.getElementById('hoop-game-hud').style.display = 'block';
     document.getElementById('hoop-exit-btn').style.display = 'block';
 
-  // 7. 綁定投籃觸控事件
+    // 6. 綁定投籃觸控與滑鼠事件
     window.addEventListener('pointerdown', hoopPointerDown);
     window.addEventListener('pointerup', hoopPointerUp);
-    window.addEventListener('touchstart', hoopPointerDown, {passive: false}); // 👈 新增這行
-    window.addEventListener('touchend', hoopPointerUp, {passive: false});     // 👈 新增這行
+    window.addEventListener('touchstart', hoopPointerDown, {passive: false});
+    window.addEventListener('touchend', hoopPointerUp, {passive: false});
     
     // 重設籃球狀態
     resetHoopBall();
@@ -716,15 +715,15 @@ function updateHoopPhysics() {
     }
 }
 
-// 一回合 20 球挑戰結束
+// 一回合 20 球挑戰正式結束
 function finishHoopGame() {
     hoopState = 'idle';
 
     const roundNum = parseInt(document.getElementById('hoop-game-hud').dataset.round || "1");
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // 保存進度至本地與 Firebase
-    const dataSave = { date: todayStr, rounds: roundNum };
+    // 🌟 本局完整打完，清除 ongoing 殘局記錄，並將 completed rounds 設為目前局數
+    const dataSave = { date: todayStr, rounds: roundNum, ongoing: null };
     localStorage.setItem('hoop_daily_' + currentUser.uid, JSON.stringify(dataSave));
     db.ref(`users/${currentUser.uid}/mini_games/basketball`).set(dataSave);
 
@@ -748,27 +747,33 @@ function finishHoopGame() {
     } else {
         emoji.innerText = "💪";
         title.innerText = "再接再厲！";
-        desc.innerHTML = `本次共投進 <b>${hoopScore}</b> 球，可惜未達 10 球目標。<br>沒關係，明天整理好姿態再次挑戰吧！`;
+        desc.innerHTML = `本次共投進 <b>${hoopScore}</b> 球，可惜未達 10 球目標。<br>沒關係，整理好姿態再次挑戰吧！`;
     }
 
     document.getElementById('hoop-result-modal').style.display = 'flex';
 }
 
-// 退出/關閉投籃模式
+        
+// 退出/關閉投籃模式 (中途離開時自動存檔)
 function exitHoopGame() {
-    // 🛑 新增防作弊機制：如果已經投出至少 1 球 (剩餘球數小於20)，就視為消耗一局
-    if (hoopShotsLeft < 20 && hoopShotsLeft > 0) {
+    // 🌟 記錄中途退出的進度 (如果球還沒投完)
+    if (currentUser && hoopShotsLeft > 0 && hoopShotsLeft < 20) {
         const roundNum = parseInt(document.getElementById('hoop-game-hud').dataset.round || "1");
         const todayStr = new Date().toISOString().split('T')[0];
-        const dataSave = { date: todayStr, rounds: roundNum };
+        
+        // 保存「已完成的局數 (roundNum - 1)」以及「這局目前的狀態」
+        const dataSave = { 
+            date: todayStr, 
+            rounds: roundNum - 1, 
+            ongoing: { shotsLeft: hoopShotsLeft, score: hoopScore } 
+        };
         localStorage.setItem('hoop_daily_' + currentUser.uid, JSON.stringify(dataSave));
         db.ref(`users/${currentUser.uid}/mini_games/basketball`).set(dataSave);
-        alert("🚪 您已中途退出，本次投籃挑戰視為已消耗一次機會。");
     }
 
     hoopState = 'idle';
 
-    // 1. 清理事件監聽器 (加入 Touch 支援的清理)
+    // 1. 清理事件監聽器
     window.removeEventListener('pointerdown', hoopPointerDown);
     window.removeEventListener('pointerup', hoopPointerUp);
     window.removeEventListener('touchstart', hoopPointerDown);
