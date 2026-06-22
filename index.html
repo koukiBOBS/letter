@@ -5395,24 +5395,22 @@ function createTaxiInterior() {
     const doorBotL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 5.0), doorTrimMat); doorBotL.position.set(-1.7, -0.3, -0.3); grp.add(doorBotL);
     const armrestL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 1.5), doorPanelMat); armrestL.position.set(-1.6, 0.3, -0.3); grp.add(armrestL);
 
- const doorTopR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.7, 5.0), doorPanelMat); doorTopR.position.set(1.7, 0.4, -0.3); grp.add(doorTopR);
+    const doorTopR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.7, 5.0), doorPanelMat); doorTopR.position.set(1.7, 0.4, -0.3); grp.add(doorTopR);
     const doorBotR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 5.0), doorTrimMat); doorBotR.position.set(1.7, -0.3, -0.3); grp.add(doorBotR);
     const armrestR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 1.5), doorPanelMat); armrestR.position.set(1.6, 0.3, -0.3); grp.add(armrestR);
-
-    // 新增：車門橫向車框
-    const frameMat = new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.8});
-    const winFrameTopL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 4.5), frameMat); winFrameTopL.position.set(-1.65, 1.75, -0.3); grp.add(winFrameTopL);
-    const winFrameBotL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 4.5), frameMat); winFrameBotL.position.set(-1.65, 0.75, -0.3); grp.add(winFrameBotL);
-    const winFrameTopR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 4.5), frameMat); winFrameTopR.position.set(1.65, 1.75, -0.3); grp.add(winFrameTopR);
-    const winFrameBotR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 4.5), frameMat); winFrameBotR.position.set(1.65, 0.75, -0.3); grp.add(winFrameBotR);
-
 
     // --- 3. 雕塑感儀表板與軚盤 ---
     // 儀表板主體
     const dashMain = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.6, 0.9), dashMat);
     dashMain.position.set(0, 0.4, -1.8); grp.add(dashMain);
     
-  // 中控台
+    // 司機位儀表凸起 (弧形時速表遮光罩)
+    const binnacle = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.4, 16, 1, false, 0, Math.PI), dashMat);
+    binnacle.rotation.z = Math.PI / 2;
+    binnacle.position.set(0.8, 0.7, -1.7);
+    grp.add(binnacle);
+
+    // 中控台
     const centerConsole = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 1.5), dashMat);
     centerConsole.position.set(0, -0.1, -1.2);
     centerConsole.rotation.x = 0.1;
@@ -5420,7 +5418,8 @@ function createTaxiInterior() {
 
     // 完整的右軚方向盤 (防穿模且面向司機)
     const steeringGrp = new THREE.Group();
-    steeringGrp.position.set(0.8, 0.55, -1.2); // 往前拉出，避免陷入儀表板且完整顯示
+    steeringGrp.position.set(0.8, 0.55, -1.4);
+    steeringGrp.rotation.x = -Math.PI / 8; // 面向司機微傾斜
 
     const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1d1d1d, roughness: 0.85 });
     const steeringWheel = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.035, 16, 40), wheelMat);
@@ -5456,20 +5455,12 @@ function createTaxiInterior() {
     const meterBox = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.28, 0.2), new THREE.MeshStandardMaterial({color: 0x111111}));
     meterGrp.add(meterBox);
     const meterScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.22), new THREE.MeshBasicMaterial({ map: createTaximeterTexture(0) }));
-    meterScreen.position.set(0, 0, 0.11); // 加大間距，徹底解決與背板重疊的閃爍問題
+    meterScreen.position.set(0, 0, 0.101);
     meterScreen.name = 'taximeterScreen';
     meterGrp.add(meterScreen);
     grp.add(meterGrp);
 
-    // 為倒後鏡鏡面加入實體反光玻璃質感
-    const mirrorGlassMat = new THREE.MeshStandardMaterial({
-        color: 0xffffff, metalness: 1.0, roughness: 0.0,
-        envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
-        envMapIntensity: 2.0
-    });
-    // 陣列材質：僅面向司機的 +Z 面使用鏡面，其餘為黑色塑膠殼
-    const mirrorMaterials = [dashMat, dashMat, dashMat, dashMat, mirrorGlassMat, dashMat];
-    const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 0.05), mirrorMaterials);
+    const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 0.05), new THREE.MeshStandardMaterial({color: 0x111, metalness: 0.8}));
     mirror.position.set(0, 1.6, -1.9); 
     mirror.rotation.x = 0.1;
     grp.add(mirror);
