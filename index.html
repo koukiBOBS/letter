@@ -2802,6 +2802,35 @@ const RANDOM_TASKS = [
 
 // --- 積分與收集系統 ---
 let userPoints = 0;
+
+
+// 紀錄玩家手動隱藏的家具
+window.hiddenFurniture = JSON.parse(localStorage.getItem('hiddenFurniture') || '{}');
+
+// 點擊切換家具展示狀態的函數
+window.toggleFurnitureVisibility = function(itemId) {
+    if (!userInventory[itemId]) return; // 沒擁有不能設定
+
+    // 切換隱藏狀態並儲存到本機
+    window.hiddenFurniture[itemId] = !window.hiddenFurniture[itemId];
+    localStorage.setItem('hiddenFurniture', JSON.stringify(window.hiddenFurniture));
+
+    // 即時更新 3D 房間內的物件顯示
+    if (scene) {
+        scene.traverse(child => {
+            if (child.userData && child.userData.itemId === itemId) {
+                child.visible = !window.hiddenFurniture[itemId];
+            }
+        });
+    }
+
+    // 重新渲染收藏冊畫面以更新按鈕與徽章
+    renderWalletGrid();
+    showToast(window.hiddenFurniture[itemId] ? "📦 已收起該家具" : "✨ 已重新展示家具");
+};
+
+
+        
 let userInventory = {}; // { itemId: true }
 let walletObj = null; // 錢包 3D 物件
 let gachaScene, gachaCam, gachaRen, gachaGroup;
@@ -3431,11 +3460,14 @@ function initApp() {
             controls.maxDistance = 59;             
         }
         
-        if(scene) {
+     if(scene) {
             scene.traverse((obj) => {
                 if (obj.userData && obj.userData.itemId) {
                     if (ITEM_REGISTRY[obj.userData.itemId]) {
-                        obj.visible = !!userInventory[obj.userData.itemId];
+                        const isOwned = !!userInventory[obj.userData.itemId];
+                        const isHidden = !!window.hiddenFurniture[obj.userData.itemId];
+                        // 必須是「已擁有」且「未被隱藏」才顯示
+                        obj.visible = isOwned && !isHidden;
                     }
                 }
             });
@@ -10194,9 +10226,20 @@ grid.innerHTML = '';
             imgSrc = itemSnapshots[id] || '';
         }
 
+      // 判斷是否為實體家具且被隱藏
+        const isHidden = isUnlocked && window.hiddenFurniture[id];
+        
+        // 如果是已被隱藏，加上視覺標籤與半透明效果
+        const hiddenBadge = isHidden ? `<div style="position:absolute; top:10px; right:10px; background:#4a5c68; color:#fff; font-size:0.8rem; padding:4px 8px; border-radius:12px; z-index:5; box-shadow:0 2px 5px rgba(0,0,0,0.5);">👁️ 已收起</div>` : '';
+        const imgStyle = isHidden ? 'opacity: 0.3; filter: grayscale(50%);' : '';
+        
+        // 只有「已解鎖」且是「實體模型(model)」的物件才允許點擊收起 (權限類如鋼琴技能不允許隱藏)
+        const clickAction = (isUnlocked && item.type === 'model') ? `onclick="toggleFurnitureVisibility('${id}')" style="cursor: pointer;"` : '';
+
         grid.innerHTML += `
-            <div class="item-card ${isUnlocked ? '' : 'locked'}">
-                <img src="${imgSrc}" alt="${item.name}">
+            <div class="item-card ${isUnlocked ? '' : 'locked'}" ${clickAction}>
+                ${hiddenBadge}
+                <img src="${imgSrc}" alt="${item.name}" style="${imgStyle}">
                 <h4>${item.name}</h4>
                 <p>${item.desc}</p>
             </div>
