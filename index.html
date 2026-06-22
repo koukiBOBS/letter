@@ -5272,78 +5272,182 @@ function createBusInterior() {
 
 
 
-// 🚕 打造極致還原的香港紅的車廂 (參考實景圖)
+// 🚕 動態生成：跳字咪錶螢幕貼圖
+function createTaximeterTexture(amount) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    
+    // 黑底與螢幕內框
+    ctx.fillStyle = '#111111'; ctx.fillRect(0, 0, 256, 128);
+    ctx.fillStyle = '#1a0505'; ctx.fillRect(10, 10, 236, 108); 
+
+    // 發光紅字字體
+    ctx.fillStyle = '#ff2222';
+    ctx.shadowColor = '#ff0000';
+    ctx.shadowBlur = 10;
+    
+    // FARE HK$ 標籤
+    ctx.font = 'bold 22px "Courier New", monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('FARE HK$', 20, 45);
+
+    // 跳動的金額數字
+    ctx.font = 'bold 65px "Courier New", monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(amount.toFixed(1), 235, 100);
+
+    // 模擬 LED 螢幕的掃描線
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    for(let i=0; i<128; i+=4) ctx.fillRect(0, i, 256, 2);
+
+    return new THREE.CanvasTexture(canvas);
+}
+
+// 🚕 打造極致還原的香港紅的車廂 (精緻包覆版)
 function createTaxiInterior() {
     const grp = new THREE.Group();
 
-    // 1. 車廂內裝材質
-    const dashMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
-    const seatMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8 });
-    const beadMat = new THREE.MeshStandardMaterial({ color: 0xd4a373, roughness: 0.5 }); // 木珠墊
-    
-    // 2. 儀表板 (Dashboard)
-    const dash = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 0.8), dashMat);
-    dash.position.set(0, -0.2, -1.2); 
-    grp.add(dash);
+    // 1. 車廂材質定義
+    const plasticMat = new THREE.MeshStandardMaterial({ map: createPlasticTexture(), color: 0x2b2b2b, roughness: 0.9 });
+    const seatMat = new THREE.MeshStandardMaterial({ color: 0x5a1818, roughness: 0.8 }); // 經典暗紅皮椅
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
 
-    // 3. 右軚盤 (Steering Wheel)
-    const steeringWheel = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.04, 16, 32), new THREE.MeshStandardMaterial({color: 0x111111}));
-    steeringWheel.rotation.x = Math.PI / 3;
-    steeringWheel.position.set(0.6, 0.1, -1.0); // 靠右
+    // 2. 高反光玻璃材質
+    const glassMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffffff, transparent: true, opacity: 0.2, 
+        roughness: 0.05, metalness: 0.9, 
+        envMap: typeof createFakeGlassReflection !== 'undefined' ? createFakeGlassReflection() : null,
+        envMapIntensity: 2.0, side: THREE.DoubleSide 
+    });
+
+    // --- 車體結構 ---
+    // 地板與車頂
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 4.5), floorMat);
+    floor.rotation.x = -Math.PI / 2; floor.position.set(0, -0.6, 0); grp.add(floor);
+    
+    const roof = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 3.5), plasticMat);
+    roof.rotation.x = Math.PI / 2; roof.position.set(0, 1.4, -0.2); grp.add(roof);
+
+    // 擋風玻璃 & 後車窗
+    const windshield = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.2), glassMat);
+    windshield.position.set(0, 0.9, -1.8); windshield.rotation.x = -0.2; grp.add(windshield);
+    
+    const rearWindow = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.0), glassMat);
+    rearWindow.position.set(0, 0.9, 1.6); rearWindow.rotation.x = 0.15; grp.add(rearWindow);
+
+    // 側窗
+    const sideGeo = new THREE.PlaneGeometry(4.5, 1.0);
+    const winL = new THREE.Mesh(sideGeo, glassMat);
+    winL.rotation.y = Math.PI / 2; winL.position.set(-1.3, 0.8, 0); grp.add(winL);
+    const winR = new THREE.Mesh(sideGeo, glassMat);
+    winR.rotation.y = -Math.PI / 2; winR.position.set(1.3, 0.8, 0); grp.add(winR);
+
+    // A/B/C 柱 (包覆感來源)
+    const pillarGeo = new THREE.BoxGeometry(0.15, 1.2, 0.15);
+    [-1.8, 0, 1.5].forEach(z => {
+        const pL = new THREE.Mesh(pillarGeo, plasticMat); pL.position.set(-1.3, 0.8, z); grp.add(pL);
+        const pR = new THREE.Mesh(pillarGeo, plasticMat); pR.position.set(1.3, 0.8, z); grp.add(pR);
+    });
+
+    // --- 內部陳設 ---
+    // 儀表板 (Dashboard)
+    const dash = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.6, 0.8), plasticMat);
+    dash.position.set(0, 0.2, -1.4); 
+    grp.add(dash);
+    
+    const dashTop = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.1, 0.6), plasticMat);
+    dashTop.position.set(0, 0.5, -1.5); dashTop.rotation.x = 0.15;
+    grp.add(dashTop);
+
+    // 巨大的右軚方向盤
+    const steeringWheel = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.035, 16, 32), new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.4}));
+    steeringWheel.rotation.x = Math.PI / 2.5;
+    steeringWheel.position.set(0.6, 0.45, -1.1); 
     grp.add(steeringWheel);
-    const steeringColumn = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.4), dashMat);
-    steeringColumn.rotation.x = Math.PI / 3;
-    steeringColumn.position.set(0.6, -0.05, -1.1);
+    const steeringColumn = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.4), plasticMat);
+    steeringColumn.rotation.x = Math.PI / 2.5;
+    steeringColumn.position.set(0.6, 0.3, -1.3);
     grp.add(steeringColumn);
 
-    // 4. 經典紅燈跳字咪錶 (Taximeter)
-    const meterMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
-    const meter = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 0.15), meterMat);
-    meter.position.set(0, 0.15, -1.0); // 中控台上方
-    const meterScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.1), new THREE.MeshBasicMaterial({color: 0xff0000})); // 紅色LED
-    meterScreen.position.set(0, 0, 0.08);
-    meter.add(meterScreen);
-    grp.add(meter);
+    // 中控台 & 動態咪錶
+    const centerConsole = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.4), plasticMat);
+    centerConsole.position.set(0, -0.1, -1.2);
+    grp.add(centerConsole);
 
-    // 5. 車機收音機/對講機
-    const radio = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.2, 0.1), new THREE.MeshStandardMaterial({color: 0x050505}));
-    radio.position.set(0, -0.1, -0.85);
-    grp.add(radio);
+    const meterGrp = new THREE.Group();
+    meterGrp.position.set(0, 0.65, -1.1); // 架高中控台，讓後座清楚看見
+    meterGrp.rotation.x = -0.1; 
+    meterGrp.rotation.y = -0.15; // 稍微側向左後方乘客
+    const meterBox = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.15), new THREE.MeshStandardMaterial({color: 0x111111}));
+    meterGrp.add(meterBox);
+    
+    const meterScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.18), new THREE.MeshBasicMaterial({ map: createTaximeterTexture(0) }));
+    meterScreen.position.set(0, 0, 0.076);
+    meterScreen.name = 'taximeterScreen'; // 賦予 ID，讓計時器能找到它
+    meterGrp.add(meterScreen);
+    grp.add(meterGrp);
 
-    // 6. 黃色「不准吸煙 NO SMOKING」貼紙 (左側乘客位)
+    // 後視鏡
+    const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.05), new THREE.MeshStandardMaterial({color: 0x222, metalness: 0.8}));
+    mirror.position.set(0, 1.2, -1.6);
+    grp.add(mirror);
+
+    // 黃色禁煙貼紙
     const stickerCanvas = document.createElement('canvas');
     stickerCanvas.width = 128; stickerCanvas.height = 64;
     const sCtx = stickerCanvas.getContext('2d');
     sCtx.fillStyle = '#ffdd00'; sCtx.fillRect(0, 0, 128, 64);
-    sCtx.fillStyle = '#000'; sCtx.font = 'bold 18px sans-serif'; sCtx.textAlign = 'center';
-    sCtx.fillText('不准吸煙', 64, 25);
-    sCtx.font = 'bold 14px sans-serif'; sCtx.fillText('NO SMOKING', 64, 45);
-    const sticker = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.15), new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(stickerCanvas)}));
-    sticker.position.set(-0.6, 0.1, -0.81);
-    sticker.rotation.x = -0.1;
+    sCtx.fillStyle = '#000'; sCtx.font = 'bold 20px sans-serif'; sCtx.textAlign = 'center'; sCtx.fillText('不准吸煙', 64, 28);
+    sCtx.font = 'bold 12px sans-serif'; sCtx.fillText('NO SMOKING', 64, 48);
+    const sticker = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.12), new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(stickerCanvas)}));
+    sticker.position.set(-1.29, 0.5, -0.2); 
+    sticker.rotation.y = Math.PI / 2;
     grp.add(sticker);
 
-    // 7. 前排座椅 (從後座視角看)
-    const seatL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.2), seatMat);
-    seatL.position.set(-0.6, -0.2, -0.3);
-    grp.add(seatL);
-    
-    // 司機位座椅 + 經典木珠座墊
-    const seatR = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.2), seatMat);
-    seatR.position.set(0.6, -0.2, -0.3);
-    const beadCover = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.9), beadMat);
-    beadCover.position.set(0, 0, 0.11);
-    // 加入簡單的網格模擬木珠
-    const bTex = createFabricTexture('#d4a373');
-    bTex.repeat.set(8, 10);
-    beadCover.material.map = bTex;
-    seatR.add(beadCover);
-    grp.add(seatR);
+    // --- 座椅 ---
+    const createSeat = (x, z, isDriver) => {
+        const sGrp = new THREE.Group();
+        sGrp.position.set(x, -0.4, z);
+        const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.2, 0.8), seatMat);
+        sGrp.add(cushion);
+        const back = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.2), seatMat);
+        back.position.set(0, 0.45, 0.3); back.rotation.x = -0.15;
+        sGrp.add(back);
+        const headrest = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.15), seatMat);
+        headrest.position.set(0, 1.0, 0.4); headrest.rotation.x = -0.15;
+        sGrp.add(headrest);
 
-    // 8. 玻璃與車頂 (微暗，營造車廂包覆感)
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.1, 4.0), new THREE.MeshStandardMaterial({color: 0xdddddd}));
-    roof.position.set(0, 1.0, 0);
-    grp.add(roof);
+        if (isDriver) {
+            // 司機專屬：木珠座墊
+            const beadMat = new THREE.MeshStandardMaterial({ map: createFabricTexture('#d4a373'), roughness: 0.9 });
+            const beadCover = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), beadMat);
+            beadCover.position.set(0, 0.45, 0.41); beadCover.rotation.x = -0.15;
+            sGrp.add(beadCover);
+        }
+        return sGrp;
+    };
+
+    grp.add(createSeat(-0.55, -0.5, false)); // 助手席
+    grp.add(createSeat(0.55, -0.5, true));  // 司機席
+
+    // 後排長椅
+    const rearCushion = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.2, 0.8), seatMat);
+    rearCushion.position.set(0, -0.4, 1.0);
+    grp.add(rearCushion);
+    const rearBack = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.9, 0.2), seatMat);
+    rearBack.position.set(0, 0.05, 1.3); rearBack.rotation.x = -0.15;
+    grp.add(rearBack);
+
+    // 環境微光與咪錶紅光
+    const cabinLight = new THREE.PointLight(0xffeedd, 0.3, 5);
+    cabinLight.position.set(0, 1.0, 0);
+    grp.add(cabinLight);
+
+    const meterLight = new THREE.PointLight(0xff0000, 0.8, 2);
+    meterLight.position.set(0, 0.65, -1.0);
+    grp.add(meterLight);
 
     return grp;
 }
@@ -11595,14 +11699,10 @@ function rideBus(busHitBox) {
 
 let taxiTimerInterval = null;
 
-// 🚕 乘坐的士邏輯
+// 🚕 乘坐的士邏輯 (10秒跳錶抵達)
 function rideTaxi(taxiHitBox) {
     if (isRidingBus) return;
-    isRidingBus = true; // 共用狀態，防止重複點擊
-    
-    // 喚醒音效引擎
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    isRidingBus = true; // 共用防止重複點擊狀態
 
     activeBus = taxiHitBox.userData.vehicleObj;
     activeBusDirection = taxiHitBox.userData.direction;
@@ -11628,50 +11728,62 @@ function rideTaxi(taxiHitBox) {
     if (!window.taxiInteriorGrp) window.taxiInteriorGrp = createTaxiInterior();
     activeBus.add(window.taxiInteriorGrp);
 
-    // 視角定位於後座中心
-    const camZPos = activeBusDirection > 0 ? 1.0 : -1.0;
-    window.taxiInteriorGrp.position.set(0, 0.4, camZPos);
+    const camZPos = activeBusDirection > 0 ? 0.8 : -0.8;
+    window.taxiInteriorGrp.position.set(0, 0.2, camZPos); 
     window.taxiInteriorGrp.rotation.set(0, activeBusDirection > 0 ? Math.PI : 0, 0);
 
     controls.enabled = false;
     document.getElementById('btn-return-room').style.display = 'none';
     if(document.getElementById('mobile-cam-knob')) document.getElementById('mobile-cam-knob').style.display = 'none';
 
-    const targetWorldPos = new THREE.Vector3(0, 0.4, camZPos).applyMatrix4(activeBus.matrixWorld);
+    const targetWorldPos = new THREE.Vector3(0, 0.2, camZPos).applyMatrix4(activeBus.matrixWorld);
     gsap.to(camera.position, {
         x: targetWorldPos.x, y: targetWorldPos.y, z: targetWorldPos.z,
         duration: 1.2, ease: "power2.inOut"
     });
     
-    const lookAheadWorldPos = new THREE.Vector3(0, 0.4, activeBusDirection > 0 ? 30 : -30).applyMatrix4(activeBus.matrixWorld);
+    const lookAheadWorldPos = new THREE.Vector3(0, 0.2, activeBusDirection > 0 ? 30 : -30).applyMatrix4(activeBus.matrixWorld);
     gsap.to(controls.target, {
         x: lookAheadWorldPos.x, y: lookAheadWorldPos.y, z: lookAheadWorldPos.z,
         duration: 1.2, ease: "power2.inOut",
         onComplete: () => {
             window.taxiInteriorGrp.add(camera);
-            camera.position.set(0, 0.3, 1.0); // 坐在後座
+            
+            // 🌟 鏡頭坐在後排偏左，完美呈現右軚與中央咪錶
+            camera.position.set(-0.25, 0.4, 0.8); 
             camera.rotation.set(0, 0, 0);
             
-            // 輕微路面顛簸動畫
             busBumpAnim = gsap.to(camera.position, {
-                y: 0.35, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut"
+                y: 0.43, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut"
             });
             
-            // 啟動 10 秒咪錶 UI
+            // 啟動 10 秒咪錶跳動
             const timerDisp = document.getElementById('bus-timer-display');
             timerDisp.style.display = 'block';
-            timerDisp.style.color = '#ff4444'; // 紅色咪錶字體
+            timerDisp.style.color = '#ff4444';
             timerDisp.style.textShadow = '0 0 10px rgba(255,0,0,0.5)';
             
             let timeLeft = 10;
+            let currentFare = 0;
             timerDisp.innerText = `ETA 00:${timeLeft.toString().padStart(2,'0')}`;
             
+            // 初始化咪錶
+            const meterScreen = window.taxiInteriorGrp.getObjectByName('taximeterScreen');
+            if (meterScreen) {
+                if (meterScreen.material.map) meterScreen.material.map.dispose();
+                meterScreen.material.map = createTaximeterTexture(currentFare);
+            }
+
             taxiTimerInterval = setInterval(() => {
                 timeLeft--;
+                currentFare += 50; // 每秒跳 50 元
                 timerDisp.innerText = `ETA 00:${timeLeft.toString().padStart(2,'0')}`;
                 
-                // 模擬咪錶跳聲
-                try { playSynthTone(1500); } catch(e){}
+                // 動態更新 3D 咪錶上的數字
+                if (meterScreen) {
+                    if (meterScreen.material.map) meterScreen.material.map.dispose();
+                    meterScreen.material.map = createTaximeterTexture(currentFare);
+                }
 
                 if (timeLeft <= 0) {
                     clearInterval(taxiTimerInterval);
