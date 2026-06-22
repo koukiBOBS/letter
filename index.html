@@ -5356,19 +5356,19 @@ function createTaxiInterior() {
     const roof = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.2, 4.0), roofMat);
     roof.position.set(0, 1.8, -0.5); grp.add(roof);
 
-    // A柱 (向前傾斜，且向內收窄形成梯形)
-    const pillarGeo = new THREE.CylinderGeometry(0.08, 0.1, 1.4, 8);
+   // A柱 (向前傾斜，且向內收窄形成梯形 - 改用 BoxGeometry 讓邊緣更俐落厚實)
+    const pillarGeo = new THREE.BoxGeometry(0.18, 1.5, 0.25);
     const pL_A = new THREE.Mesh(pillarGeo, roofMat);
-    pL_A.position.set(-1.55, 1.25, -2.1);
-    pL_A.rotation.set(-0.35, 0, -0.15); // 雙向傾斜
+    pL_A.position.set(-1.58, 1.25, -2.15);
+    pL_A.rotation.set(-0.35, 0, -0.15); 
     grp.add(pL_A);
     const pR_A = new THREE.Mesh(pillarGeo, roofMat);
-    pR_A.position.set(1.55, 1.25, -2.1);
+    pR_A.position.set(1.58, 1.25, -2.15);
     pR_A.rotation.set(-0.35, 0, 0.15);
     grp.add(pR_A);
 
-    // B柱、C柱
-    [-0.2, 1.6].forEach(z => {
+    // B柱、C柱 (把 B 柱往後退到 z: 0.3，避免相機後退時切到它產生破圖)
+    [0.3, 1.6].forEach(z => {
         const pL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 0.25), roofMat); pL.position.set(-1.65, 1.25, z); grp.add(pL);
         const pR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 0.25), roofMat); pR.position.set(1.65, 1.25, z); grp.add(pR);
     });
@@ -5402,8 +5402,8 @@ function createTaxiInterior() {
     const armrestR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 1.5), doorPanelMat); armrestR.position.set(1.6, 0.3, -0.3); grp.add(armrestR);
 
     // --- 3. 雕塑感儀表板與軚盤 ---
-    // 儀表板主體
-    const dashMain = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.6, 0.9), dashMat);
+    // 儀表板主體 (加寬至 3.5，緊密嵌入車門，徹底解決邊緣穿幫)
+    const dashMain = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.6, 0.9), dashMat);
     dashMain.position.set(0, 0.4, -1.8); grp.add(dashMain);
     
     // 司機位儀表凸起 (弧形時速表遮光罩)
@@ -11804,13 +11804,13 @@ function rideTaxi(taxiHitBox) {
     document.getElementById('btn-return-room').style.display = 'none';
     if(document.getElementById('mobile-cam-knob')) document.getElementById('mobile-cam-knob').style.display = 'none';
 
-  const targetWorldPos = new THREE.Vector3(0, 0.2, camZPos).applyMatrix4(activeBus.matrixWorld);
+ const targetWorldPos = new THREE.Vector3(0, 0.2, camZPos).applyMatrix4(activeBus.matrixWorld);
     gsap.to(camera.position, {
         x: targetWorldPos.x, y: targetWorldPos.y, z: targetWorldPos.z,
         duration: 1.2, ease: "power2.inOut"
     });
     
-    // 👇 新增這行：加入廣角效果，讓車廂空間感變大，視野更開闊
+    // 保持廣角 75 增加空間感
     gsap.to(camera, { fov: 75, duration: 1.2, onUpdate: () => camera.updateProjectionMatrix() });
     
     const lookAheadWorldPos = new THREE.Vector3(0, 0.2, activeBusDirection > 0 ? 30 : -30).applyMatrix4(activeBus.matrixWorld);
@@ -11820,12 +11820,12 @@ function rideTaxi(taxiHitBox) {
         onComplete: () => {
            window.taxiInteriorGrp.add(camera);
             
-            // 🌟 完美相機定位：鏡頭往後拉 (z 改為 0.2) 並稍微提高 (y 改為 0.82)
-            camera.position.set(-0.8, 0.82, 0.2); 
+            // 🌟 完美相機定位：往前移回 -0.4，稍微往中間靠 (-0.6)，並保持高度 0.85
+            camera.position.set(-0.6, 0.85, -0.4); 
             camera.rotation.set(0, 0, 0);
             
             busBumpAnim = gsap.to(camera.position, {
-                y: 0.86, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut" // 配合新高度微調彈跳
+                y: 0.89, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut"
             });
             
             const timerDisp = document.getElementById('bus-timer-display');
