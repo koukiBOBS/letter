@@ -996,20 +996,19 @@ function syncSchoolEnvironmentTime() {
 
 function setSchoolPhase(phaseStr) {
 const phases = {
-    // 🌅 晨：【徹底無灰・晨曦粉】
-    // skyTop: 0x90c2e7 (乾淨純粹的淺藍色，沒有灰色干擾)
-    // skyBot 與 fog: 0xffb7c5 (純粹的晨曦櫻花粉色，做為整個校園的底色)
-    // light: 0xffe8d6 (帶有一絲粉暖色的清晨光線)
-    dawn: { skyTop: 0x90c2e7, skyBot: 0xffb7c5, fog: 0xffb7c5, light: 0xffe8d6, int: 0.9, windowLight: false, shadow: true },
+    // 🌅 晨：去除原本偏灰的色調
+    // skyTop 改為清澈的初晨淺藍 (0xaec6cf)
+    // skyBot 與 fog 改為帶有朝氣的晨霧粉白 (0xffe4e1 / 0xeedfdc)
+    dawn: { skyTop: 0xaec6cf, skyBot: 0xffe4e1, fog: 0xeedfdc, light: 0xffeedd, int: 0.85, windowLight: false, shadow: true },
     
-    // ☀️ 午：保持明朗晴天
+    // ☀️ 午：保持明亮的晴天
     noon: { skyTop: 0x40a0d0, skyBot: 0xbae0ff, fog: 0xbae0ff, light: 0xfff6ea, int: 1.1, windowLight: false, shadow: true },
     
-    // 🌇 暮：【真實金橘・柔和低對比】
-    // skyTop: 0x6a5acd (板岩紫，模擬夕陽上方的晚霞)
-    // skyBot 與 fog: 0xff8c69 (柔和真實的鮭魚粉橘，作為天空與地面的過渡)
-    // light: 0xff7a00 (豐富飽滿的真實夕陽金橘光，讓高光處更有層次)
-    dusk: { skyTop: 0x6a5acd, skyBot: 0xff8c69, fog: 0xff8c69, light: 0xff7a00, int: 0.85, windowLight: true, shadow: true },
+    // 🌇 暮：強化夕陽的「黃昏感」
+    // skyTop 帶一點日落時的深紫 (0x4a3b52)
+    // skyBot 與 fog 使用更濃烈的橘紅色 (0xff6b35 / 0xdc5e32)
+    // light 改為金黃偏橘的光線 (0xff8c00)，讓打在建築物上的光更有夕陽氛圍
+    dusk: { skyTop: 0x4a3b52, skyBot: 0xff6b35, fog: 0xdc5e32, light: 0xff8c00, int: 0.9, windowLight: true, shadow: true },
     
     // 🌙 夜：保持夜晚設定
     night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x151b29, light: 0x667799, int: 0.2, windowLight: true, shadow: false }
@@ -1027,16 +1026,14 @@ if(phaseStr === 'night') {
         hemiLight.color.setHex(0x334466); hemiLight.groundColor.setHex(0x111111); hemiLight.intensity = 0.6;
         sunLight.shadow.radius = 2; 
     } else if (phaseStr === 'dusk') {
-        // 黃昏環境光：提高整體 intensity 以「降低對比度」
-        // 使用非常暖的淡橘粉作天光，搭配暖棕色作地反射光，讓暗部不會死黑
-        hemiLight.color.setHex(0xffdfd4); hemiLight.groundColor.setHex(0x8a5a44); 
-        hemiLight.intensity = 0.95; // 提高環境漫射光，完美降低高光與暗部的死硬對比
-        sunLight.shadow.radius = 5; // 極度柔化影子邊緣
+        // 黃昏環境光：使用非常柔和的淡粉色作為天光，帶一點暖灰紫作為地反射光，降低反差
+        hemiLight.color.setHex(0xffe8e0); hemiLight.groundColor.setHex(0x6b5a5e); 
+        hemiLight.intensity = 0.8; 
+        sunLight.shadow.radius = 4; // 擴大陰影半徑，讓黃昏的影子邊緣變得非常模糊柔和
     } else if (phaseStr === 'dawn') {
-        // 早晨環境光：天光用純白，地反射光用「柔和的淡粉紅色 (0xffd1dc)」
-        // 這是消除畫面灰暗感的終極關鍵！建築物背光面會透出淡淡的粉色而非灰色。
-        hemiLight.color.setHex(0xffffff); hemiLight.groundColor.setHex(0xffd1dc); 
-        hemiLight.intensity = 1.0; 
+        // 早晨環境光：天光用純白，地反射光用「淺藍灰色 (0xb0c4de)」取代暗褐色，這會直接消除建築物暗部的陰沉感！
+        hemiLight.color.setHex(0xffffff); hemiLight.groundColor.setHex(0xb0c4de); 
+        hemiLight.intensity = 0.9; 
         sunLight.shadow.radius = 3; 
     } else {
         // 中午
