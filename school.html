@@ -597,7 +597,7 @@ function syncHoopEnvironment() {
     if (currentPhaseIsNight) {
         // 夜間：啟動球場街燈照明
         hoopNightLight.intensity = 3.5; 
-        scene.fog.density = 0.015;
+      
     } else {
         // 白天/黃昏：關閉燈光
         hoopNightLight.intensity = 0.0;
@@ -928,9 +928,8 @@ auth.onAuthStateChanged(user => {
         // ==========================================
         // 1. 場景與渲染器設置
         // ==========================================
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x90C3D4); 
-    scene.fog = new THREE.Fog(0x90C3D4, 20, 160); 
+    const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x90C3D4);
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(-55, 45, 105); 
@@ -996,38 +995,40 @@ function syncSchoolEnvironmentTime() {
 }
 
 function setSchoolPhase(phaseStr) {
-    const phases = {
-        // 🌅 晨：降低陽光強度(0.5)，讓天空與霧氣帶有溫暖的粉橘色
-        dawn: { skyTop: 0x8a9ea8, skyBot: 0xe0c8b8, fog: 0xd0c0b8, light: 0xffdebb, int: 0.5, windowLight: false, shadow: true },
-        // ☀️ 午：陽光強烈(1.1)，影子銳利
-        noon: { skyTop: 0x40a0d0, skyBot: 0xbae0ff, fog: 0xbae0ff, light: 0xfff6ea, int: 1.1, windowLight: false, shadow: true },
-        // 🌇 暮：橘紅色的夕陽
-        dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, light: 0xffaa66, int: 0.85, windowLight: true, shadow: true },
-        // 🌙 夜：月光微弱
-        night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x151b29, light: 0x667799, int: 0.2, windowLight: true, shadow: false }
-    };
-    const p = phases[phaseStr];
+const phases = {
+    // 🌅 晨：將陽光強度由 0.5 提高至 0.85，改善陰暗問題
+    dawn: { skyTop: 0x8a9ea8, skyBot: 0xe0c8b8, fog: 0xd0c0b8, light: 0xffdebb, int: 0.85, windowLight: false, shadow: true },
+    // ☀️ 午：陽光強烈(1.1)，影子銳利
+    noon: { skyTop: 0x40a0d0, skyBot: 0xbae0ff, fog: 0xbae0ff, light: 0xfff6ea, int: 1.1, windowLight: false, shadow: true },
+    // 🌇 暮：橘紅色的夕陽
+    dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, light: 0xffaa66, int: 0.85, windowLight: true, shadow: true },
+    // 🌙 夜：月光微弱
+    night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x151b29, light: 0x667799, int: 0.2, windowLight: true, shadow: false }
+};
+  const p = phases[phaseStr];
 
-    scene.background = createSkyTexture(p.skyTop, p.skyBot);
-    scene.fog.color.setHex(p.fog);
+scene.background = createSkyTexture(p.skyTop, p.skyBot);
     
     sunLight.color.setHex(p.light);
     sunLight.intensity = p.int;
     sunLight.castShadow = p.shadow; 
 
     // 💡 調整環境光與陰影柔和度
-    if(phaseStr === 'night') {
+if(phaseStr === 'night') {
         hemiLight.color.setHex(0x334466); hemiLight.groundColor.setHex(0x111111); hemiLight.intensity = 0.6;
-        sunLight.shadow.radius = 1; 
+        sunLight.shadow.radius = 2; // 將夜間陰影微調柔和
     } else if (phaseStr === 'dusk') {
-        hemiLight.color.setHex(0xffccaa); hemiLight.groundColor.setHex(0x442211); hemiLight.intensity = 0.7;
-        sunLight.shadow.radius = 2; // 黃昏影子微柔
+        hemiLight.color.setHex(0xffccaa); hemiLight.groundColor.setHex(0x442211); 
+        hemiLight.intensity = 0.85; // 稍微提高黃昏漫射光
+        sunLight.shadow.radius = 3; // 黃昏影子微柔
     } else if (phaseStr === 'dawn') {
-        hemiLight.color.setHex(0xffeadd); hemiLight.groundColor.setHex(0x554444); hemiLight.intensity = 0.85; // 提高早晨漫射光
-        sunLight.shadow.radius = 4; // 🌅 讓早晨的影子邊緣變得非常柔和！
+        hemiLight.color.setHex(0xffeadd); hemiLight.groundColor.setHex(0x554444); 
+        hemiLight.intensity = 1.0; // 原為 0.85，提高早晨漫射光解決陰暗感
+        sunLight.shadow.radius = 5; // 原為 4，讓早晨的影子邊緣更加柔和
     } else {
-        hemiLight.color.setHex(0xffffff); hemiLight.groundColor.setHex(0x777777); hemiLight.intensity = 0.85;
-        sunLight.shadow.radius = 1; // 中午影子銳利
+        hemiLight.color.setHex(0xffffff); hemiLight.groundColor.setHex(0x777777); 
+        hemiLight.intensity = 1.0; // 原為 0.85，提高整體環境光
+        sunLight.shadow.radius = 3; // 原為 1，將中午的銳利影子調柔和，解決光線太硬的問題
     }
 
     if (typeof matWindow !== 'undefined') {
