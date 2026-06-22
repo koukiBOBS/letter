@@ -4669,29 +4669,36 @@ else processReply(letterId, partnerUid, ObjectData);
                     return isMeTeacher === targetIsTeacher;
                 });
                 
-                let rec = "";
+              let rec = "";
           
                 if (eligibleUids.length > 0) {
+                    // 1. 根據最後上線時間排序 (由新到舊降冪排列)
+                    // 沒有 lastLoginTime 的幽靈帳號會被當作 0 (1970年) 墊底
+                    eligibleUids.sort((a, b) => {
+                        let timeA = users[a].lastLoginTime || 0;
+                        let timeB = users[b].lastLoginTime || 0;
+                        return timeB - timeA; 
+                    });
+
                     if (selectedTaskIndex === 'free') {
-                        eligibleUids.sort((a, b) => {
-                            let timeA = users[a].lastLoginTime || 0;
-                            let timeB = users[b].lastLoginTime || 0;
-                            return timeB - timeA;
-                        });
-                        
-                        let topK = Math.min(3, eligibleUids.length);
-                        rec = eligibleUids[Math.floor(Math.random() * topK)];
+                        // 自由分享：擷取最近上線的「前 3 位」，從中隨機抽一位
+                        let top3Pool = eligibleUids.slice(0, 3);
+                        rec = top3Pool[Math.floor(Math.random() * top3Pool.length)];
                         
                         let newCount = (users[rec].receivedCount || 0) + 1;
                         db.ref(`users/${rec}/receivedCount`).set(newCount);
                         db.ref(`user_meta/${rec}/receivedCount`).set(newCount); // 同步更新
                     } else {
+                        // 常規閱讀任務：擷取最近上線的「前 30 位」
+                        let top30Pool = eligibleUids.slice(0, 30);
+                        
+                        // 在這 30 人中，找出「收信數最少」的人進行隨機派發，確保這批活躍用戶勞逸平均
                         let minCount = Infinity; 
-                        eligibleUids.forEach(uid => { 
+                        top30Pool.forEach(uid => { 
                             let count = users[uid].receivedCount || 0; 
                             if (count < minCount) minCount = count; 
                         });
-                        let candidates = eligibleUids.filter(uid => (users[uid].receivedCount || 0) === minCount); 
+                        let candidates = top30Pool.filter(uid => (users[uid].receivedCount || 0) === minCount); 
                         rec = candidates[Math.floor(Math.random() * candidates.length)];
                         
                         db.ref(`users/${rec}/receivedCount`).set(minCount + 1);
@@ -4765,14 +4772,25 @@ function processRandomTask(data) {
                 
                 db.ref(`users/${currentUser.uid}/lastSentTime`).set(ts);
 
-                let rec = "";
+             let rec = "";
                 if (eligibleUids.length > 0) {
+                    // 1. 根據最後上線時間排序 (由新到舊)
+                    eligibleUids.sort((a, b) => {
+                        let timeA = users[a].lastLoginTime || 0;
+                        let timeB = users[b].lastLoginTime || 0;
+                        return timeB - timeA;
+                    });
+
+                    // 2. 擷取最近上線的「前 30 位」
+                    let top30Pool = eligibleUids.slice(0, 30);
+
+                    // 3. 在這活躍的 30 人中，找出收信數最少的人派發
                     let minCount = Infinity; 
-                    eligibleUids.forEach(uid => { 
+                    top30Pool.forEach(uid => { 
                         let count = users[uid].receivedCount || 0; 
                         if (count < minCount) minCount = count; 
                     });
-                    let candidates = eligibleUids.filter(uid => (users[uid].receivedCount || 0) === minCount); 
+                    let candidates = top30Pool.filter(uid => (users[uid].receivedCount || 0) === minCount); 
                     rec = candidates[Math.floor(Math.random() * candidates.length)];
                     
                     db.ref(`users/${rec}/receivedCount`).set(minCount + 1);
