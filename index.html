@@ -5347,9 +5347,11 @@ function createTaxiInterior() {
         envMapIntensity: 2.0, side: THREE.DoubleSide 
     });
 
-   // --- 2. 梯形車廂與車門外殼 ---
-    const floor = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.2, 5.5), new THREE.MeshStandardMaterial({ color: 0x111, roughness: 0.9 }));
-    floor.position.set(0, -0.6, -0.5); grp.add(floor);
+  // --- 2. 梯形車廂與車門外殼 ---
+    // 修正：將地板微微抬高，徹底解決與外面馬路完美重疊而產生的閃爍問題
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.2, 5.5), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 }));
+    floor.position.set(0, -0.5, -0.5); 
+    grp.add(floor);
     
     const roof = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.2, 4.0), roofMat);
     roof.position.set(0, 1.8, -0.5); grp.add(roof);
@@ -5460,7 +5462,7 @@ function createTaxiInterior() {
     grp.add(binnacle);
 
    // 中控台 (修正：高度縮短、位置抬高，確保底部不會插進地板導致閃爍)
-    const centerConsole = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.7, 1.5), dashMat);
+   const centerConsole = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.7, 1.5), dashMat);
     centerConsole.position.set(0, 0.0, -1.2);
     centerConsole.rotation.x = 0.1;
     grp.add(centerConsole);
