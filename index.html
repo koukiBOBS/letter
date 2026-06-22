@@ -5348,48 +5348,84 @@ function createTaxiInterior() {
         envMapIntensity: 2.0, side: THREE.DoubleSide 
     });
 
-    // --- 2. 梯形車廂與車門外殼 ---
+  // --- 2. 一體化車廂與車門外殼 (修復左右窗框穿幫與奇怪多邊形) ---
     const floor = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.2, 5.5), new THREE.MeshStandardMaterial({ color: 0x111, roughness: 0.9 }));
     floor.position.set(0, -0.6, -0.5); grp.add(floor);
-    
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.2, 4.0), roofMat);
-    roof.position.set(0, 1.8, -0.5); grp.add(roof);
+
+    // 加長加寬的車頂，防止前後左右漏光
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.2, 4.8), roofMat);
+    roof.position.set(0, 1.8, -0.2); grp.add(roof);
+
+    // 梯形擋風玻璃
+    const wfShape = new THREE.Shape();
+    wfShape.moveTo(-1.6, -0.6); wfShape.lineTo(1.6, -0.6);
+    wfShape.lineTo(1.4, 0.6); wfShape.lineTo(-1.4, 0.6);
+    const winFront = new THREE.Mesh(new THREE.ShapeGeometry(wfShape), glassMat);
+    winFront.position.set(0, 1.25, -2.2); winFront.rotation.x = -0.35;
+    grp.add(winFront);
 
     // A柱 (向前傾斜，且向內收窄形成梯形)
     const pillarGeo = new THREE.CylinderGeometry(0.08, 0.1, 1.4, 8);
     const pL_A = new THREE.Mesh(pillarGeo, roofMat);
-    pL_A.position.set(-1.55, 1.25, -2.1);
-    pL_A.rotation.set(-0.35, 0, -0.15); // 雙向傾斜
+    pL_A.position.set(-1.50, 1.25, -2.15); pL_A.rotation.set(-0.35, 0, -0.15); 
     grp.add(pL_A);
     const pR_A = new THREE.Mesh(pillarGeo, roofMat);
-    pR_A.position.set(1.55, 1.25, -2.1);
-    pR_A.rotation.set(-0.35, 0, 0.15);
+    pR_A.position.set(1.50, 1.25, -2.15); pR_A.rotation.set(-0.35, 0, 0.15); 
     grp.add(pR_A);
 
-    // B柱、C柱
-    [-0.2, 1.6].forEach(z => {
-        const pL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 0.25), roofMat); pL.position.set(-1.65, 1.25, z); grp.add(pL);
-        const pR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 0.25), roofMat); pR.position.set(1.65, 1.25, z); grp.add(pR);
-    });
+    // 🌟 構建帶有 A 柱斜角的側邊玻璃形狀 (完美封口不穿幫)
+    const sideShape = new THREE.Shape();
+    sideShape.moveTo(-2.2, -0.6); // 底部前
+    sideShape.lineTo(2.4, -0.6);  // 底部後
+    sideShape.lineTo(2.4, 0.8);   // 頂部後
+    sideShape.lineTo(-1.4, 0.8);  // 頂部前 (A柱交界)
+    sideShape.lineTo(-2.2, -0.6); // 拉回底部，形成梯形
+    const sideGlassGeo = new THREE.ShapeGeometry(sideShape);
 
-    // 梯形擋風玻璃
-    const wfShape = new THREE.Shape();
-    wfShape.moveTo(-1.6, -0.6);
-    wfShape.lineTo(1.6, -0.6);
-    wfShape.lineTo(1.4, 0.6); // 頂部收窄
-    wfShape.lineTo(-1.4, 0.6);
-    const winFront = new THREE.Mesh(new THREE.ShapeGeometry(wfShape), glassMat);
-    winFront.position.set(0, 1.25, -2.2);
-    winFront.rotation.x = -0.35;
-    grp.add(winFront);
+    // 【左側車門與車窗】
+    const doorL = new THREE.Group();
+    doorL.position.set(-1.65, 1.1, -0.2);
+    doorL.rotation.y = Math.PI / 2;
+    const glassL = new THREE.Mesh(sideGlassGeo, glassMat);
+    glassL.position.z = -0.05; // 稍微往外推，防閃爍
+    doorL.add(glassL);
+    
+    const doorTopL = new THREE.Mesh(new THREE.BoxGeometry(5.0, 0.8, 0.15), doorPanelMat);
+    doorTopL.position.set(0.1, -0.7, 0); doorL.add(doorTopL);
+    const doorBotL = new THREE.Mesh(new THREE.BoxGeometry(5.0, 0.6, 0.12), doorTrimMat);
+    doorBotL.position.set(0.1, -1.4, 0); doorL.add(doorBotL);
+    const armrestL = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 0.2), doorPanelMat);
+    armrestL.position.set(-0.5, -0.3, 0.1); doorL.add(armrestL);
+    
+    const pBL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.4, 0.15), roofMat);
+    pBL.position.set(-0.5, 0.2, 0); doorL.add(pBL);
+    const pCL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.4, 0.15), roofMat);
+    pCL.position.set(2.0, 0.2, 0); doorL.add(pCL);
+    grp.add(doorL);
 
-    // 左右車窗與後車窗
-    const winSide = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 1.0), glassMat);
-    winSide.rotation.y = Math.PI/2; winSide.position.set(-1.62, 1.25, -0.3); grp.add(winSide);
-    const winSideR = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 1.0), glassMat);
-    winSideR.rotation.y = -Math.PI/2; winSideR.position.set(1.62, 1.25, -0.3); grp.add(winSideR);
+    // 【右側車門與車窗】(保持對稱，無多餘多邊形)
+    const doorR = new THREE.Group();
+    doorR.position.set(1.65, 1.1, -0.2);
+    doorR.rotation.y = -Math.PI / 2;
+    const glassR = new THREE.Mesh(sideGlassGeo, glassMat);
+    glassR.position.z = -0.05; doorR.add(glassR);
+    
+    const doorTopR = new THREE.Mesh(new THREE.BoxGeometry(5.0, 0.8, 0.15), doorPanelMat);
+    doorTopR.position.set(-0.1, -0.7, 0); doorR.add(doorTopR);
+    const doorBotR = new THREE.Mesh(new THREE.BoxGeometry(5.0, 0.6, 0.12), doorTrimMat);
+    doorBotR.position.set(-0.1, -1.4, 0); doorR.add(doorBotR);
+    const armrestR = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 0.2), doorPanelMat);
+    armrestR.position.set(-0.5, -0.3, 0.1); doorR.add(armrestR);
+    
+    const pBR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.4, 0.15), roofMat);
+    pBR.position.set(-0.5, 0.2, 0); doorR.add(pBR);
+    const pCR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.4, 0.15), roofMat);
+    pCR.position.set(2.0, 0.2, 0); doorR.add(pCR);
+    grp.add(doorR);
+
+    // 後車窗
     const winRear = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 1.1), glassMat);
-    winRear.position.set(0, 1.25, 1.7); winRear.rotation.x = 0.2; grp.add(winRear);
+    winRear.position.set(0, 1.25, 2.0); winRear.rotation.x = 0.2; grp.add(winRear);
 
     // 左右車門內飾 (雙色門板與手枕)
     const doorTopL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.7, 5.0), doorPanelMat); doorTopL.position.set(-1.7, 0.4, -0.3); grp.add(doorTopL);
@@ -11827,7 +11863,7 @@ function rideTaxi(taxiHitBox) {
             window.taxiInteriorGrp.add(camera);
             
             // 🌟 完美相機定位：坐在後排左側，稍微拉遠並調高
-            camera.position.set(-0.6, 0.85, 0.8); 
+            camera.position.set(-0.6, 0.85, 0.55);
             camera.rotation.set(0, 0, 0);
             
             busBumpAnim = gsap.to(camera.position, {
