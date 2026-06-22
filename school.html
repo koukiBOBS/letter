@@ -999,7 +999,7 @@ const phases = {
     // 🌅 晨：去除原本偏灰的色調
     // skyTop 改為清澈的初晨淺藍 (0xaec6cf)
     // skyBot 與 fog 改為帶有朝氣的晨霧粉白 (0xffe4e1 / 0xeedfdc)
-    dawn: { skyTop: 0xaec6cf, skyBot: 0xffe4e1, fog: 0xeedfdc, light: 0xffeedd, int: 0.85, windowLight: false, shadow: true },
+   dawn: { skyTop: 0xffe4e1, skyBot: 0xffb7c5, fog: 0xffb7c5, light: 0xffffff, int: 1.1, windowLight: false, shadow: true },
     
     // ☀️ 午：保持明亮的晴天
     noon: { skyTop: 0x40a0d0, skyBot: 0xbae0ff, fog: 0xbae0ff, light: 0xfff6ea, int: 1.1, windowLight: false, shadow: true },
@@ -1030,11 +1030,13 @@ if(phaseStr === 'night') {
         hemiLight.color.setHex(0xffe8e0); hemiLight.groundColor.setHex(0x6b5a5e); 
         hemiLight.intensity = 0.8; 
         sunLight.shadow.radius = 4; // 擴大陰影半徑，讓黃昏的影子邊緣變得非常模糊柔和
-    } else if (phaseStr === 'dawn') {
-        // 早晨環境光：天光用純白，地反射光用「淺藍灰色 (0xb0c4de)」取代暗褐色，這會直接消除建築物暗部的陰沉感！
-        hemiLight.color.setHex(0xffffff); hemiLight.groundColor.setHex(0xb0c4de); 
-        hemiLight.intensity = 0.9; 
-        sunLight.shadow.radius = 3; 
+ } else if (phaseStr === 'dawn') {
+        // 早晨環境光：天光用「櫻花粉白」，地面反射光用「較深的玫瑰粉」
+        // 將 intensity 暴力拉高到 1.2（甚至 1.3），這會強制把場景中所有灰暗的陰影全部洗成粉色！
+        hemiLight.color.setHex(0xffe4e1); 
+        hemiLight.groundColor.setHex(0xff9eaf); 
+        hemiLight.intensity = 1.2; 
+        sunLight.shadow.radius = 4; // 讓影子邊緣羽化，增加夢幻感
     } else {
         // 中午
         hemiLight.color.setHex(0xffffff); hemiLight.groundColor.setHex(0x888888); 
