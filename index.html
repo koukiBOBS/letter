@@ -5384,16 +5384,76 @@ function createTaxiInterior() {
     centerConsole.position.set(0, -0.2, -1.0); grp.add(centerConsole);
 
     // 完整的右軚方向盤 (連接著轉軸)
+   // 完整的右軚方向盤 (連接著轉軸，已修正方向、防止穿模並提升細節)
     const steeringGrp = new THREE.Group();
-    steeringGrp.position.set(0.8, 0.6, -1.5);
-    steeringGrp.rotation.x = Math.PI / 2.5;
-    const steeringWheel = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.04, 16, 32), new THREE.MeshStandardMaterial({color: 0x111111}));
+    // 微調坐標 y 與 z，使其位於司機前方並正確與儀表板連接，避免穿插擋風玻璃或座椅
+    steeringGrp.position.set(0.8, 0.45, -1.32);
+    // 旋轉角度改為向司機方向傾斜（約 25 度），符合真實右軚的士人體工學
+    steeringGrp.rotation.x = -Math.PI / 7;
+
+    // 1. 方向盤外圈 (Torus)：使用皮革質感的暗黑色
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1d1d1d, roughness: 0.85, metalness: 0.1 });
+    const steeringWheel = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.035, 16, 40), wheelMat);
+    steeringWheel.castShadow = true;
     steeringGrp.add(steeringWheel);
-    const steeringColumn = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.4), darkPlastic);
-    steeringColumn.position.z = -0.2; steeringColumn.rotation.x = Math.PI/2;
-    steeringGrp.add(steeringColumn);
-    const steeringCenter = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.1), new THREE.MeshStandardMaterial({color: 0x222222}));
+
+    // 2. 方向盤中央喇叭蓋 (Center Pad)：硬塑料質感
+    const centerPadMat = new THREE.MeshStandardMaterial({ color: 0x282828, roughness: 0.7 });
+    const steeringCenter = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.1, 0.12, 16), centerPadMat);
+    steeringCenter.rotation.x = Math.PI / 2;
+    steeringCenter.position.set(0, 0, -0.04);
+    steeringCenter.castShadow = true;
     steeringGrp.add(steeringCenter);
+
+    // 3. 中央電鍍銀色標誌 (Emblem)：金屬亮面質感
+    const silverMetalMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.9, roughness: 0.15 });
+    const centerEmblem = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.02, 16), silverMetalMat);
+    centerEmblem.rotation.x = Math.PI / 2;
+    centerEmblem.position.set(0, 0, 0.03);
+    steeringGrp.add(centerEmblem);
+
+    // 4. 三幅式輪幅 (Spokes)：連接外圈與中央
+    const spokeMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+    
+    // 左側輪幅
+    const spokeL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.04, 0.025), spokeMat);
+    spokeL.position.set(-0.14, 0, -0.01);
+    steeringGrp.add(spokeL);
+    
+    // 右側輪幅
+    const spokeR = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.04, 0.025), spokeMat);
+    spokeR.position.set(0.14, 0, -0.01);
+    steeringGrp.add(spokeR);
+    
+    // 下側輪幅 (微傾斜，製造立體盤面深邃感)
+    const spokeB = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.22, 0.025), spokeMat);
+    spokeB.position.set(0, -0.14, -0.02);
+    spokeB.rotation.x = 0.1;
+    steeringGrp.add(spokeB);
+
+    // 5. 轉向柱 (Column)：由儀表板延伸出，與方向盤保持同軸傾斜
+    const steeringColumn = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.075, 0.7, 16), darkPlastic);
+    steeringColumn.rotation.x = Math.PI / 2;
+    // 向後移動，確保其一端深入儀表板內部，一端連接方向盤
+    steeringColumn.position.set(0, 0, -0.35);
+    steeringColumn.castShadow = true;
+    steeringGrp.add(steeringColumn);
+
+    // 6. 細節追加：轉向柱兩側的控制撥桿 (Stalks，左方向燈 / 右雨刷)
+    const stalkMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.6 });
+    
+    // 左撥桿
+    const stalkL = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.32, 8), stalkMat);
+    stalkL.position.set(-0.16, 0.04, -0.22);
+    stalkL.rotation.z = -Math.PI / 6; // 微微向上斜放
+    steeringGrp.add(stalkL);
+
+    // 右撥桿
+    const stalkR = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.32, 8), stalkMat);
+    stalkR.position.set(0.16, 0.04, -0.22);
+    stalkR.rotation.z = Math.PI / 6;
+    steeringGrp.add(stalkR);
+
     grp.add(steeringGrp);
 
     // 經典紅燈跳字咪錶
