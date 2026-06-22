@@ -995,13 +995,21 @@ function syncSchoolEnvironmentTime() {
 
 function setSchoolPhase(phaseStr) {
 const phases = {
-    // 🌅 晨：將陽光強度由 0.5 提高至 0.85，改善陰暗問題
-    dawn: { skyTop: 0x8a9ea8, skyBot: 0xe0c8b8, fog: 0xd0c0b8, light: 0xffdebb, int: 0.85, windowLight: false, shadow: true },
-    // ☀️ 午：陽光強烈(1.1)，影子銳利
+    // 🌅 晨：去除原本偏灰的色調
+    // skyTop 改為清澈的初晨淺藍 (0xaec6cf)
+    // skyBot 與 fog 改為帶有朝氣的晨霧粉白 (0xffe4e1 / 0xeedfdc)
+    dawn: { skyTop: 0xaec6cf, skyBot: 0xffe4e1, fog: 0xeedfdc, light: 0xffeedd, int: 0.85, windowLight: false, shadow: true },
+    
+    // ☀️ 午：保持明亮的晴天
     noon: { skyTop: 0x40a0d0, skyBot: 0xbae0ff, fog: 0xbae0ff, light: 0xfff6ea, int: 1.1, windowLight: false, shadow: true },
-    // 🌇 暮：橘紅色的夕陽
-    dusk: { skyTop: 0x5c546b, skyBot: 0xdf9b82, fog: 0xd2907a, light: 0xffaa66, int: 0.85, windowLight: true, shadow: true },
-    // 🌙 夜：月光微弱
+    
+    // 🌇 暮：強化夕陽的「黃昏感」
+    // skyTop 帶一點日落時的深紫 (0x4a3b52)
+    // skyBot 與 fog 使用更濃烈的橘紅色 (0xff6b35 / 0xdc5e32)
+    // light 改為金黃偏橘的光線 (0xff8c00)，讓打在建築物上的光更有夕陽氛圍
+    dusk: { skyTop: 0x4a3b52, skyBot: 0xff6b35, fog: 0xdc5e32, light: 0xff8c00, int: 0.9, windowLight: true, shadow: true },
+    
+    // 🌙 夜：保持夜晚設定
     night:{ skyTop: 0x080b14, skyBot: 0x1a2235, fog: 0x151b29, light: 0x667799, int: 0.2, windowLight: true, shadow: false }
 };
   const p = phases[phaseStr];
