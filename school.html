@@ -1023,19 +1023,22 @@ scene.background = createSkyTexture(p.skyTop, p.skyBot);
     // 💡 調整環境光與陰影柔和度
 if(phaseStr === 'night') {
         hemiLight.color.setHex(0x334466); hemiLight.groundColor.setHex(0x111111); hemiLight.intensity = 0.6;
-        sunLight.shadow.radius = 2; // 將夜間陰影微調柔和
+        sunLight.shadow.radius = 2; 
     } else if (phaseStr === 'dusk') {
-        hemiLight.color.setHex(0xffccaa); hemiLight.groundColor.setHex(0x442211); 
-        hemiLight.intensity = 0.85; // 稍微提高黃昏漫射光
-        sunLight.shadow.radius = 3; // 黃昏影子微柔
+        // 黃昏環境光：使用非常柔和的淡粉色作為天光，帶一點暖灰紫作為地反射光，降低反差
+        hemiLight.color.setHex(0xffe8e0); hemiLight.groundColor.setHex(0x6b5a5e); 
+        hemiLight.intensity = 0.8; 
+        sunLight.shadow.radius = 4; // 擴大陰影半徑，讓黃昏的影子邊緣變得非常模糊柔和
     } else if (phaseStr === 'dawn') {
-        hemiLight.color.setHex(0xffeadd); hemiLight.groundColor.setHex(0x554444); 
-        hemiLight.intensity = 1.0; // 原為 0.85，提高早晨漫射光解決陰暗感
-        sunLight.shadow.radius = 5; // 原為 4，讓早晨的影子邊緣更加柔和
+        // 早晨環境光：天光用純白，地反射光用「淺藍灰色 (0xb0c4de)」取代暗褐色，這會直接消除建築物暗部的陰沉感！
+        hemiLight.color.setHex(0xffffff); hemiLight.groundColor.setHex(0xb0c4de); 
+        hemiLight.intensity = 0.9; 
+        sunLight.shadow.radius = 3; 
     } else {
-        hemiLight.color.setHex(0xffffff); hemiLight.groundColor.setHex(0x777777); 
-        hemiLight.intensity = 1.0; // 原為 0.85，提高整體環境光
-        sunLight.shadow.radius = 3; // 原為 1，將中午的銳利影子調柔和，解決光線太硬的問題
+        // 中午
+        hemiLight.color.setHex(0xffffff); hemiLight.groundColor.setHex(0x888888); 
+        hemiLight.intensity = 1.0; 
+        sunLight.shadow.radius = 2; 
     }
 
     if (typeof matWindow !== 'undefined') {
