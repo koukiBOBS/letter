@@ -5461,11 +5461,71 @@ function createTaxiInterior() {
     binnacle.position.set(0.8, 0.7, -1.7);
     grp.add(binnacle);
 
-   // 中控台 (修正：高度縮短、位置抬高，確保底部不會插進地板導致閃爍)
-   const centerConsole = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.7, 1.5), dashMat);
-    centerConsole.position.set(0, 0.0, -1.2);
-    centerConsole.rotation.x = 0.1;
-    grp.add(centerConsole);
+  // 🚘 精緻化中控台 (Center Console)
+    const centerConsoleGrp = new THREE.Group();
+    centerConsoleGrp.position.set(0, 0.0, -1.2);
+    centerConsoleGrp.rotation.x = 0.1;
+    grp.add(centerConsoleGrp);
+
+    // 1. 中控台底座 (稍微降低高度，留出空間放細節，同時確保底部不會插進地板)
+    const consoleBase = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 1.5), dashMat);
+    consoleBase.position.y = -0.1;
+    centerConsoleGrp.add(consoleBase);
+
+    // 2. 前端冷氣/收音機斜面板 (向上傾斜連接儀表板)
+    const consoleFront = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.4, 0.5), dashMat);
+    consoleFront.position.set(0, 0.2, -0.6);
+    consoleFront.rotation.x = -0.6; 
+    centerConsoleGrp.add(consoleFront);
+    
+    // 黑色音響/冷氣操作面板
+    const acPanel = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.25), new THREE.MeshBasicMaterial({color: 0x050505}));
+    acPanel.position.set(0, 0.26, -0.75);
+    acPanel.rotation.x = -0.6;
+    centerConsoleGrp.add(acPanel);
+
+    // 3. 變速桿 (波棍)
+    // 底部防塵皮套
+    const gearBoot = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.12, 0.15, 8), dashMat);
+    gearBoot.position.set(0, 0.2, -0.3);
+    centerConsoleGrp.add(gearBoot);
+    
+    // 金屬波棍身 (利用現有的 metalMat 材質)
+    const gearStick = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.3), metalMat); 
+    gearStick.position.set(0, 0.35, -0.3);
+    gearStick.rotation.x = -0.1;
+    centerConsoleGrp.add(gearStick);
+    
+    // 黑色圓形波棍頭
+    const gearKnob = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 16), new THREE.MeshStandardMaterial({color: 0x111111, roughness: 0.4}));
+    gearKnob.position.set(0, 0.5, -0.31);
+    centerConsoleGrp.add(gearKnob);
+
+    // 4. 手煞車 (手掣)
+    const handbrakeGrp = new THREE.Group();
+    handbrakeGrp.position.set(-0.08, 0.18, 0.1); // 放在波棍右後方
+    handbrakeGrp.rotation.x = -0.15; // 呈現放下的狀態
+    
+    const hbBase = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 0.3), dashMat);
+    const hbHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.15, 8), new THREE.MeshStandardMaterial({color: 0x222222}));
+    hbHandle.rotation.x = Math.PI / 2;
+    hbHandle.position.set(0, 0, -0.15);
+    
+    // 手掣頂端的銀色釋放按鈕
+    const hbButton = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.02, 8), metalMat);
+    hbButton.rotation.x = Math.PI / 2;
+    hbButton.position.set(0, 0, -0.23);
+    
+    handbrakeGrp.add(hbBase, hbHandle, hbButton);
+    centerConsoleGrp.add(handbrakeGrp);
+
+    // 5. 雙置杯架 (利用純黑色的圓餅製造凹陷的視覺錯覺)
+    const cupHolderMat = new THREE.MeshBasicMaterial({color: 0x050505});
+    const cup1 = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.01, 16), cupHolderMat);
+    cup1.position.set(0, 0.16, 0.4);
+    const cup2 = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.01, 16), cupHolderMat);
+    cup2.position.set(0, 0.16, 0.6);
+    centerConsoleGrp.add(cup1, cup2);
 
   // 完整的右軚方向盤 (抬高並給予傾斜角度，解決顯示不全與多餘圓柱的問題)
     const steeringGrp = new THREE.Group();
