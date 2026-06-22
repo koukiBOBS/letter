@@ -996,11 +996,14 @@ function syncSchoolEnvironmentTime() {
 }
 
 function setSchoolPhase(phaseStr) {
+
+
+    
 const phases = {
     // 🌅 晨：去除原本偏灰的色調
     // skyTop 改為清澈的初晨淺藍 (0xaec6cf)
     // skyBot 與 fog 改為帶有朝氣的晨霧粉白 (0xffe4e1 / 0xeedfdc)
-   dawn: { skyTop: 0xffe4e1, skyBot: 0xffb7c5, fog: 0xffb7c5, light: 0xffffff, int: 1.1, windowLight: false, shadow: true },
+  dawn: { skyTop: 0xffe4e1, skyBot: 0xffb7c5, fog: 0xffb7c5, light: 0xffe8e8, int: 0.9, windowLight: false, shadow: true },
     
     // ☀️ 午：保持明亮的晴天
     noon: { skyTop: 0x40a0d0, skyBot: 0xbae0ff, fog: 0xbae0ff, light: 0xfff6ea, int: 1.1, windowLight: false, shadow: true },
