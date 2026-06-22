@@ -5489,18 +5489,8 @@ function createTaxiInterior() {
         const poleL = new THREE.Mesh(poleGeo, metalMat); poleL.position.set(-0.2, 1.45, 0.6); sGrp.add(poleL);
         const poleR = new THREE.Mesh(poleGeo, metalMat); poleR.position.set(0.2, 1.45, 0.6); sGrp.add(poleR);
 
-        if (isDriver) {
-            // 司機位的木珠墊 (賦予厚度，解決背面色塊穿模問題)
-            const beadMat = new THREE.MeshStandardMaterial({ map: createFabricTexture('#d4a373'), roughness: 0.9 });
-            const beadCushion = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.05, 1.0), beadMat);
-            beadCushion.position.set(0, 0.17, 0); 
-            sGrp.add(beadCushion);
-            
-            const beadBack = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.2, 0.05), beadMat);
-            beadBack.position.set(0, 0.8, 0.34); 
-            beadBack.rotation.x = -0.15; 
-            sGrp.add(beadBack);
-        } else {
+        if (!isDriver) {
+            // 副駕背後的禁煙貼紙
             const sticker = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.28), new THREE.MeshBasicMaterial({map: createStickerTexture('nosmoke')}));
             sticker.position.set(0, 1.65, 0.78); 
             sticker.rotation.x = -0.15; 
@@ -11824,14 +11814,14 @@ function rideTaxi(taxiHitBox) {
         x: lookAheadWorldPos.x, y: lookAheadWorldPos.y, z: lookAheadWorldPos.z,
         duration: 1.2, ease: "power2.inOut",
         onComplete: () => {
-            window.taxiInteriorGrp.add(camera);
+           window.taxiInteriorGrp.add(camera);
             
-            // 🌟 完美相機定位：坐在後排左側，稍微拉遠並調高
-            camera.position.set(-0.6, 0.85, 0.8); 
+            // 🌟 完美相機定位：坐在前排左側（副駕位），享受第一身開闊視野
+            camera.position.set(-0.8, 0.75, -0.3); 
             camera.rotation.set(0, 0, 0);
             
             busBumpAnim = gsap.to(camera.position, {
-                y: 0.88, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut" // 配合新高度微調彈跳
+                y: 0.78, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut" // 配合前座高度微調彈跳
             });
             
             const timerDisp = document.getElementById('bus-timer-display');
