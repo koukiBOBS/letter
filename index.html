@@ -1,4 +1,6 @@
 
+
+
 <!DOCTYPE html>
 
 <html lang="zh-HK">
@@ -11802,14 +11804,11 @@ function rideTaxi(taxiHitBox) {
     document.getElementById('btn-return-room').style.display = 'none';
     if(document.getElementById('mobile-cam-knob')) document.getElementById('mobile-cam-knob').style.display = 'none';
 
-const targetWorldPos = new THREE.Vector3(0, 0.2, camZPos).applyMatrix4(activeBus.matrixWorld);
+    const targetWorldPos = new THREE.Vector3(0, 0.2, camZPos).applyMatrix4(activeBus.matrixWorld);
     gsap.to(camera.position, {
         x: targetWorldPos.x, y: targetWorldPos.y, z: targetWorldPos.z,
         duration: 1.2, ease: "power2.inOut"
     });
-    
-    // 👇 新增這行：加入廣角效果，讓車廂空間感變大，視野更開闊
-    gsap.to(camera, { fov: 75, duration: 1.2, onUpdate: () => camera.updateProjectionMatrix() });
     
     const lookAheadWorldPos = new THREE.Vector3(0, 0.2, activeBusDirection > 0 ? 30 : -30).applyMatrix4(activeBus.matrixWorld);
     gsap.to(controls.target, {
@@ -11818,12 +11817,15 @@ const targetWorldPos = new THREE.Vector3(0, 0.2, camZPos).applyMatrix4(activeBus
         onComplete: () => {
            window.taxiInteriorGrp.add(camera);
             
-            // 🌟 完美相機定位：鏡頭往後拉 (z 改為 0.2) 並稍微提高 (y 改為 0.82)
-            camera.position.set(-0.8, 0.82, 0.2); 
+            // 🌟 完美相機定位：坐在前排左側（副駕位），享受第一身開闊視野
+            camera.position.set(-0.8, 0.75, -0.3); 
             camera.rotation.set(0, 0, 0);
             
             busBumpAnim = gsap.to(camera.position, {
-                y: 0.86, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut" // 配合新
+                y: 0.78, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut" // 配合前座高度微調彈跳
+            });
+            
+            const timerDisp = document.getElementById('bus-timer-display');
             timerDisp.style.display = 'block';
             timerDisp.style.color = '#ff4444';
             timerDisp.style.textShadow = '0 0 10px rgba(255,0,0,0.5)';
