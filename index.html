@@ -5328,15 +5328,17 @@ function createStickerTexture(type) {
 }
 
 // 🚕 打造極致還原的香港紅的車廂 (實體厚度、防穿模、完美視角)
+// 🚕 打造極致還原的香港紅的車廂 (梯形車窗、細緻儀表、不穿模方向盤)
 function createTaxiInterior() {
     const grp = new THREE.Group();
 
     // --- 1. 材質定義 ---
-    const darkPlastic = new THREE.MeshStandardMaterial({ color: 0x1f1f1f, roughness: 0.9 });
-    const lightPlastic = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.8 }); // 車頂與車柱
-    const doorTrim = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
-    const seatMat = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.7 }); // 黑色皮椅
-    const metalMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9, roughness: 0.2 }); // 金屬支架
+    const dashMat = new THREE.MeshStandardMaterial({ color: 0x181818, roughness: 0.9 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.8 }); // 米白車頂與車柱
+    const doorPanelMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.8 }); // 門板深灰
+    const doorTrimMat = new THREE.MeshStandardMaterial({ color: 0x8b1a1a, roughness: 0.7 }); // 門板下半部暗紅
+    const seatMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.7 }); // 黑皮椅
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9, roughness: 0.2 });
     
     const glassMat = new THREE.MeshStandardMaterial({ 
         color: 0xffffff, transparent: true, opacity: 0.15, 
@@ -5345,119 +5347,110 @@ function createTaxiInterior() {
         envMapIntensity: 2.0, side: THREE.DoubleSide 
     });
 
-    // --- 2. 實心車廂外殼 (徹底解決透明與穿模問題) ---
-    const floor = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.2, 5.5), darkPlastic);
+    // --- 2. 梯形車廂與車門外殼 ---
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.2, 5.5), new THREE.MeshStandardMaterial({ color: 0x111, roughness: 0.9 }));
     floor.position.set(0, -0.6, -0.5); grp.add(floor);
     
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.2, 4.0), lightPlastic);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.2, 4.0), roofMat);
     roof.position.set(0, 1.8, -0.5); grp.add(roof);
 
-    // 左右實心車門
-    const doorGeo = new THREE.BoxGeometry(0.2, 1.4, 5.5);
-    const doorL = new THREE.Mesh(doorGeo, doorTrim); doorL.position.set(-1.7, 0.1, -0.5); grp.add(doorL);
-    const doorR = new THREE.Mesh(doorGeo, doorTrim); doorR.position.set(1.7, 0.1, -0.5); grp.add(doorR);
+    // A柱 (向前傾斜，且向內收窄形成梯形)
+    const pillarGeo = new THREE.CylinderGeometry(0.08, 0.1, 1.4, 8);
+    const pL_A = new THREE.Mesh(pillarGeo, roofMat);
+    pL_A.position.set(-1.55, 1.25, -2.1);
+    pL_A.rotation.set(-0.35, 0, -0.15); // 雙向傾斜
+    grp.add(pL_A);
+    const pR_A = new THREE.Mesh(pillarGeo, roofMat);
+    pR_A.position.set(1.55, 1.25, -2.1);
+    pR_A.rotation.set(-0.35, 0, 0.15);
+    grp.add(pR_A);
 
-    // A/B/C 柱 (連接車門與車頂)
-    const pillarGeo = new THREE.BoxGeometry(0.2, 1.2, 0.3);
-    [-2.2, -0.2, 1.6].forEach(z => {
-        const pL = new THREE.Mesh(pillarGeo, lightPlastic); pL.position.set(-1.6, 1.3, z); grp.add(pL);
-        const pR = new THREE.Mesh(pillarGeo, lightPlastic); pR.position.set(1.6, 1.3, z); grp.add(pR);
+    // B柱、C柱
+    [-0.2, 1.6].forEach(z => {
+        const pL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 0.25), roofMat); pL.position.set(-1.65, 1.25, z); grp.add(pL);
+        const pR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 0.25), roofMat); pR.position.set(1.65, 1.25, z); grp.add(pR);
     });
 
-    // 玻璃車窗
-    const winSide = new THREE.Mesh(new THREE.PlaneGeometry(5.0, 1.1), glassMat);
-    winSide.rotation.y = Math.PI/2; winSide.position.set(-1.58, 1.3, -0.5); grp.add(winSide);
-    const winSideR = new THREE.Mesh(new THREE.PlaneGeometry(5.0, 1.1), glassMat);
-    winSideR.rotation.y = -Math.PI/2; winSideR.position.set(1.58, 1.3, -0.5); grp.add(winSideR);
-    
-    const winFront = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.2), glassMat);
-    winFront.position.set(0, 1.3, -2.3); winFront.rotation.x = -0.15; grp.add(winFront);
-    const winRear = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.2), glassMat);
-    winRear.position.set(0, 1.3, 1.7); winRear.rotation.x = 0.15; grp.add(winRear);
+    // 梯形擋風玻璃
+    const wfShape = new THREE.Shape();
+    wfShape.moveTo(-1.6, -0.6);
+    wfShape.lineTo(1.6, -0.6);
+    wfShape.lineTo(1.4, 0.6); // 頂部收窄
+    wfShape.lineTo(-1.4, 0.6);
+    const winFront = new THREE.Mesh(new THREE.ShapeGeometry(wfShape), glassMat);
+    winFront.position.set(0, 1.25, -2.2);
+    winFront.rotation.x = -0.35;
+    grp.add(winFront);
 
-    // --- 3. 儀表板、軚盤與咪錶 ---
-    const dash = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.8, 1.0), darkPlastic);
-    dash.position.set(0, 0.2, -1.8); grp.add(dash);
-    
-    const centerConsole = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 1.5), darkPlastic);
-    centerConsole.position.set(0, -0.2, -1.0); grp.add(centerConsole);
+    // 左右車窗與後車窗
+    const winSide = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 1.0), glassMat);
+    winSide.rotation.y = Math.PI/2; winSide.position.set(-1.62, 1.25, -0.3); grp.add(winSide);
+    const winSideR = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 1.0), glassMat);
+    winSideR.rotation.y = -Math.PI/2; winSideR.position.set(1.62, 1.25, -0.3); grp.add(winSideR);
+    const winRear = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 1.1), glassMat);
+    winRear.position.set(0, 1.25, 1.7); winRear.rotation.x = 0.2; grp.add(winRear);
 
-    // 完整的右軚方向盤 (連接著轉軸)
-   // 完整的右軚方向盤 (連接著轉軸，已修正方向、防止穿模並提升細節)
+    // 左右車門內飾 (雙色門板與手枕)
+    const doorTopL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.7, 5.0), doorPanelMat); doorTopL.position.set(-1.7, 0.4, -0.3); grp.add(doorTopL);
+    const doorBotL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 5.0), doorTrimMat); doorBotL.position.set(-1.7, -0.3, -0.3); grp.add(doorBotL);
+    const armrestL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 1.5), doorPanelMat); armrestL.position.set(-1.6, 0.3, -0.3); grp.add(armrestL);
+
+    const doorTopR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.7, 5.0), doorPanelMat); doorTopR.position.set(1.7, 0.4, -0.3); grp.add(doorTopR);
+    const doorBotR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 5.0), doorTrimMat); doorBotR.position.set(1.7, -0.3, -0.3); grp.add(doorBotR);
+    const armrestR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 1.5), doorPanelMat); armrestR.position.set(1.6, 0.3, -0.3); grp.add(armrestR);
+
+    // --- 3. 雕塑感儀表板與軚盤 ---
+    // 儀表板主體
+    const dashMain = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.6, 0.9), dashMat);
+    dashMain.position.set(0, 0.4, -1.8); grp.add(dashMain);
+    
+    // 司機位儀表凸起 (弧形時速表遮光罩)
+    const binnacle = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.4, 16, 1, false, 0, Math.PI), dashMat);
+    binnacle.rotation.z = Math.PI / 2;
+    binnacle.position.set(0.8, 0.7, -1.7);
+    grp.add(binnacle);
+
+    // 中控台
+    const centerConsole = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 1.5), dashMat);
+    centerConsole.position.set(0, -0.1, -1.2);
+    centerConsole.rotation.x = 0.1;
+    grp.add(centerConsole);
+
+    // 完整的右軚方向盤 (防穿模且面向司機)
     const steeringGrp = new THREE.Group();
-    // 微調坐標 y 與 z，使其位於司機前方並正確與儀表板連接，避免穿插擋風玻璃或座椅
-    steeringGrp.position.set(0.8, 0.45, -1.32);
-    // 旋轉角度改為向司機方向傾斜（約 25 度），符合真實右軚的士人體工學
-    steeringGrp.rotation.x = -Math.PI / 7;
+    steeringGrp.position.set(0.8, 0.55, -1.4);
+    steeringGrp.rotation.x = -Math.PI / 8; // 面向司機微傾斜
 
-    // 1. 方向盤外圈 (Torus)：使用皮革質感的暗黑色
-    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1d1d1d, roughness: 0.85, metalness: 0.1 });
-    const steeringWheel = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.035, 16, 40), wheelMat);
-    steeringWheel.castShadow = true;
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1d1d1d, roughness: 0.85 });
+    const steeringWheel = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.035, 16, 40), wheelMat);
     steeringGrp.add(steeringWheel);
 
-    // 2. 方向盤中央喇叭蓋 (Center Pad)：硬塑料質感
-    const centerPadMat = new THREE.MeshStandardMaterial({ color: 0x282828, roughness: 0.7 });
-    const steeringCenter = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.1, 0.12, 16), centerPadMat);
-    steeringCenter.rotation.x = Math.PI / 2;
-    steeringCenter.position.set(0, 0, -0.04);
-    steeringCenter.castShadow = true;
-    steeringGrp.add(steeringCenter);
+    const centerPad = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.1, 16), new THREE.MeshStandardMaterial({ color: 0x282828 }));
+    centerPad.rotation.x = Math.PI / 2;
+    steeringGrp.add(centerPad);
 
-    // 3. 中央電鍍銀色標誌 (Emblem)：金屬亮面質感
-    const silverMetalMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.9, roughness: 0.15 });
-    const centerEmblem = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.02, 16), silverMetalMat);
-    centerEmblem.rotation.x = Math.PI / 2;
-    centerEmblem.position.set(0, 0, 0.03);
-    steeringGrp.add(centerEmblem);
+    const spokeMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+    const spokeL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.04, 0.02), spokeMat); spokeL.position.set(-0.13, 0, 0); steeringGrp.add(spokeL);
+    const spokeR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.04, 0.02), spokeMat); spokeR.position.set(0.13, 0, 0); steeringGrp.add(spokeR);
+    const spokeB = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.2, 0.02), spokeMat); spokeB.position.set(0, -0.13, 0); steeringGrp.add(spokeB);
 
-    // 4. 三幅式輪幅 (Spokes)：連接外圈與中央
-    const spokeMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
-    
-    // 左側輪幅
-    const spokeL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.04, 0.025), spokeMat);
-    spokeL.position.set(-0.14, 0, -0.01);
-    steeringGrp.add(spokeL);
-    
-    // 右側輪幅
-    const spokeR = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.04, 0.025), spokeMat);
-    spokeR.position.set(0.14, 0, -0.01);
-    steeringGrp.add(spokeR);
-    
-    // 下側輪幅 (微傾斜，製造立體盤面深邃感)
-    const spokeB = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.22, 0.025), spokeMat);
-    spokeB.position.set(0, -0.14, -0.02);
-    spokeB.rotation.x = 0.1;
-    steeringGrp.add(spokeB);
-
-    // 5. 轉向柱 (Column)：由儀表板延伸出，與方向盤保持同軸傾斜
-    const steeringColumn = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.075, 0.7, 16), darkPlastic);
+    // 轉向柱 (深入儀表板)
+    const steeringColumn = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.5, 16), dashMat);
     steeringColumn.rotation.x = Math.PI / 2;
-    // 向後移動，確保其一端深入儀表板內部，一端連接方向盤
-    steeringColumn.position.set(0, 0, -0.35);
-    steeringColumn.castShadow = true;
+    steeringColumn.position.set(0, 0, -0.25);
     steeringGrp.add(steeringColumn);
 
-    // 6. 細節追加：轉向柱兩側的控制撥桿 (Stalks，左方向燈 / 右雨刷)
-    const stalkMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.6 });
-    
-    // 左撥桿
-    const stalkL = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.32, 8), stalkMat);
-    stalkL.position.set(-0.16, 0.04, -0.22);
-    stalkL.rotation.z = -Math.PI / 6; // 微微向上斜放
-    steeringGrp.add(stalkL);
-
-    // 右撥桿
-    const stalkR = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.32, 8), stalkMat);
-    stalkR.position.set(0.16, 0.04, -0.22);
-    stalkR.rotation.z = Math.PI / 6;
-    steeringGrp.add(stalkR);
+    // 左右撥桿
+    const stalkL = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.25), wheelMat);
+    stalkL.position.set(-0.15, 0.02, -0.15); stalkL.rotation.z = -0.4; steeringGrp.add(stalkL);
+    const stalkR = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.25), wheelMat);
+    stalkR.position.set(0.15, 0.02, -0.15); stalkR.rotation.z = 0.4; steeringGrp.add(stalkR);
 
     grp.add(steeringGrp);
 
     // 經典紅燈跳字咪錶
     const meterGrp = new THREE.Group();
-    meterGrp.position.set(0, 0.75, -1.3); 
+    meterGrp.position.set(0, 0.8, -1.45); 
     meterGrp.rotation.x = -0.1; 
     const meterBox = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.28, 0.2), new THREE.MeshStandardMaterial({color: 0x111111}));
     meterGrp.add(meterBox);
@@ -5468,29 +5461,47 @@ function createTaxiInterior() {
     grp.add(meterGrp);
 
     const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.12, 0.05), new THREE.MeshStandardMaterial({color: 0x111, metalness: 0.8}));
-    mirror.position.set(0, 1.5, -2.1); grp.add(mirror);
+    mirror.position.set(0, 1.6, -1.9); 
+    mirror.rotation.x = 0.1;
+    grp.add(mirror);
 
-    // --- 4. 立體前排座椅 (含金屬支架與頭枕貼紙) ---
-    function createFrontSeat(x, stickerType) {
+    // --- 4. 寫實立體座椅 ---
+    function createFrontSeat(x, isDriver) {
         const sGrp = new THREE.Group();
-        sGrp.position.set(x, -0.3, -0.6);
+        sGrp.position.set(x, -0.2, -0.5);
 
-        const cushion = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.3, 1.2), seatMat);
+        const cushion = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.3, 1.3), seatMat);
         sGrp.add(cushion);
-        const back = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.2, 0.3), seatMat);
-        back.position.set(0, 0.7, 0.4); back.rotation.x = -0.15; sGrp.add(back);
-
-        // 金屬頭枕支架
-        const poleGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.3);
-        const poleL = new THREE.Mesh(poleGeo, metalMat); poleL.position.set(-0.25, 1.4, 0.5); sGrp.add(poleL);
-        const poleR = new THREE.Mesh(poleGeo, metalMat); poleR.position.set(0.25, 1.4, 0.5); sGrp.add(poleR);
+        
+        // 椅背加高，形成前方視覺阻擋
+        const back = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.4, 0.3), seatMat);
+        back.position.set(0, 0.8, 0.5); 
+        back.rotation.x = -0.15; 
+        sGrp.add(back);
 
         const headrest = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.25), seatMat);
-        headrest.position.set(0, 1.6, 0.5); headrest.rotation.x = -0.15; sGrp.add(headrest);
+        headrest.position.set(0, 1.65, 0.65); 
+        headrest.rotation.x = -0.15; 
+        sGrp.add(headrest);
 
-        if (stickerType) {
-            const sticker = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.28), new THREE.MeshBasicMaterial({map: createStickerTexture(stickerType)}));
-            sticker.position.set(0, 1.6, 0.63); 
+        const poleGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.3);
+        const poleL = new THREE.Mesh(poleGeo, metalMat); poleL.position.set(-0.2, 1.45, 0.6); sGrp.add(poleL);
+        const poleR = new THREE.Mesh(poleGeo, metalMat); poleR.position.set(0.2, 1.45, 0.6); sGrp.add(poleR);
+
+        if (isDriver) {
+            // 司機位的木珠墊 (賦予厚度，解決背面色塊穿模問題)
+            const beadMat = new THREE.MeshStandardMaterial({ map: createFabricTexture('#d4a373'), roughness: 0.9 });
+            const beadCushion = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.05, 1.0), beadMat);
+            beadCushion.position.set(0, 0.17, 0); 
+            sGrp.add(beadCushion);
+            
+            const beadBack = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.2, 0.05), beadMat);
+            beadBack.position.set(0, 0.8, 0.34); 
+            beadBack.rotation.x = -0.15; 
+            sGrp.add(beadBack);
+        } else {
+            const sticker = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.28), new THREE.MeshBasicMaterial({map: createStickerTexture('nosmoke')}));
+            sticker.position.set(0, 1.65, 0.78); 
             sticker.rotation.x = -0.15; 
             sticker.rotation.y = Math.PI; 
             sGrp.add(sticker);
@@ -5498,25 +5509,22 @@ function createTaxiInterior() {
         return sGrp;
     }
 
-    grp.add(createFrontSeat(-0.8, 'nosmoke')); // 左前禁煙
-    const driverSeat = createFrontSeat(0.8, 'wifi'); // 右前WiFi
-    
-    // 司機位木珠墊
-    const beadMat = new THREE.MeshStandardMaterial({ map: createFabricTexture('#d4a373'), roughness: 0.9 });
-    const beadCushion = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.9), beadMat);
-    beadCushion.rotation.x = -Math.PI / 2; beadCushion.position.set(0, 0.16, 0); driverSeat.add(beadCushion);
-    const beadBack = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.1), beadMat);
-    beadBack.position.set(0, 0.7, 0.26); beadBack.rotation.x = -0.15; driverSeat.add(beadBack);
-    grp.add(driverSeat);
+    grp.add(createFrontSeat(-0.8, false)); // 左前乘客座
+    grp.add(createFrontSeat(0.8, true));   // 右前司機座
 
     // 後排長椅
-    const rearCushion = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.3, 1.2), seatMat);
-    rearCushion.position.set(0, -0.3, 1.0); grp.add(rearCushion);
-    const rearBack = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.2, 0.4), seatMat);
-    rearBack.position.set(0, 0.4, 1.5); rearBack.rotation.x = -0.15; grp.add(rearBack);
+    const rearCushion = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.3, 1.3), seatMat);
+    rearCushion.position.set(0, -0.2, 1.1); grp.add(rearCushion);
+    const rearBack = new THREE.Mesh(new THREE.BoxGeometry(3.3, 1.3, 0.4), seatMat);
+    rearBack.position.set(0, 0.5, 1.6); rearBack.rotation.x = -0.15; grp.add(rearBack);
 
-    const cabinLight = new THREE.PointLight(0xffeedd, 0.4, 6);
-    cabinLight.position.set(0, 1.5, 0); grp.add(cabinLight);
+    // 車頂燈
+    const cabinLight = new THREE.PointLight(0xffeedd, 0.5, 5);
+    cabinLight.position.set(0, 1.6, 0); 
+    grp.add(cabinLight);
+    const domeLightFixture = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.4), new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0x555555}));
+    domeLightFixture.position.set(0, 1.7, 0);
+    grp.add(domeLightFixture);
 
     return grp;
 }
@@ -11817,12 +11825,12 @@ function rideTaxi(taxiHitBox) {
         onComplete: () => {
             window.taxiInteriorGrp.add(camera);
             
-            // 🌟 完美相機定位：坐在後排左側，高度拉高至乘客真實視線 (Y=0.75)
-            camera.position.set(-0.4, 0.75, 0.6); 
+            // 🌟 完美相機定位：坐在後排左側，稍微拉遠並調高
+            camera.position.set(-0.6, 0.85, 0.8); 
             camera.rotation.set(0, 0, 0);
             
             busBumpAnim = gsap.to(camera.position, {
-                y: 0.78, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut"
+                y: 0.88, duration: 0.3, yoyo: true, repeat: -1, ease: "sine.inOut" // 配合新高度微調彈跳
             });
             
             const timerDisp = document.getElementById('bus-timer-display');
