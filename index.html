@@ -3179,7 +3179,11 @@ function updateStationerySelectors() {
 
         
         
- let currentUser = null; let config = null; let selectedTaskIndex = null; let selectedTaskDate = null;
+ let currentUser = null; 
+        let lastSyncedReadingCount = -1;
+let lastSyncedRandomCount = -1;
+        
+        let config = null; let selectedTaskIndex = null; let selectedTaskDate = null;
 let hasUnrepliedLetters = false; let currentChatRef = null; let isInitialLoad = true;
 let selectedFileBase64 = null; let selectedFileName = null;
 let isSubmittingLog = false; let isSubmittingReply = false;
@@ -3380,10 +3384,31 @@ function signIn() {
         function hideAuthOverlay() { gsap.to("#auth-overlay", { opacity: 0, duration: 0.6, onComplete: () => { document.getElementById('auth-overlay').style.display = 'none'; }}); }
 
 function initApp() { 
-    // 👇 將最後上線時間寫入輕量級的 user_meta，而不是肥大的 users 節點
+    // 將最後上線時間寫入輕量級的 user_meta
     db.ref(`user_meta/${currentUser.uid}/lastLoginTime`).set(firebase.database.ServerValue.TIMESTAMP);
+    
+    // 👇 替換從這裡開始：監聽自己的主資料庫
     db.ref(`users/${currentUser.uid}`).on('value', snap => {
         let data = snap.val() || {};
+        
+        let realReadingCount = data.receivedCount || 0;
+        let realRandomCount = data.receivedRandomCount || 0;
+
+        // 💡 【零負擔即時自癒系統】：
+        // 只有當「真實信件數」跟「上次同步的數字」不同時，才發送更新給 Firebase。
+        // 這確保了只要玩家一收到信，或是資料庫卡在 0 (因為初始值是 -1)，就會立刻瞬間修復！
+        if (realReadingCount !== lastSyncedReadingCount || realRandomCount !== lastSyncedRandomCount) {
+            db.ref(`user_meta/${currentUser.uid}`).update({
+                receivedCount: realReadingCount,
+                receivedRandomCount: realRandomCount,
+                email: currentUser.email,
+                classId: data.classId || 'default'
+            });
+            // 更新本地記憶，防止重複觸發寫入
+            lastSyncedReadingCount = realReadingCount;
+            lastSyncedRandomCount = realRandomCount;
+        }
+
         userPoints = data.points || 0;
         userInventory = data.inventory || {};
         
@@ -3416,25 +3441,19 @@ function initApp() {
             });
         }
     });
+    // 👆 替換到這裡結束
 
     document.getElementById('room-canvas-container').style.display = 'block'; 
-    
-    // 1. 先建立 3D 場景
     initRoomScene(); 
-    
-    // 2. 👇 【關鍵修復】：強制 WebGL 在背景預先編譯並渲染一幀 (預熱)
     renderer.compile(scene, camera);
     renderer.render(scene, camera);
 
-  // 3. 判斷起始位置，決定要淡出黑幕還是切換場景
     const urlParams = new URLSearchParams(window.location.search);
     const isReturnTrip = urlParams.get('returnTrip') === 'true';
     
     if (localStorage.getItem('cachedLocation') === 'street' && !isReturnTrip) {
-        // 如果人在商店街，瞬間跳轉過去 (黑幕的移除會由 enterShoppingStreet 自動處理)
         setTimeout(() => { enterShoppingStreet(true); }, 300);
     } else if (!isReturnTrip) {
-        // 正常在房間登入，立刻淡出登入畫面
         hideAuthOverlay(); 
     }
 
@@ -3447,7 +3466,6 @@ function initApp() {
     initHandwriting();
     auditAntiCheat(); 
 
-    // 👇 套用新的打字權限判斷
     if (isTypingAllowed(currentUser.email)) {
         document.querySelectorAll('.handwrite-only').forEach(el => {
             el.removeAttribute('readonly');
@@ -3459,45 +3477,37 @@ function initApp() {
         });
     }
 
-   if (document.getElementById('dev-panel-wrapper')) {
+    if (document.getElementById('dev-panel-wrapper')) {
         document.getElementById('dev-panel-wrapper').style.display = isDevUser(currentUser.email) ? 'block' : 'none';
     }
 
-    // 👇 自動檢查是否從學校/商店街搭車回來
     if (isReturnTrip) {
         setTimeout(() => {
-            // 1. 先將環境預設為「站在露台」
             isAtBalcony = true;
             if (typeof balconyOnlyGroup !== 'undefined') balconyOnlyGroup.visible = true;
             if (typeof glassDoorL !== 'undefined' && glassDoorL) glassDoorL.position.x = 7.3;
             
-            // 備份室內座標 (確保返回室內時能找到正確位置)
             roomCameraBackup.cp.copy(camera.position);
             roomCameraBackup.ct.copy(controls.target);
             
-            // 設定露台視角 (作為巴士下車後的預設降落點)
             camera.position.set(0, 15, -19.5);
             controls.target.set(0, 15, -20);
             camera.fov = 75;
             camera.updateProjectionMatrix();
             
-            // 確保控制器權限與範圍
             controls.enabled = true;
             controls.minDistance = 0.1; controls.maxDistance = 100;
             controls.minAzimuthAngle = -Math.PI / 2.5; controls.maxAzimuthAngle = Math.PI / 2.5;
             controls.minPolarAngle = 0.05; controls.maxPolarAngle = Math.PI / 2;
             controls.update();
 
-            // 2. 隱藏第一人稱旋鈕
             const knob = document.getElementById('mobile-cam-knob');
             if (knob) knob.style.display = 'none';
             
-            // ⚠️ 不用先顯示「返回室內」按鈕，因為我們要直接上車，下車時自會顯示
             const btn = document.getElementById('btn-return-room');
             if (btn) btn.style.display = 'none';
 
-            // 3. 尋找回程巴士 (-1 方向) 並自動上車
-            const rideType = localStorage.getItem('rideType') || 'bus'; // 讀取去程記錄
+            const rideType = localStorage.getItem('rideType') || 'bus'; 
             let targetVehicleHitBox = null;
             for (let obj of interactables) {
                 if (obj.userData && obj.userData.type === rideType && obj.userData.direction === -1) {
@@ -3519,7 +3529,6 @@ function initApp() {
                     }
                 }, 100);
             } else {
-                // 防錯：萬一極端情況找不到巴士，正常淡出並待在露台
                 hideAuthOverlay(); 
                 const blackout = document.getElementById('return-trip-blackout');
                 if(blackout) blackout.style.opacity = '0';
@@ -3530,8 +3539,7 @@ function initApp() {
             }
         }, 300);
     }
-} // 👈 這裡就是 initApp() 函數的結尾大括號！剛剛報錯是因為它遺失了。
-
+}
 
 
 
@@ -4657,25 +4665,23 @@ else processReply(letterId, partnerUid, ObjectData);
             }});
         }
 
-      function processLog(data) {
+    function processLog(data) {
     const ts = firebase.database.ServerValue.TIMESTAMP; 
     const ref = db.ref('letters').push();
     
-    // 🌟 流量終極優化：改為讀取極輕量的 user_meta，避免下載龐大背包
     db.ref('user_meta').once('value').then(snap => {
         const users = snap.val() || {}; 
         const isMeTeacher = isTeacherEmail(currentUser.email);
         
         let eligibleUids = Object.keys(users).filter(u => {
             if (u === currentUser.uid) return false;
-            const uEmail = users[u].email || ''; // 確保安全取值
+            const uEmail = users[u].email || ''; 
             const targetIsTeacher = (users[u].classId === 'teacher_class') || isTeacherEmail(uEmail);
             return isMeTeacher === targetIsTeacher;
         });
         
         let rec = "";
         if (eligibleUids.length > 0) {
-            // 1. 根據最後上線時間排序 (由新到舊降冪排列)
             eligibleUids.sort((a, b) => {
                 let timeA = parseInt(users[a].lastLoginTime) || 0;
                 let timeB = parseInt(users[b].lastLoginTime) || 0;
@@ -4683,7 +4689,6 @@ else processReply(letterId, partnerUid, ObjectData);
             });
 
             if (selectedTaskIndex === 'free') {
-                // 自由分享：擷取最近上線的「前 3 位」，從中隨機抽一位
                 let top3Pool = eligibleUids.slice(0, 3);
                 rec = top3Pool[Math.floor(Math.random() * top3Pool.length)];
                 
@@ -4692,21 +4697,23 @@ else processReply(letterId, partnerUid, ObjectData);
                     db.ref(`user_meta/${rec}/receivedCount`).transaction(c => (c || 0) + 1); 
                 }
             } else {
-                // 常規閱讀任務：擷取最近上線的「前 30 位」
                 let top30Pool = eligibleUids.slice(0, 30);
                 
-                // 找出「收信數最少」的人進行隨機派發，確保這批活躍用戶勞逸平均
                 let minCount = Infinity; 
                 top30Pool.forEach(uid => { 
-                    let count = parseInt(users[uid].receivedCount) || 0; // 強制轉數字防錯
+                    let count = parseInt(users[uid].receivedCount) || 0; 
                     if (count < minCount) minCount = count; 
                 });
                 
-                let candidates = top30Pool.filter(uid => (parseInt(users[uid].receivedCount) || 0) === minCount); 
+                // 💡 【防黑洞機制】：把收信「最低」與「次低 (minCount + 1)」的人都納入抽籤池，讓分配更自然
+                let candidates = top30Pool.filter(uid => {
+                    let c = parseInt(users[uid].receivedCount) || 0;
+                    return c <= minCount + 1; 
+                });
+                
                 if (candidates.length > 0) {
                     rec = candidates[Math.floor(Math.random() * candidates.length)];
                     
-                    // 💡 關鍵修復：使用 transaction 來保證遞增不會出現 Race Condition
                     db.ref(`users/${rec}/receivedCount`).transaction(c => (c || 0) + 1);
                     db.ref(`user_meta/${rec}/receivedCount`).transaction(c => (c || 0) + 1);
                 }
@@ -4758,7 +4765,6 @@ else processReply(letterId, partnerUid, ObjectData);
     });
 }
 
-
 function processRandomTask(data) {
     const ts = firebase.database.ServerValue.TIMESTAMP; 
     const ref = db.ref('letters').push(); 
@@ -4789,16 +4795,19 @@ function processRandomTask(data) {
 
             let minCount = Infinity; 
             top30Pool.forEach(uid => { 
-                // 💡 修復 BUG：探索任務應該看 receivedRandomCount，且強制轉數字
                 let count = parseInt(users[uid].receivedRandomCount) || 0; 
                 if (count < minCount) minCount = count; 
             });
             
-            let candidates = top30Pool.filter(uid => (parseInt(users[uid].receivedRandomCount) || 0) === minCount); 
+            // 💡 【防黑洞機制】：把探索任務也套用寬容抽籤，包含最低與次低的人
+            let candidates = top30Pool.filter(uid => {
+                let c = parseInt(users[uid].receivedRandomCount) || 0;
+                return c <= minCount + 1;
+            }); 
+            
             if (candidates.length > 0) {
                 rec = candidates[Math.floor(Math.random() * candidates.length)];
                 
-                // 💡 修復 BUG：增加 receivedRandomCount 而非 receivedCount
                 db.ref(`users/${rec}/receivedRandomCount`).transaction(c => (c || 0) + 1);
                 db.ref(`user_meta/${rec}/receivedRandomCount`).transaction(c => (c || 0) + 1);
             }
