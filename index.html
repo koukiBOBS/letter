@@ -3497,20 +3497,20 @@ function initApp() {
             if (btn) btn.style.display = 'none';
 
             // 3. 尋找回程巴士 (-1 方向) 並自動上車
-            let targetBusHitBox = null;
+            const rideType = localStorage.getItem('rideType') || 'bus'; // 讀取去程記錄
+            let targetVehicleHitBox = null;
             for (let obj of interactables) {
-                if (obj.userData && obj.userData.type === 'bus' && obj.userData.direction === -1) {
-                    targetBusHitBox = obj;
+                if (obj.userData && obj.userData.type === rideType && obj.userData.direction === -1) {
+                    targetVehicleHitBox = obj;
                     break;
                 }
             }
 
-            if (targetBusHitBox) {
-                // 稍微延遲讓場景穩定後上車
+            if (targetVehicleHitBox) {
                 setTimeout(() => {
-                    rideBus(targetBusHitBox);
+                    if (rideType === 'taxi') rideTaxi(targetVehicleHitBox);
+                    else rideBus(targetVehicleHitBox);
                     
-                    // 4. 坐穩上車後才淡出黑幕，達到無縫運鏡接軌
                     hideAuthOverlay(); 
                     const blackout = document.getElementById('return-trip-blackout');
                     if(blackout) {
@@ -5269,6 +5269,87 @@ function createBusInterior() {
     return grp;
 }
 
+
+
+
+// 🚕 打造極致還原的香港紅的車廂 (參考實景圖)
+function createTaxiInterior() {
+    const grp = new THREE.Group();
+
+    // 1. 車廂內裝材質
+    const dashMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
+    const seatMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8 });
+    const beadMat = new THREE.MeshStandardMaterial({ color: 0xd4a373, roughness: 0.5 }); // 木珠墊
+    
+    // 2. 儀表板 (Dashboard)
+    const dash = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 0.8), dashMat);
+    dash.position.set(0, -0.2, -1.2); 
+    grp.add(dash);
+
+    // 3. 右軚盤 (Steering Wheel)
+    const steeringWheel = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.04, 16, 32), new THREE.MeshStandardMaterial({color: 0x111111}));
+    steeringWheel.rotation.x = Math.PI / 3;
+    steeringWheel.position.set(0.6, 0.1, -1.0); // 靠右
+    grp.add(steeringWheel);
+    const steeringColumn = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.4), dashMat);
+    steeringColumn.rotation.x = Math.PI / 3;
+    steeringColumn.position.set(0.6, -0.05, -1.1);
+    grp.add(steeringColumn);
+
+    // 4. 經典紅燈跳字咪錶 (Taximeter)
+    const meterMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+    const meter = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 0.15), meterMat);
+    meter.position.set(0, 0.15, -1.0); // 中控台上方
+    const meterScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.1), new THREE.MeshBasicMaterial({color: 0xff0000})); // 紅色LED
+    meterScreen.position.set(0, 0, 0.08);
+    meter.add(meterScreen);
+    grp.add(meter);
+
+    // 5. 車機收音機/對講機
+    const radio = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.2, 0.1), new THREE.MeshStandardMaterial({color: 0x050505}));
+    radio.position.set(0, -0.1, -0.85);
+    grp.add(radio);
+
+    // 6. 黃色「不准吸煙 NO SMOKING」貼紙 (左側乘客位)
+    const stickerCanvas = document.createElement('canvas');
+    stickerCanvas.width = 128; stickerCanvas.height = 64;
+    const sCtx = stickerCanvas.getContext('2d');
+    sCtx.fillStyle = '#ffdd00'; sCtx.fillRect(0, 0, 128, 64);
+    sCtx.fillStyle = '#000'; sCtx.font = 'bold 18px sans-serif'; sCtx.textAlign = 'center';
+    sCtx.fillText('不准吸煙', 64, 25);
+    sCtx.font = 'bold 14px sans-serif'; sCtx.fillText('NO SMOKING', 64, 45);
+    const sticker = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.15), new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(stickerCanvas)}));
+    sticker.position.set(-0.6, 0.1, -0.81);
+    sticker.rotation.x = -0.1;
+    grp.add(sticker);
+
+    // 7. 前排座椅 (從後座視角看)
+    const seatL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.2), seatMat);
+    seatL.position.set(-0.6, -0.2, -0.3);
+    grp.add(seatL);
+    
+    // 司機位座椅 + 經典木珠座墊
+    const seatR = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.2), seatMat);
+    seatR.position.set(0.6, -0.2, -0.3);
+    const beadCover = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.9), beadMat);
+    beadCover.position.set(0, 0, 0.11);
+    // 加入簡單的網格模擬木珠
+    const bTex = createFabricTexture('#d4a373');
+    bTex.repeat.set(8, 10);
+    beadCover.material.map = bTex;
+    seatR.add(beadCover);
+    grp.add(seatR);
+
+    // 8. 玻璃與車頂 (微暗，營造車廂包覆感)
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.1, 4.0), new THREE.MeshStandardMaterial({color: 0xdddddd}));
+    roof.position.set(0, 1.0, 0);
+    grp.add(roof);
+
+    return grp;
+}
+
+        
+
 let leftCurtainGrp, rightCurtainGrp; 
 let curtainRatio = 1.0;
 let currentEnvParams = null;
@@ -5995,7 +6076,14 @@ function createHKVehicle(type, direction) {
         addBox(0.6, 0.2, 0.4, lightMatF, 1.9, -0.2); // TAXX 燈箱
         addWheels(2.2, 0.4, 1.6); addWheels(2.2, 0.4, -1.6);
         addLights(2.2, 0.9, direction > 0 ? 2.76 : -2.76, direction > 0 ? -2.76 : 2.76);
-    } 
+        
+        // 👇 在這裡加入以下這段：的士隱形點擊框
+        const hitBox = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.0, 6.0), new THREE.MeshBasicMaterial({visible: false}));
+        hitBox.position.set(0, 1.0, 0);
+        hitBox.userData = { type: 'taxi', vehicleObj: vGroup, direction: direction };
+        vGroup.add(hitBox);
+        interactables.push(hitBox);
+    }
     else if(type === 'minibus') { // 紅/綠頂小巴
         const bodyMat = new THREE.MeshStandardMaterial({color: 0xf4f1d6});
         const roofColor = Math.random() > 0.5 ? 0xb22222 : 0x228b22; // 紅或綠頂
@@ -8729,7 +8817,40 @@ function onPointerUp(e) {
                 isWaitingAtBusStop = false; // 取消等車狀態
                 rideBus(obj); // 執行上車動畫
             }
+       // ... (巴士的邏輯) ...
+        } else if (type === 'taxi') {
+            if (typeof isWaitingAtBusStop === 'undefined' || !isWaitingAtBusStop) {
+                showToast("💡 請先點擊室內大門，搭𨋢下樓至路邊才能乘搭的士。");
+                return;
+            }
+            const direction = obj.userData.direction;
+            if (typeof pendingDestination !== 'undefined') {
+                if (pendingDestination === 'street' && direction !== 1) return showToast("⚠️ 前往海濱商店街的的士在這一側！");
+                if (pendingDestination === 'school' && direction !== -1) return showToast("⚠️ 前往基元中學的的士在這一側！");
+            }
+
+            if (userPoints < 500) {
+                alert("您的積分不足 500 分，無法支付的士車資！");
+                return;
+            }
+            
+            if (confirm("乘搭的士將扣除 500 積分，不需按鐘，10 秒直達。確定要出發嗎？")) {
+                userPoints -= 500;
+                db.ref(`users/${currentUser.uid}/points`).set(userPoints);
+                document.getElementById('user-points-text').innerText = userPoints;
+                showToast("🚕 已扣除 500 積分支付車資。");
+                
+                isWaitingAtBusStop = false;
+                localStorage.setItem('rideType', 'taxi'); // 👈 記憶去程交通工具為的士
+                rideTaxi(obj); 
+            }
         }
+
+
+
+
+
+        
     } // <-- if (intersects.length > 0) 結束區塊
 }
 
@@ -11469,6 +11590,115 @@ function rideBus(busHitBox) {
         }
     });
 }
+
+
+
+let taxiTimerInterval = null;
+
+// 🚕 乘坐的士邏輯
+function rideTaxi(taxiHitBox) {
+    if (isRidingBus) return;
+    isRidingBus = true; // 共用狀態，防止重複點擊
+    
+    // 喚醒音效引擎
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    activeBus = taxiHitBox.userData.vehicleObj;
+    activeBusDirection = taxiHitBox.userData.direction;
+
+    preRideCameraState.pos.copy(camera.position);
+    preRideCameraState.target.copy(controls.target);
+    preRideCameraState.fov = camera.fov;
+
+    // 鎖死控制器
+    if (!window.originalControlsUpdate) window.originalControlsUpdate = controls.update;
+    controls.update = function() {
+        if (isRidingBus) return;
+        window.originalControlsUpdate.call(controls);
+    };
+
+    activeBus.children.forEach(child => {
+        if (child.isMesh && child !== taxiHitBox) {
+            child.userData.wasVisible = child.visible;
+            child.visible = false;
+        }
+    });
+
+    if (!window.taxiInteriorGrp) window.taxiInteriorGrp = createTaxiInterior();
+    activeBus.add(window.taxiInteriorGrp);
+
+    // 視角定位於後座中心
+    const camZPos = activeBusDirection > 0 ? 1.0 : -1.0;
+    window.taxiInteriorGrp.position.set(0, 0.4, camZPos);
+    window.taxiInteriorGrp.rotation.set(0, activeBusDirection > 0 ? Math.PI : 0, 0);
+
+    controls.enabled = false;
+    document.getElementById('btn-return-room').style.display = 'none';
+    if(document.getElementById('mobile-cam-knob')) document.getElementById('mobile-cam-knob').style.display = 'none';
+
+    const targetWorldPos = new THREE.Vector3(0, 0.4, camZPos).applyMatrix4(activeBus.matrixWorld);
+    gsap.to(camera.position, {
+        x: targetWorldPos.x, y: targetWorldPos.y, z: targetWorldPos.z,
+        duration: 1.2, ease: "power2.inOut"
+    });
+    
+    const lookAheadWorldPos = new THREE.Vector3(0, 0.4, activeBusDirection > 0 ? 30 : -30).applyMatrix4(activeBus.matrixWorld);
+    gsap.to(controls.target, {
+        x: lookAheadWorldPos.x, y: lookAheadWorldPos.y, z: lookAheadWorldPos.z,
+        duration: 1.2, ease: "power2.inOut",
+        onComplete: () => {
+            window.taxiInteriorGrp.add(camera);
+            camera.position.set(0, 0.3, 1.0); // 坐在後座
+            camera.rotation.set(0, 0, 0);
+            
+            // 輕微路面顛簸動畫
+            busBumpAnim = gsap.to(camera.position, {
+                y: 0.35, duration: 0.4, yoyo: true, repeat: -1, ease: "sine.inOut"
+            });
+            
+            // 啟動 10 秒咪錶 UI
+            const timerDisp = document.getElementById('bus-timer-display');
+            timerDisp.style.display = 'block';
+            timerDisp.style.color = '#ff4444'; // 紅色咪錶字體
+            timerDisp.style.textShadow = '0 0 10px rgba(255,0,0,0.5)';
+            
+            let timeLeft = 10;
+            timerDisp.innerText = `ETA 00:${timeLeft.toString().padStart(2,'0')}`;
+            
+            taxiTimerInterval = setInterval(() => {
+                timeLeft--;
+                timerDisp.innerText = `ETA 00:${timeLeft.toString().padStart(2,'0')}`;
+                
+                // 模擬咪錶跳聲
+                try { playSynthTone(1500); } catch(e){}
+
+                if (timeLeft <= 0) {
+                    clearInterval(taxiTimerInterval);
+                    timerDisp.style.display = 'none';
+                    showToast("🚕 的士已抵達目的地！");
+                    
+                    setTimeout(() => {
+                        const urlParams = new URLSearchParams(window.location.search);
+                        if (urlParams.get('returnTrip') === 'true') {
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            getOffBus();
+                        } else if (activeBusDirection > 0) {
+                            enterShoppingStreet();
+                        } else {
+                            enterSchool(); 
+                        }
+                    }, 500);
+                }
+            }, 1000);
+        }
+    });
+}
+
+
+
+
+        
 // 終極安全版下車邏輯，保證不會因為按鈕遺失而報錯卡死
 // 終極安全版下車邏輯，保證不會因為按鈕遺失而報錯卡死
 function getOffBus() {
@@ -11494,7 +11724,8 @@ function getOffBus() {
                 child.visible = child.userData.wasVisible;
             }
         });
-        if (busInteriorGrp) activeBus.remove(busInteriorGrp);
+       if (busInteriorGrp) activeBus.remove(busInteriorGrp);
+    if (window.taxiInteriorGrp) activeBus.remove(window.taxiInteriorGrp);
     }
     activeBus = null;
 
