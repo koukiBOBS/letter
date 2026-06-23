@@ -1007,6 +1007,16 @@
     transform: none; 
     box-shadow: inset 0 0 12px rgba(180, 160, 130, 0.05); 
 }
+
+        /* 學生作品專屬卡片顏色 (淡雅青玉色) */
+.quote-card-item.student-quote { 
+    background-color: #e6f0e9; 
+    border-color: #b8d0c2; 
+}
+.quote-card-item.student-quote:hover {
+    border-color: #8fb59d;
+    box-shadow: 0 12px 24px rgba(107, 142, 115, 0.18); 
+}
 .quote-preview-text { 
     font-family: var(--font-serif); 
     font-size: 1.1rem; 
@@ -10936,7 +10946,7 @@ window.toggleReadingLog = function() {
         ['王小波', '黃金時代', '那一天我二十一歲，在我一生的黃金時代，我有好多奢望。'],
         ['顧城', '顧城詩集', '黑夜給了我黑色的眼睛，我卻用它尋找光明。'],
         ['海子', '一代人', '面朝大海，春暖花開。'],
-        ['北島', '路歌', '卑鄙是卑鄙者的通行證，高尚是高尚者的墓誌銘。'],
+        ['北島', '回答', '卑鄙是卑鄙者的通行證，高尚是高尚者的墓誌銘。'],
         ['舒婷', '致橡樹', '我如果愛你，絕不像攀援的凌霄花，借你的高枝炫耀自己。'],
         ['林語堂', '秋天的況味', '秋天的黃昏，一人獨坐，有一種說不出的況味。'],
         ['林覺民', '夜意', '夜深人靜，正是靈魂醒來的時候。'],
@@ -10965,12 +10975,19 @@ window.toggleReadingLog = function() {
         ['劉恆', '青春萬歲', '青春是不朽的。']
     ];
 
-    window.LIT_QUOTES = {};
+     // 👇 從這裡開始往下新增學生語錄
+    ['陳小華', '中四甲班', '今天的雲長得很像我考砸的數學考卷。', 'student'],
+    ['林大明', '中二乙班', '其實放學走過的那段路，才是青春最真實的長度。', 'student'],
+    ['張美美', '中五理科', '哪怕只有微弱的光，也要努力照亮自己。', 'student']
+];
+
+   window.LIT_QUOTES = {};
     window.userQuotes = {};
 
     QUOTES_DB.forEach((q, index) => {
         let id = `quote_capsule_${index}`;
-        LIT_QUOTES[id] = { author: q[0], book: q[1], text: q[2] };
+        // 新增 isStudent 屬性，判斷陣列第 4 個參數是否為 'student'
+        LIT_QUOTES[id] = { author: q[0], book: q[1], text: q[2], isStudent: q[3] === 'student' };
     });
 
     let gachaMachineGrp;
@@ -11633,13 +11650,14 @@ function hijackWalletRender() {
                             <div style="color: #6a5743; font-size: 0.75rem; margin-top: 8px; letter-spacing: 1px; font-family: var(--font-sans);">UNLOCKED VIA GACHA</div>
                         </div>
                     `;
-                } else {
+               } else {
                     const q = LIT_QUOTES[id];
-                    card.className = 'quote-card-item';
-                    card.style.background = '#efeae2'; 
+                    // 根據是否為學生作品，給予不同的 CSS Class
+                    card.className = q.isStudent ? 'quote-card-item student-quote' : 'quote-card-item';
+                    card.style.background = q.isStudent ? '' : '#efeae2'; // 學生套用 CSS 顏色，作家保留原色
                     card.innerHTML = `
                         <div class="quote-preview-text">「${q.text}」</div>
-                        <div class="quote-author-badge">— ${q.author}</div>
+                        <div class="quote-author-badge">— ${q.author} ${q.isStudent ? '<span style="color:#6b8e73;">(學生作品)</span>' : ''}</div>
                     `;
                     card.onclick = () => {
                         closeRoomModal(null, 'modal-wallet');
@@ -11719,7 +11737,8 @@ window.openQuoteAttachmentSelector = function(context) {
             if (LIT_QUOTES[id]) {
                 const q = LIT_QUOTES[id];
                 const item = document.createElement('div');
-                item.className = `quote-selector-item ${currentAttachedQuoteId === id ? 'selected' : ''}`;
+               item.className = `quote-selector-item ${currentAttachedQuoteId === id ? 'selected' : ''}`;
+                if (q.isStudent) item.style.backgroundColor = '#e6f0e9'; // 學生作品底色
                 item.innerHTML = `
                     <div style="font-family: var(--font-serif); font-size: 1.05rem; color: #4a4238; line-height: 1.6; margin-bottom: 10px;">「${q.text}」</div>
                     <div style="font-size: 0.85rem; color: #8b7355; text-align: right;">— ${q.author}</div>
