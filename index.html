@@ -10990,17 +10990,24 @@ window.toggleReadingLog = function() {
 
 
         
-    
-        ['郭學如', '這一我明白，母親喜歡的從來不是乾花，而是父親從未說出口的愛意', 'student']
+         ['6YOt5a245aaC', '這一我明白，母親喜歡的從來不是乾花，而是父親從未說出口的愛意', 'student']
     ];
 
-    window.LIT_QUOTES = {};
+   window.LIT_QUOTES = {};
     window.userQuotes = {};
 
     QUOTES_DB.forEach((q, index) => {
         let id = `quote_capsule_${index}`;
-        // 判斷陣列第 3 個參數是否為 'student' (移除書名後，索引往前遞減)
-        LIT_QUOTES[id] = { author: q[0], text: q[1], isStudent: q[2] === 'student' };
+        let isStudentQuote = q[2] === 'student';
+        
+        // 判斷：如果是學生，使用 UTF-8 安全的 Base64 解碼還原中文；如果是作家，直接顯示
+        let authorName = isStudentQuote ? decodeURIComponent(escape(atob(q[0]))) : q[0];
+
+        LIT_QUOTES[id] = { 
+            author: authorName, 
+            text: q[1], 
+            isStudent: isStudentQuote 
+        };
     });
 
    
