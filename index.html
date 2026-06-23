@@ -11003,15 +11003,7 @@ window.toggleReadingLog = function() {
         LIT_QUOTES[id] = { author: q[0], text: q[1], isStudent: q[2] === 'student' };
     });
 
-   window.LIT_QUOTES = {};
-    window.userQuotes = {};
-
-    QUOTES_DB.forEach((q, index) => {
-        let id = `quote_capsule_${index}`;
-        // 新增 isStudent 屬性，判斷陣列第 4 個參數是否為 'student'
-        LIT_QUOTES[id] = { author: q[0], book: q[1], text: q[2], isStudent: q[3] === 'student' };
-    });
-
+   
     let gachaMachineGrp;
     let exitFlap;
     let chuteGrp; // 🛠️ 移至共享作用域：解決 Uncaught ReferenceError 的關鍵
