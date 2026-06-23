@@ -10984,10 +10984,10 @@ window.toggleReadingLog = function() {
         ['劉恆', '青春萬歲', '青春是不朽的。'],
 
 
-     // 👇 從這裡開始往下新增學生語錄
-    ['陳小華', '中四甲班', '今天的雲長得很像我考砸的數學考卷。', 'student'],
-    ['林大明', '中二乙班', '其實放學走過的那段路，才是青春最真實的長度。', 'student'],
-    ['張美美', '中五理科', '哪怕只有微弱的光，也要努力照亮自己。', 'student']
+// 👇 從這裡開始往下新增學生語錄 (第二個欄位改為作品名稱)
+    ['陳小華', '無題隨筆', '今天的雲長得很像我考砸的數學考卷。', 'student'],
+    ['林大明', '放學路上', '其實放學走過的那段路，才是青春最真實的長度。', 'student'],
+    ['張美美', '致自己', '哪怕只有微弱的光，也要努力照亮自己。', 'student']
 ];
 
    window.LIT_QUOTES = {};
@@ -11659,16 +11659,16 @@ function hijackWalletRender() {
                             <div style="color: #6a5743; font-size: 0.75rem; margin-top: 8px; letter-spacing: 1px; font-family: var(--font-sans);">UNLOCKED VIA GACHA</div>
                         </div>
                     `;
-              } else {
+             } else {
                     const q = LIT_QUOTES[id];
                     // 根據是否為學生作品，給予不同的 CSS Class
                     card.className = q.isStudent ? 'quote-card-item student-quote' : 'quote-card-item';
                     card.style.background = q.isStudent ? '' : '#efeae2'; // 學生套用 CSS 顏色，作家保留原色
                     
-                    // 👇 移除了原本後面的 ${q.isStudent ? '...' : ''} 判斷
+                    // 👇 加上了《${q.book}》來顯示作品名稱
                     card.innerHTML = `
                         <div class="quote-preview-text">「${q.text}」</div>
-                        <div class="quote-author-badge">— ${q.author}</div>
+                        <div class="quote-author-badge">— ${q.author}《${q.book}》</div>
                     `;
                     card.onclick = () => {
                         closeRoomModal(null, 'modal-wallet');
@@ -11744,15 +11744,17 @@ window.openQuoteAttachmentSelector = function(context) {
         grid.style.display = 'grid';
         emptyMsg.style.display = 'none';
         
-        ownedIds.forEach(id => {
+       ownedIds.forEach(id => {
             if (LIT_QUOTES[id]) {
                 const q = LIT_QUOTES[id];
                 const item = document.createElement('div');
                item.className = `quote-selector-item ${currentAttachedQuoteId === id ? 'selected' : ''}`;
                 if (q.isStudent) item.style.backgroundColor = '#e6f0e9'; // 學生作品底色
+                
+                // 👇 這裡也加上了《${q.book}》
                 item.innerHTML = `
                     <div style="font-family: var(--font-serif); font-size: 1.05rem; color: #4a4238; line-height: 1.6; margin-bottom: 10px;">「${q.text}」</div>
-                    <div style="font-size: 0.85rem; color: #8b7355; text-align: right;">— ${q.author}</div>
+                    <div style="font-size: 0.85rem; color: #8b7355; text-align: right;">— ${q.author}《${q.book}》</div>
                 `;
                 item.onclick = () => selectQuoteForAttachment(id);
                 grid.appendChild(item);
