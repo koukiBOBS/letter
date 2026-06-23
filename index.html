@@ -11659,14 +11659,16 @@ function hijackWalletRender() {
                             <div style="color: #6a5743; font-size: 0.75rem; margin-top: 8px; letter-spacing: 1px; font-family: var(--font-sans);">UNLOCKED VIA GACHA</div>
                         </div>
                     `;
-               } else {
+              } else {
                     const q = LIT_QUOTES[id];
                     // 根據是否為學生作品，給予不同的 CSS Class
                     card.className = q.isStudent ? 'quote-card-item student-quote' : 'quote-card-item';
                     card.style.background = q.isStudent ? '' : '#efeae2'; // 學生套用 CSS 顏色，作家保留原色
+                    
+                    // 👇 移除了原本後面的 ${q.isStudent ? '...' : ''} 判斷
                     card.innerHTML = `
                         <div class="quote-preview-text">「${q.text}」</div>
-                        <div class="quote-author-badge">— ${q.author} ${q.isStudent ? '<span style="color:#6b8e73;">(學生作品)</span>' : ''}</div>
+                        <div class="quote-author-badge">— ${q.author}</div>
                     `;
                     card.onclick = () => {
                         closeRoomModal(null, 'modal-wallet');
