@@ -2750,10 +2750,11 @@ window.devSimulateBankruptcy = function() {
     }
 };
 
-// 💎 開發測試：一鍵擁有全部資產與權限
+// 💎 開發測試：一鍵擁有全部資產與權限 (升級版：包含語錄)
 window.devUnlockAllAssets = function() {
-    if(confirm("確定要直接解鎖所有資產(包含家具、文具、唱片)嗎？畫面將會重新載入。")) {
+    if(confirm("確定要直接解鎖所有資產(包含家具、文具、唱片、語錄)嗎？畫面將會重新載入。")) {
         let fullInventory = {};
+        let fullQuotes = {}; // 👈 新增：用來裝所有語錄的清單
         
         // 1. 解鎖家具
         if (typeof ITEM_REGISTRY !== 'undefined') {
@@ -2770,15 +2771,23 @@ window.devUnlockAllAssets = function() {
         if (typeof INK_REGISTRY !== 'undefined') {
             Object.keys(INK_REGISTRY).forEach(id => fullInventory[`ink_${id}`] = true);
         }
+        // 4. 解鎖所有扭蛋語錄 👈 新增這段
+        if (typeof LIT_QUOTES !== 'undefined') {
+            Object.keys(LIT_QUOTES).forEach(id => fullQuotes[id] = true);
+        }
         
         db.ref(`users/${currentUser.uid}/points`).set(99999);
-        db.ref(`users/${currentUser.uid}/inventory`).set(fullInventory).then(() => {
-            showToast("💎 已發放滿配資產！重新載入中...");
+        
+        // 👈 修改這段：同時把 inventory 和 quotes 寫入 Firebase 伺服器
+        Promise.all([
+            db.ref(`users/${currentUser.uid}/inventory`).set(fullInventory),
+            db.ref(`users/${currentUser.uid}/quotes`).set(fullQuotes) 
+        ]).then(() => {
+            showToast("💎 已發放滿配資產與全套語錄！重新載入中...");
             setTimeout(() => window.location.reload(), 1000);
         });
     }
 };
-
 // 👆👆👆 貼到這裡結束 👆👆👆
         
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzcangpOrf05ZRhxzoMUN-C9T57CS3_G80to1lLWv4opXuHbYMMMuKXzap7kkcou3BPsQ/exec"; 
