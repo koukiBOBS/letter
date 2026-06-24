@@ -744,7 +744,7 @@ function finishHoopGame() {
     const title = document.getElementById('hoop-result-title');
     const desc = document.getElementById('hoop-result-desc');
 
-    if (success) {
+  if (success) {
         emoji.innerText = "🏆";
         title.innerText = "挑戰成功！";
         desc.innerHTML = `順利投進 <b>${hoopScore}</b> 球！<br>成功在運動場留下你的汗水！獲得 <b>500</b> 積分獎勵！`;
@@ -752,6 +752,12 @@ function finishHoopGame() {
         db.ref(`users/${currentUser.uid}/points`).once('value').then(snap => {
             const pts = snap.val() || 0;
             db.ref(`users/${currentUser.uid}/points`).set(pts + 500);
+            
+            // 👇 新增：同步記錄歷史總得分
+            db.ref(`users/${currentUser.uid}/lifetimePoints`).once('value').then(lSnap => {
+                let lifetime = lSnap.val() || 0;
+                db.ref(`users/${currentUser.uid}/lifetimePoints`).set(lifetime + 500);
+            });
         });
     } else {
         emoji.innerText = "💪";
@@ -3753,9 +3759,16 @@ function completeCopyTask() {
             db.ref(`users/${currentUser.uid}/mini_games/copying`).set(dataSave);
         });
 
-        db.ref(`users/${currentUser.uid}/points`).once('value').then(snap => {
+      db.ref(`users/${currentUser.uid}/points`).once('value').then(snap => {
             let pts = snap.val() || 0;
             db.ref(`users/${currentUser.uid}/points`).set(pts + 500);
+            
+            // 👇 新增：同步記錄歷史總得分
+            db.ref(`users/${currentUser.uid}/lifetimePoints`).once('value').then(lSnap => {
+                let lifetime = lSnap.val() || 0;
+                db.ref(`users/${currentUser.uid}/lifetimePoints`).set(lifetime + 500);
+            });
+
             alert("🎉 恭喜完成抄寫！獲得 500 積分！");
             setTimeout(() => {
                 closeCopyTask();
