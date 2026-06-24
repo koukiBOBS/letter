@@ -2736,15 +2736,17 @@ window.devResetAccount = function() {
 window.devSimulateBankruptcy = function() {
     if(confirm("確定要模擬破產嗎？這將清空您的積分、所有房間佈置與『文學碎片』，並強制彈出懲罰視窗。")) {
         db.ref(`users/${currentUser.uid}/points`).set(0);
+        
+        // 👇 新增：連同歷史總得分一起歸零，防堵作弊緩衝區
+        db.ref(`users/${currentUser.uid}/lifetimePoints`).set(0); 
+        
         db.ref(`users/${currentUser.uid}/inventory`).remove();
-        db.ref(`users/${currentUser.uid}/quotes`).remove().then(() => { // 👈 沒收語錄
+        db.ref(`users/${currentUser.uid}/quotes`).remove().then(() => {
             // 同步本地變數
             userPoints = 0;
             userInventory = {};
-            window.userQuotes = {}; // 👈 清空本地
+            window.userQuotes = {};
             document.getElementById('user-points-text').innerText = '0';
-            
-            // 彈出我們設計好的破產視窗
             document.getElementById('modal-bankruptcy').style.display = 'flex';
         });
     }
@@ -10534,26 +10536,26 @@ function checkAndTriggerBankruptcy(readingTasks, randomTasks, submittedReading, 
         }
     }
 
-    // 4. 如果確認破產，執行懲罰
 // 4. 如果確認破產，執行懲罰
     if (isBankrupt) {
         db.ref(`users/${currentUser.uid}`).once('value').then(snap => {
             let data = snap.val() || {};
             let pts = data.points || 0;
             let inv = data.inventory || {};
-            let quotes = data.quotes || {}; // 👈 檢查語錄資產
+            let quotes = data.quotes || {}; 
             
             // 只要有分數、有道具，或有語錄，就清空
             if (pts > 0 || Object.keys(inv).length > 0 || Object.keys(quotes).length > 0) {
                 // 💥 執行清算：積分歸零、道具全砍、文學碎片全燒毀
                 db.ref(`users/${currentUser.uid}/points`).set(0);
+                
+                // 👇 新增：連同歷史總得分一起歸零，重新計算
+                db.ref(`users/${currentUser.uid}/lifetimePoints`).set(0); 
+
                 db.ref(`users/${currentUser.uid}/inventory`).remove();
-                db.ref(`users/${currentUser.uid}/quotes`).remove(); // 👈 沒收語錄
+                db.ref(`users/${currentUser.uid}/quotes`).remove();
                 
-                // 清空本地變數
                 window.userQuotes = {};
-                
-                // 彈出破產宣告視窗
                 document.getElementById('modal-bankruptcy').style.display = 'flex';
             }
         });
