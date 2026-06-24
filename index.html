@@ -3941,37 +3941,45 @@ function auditAntiCheat() {
 
         const expectedPoints = (readingCount * 1000) + (randomCount * 500) + (replyCount * 1000);
 
-        // 🔍 比對資料庫中目前的分數
-        db.ref(`users/${currentUser.uid}`).once('value').then(userSnap => {
-            let userData = userSnap.val() || {};
-            let currentPoints = userData.points || 0;
+    // 🔍 比對資料庫中目前的分數
+                db.ref(`users/${currentUser.uid}`).once('value').then(userSnap => {
+                    let userData = userSnap.val() || {};
+                    let currentPoints = userData.points || 0;
+                    
+                    // 💡 升級版防作弊：引入 lifetimePoints (歷史總得分)，解決小遊戲與刪信問題
+                    let lifetimePoints = userData.lifetimePoints;
+                    if (lifetimePoints === undefined) {
+                        // 如果是舊玩家，初始化歷史總得分（取現有餘額和信件推算分數的最大值，保護舊玩家）
+                        lifetimePoints = Math.max(expectedPoints, currentPoints); 
+                        db.ref(`users/${currentUser.uid}/lifetimePoints`).set(lifetimePoints);
+                    }
 
-            // 🚨 如果發現異常 (資料庫分數 > 實際應得分數)
-            if (currentPoints > expectedPoints) {
-                console.warn(`⚠️ 偵測到異常積分！實際應得: ${expectedPoints}, 資料庫遭竄改為: ${currentPoints}`);
-                
-                // 懲罰 1：強制將分數覆蓋回「合法分數」
-                db.ref(`users/${currentUser.uid}/points`).set(expectedPoints);
-                userPoints = expectedPoints; 
-                document.getElementById('user-points-text').innerText = expectedPoints;
+                    // 🚨 如果發現異常 (目前分數 > 歷史總得分)
+                    if (currentPoints > lifetimePoints) {
+                        console.warn(`⚠️ 偵測到異常積分！歷史總得分: ${lifetimePoints}, 目前分數卻是: ${currentPoints}`);
+                        
+                        // 懲罰 1：強制將分數覆蓋回合理的歷史總得分上限
+                        db.ref(`users/${currentUser.uid}/points`).set(lifetimePoints);
+                        userPoints = lifetimePoints; 
+                        document.getElementById('user-points-text').innerText = lifetimePoints;
 
-                // 懲罰 2：檢查並沒收不該擁有的道具
-                let inventory = userData.inventory || {};
-                let inventoryModified = false;
-                
-                Object.keys(inventory).forEach(itemId => {
-                    if (ITEM_REGISTRY[itemId] && expectedPoints < ITEM_REGISTRY[itemId].minPts) {
-                        db.ref(`users/${currentUser.uid}/inventory/${itemId}`).remove();
-                        inventoryModified = true;
+                        // 懲罰 2：檢查並沒收不該擁有的道具 (以歷史總得分為基準)
+                        let inventory = userData.inventory || {};
+                        let inventoryModified = false;
+                        
+                        Object.keys(inventory).forEach(itemId => {
+                            if (ITEM_REGISTRY[itemId] && lifetimePoints < ITEM_REGISTRY[itemId].minPts) {
+                                db.ref(`users/${currentUser.uid}/inventory/${itemId}`).remove();
+                                inventoryModified = true;
+                            }
+                        });
+
+                        if (inventoryModified) {
+                            alert("⚠️ 系統偵測到您的積分異常。\n已自動校正您的積分，並收回非法取得的道具與權限。");
+                            window.location.reload(); 
+                        }
                     }
                 });
-
-                if (inventoryModified) {
-                    alert("⚠️ 系統偵測到您的積分與實際完成的任務數量不符。\n已自動校正您的積分，並收回非法取得的道具與權限。");
-                    window.location.reload(); 
-                }
-            }
-        });
     });
 }
 
@@ -4409,10 +4417,17 @@ function renderTasks() {
 
 
 // 給予積分，如果是閱讀任務則額外進行抽獎
-// 給予積分，如果是閱讀任務則額外進行抽獎
 function addPointsAndGacha(points, triggerGachaAnim) {
     userPoints += points;
     db.ref(`users/${currentUser.uid}/points`).set(userPoints);
+    
+    // 👇 新增這段：同步更新歷史總得分 (lifetimePoints)
+    db.ref(`users/${currentUser.uid}/lifetimePoints`).once('value').then(snap => {
+        let currentLifetime = snap.val();
+        if (currentLifetime === null) currentLifetime = Math.max(userPoints - points, 0); // 容錯處理
+        db.ref(`users/${currentUser.uid}/lifetimePoints`).set(currentLifetime + points);
+    });
+
     showToast(`💰 獲得 ${points} 積分！當前積分：${userPoints}`);
     
     // 👇 新增：如果是閱讀或回信 (獲得 1000 分)，任務總數即時 +1
