@@ -3434,6 +3434,20 @@ function signIn() {
         function hideAuthOverlay() { gsap.to("#auth-overlay", { opacity: 0, duration: 0.6, onComplete: () => { document.getElementById('auth-overlay').style.display = 'none'; }}); }
 
 function initApp() { 
+    // ====== 新增返程拦截 ======
+    const urlParams = new URLSearchParams(window.location.search);
+    const isReturnTrip = urlParams.get('returnTrip') === 'true';
+    if (isReturnTrip) {
+        // 清除本地缓存，防止再次跳转
+        localStorage.removeItem('cachedLocation');
+        // 如果已登录，同步清除数据库中的位置记录
+        if (currentUser) {
+            db.ref(`users/${currentUser.uid}/lastLocation`).set('room');
+        }
+        // 移除 URL 参数，避免刷新后误判
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+        console.log('[index] 返程检测成功，已清除缓存，停止跳转。');
+    }
     // 將最後上線時間寫入輕量級的 user_meta
     db.ref(`user_meta/${currentUser.uid}/lastLoginTime`).set(firebase.database.ServerValue.TIMESTAMP);
     
